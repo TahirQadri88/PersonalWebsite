@@ -113,13 +113,37 @@
     );
   }
 
+  /* A paragraph of prose from content.js, in whatever script it is
+     written in. Descriptions and blurbs were assumed to be English —
+     every one of them was — so an Urdu description came out in whatever
+     the system happened to substitute rather than in Nastaliq. */
+  function proseMarkup(text, className) {
+    var rtl = isArabicScript(text);
+    var classes = [className, rtl ? 'urdu' : ''].filter(Boolean).join(' ');
+    return (
+      '<p' + (classes ? ' class="' + classes + '"' : '') +
+      (rtl ? ' lang="ur" dir="rtl"' : '') + '>' +
+      escapeHtml(text) +
+      '</p>'
+    );
+  }
+
+  /* Tags were assumed to be Urdu and marked lang="ur" dir="rtl" whatever
+     they held, so an English one came out in Nastaliq running right to
+     left. Each tag now takes the script it is actually written in. */
   function tagMarkup(record) {
     if (!record.tags || !record.tags.length) return '';
     return (
       '<ul class="tag-row">' +
       record.tags
         .map(function (tag) {
-          return '<li class="tag" lang="ur" dir="rtl">' + escapeHtml(tag) + '</li>';
+          var rtl = isArabicScript(tag);
+          return (
+            '<li class="tag ' + (rtl ? 'urdu' : 'latin') + '"' +
+            ' lang="' + (rtl ? 'ur' : 'en') + '" dir="' + (rtl ? 'rtl' : 'ltr') + '">' +
+            escapeHtml(tag) +
+            '</li>'
+          );
         })
         .join('') +
       '</ul>'
@@ -295,6 +319,7 @@
     formatDate: formatDate,
     isImage: isImage,
     imageGallery: imageGallery,
+    proseMarkup: proseMarkup,
     tagMarkup: tagMarkup,
     allRecords: allRecords,
     findRecord: findRecord,

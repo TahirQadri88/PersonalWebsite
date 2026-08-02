@@ -91,7 +91,7 @@
       '</summary>' +
       '<div class="work-detail">' +
       (date ? '<p class="work-date">' + site.escapeHtml(date) + '</p>' : '') +
-      (work.description ? '<p>' + site.escapeHtml(work.description) + '</p>' : '') +
+      (work.description ? site.proseMarkup(work.description) : '') +
       status +
       '<div class="work-actions">' +
       '<a class="text-link" href="' + site.escapeHtml(site.recordHref(work)) + '">' +
@@ -119,7 +119,7 @@
           '<header class="work-category-head">' +
           '<h3>' + site.escapeHtml(category.title) + '</h3>' +
           (category.titleUr ? '<p class="category-urdu urdu" lang="ur" dir="rtl">' + site.escapeHtml(category.titleUr) + '</p>' : '') +
-          (category.blurb ? '<p class="category-blurb">' + site.escapeHtml(category.blurb) + '</p>' : '') +
+          (category.blurb ? site.proseMarkup(category.blurb, 'category-blurb') : '') +
           '</header>' +
           (category.works || []).map(workMarkup).join('') +
           '</section>'
@@ -136,7 +136,7 @@
         return (
           '<a class="ruling" href="work.html?work=' + encodeURIComponent(ruling.id) + '"' + searchAttr(ruling.id) + '>' +
           site.titleMarkup(ruling, 'h3') +
-          (ruling.description ? '<p>' + site.escapeHtml(ruling.description) + '</p>' : '') +
+          (ruling.description ? site.proseMarkup(ruling.description) : '') +
           '<span class="ruling-open">Read →</span>' +
           '</a>'
         );

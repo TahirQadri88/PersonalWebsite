@@ -67,7 +67,7 @@
     (record.kind ? '<p class="section-label urdu" lang="ur" dir="rtl">' + site.escapeHtml(record.kind) + '</p>' : '') +
     site.titleMarkup(record, 'h1') +
     (site.formatDate(record.date) ? '<p class="work-date">' + site.escapeHtml(site.formatDate(record.date)) + '</p>' : '') +
-    (record.description ? '<p class="work-page-description">' + site.escapeHtml(record.description) + '</p>' : '') +
+    (record.description ? site.proseMarkup(record.description, 'work-page-description') : '') +
     (files
       ? '<div class="work-page-files">' + files + '</div>'
       : '<p class="availability-note">This one isn’t published here yet. Write to the author if you need it.</p>') +

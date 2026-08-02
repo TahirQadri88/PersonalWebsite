@@ -594,6 +594,28 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   font-size: 14px;
   line-height: 1.9;
 }
+/* Urdu prose keeps prose proportions rather than the title size .urdu
+   otherwise carries, and the leading the script needs. */
+.work-detail p.urdu,
+.category-blurb.urdu,
+.ruling p.urdu {
+  font-size: 17px;
+  line-height: 2.05;
+  text-align: right;
+}
+.work-page-description.urdu {
+  font-size: 19px;
+  line-height: 2.05;
+  text-align: right;
+}
+
+/* An English tag keeps the UI font — Nastaliq has no Latin to draw. */
+.tag.latin {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.7;
+  padding: 4px 11px;
+}
 
 /* 24px, not 18px: it has to clear the invisible touch padding on the
    links above, or a wrapped second row steals taps from the first. */
