@@ -245,7 +245,8 @@ window.siteContent = {
       id: "commodity-exchange",
       title: "Commodity exchange",
       language: "en",
-      description: "Available in Urdu and English.",
+      description:
+        "A ruling on futures and forward transactions in commodities — in commodities trading and on the exchanges.",
       tags: ["بیوع"],
       files: [
         { label: "Urdu PDF", url: "files/my-fatawa/commodity-exchange-urdu.pdf" },
@@ -256,7 +257,8 @@ window.siteContent = {
       id: "wealth-abdul-rehman-ibn-auf",
       title: "The wealth of Sayyidunā ʿAbd al-Raḥmān ibn ʿAwf",
       language: "en",
-      description: "Available in Urdu and English.",
+      description:
+        "What his net worth came to in present-day value and in dollar terms, and how he used it.",
       files: [
         { label: "Urdu PDF", url: "files/my-fatawa/wealth-abdul-rehman-ibn-auf-urdu.pdf" },
         { label: "English PDF", url: "files/my-fatawa/wealth-abdul-rehman-ibn-auf-english.pdf" }
