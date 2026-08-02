@@ -73,9 +73,10 @@ published but unfindable.
   uploaded), `asbab-e-saba`, `ihram-charts`, `roza-ka-naqsha` and
   `arafat-mazhar-jawabat`. Adding one is a `files: [{ label, url }]` line —
   see README.md.
-- The address is `https://tahirqadri88.github.io/PersonalWebsite/`, set in
-  `site.baseUrl`, `robots.txt`, `sitemap.xml` and the sharing tags in
-  `index.html`. All four change together if the site moves to its own domain.
+- The address is `https://tahirqadri.com.pk/` — a PKNIC domain on Cloudflare
+  DNS, served by GitHub Pages. It is written in five places: `site.baseUrl` in
+  `content.js`, `robots.txt`, `sitemap.xml`, the canonical and sharing tags in
+  `index.html`, and the `CNAME` file. They all change together.
 - Categories from the Google Site not yet represented: Presentations, Notes for
   Students, Apps.
 - Verify the name of the introduction's author: the source PDF reads

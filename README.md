@@ -70,21 +70,31 @@ appears in the category bar automatically. To reorder categories, move the block
 
 ## Publishing on GitHub Pages
 
-1. Create a new public repository, e.g. `tahirqadri.github.io`.
-2. Upload every file in this folder, including the hidden `.nojekyll` file.
-3. Settings → Pages → Source: *Deploy from a branch*, branch `main`, folder `/root`.
-4. Wait a minute or two. The site is live at `https://<your-username>.github.io/`.
+The repository is `TahirQadri88/PersonalWebsite` and the site is served at
+**https://tahirqadri.com.pk**, a PKNIC domain whose DNS is run by Cloudflare.
 
-To use your own domain later: add it under Settings → Pages → Custom domain, then
-point a CNAME record at `<your-username>.github.io` with your registrar.
+1. Settings → Pages → Source: *Deploy from a branch*, branch `main`, folder
+   `/ (root)`.
+2. Settings → Pages → Custom domain: `tahirqadri.com.pk`. The `CNAME` file in
+   this folder holds that name — do not delete it, Pages reads it.
+3. Wait for the DNS check to pass, then tick **Enforce HTTPS**. The certificate
+   takes a few minutes and cannot be issued while Cloudflare's proxy is on.
 
-Netlify and Vercel also work — drag the folder onto their dashboard.
+DNS lives in Cloudflare: four `A` records on the apex pointing at
+`185.199.108.153`, `.109.153`, `.110.153`, `.111.153`, and a `CNAME` on `www`
+pointing at `tahirqadri88.github.io`. Keep them **DNS only** (grey cloud) until
+GitHub has issued the certificate. If you later switch the proxy on, set
+SSL/TLS to *Full (strict)* — *Flexible* causes an endless redirect.
+
+The nameservers at PKNIC are the two Cloudflare gives you for this zone.
 
 ## After publishing
 
-- Submit the site once in Google Search Console so it can be found.
-- The address is already set to `https://tahirqadri88.github.io/PersonalWebsite/`
-  in `site.baseUrl`, `robots.txt`, `sitemap.xml` and the sharing tags in
-  `index.html`. If you move to your own domain, change all four together.
+- Submit the site once in Google Search Console so it can be found. Verify by
+  DNS TXT record, which Cloudflare can add for you in one click.
+- The address is set in four places — `site.baseUrl` in `content.js`,
+  `robots.txt`, `sitemap.xml`, and the canonical and sharing tags in
+  `index.html` — plus the `CNAME` file. All five change together if the
+  domain ever changes.
 - Add a link to the new site from your Google Site and your Super page, so
   existing readers follow across.

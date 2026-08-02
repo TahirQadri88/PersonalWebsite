@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://tahirqadri88.github.io/PersonalWebsite/sitemap.xml
+Sitemap: https://tahirqadri.com.pk/sitemap.xml

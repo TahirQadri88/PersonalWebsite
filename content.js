@@ -29,7 +29,7 @@ window.siteContent = {
     // Used for sharing previews, canonical links and structured data.
     // Change this if the site later moves to its own domain — and change
     // robots.txt and sitemap.xml with it.
-    baseUrl: "https://tahirqadri88.github.io/PersonalWebsite/"
+    baseUrl: "https://tahirqadri.com.pk/"
   },
 
   categories: [
