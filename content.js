@@ -140,6 +140,33 @@ window.siteContent = {
           description: "A teaching presentation on the important rulings of fasting.",
           tags: ["روزہ", "رمضان"],
           files: [{ label: "Urdu PDF", url: "files/presentations/roza-ke-ahem-masail.pdf" }]
+        },
+        {
+          id: "halloween",
+          title: "ھیلو وین کا تہوار اور مسلمان",
+          language: "ur",
+          kind: "معلوماتی پمفلٹ",
+          description: "What Muslims should know about Halloween.",
+          tags: ["عصری مسائل"],
+          /* `preview` is a lighter copy for the page; the download stays
+             the full-resolution sheet. */
+          files: [
+            {
+              label: "Part 1",
+              url: "files/social-media-posts-and-pamphlets/halloween-part-1.jpg",
+              preview: "files/social-media-posts-and-pamphlets/halloween-part-1-preview.jpg"
+            },
+            {
+              label: "Part 2",
+              url: "files/social-media-posts-and-pamphlets/halloween-part-2.jpg",
+              preview: "files/social-media-posts-and-pamphlets/halloween-part-2-preview.jpg"
+            },
+            {
+              label: "Part 3",
+              url: "files/social-media-posts-and-pamphlets/halloween-part-3.jpg",
+              preview: "files/social-media-posts-and-pamphlets/halloween-part-3-preview.jpg"
+            }
+          ]
         }
       ]
     },
@@ -213,19 +240,6 @@ window.siteContent = {
               label: "English PDF",
               url: "files/study-notes-for-specialization-students-of-hanafi-fiqh/arafat-mazhar-jawabat-english.pdf"
             }
-          ]
-        },
-        {
-          id: "halloween",
-          title: "ھیلو وین کا تہوار اور مسلمان",
-          language: "ur",
-          kind: "مضمون",
-          description: "What Muslims should know about Halloween.",
-          tags: ["عصری مسائل"],
-          files: [
-            { label: "Part 1", url: "files/social-media-posts-and-pamphlets/halloween-part-1.jpg" },
-            { label: "Part 2", url: "files/social-media-posts-and-pamphlets/halloween-part-2.jpg" },
-            { label: "Part 3", url: "files/social-media-posts-and-pamphlets/halloween-part-3.jpg" }
           ]
         }
       ]

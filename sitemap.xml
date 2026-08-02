@@ -21,24 +21,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://tahirqadri.com.pk/work.html?work=ilm-ul-meerath</loc>
-    <lastmod>2026-08-02</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://tahirqadri.com.pk/work.html?work=asbab-e-saba</loc>
-    <lastmod>2026-08-02</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://tahirqadri.com.pk/work.html?work=sai-ul-ifham</loc>
-    <lastmod>2026-08-02</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://tahirqadri.com.pk/work.html?work=khutba-hajjatul-wida</loc>
     <lastmod>2026-08-02</lastmod>
     <changefreq>yearly</changefreq>
@@ -81,13 +63,31 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://tahirqadri.com.pk/work.html?work=arafat-mazhar-jawabat</loc>
+    <loc>https://tahirqadri.com.pk/work.html?work=halloween</loc>
     <lastmod>2026-08-02</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://tahirqadri.com.pk/work.html?work=halloween</loc>
+    <loc>https://tahirqadri.com.pk/work.html?work=ilm-ul-meerath</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://tahirqadri.com.pk/work.html?work=asbab-e-saba</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://tahirqadri.com.pk/work.html?work=sai-ul-ifham</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://tahirqadri.com.pk/work.html?work=arafat-mazhar-jawabat</loc>
     <lastmod>2026-08-02</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.8</priority>

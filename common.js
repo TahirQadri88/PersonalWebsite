@@ -63,6 +63,36 @@
       .join('');
   }
 
+  var IMAGE_FILE = /\.(jpe?g|png|gif|webp|avif|svg)$/i;
+
+  function isImage(url) {
+    return IMAGE_FILE.test(String(url || '').split('?')[0]);
+  }
+
+  /* Charts and pamphlets are pictures. Showing them beats asking someone
+     to download three files to find out what they say. Each thumbnail is
+     a link to the full-size original; `preview` names a lighter copy to
+     display, and falls back to the file itself when there is none. */
+  function imageGallery(record) {
+    var images = (record.files || []).filter(function (file) {
+      return isImage(file.url);
+    });
+    if (!images.length) return '';
+    return (
+      '<ul class="work-page-gallery">' +
+      images
+        .map(function (file) {
+          return (
+            '<li><a href="' + escapeHtml(file.url) + '" target="_blank" rel="noopener">' +
+            '<img src="' + escapeHtml(file.preview || file.url) + '" alt="' + escapeHtml(file.label || '') + '" loading="lazy" />' +
+            '</a></li>'
+          );
+        })
+        .join('') +
+      '</ul>'
+    );
+  }
+
   function tagMarkup(record) {
     if (!record.tags || !record.tags.length) return '';
     return (
@@ -241,6 +271,8 @@
     direction: direction,
     titleMarkup: titleMarkup,
     fileLinks: fileLinks,
+    isImage: isImage,
+    imageGallery: imageGallery,
     tagMarkup: tagMarkup,
     allRecords: allRecords,
     findRecord: findRecord,

@@ -63,6 +63,7 @@
     (files
       ? '<div class="work-page-files">' + files + '</div>'
       : '<p class="availability-note">This one isn’t published here yet. Write to the author if you need it.</p>') +
+    site.imageGallery(record) +
     site.tagMarkup(record) +
     '</section>';
 })();
