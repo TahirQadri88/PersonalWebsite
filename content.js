@@ -223,6 +223,17 @@ window.siteContent = {
     },
 
     {
+      id: "posts",
+      title: "Posts, Notes & Reflections",
+      titleUr: "مضامین و خیالات",
+      blurb: "Shorter pieces written as they come.",
+      /* These are pages, not downloads. Each one names its own file in
+         `page` and carries a `date`; the writing lives in that file, not
+         here. The category stays hidden until the first is written. */
+      works: []
+    },
+
+    {
       id: "maqalat",
       title: "Articles & responses",
       titleUr: "مضامین و جوابات",

@@ -63,6 +63,26 @@
       .join('');
   }
 
+  /* Most entries are a record about a file, and open work.html. A post is
+     its own page — the writing is in the HTML, not behind a download — so
+     it names that page and links straight to it. */
+  function recordHref(record) {
+    return record.page ? record.page : 'work.html?work=' + encodeURIComponent(record.id);
+  }
+
+  /* "2026-08-02" -> "2 August 2026". Returns '' for anything unparseable
+     rather than the word Invalid. */
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+
+  function formatDate(value) {
+    var parts = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!parts) return '';
+    var month = MONTHS[Number(parts[2]) - 1];
+    if (!month) return '';
+    return Number(parts[3]) + ' ' + month + ' ' + parts[1];
+  }
+
   var IMAGE_FILE = /\.(jpe?g|png|gif|webp|avif|svg)$/i;
 
   function isImage(url) {
@@ -271,6 +291,8 @@
     direction: direction,
     titleMarkup: titleMarkup,
     fileLinks: fileLinks,
+    recordHref: recordHref,
+    formatDate: formatDate,
     isImage: isImage,
     imageGallery: imageGallery,
     tagMarkup: tagMarkup,

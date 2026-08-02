@@ -12,6 +12,30 @@
 (function () {
   'use strict';
 
+  /* ---- The latch ----------------------------------------------------
+
+     A static site has no server, so this cannot be a lock. The passphrase
+     is compared against a SHA-256 digest held below; anyone who opens the
+     browser's developer tools can read past it. What it does do is keep a
+     casual visitor out of the editor, and that is all it is claimed to do.
+
+     It is enough here because the editor holds nothing private — every
+     word in it is already published — and it can save nothing. The thing
+     that actually protects the library is that only you can push to
+     GitHub.
+
+     To change the passphrase, open any page of the site, paste this in the
+     browser console, and put the line it prints in place of PASS_HASH:
+
+       crypto.subtle.digest('SHA-256', new TextEncoder().encode('your new words'))
+         .then(h => console.log([...new Uint8Array(h)]
+           .map(b => b.toString(16).padStart(2,'0')).join('')))
+
+     For real protection, put the site behind Cloudflare Access — free,
+     and it authenticates before the page is ever served. */
+  /* Currently the word: maktaba — change it. */
+  var PASS_HASH = 'd68e1c2dc633eef7d23409ca1c403d5131f8449d0b1c98e59a2820bfb5b72125';
+
   var LANGUAGES = [
     { value: 'ur', label: 'Urdu — Nastaleeq' },
     { value: 'ar', label: 'Arabic — Naskh' },
@@ -115,6 +139,171 @@
     return area;
   }
 
+  /* ---- Posts ----
+
+     A post is a page of writing rather than a record of a file, so its
+     words live in its own HTML file and not in content.js. The editor
+     holds them here while you work, keyed by id. */
+
+  var POSTS_CATEGORY = 'posts';
+  var bodies = {};
+
+  function isPost(entry) {
+    return !!(entry.record.page || (entry.category && entry.category.id === POSTS_CATEGORY));
+  }
+
+  var SCRIPT_MARK = { arabic: '[ar] ', latin: '[en] ', urdu: '[ur] ' };
+
+  /* The page back into the plain text the box shows. */
+  function htmlToBody(article) {
+    var blocks = [];
+    Array.prototype.forEach.call(article.children, function (node) {
+      var mark = '';
+      ['arabic', 'latin', 'urdu'].forEach(function (name) {
+        if (node.classList.contains(name)) mark = SCRIPT_MARK[name];
+      });
+      var text = node.textContent.trim().replace(/\s+/g, ' ');
+      if (!text) return;
+      if (node.tagName === 'H2') blocks.push('## ' + mark + text);
+      else if (node.tagName === 'BLOCKQUOTE') blocks.push('> ' + mark + text);
+      else blocks.push(mark + text);
+    });
+    return blocks.join('\n\n');
+  }
+
+  /* And the plain text into the page. */
+  function bodyToHtml(text, indent) {
+    var pad = ' '.repeat(indent);
+    return String(text || '')
+      .split(/\n\s*\n/)
+      .map(function (block) { return block.trim(); })
+      .filter(Boolean)
+      .map(function (block) {
+        var tag = 'p';
+        if (block.indexOf('## ') === 0) { tag = 'h2'; block = block.slice(3); }
+        else if (block.indexOf('> ') === 0) { tag = 'blockquote'; block = block.slice(2); }
+
+        var attrs = '';
+        var forced = block.match(/^\[(ar|en|ur)\]\s*/);
+        if (forced) {
+          var language = forced[1];
+          block = block.slice(forced[0].length);
+          attrs =
+            ' class="' + (language === 'ar' ? 'arabic' : language === 'ur' ? 'urdu' : 'latin') + '"' +
+            ' lang="' + language + '" dir="' + (language === 'en' ? 'ltr' : 'rtl') + '"';
+        }
+        return pad + '<' + tag + attrs + '>' + site.escapeHtml(block.replace(/\s+/g, ' ')) + '</' + tag + '>';
+      })
+      .join('\n');
+  }
+
+  /* A whole post page. Everything a reader or a crawler needs is written
+     into the file — that is the point of a post having its own page
+     rather than being assembled by script. */
+  function buildPost(record, entry) {
+    var e = site.escapeHtml;
+    var base = String((model.site && model.site.baseUrl) || '').replace(/\/+$/, '') + '/';
+    var url = base + record.page;
+    var author = (model.site && model.site.name) || '';
+    var rtl = record.language === 'ur' || record.language === 'ar';
+    var scriptClass = record.language === 'ur' ? 'urdu' : record.language === 'ar' ? 'arabic' : 'latin';
+    var pretty = site.formatDate(record.date);
+    var categoryTitle = entry.category ? entry.category.title : 'Posts, Notes & Reflections';
+    var categoryId = entry.category ? entry.category.id : POSTS_CATEGORY;
+
+    var jsonLd = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'BlogPosting',
+      headline: record.title,
+      inLanguage: record.language || 'en',
+      description: record.description || undefined,
+      datePublished: record.date || undefined,
+      keywords: (record.tags || []).join(', ') || undefined,
+      url: url,
+      author: {
+        '@type': 'Person',
+        name: author,
+        alternateName: (model.site && model.site.nameUr) || undefined,
+        url: base
+      },
+      isPartOf: { '@type': 'Collection', name: categoryTitle, url: base }
+    });
+
+    return [
+      '<!doctype html>',
+      '<html lang="' + e(record.language || 'en') + '">',
+      '  <head>',
+      '    <meta charset="UTF-8" />',
+      '    <meta name="viewport" content="width=device-width, initial-scale=1.0" />',
+      '    <title>' + e(record.title) + ' — ' + e(author) + '</title>',
+      record.description ? '    <meta name="description" content="' + e(record.description) + '" />' : null,
+      '    <meta name="author" content="' + e(author) + '" />',
+      '    <link rel="canonical" href="' + e(url) + '" />',
+      '',
+      '    <meta property="og:type" content="article" />',
+      '    <meta property="og:title" content="' + e(record.title) + '" />',
+      record.description ? '    <meta property="og:description" content="' + e(record.description) + '" />' : null,
+      '    <meta property="og:url" content="' + e(url) + '" />',
+      '    <meta property="og:image" content="' + e(base + 'share-card.png') + '" />',
+      '    <meta name="twitter:card" content="summary_large_image" />',
+      record.date ? '    <meta property="article:published_time" content="' + e(record.date) + '" />' : null,
+      '',
+      '    <link rel="icon" type="image/png" sizes="32x32" href="../files/images/logo-circle-32.png" />',
+      '    <link rel="apple-touch-icon" href="../files/images/logo-circle-180.png" />',
+      '    <link rel="preconnect" href="https://fonts.googleapis.com" />',
+      '    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />',
+      '    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" rel="stylesheet" />',
+      '    <link rel="stylesheet" href="../styles.css" />',
+      '    <script type="application/ld+json">' + jsonLd + '</scr' + 'ipt>',
+      '  </head>',
+      '',
+      '  <body class="work-page">',
+      '    <header class="site-header">',
+      '      <a class="brand" href="../index.html"><img class="brand-mark" src="../files/images/logo-circle-180.png" alt="" width="180" height="178" /> My Works</a>',
+      '      <nav class="header-nav" aria-label="Sections">',
+      '        <a href="../index.html#about">Author</a>',
+      '        <a href="../index.html#library">Library</a>',
+      '        <a href="../index.html#rulings">Fatawa</a>',
+      '        <a href="../index.html#contact">Contact</a>',
+      '      </nav>',
+      '    </header>',
+      '',
+      '    <main class="work-page-main">',
+      '      <article class="work-hero">',
+      '        <a class="back-link" href="../index.html#' + e(categoryId) + '">← ' + e(categoryTitle) + '</a>',
+      record.kind ? '        <p class="section-label urdu" lang="ur" dir="rtl">' + e(record.kind) + '</p>' : null,
+      '        <h1 class="' + scriptClass + '" lang="' + e(record.language || 'en') + '" dir="' + (rtl ? 'rtl' : 'ltr') + '">' + e(record.title) + '</h1>',
+      pretty ? '        <p class="work-date">' + e(pretty) + '</p>' : null,
+      record.description ? '        <p class="work-page-description">' + e(record.description) + '</p>' : null,
+      '',
+      '        <div class="post-body ' + scriptClass + '" id="post-body" lang="' + e(record.language || 'en') + '" dir="' + (rtl ? 'rtl' : 'ltr') + '">',
+      bodyToHtml(bodies[record.id], 10),
+      '        </div>',
+      '',
+      (record.tags || []).length
+        ? '        <ul class="tag-row">' +
+          (record.tags || []).map(function (tag) { return '<li class="tag" lang="ur" dir="rtl">' + e(tag) + '</li>'; }).join('') +
+          '</ul>'
+        : null,
+      '        <p class="post-foot"><a class="text-link" href="../index.html#' + e(categoryId) + '">← All posts</a></p>',
+      '      </article>',
+      '    </main>',
+      '',
+      '    <footer>',
+      '      <span>© <span id="year"></span> ' + e(author) + '</span>',
+      '      <a href="../index.html">All works</a>',
+      '    </footer>',
+      '',
+      '    <script src="../content.js"></scr' + 'ipt>',
+      '    <script src="../common.js"></scr' + 'ipt>',
+      '  </body>',
+      '</html>',
+      ''
+    ]
+      .filter(function (line) { return line !== null; })
+      .join('\n');
+  }
+
   /* ---- One entry ---- */
 
   function buildRow(entry) {
@@ -137,7 +326,9 @@
       metaCell.textContent =
         (entry.category ? entry.category.title : 'Fatwa') +
         ' · ' +
-        (count ? count + (count === 1 ? ' file' : ' files') : 'no file');
+        (isPost(entry)
+          ? site.formatDate(record.date) || 'no date'
+          : count ? count + (count === 1 ? ' file' : ' files') : 'no file');
     }
     refreshSummary();
 
@@ -222,6 +413,71 @@
     );
     fields.appendChild(tagField);
 
+    /* date — posts want one; anything else may have one */
+    var dateField = field('Date', 'YYYY-MM-DD, or leave empty');
+    var dateInput = textInput(record.date, function (value) {
+      record.date = value.trim() || undefined;
+    });
+    dateInput.type = 'date';
+    dateField.appendChild(dateInput);
+    fields.appendChild(dateField);
+
+    /* A post is a page of writing. Everything else is a record of a file.
+       The row shows one or the other, never both. */
+    if (isPost(entry)) {
+      var pageField = field('Page', 'the file this post lives in');
+      var pageInput = textInput(record.page, function (value) {
+        record.page = value.trim() || undefined;
+      });
+      pageInput.placeholder = 'posts/' + (record.id || 'slug') + '.html';
+      pageField.appendChild(pageInput);
+      fields.appendChild(pageField);
+
+      var bodyField = field(
+        'The writing',
+        'blank line between paragraphs · “## ” for a heading · “> ” for a quote · “[ar] ” or “[en] ” at the start of a block to switch script'
+      );
+      var bodyArea = textArea(bodies[record.id] || '', function (value) {
+        bodies[record.id] = value;
+      });
+      bodyArea.style.minHeight = '260px';
+      applyScript(bodyArea, record.language);
+      bodyField.appendChild(bodyArea);
+      var bodyNote = el('p', 'hint');
+      bodyField.appendChild(bodyNote);
+      fields.appendChild(bodyField);
+
+      langSelect.addEventListener('change', function () {
+        applyScript(bodyArea, record.language);
+      });
+
+      /* An existing post keeps its words in its own file, so they have to
+         be read back before they can be edited. Over file:// the browser
+         refuses, and the box stays empty rather than silently wiping the
+         post on export. */
+      if (record.page && bodies[record.id] === undefined) {
+        bodyNote.textContent = 'Loading the current text…';
+        fetch(record.page)
+          .then(function (response) {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.text();
+          })
+          .then(function (html) {
+            var parsed = new DOMParser().parseFromString(html, 'text/html');
+            var article = parsed.getElementById('post-body');
+            bodies[record.id] = article ? htmlToBody(article) : '';
+            bodyArea.value = bodies[record.id];
+            bodyNote.textContent = '';
+          })
+          .catch(function () {
+            bodies[record.id] = undefined;
+            bodyNote.textContent =
+              'Could not read ' + record.page + ' — open this editor over http, not from a file, to edit an existing post. Leaving this empty will not change the post.';
+          });
+      }
+      return finish();
+    }
+
     /* files */
     var filesField = field('Files', 'label, then the path under files/ — leave empty for “not published yet”');
     var filesBox = el('div', 'admin-files');
@@ -276,7 +532,11 @@
     drawFiles();
     fields.appendChild(filesField);
 
-    /* move and delete */
+    return finish();
+
+    /* Shared tail: the controls every row has, whether it is a post or a
+       record of a file. */
+    function finish() {
     var tools = el('div', 'admin-row-tools');
 
     if (entry.category) {
@@ -332,6 +592,7 @@
     fields.appendChild(tools);
 
     return row;
+    }
   }
 
   /* ---- Drawing everything ---- */
@@ -406,24 +667,61 @@
     return prefix + '-' + n;
   }
 
+  /* Opens and scrolls to a row by id — a new entry is not necessarily the
+     first one on the page, since its category may sit further down. */
+  function revealRow(id) {
+    var rows = editor.querySelectorAll('.admin-row');
+    for (var i = 0; i < rows.length; i += 1) {
+      if (rows[i].querySelector('.admin-row-id').textContent === id) {
+        rows[i].open = true;
+        rows[i].scrollIntoView({ block: 'center' });
+        return;
+      }
+    }
+  }
+
   document.getElementById('add-work').addEventListener('click', function () {
     var category = (model.categories || [])[0];
     if (!category) return;
     if (!category.works) category.works = [];
-    category.works.unshift({ id: freshId('new-work'), title: '', language: 'ur' });
+    var newId = freshId('new-work');
+    category.works.unshift({ id: newId, title: '', language: 'ur' });
     filterInput.value = '';
     markDirty();
     render();
-    var first = editor.querySelector('.admin-row');
-    if (first) { first.open = true; first.scrollIntoView({ block: 'center' }); }
+    revealRow(newId);
+  });
+
+  document.getElementById('add-post').addEventListener('click', function () {
+    var category = (model.categories || []).filter(function (c) { return c.id === POSTS_CATEGORY; })[0];
+    if (!category) {
+      window.alert('There is no “' + POSTS_CATEGORY + '” category in content.js to put it in.');
+      return;
+    }
+    var id = freshId('new-post');
+    if (!category.works) category.works = [];
+    category.works.unshift({
+      id: id,
+      title: '',
+      language: 'ur',
+      date: new Date().toISOString().slice(0, 10),
+      page: 'posts/' + id + '.html'
+    });
+    bodies[id] = '';
+    filterInput.value = '';
+    markDirty();
+    render();
+    revealRow(id);
   });
 
   document.getElementById('add-ruling').addEventListener('click', function () {
     if (!model.rulings) model.rulings = [];
-    model.rulings.unshift({ id: freshId('new-fatwa'), title: '', language: 'ur' });
+    var newId = freshId('new-fatwa');
+    model.rulings.unshift({ id: newId, title: '', language: 'ur' });
     filterInput.value = '';
     markDirty();
     render();
+    revealRow(newId);
   });
 
   filterInput.addEventListener('input', render);
@@ -445,6 +743,9 @@
       (record.files || []).forEach(function (file) {
         if (!file.url) found.push(where + ': a file row has no path.');
       });
+      if (category && category.id === POSTS_CATEGORY && !record.page) {
+        found.push(where + ': a post needs a page, e.g. posts/' + (record.id || 'slug') + '.html');
+      }
     });
     return found;
   }
@@ -504,10 +805,12 @@
     var pad = ' '.repeat(indent);
     var lines = [pad + 'id: ' + str(record.id), pad + 'title: ' + str(record.title), pad + 'language: ' + str(record.language)];
     if (record.kind) lines.push(pad + 'kind: ' + str(record.kind));
+    if (record.date) lines.push(pad + 'date: ' + str(record.date));
     if (record.description) lines.push(pad + 'description: ' + str(record.description));
     if (record.tags && record.tags.length) {
       lines.push(pad + 'tags: [' + record.tags.map(str).join(', ') + ']');
     }
+    if (record.page) lines.push(pad + 'page: ' + str(record.page));
     if (record.files && record.files.length) {
       lines.push(pad + writeFiles(record.files, indent));
     }
@@ -553,8 +856,11 @@
   function buildSitemap() {
     var base = String((model.site && model.site.baseUrl) || '').replace(/\/+$/, '') + '/';
     var today = new Date().toISOString().slice(0, 10);
-    var ids = [];
-    eachRecord(function (record) { ids.push(record.id); });
+    /* A post has its own page; everything else is served by the template. */
+    var paths = [];
+    eachRecord(function (record) {
+      paths.push(record.page ? record.page : 'work.html?work=' + record.id);
+    });
     return (
       '<?xml version="1.0" encoding="UTF-8"?>\n' +
       '<!-- The homepage plus one entry per work and fatwa.\n\n' +
@@ -567,10 +873,10 @@
       '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
       '  <url>\n    <loc>' + base + '</loc>\n    <lastmod>' + today + '</lastmod>\n' +
       '    <changefreq>monthly</changefreq>\n    <priority>1.0</priority>\n  </url>\n' +
-      ids
-        .map(function (id) {
+      paths
+        .map(function (path) {
           return (
-            '  <url>\n    <loc>' + base + 'work.html?work=' + id + '</loc>\n' +
+            '  <url>\n    <loc>' + base + path + '</loc>\n' +
             '    <lastmod>' + today + '</lastmod>\n' +
             '    <changefreq>yearly</changefreq>\n    <priority>0.8</priority>\n  </url>'
           );
@@ -607,12 +913,46 @@
     document.getElementById('out-content').value = content;
     document.getElementById('out-sitemap').value = buildSitemap();
 
+    /* One more file for every post whose words are in hand. A post whose
+       page could not be read is left alone rather than overwritten with
+       an empty one. */
+    var extra = document.getElementById('out-posts');
+    extra.textContent = '';
+    var written = 0;
+    allRecords().forEach(function (entry) {
+      if (!isPost(entry) || !entry.record.page) return;
+      if (bodies[entry.record.id] === undefined) return;
+      written += 1;
+      var id = 'out-post-' + written;
+      var section = document.createElement('section');
+      var head = document.createElement('div');
+      head.className = 'admin-file-head';
+      var title = document.createElement('h3');
+      title.textContent = entry.record.page;
+      var buttons = document.createElement('span');
+      buttons.innerHTML =
+        '<button class="text-link" type="button" data-copy="' + id + '">Copy</button> ' +
+        '<button class="text-link" type="button" data-download="' + entry.record.page.split('/').pop() +
+        '" data-source="' + id + '">Download</button>';
+      head.appendChild(title);
+      head.appendChild(buttons);
+      var area = document.createElement('textarea');
+      area.id = id;
+      area.readOnly = true;
+      area.spellcheck = false;
+      area.value = buildPost(entry.record, entry);
+      section.appendChild(head);
+      section.appendChild(area);
+      extra.appendChild(section);
+    });
+
     var works = 0;
     var rulings = (model.rulings || []).length;
     (model.categories || []).forEach(function (c) { works += (c.works || []).length; });
     document.getElementById('export-summary').textContent =
       works + ' works and ' + rulings + ' fatawa, in ' + (model.categories || []).length +
-      ' categories. Checked — the file parses.';
+      ' categories. Checked — the file parses.' +
+      (written ? ' ' + written + (written === 1 ? ' post page' : ' post pages') + ' below, one file each.' : '');
 
     dialog.showModal();
   });
@@ -650,5 +990,41 @@
     event.returnValue = '';
   });
 
-  render();
+  /* ---- Unlocking ---- */
+
+  function digest(text) {
+    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)).then(function (buffer) {
+      return Array.prototype.map
+        .call(new Uint8Array(buffer), function (byte) { return byte.toString(16).padStart(2, '0'); })
+        .join('');
+    });
+  }
+
+  function unlock() {
+    document.body.classList.remove('is-locked');
+    try { sessionStorage.setItem('editor-open', '1'); } catch (error) { /* private mode */ }
+    render();
+  }
+
+  var gateForm = document.getElementById('gate-form');
+  var gateError = document.getElementById('gate-error');
+
+  gateForm.addEventListener('submit', function (event) {
+    event.preventDefault();
+    var value = document.getElementById('pass').value;
+    digest(value).then(function (hash) {
+      if (hash === PASS_HASH) {
+        unlock();
+      } else {
+        gateError.textContent = 'Not that one.';
+        document.getElementById('pass').select();
+      }
+    });
+  });
+
+  /* Stays open for the rest of the browser session, so a reload while
+     writing does not ask again. */
+  var alreadyOpen = false;
+  try { alreadyOpen = sessionStorage.getItem('editor-open') === '1'; } catch (error) { /* private mode */ }
+  if (alreadyOpen) unlock();
 })();

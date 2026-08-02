@@ -27,6 +27,7 @@ script.js      homepage rendering, category nav, search
 work.js        detail page rendering
 admin.html     form editor — writes content.js and sitemap.xml, saves nothing
 admin.css admin.js   its styles and logic, loaded by nothing else
+posts/         one HTML file per post — the writing is the page, not a download
 styles.css     all design, in 12 numbered sections
 404.html robots.txt sitemap.xml share-card.png CNAME
 files/images/   the seal used as favicon and header mark, and the calligraphed name
@@ -47,6 +48,11 @@ Urdu`) and Arabic in Naskh (`Amiri`). Set `language: "ur" | "ar" | "en"` on ever
 entry; the code derives font, `dir` and size from it. Nastaliq needs generous
 line-height (~2.0) and vertical room for descenders — check any spacing change
 against a long Urdu title.
+
+**A post is a page, not a download.** Entries in the `posts` category carry
+`page` and `date` instead of `files`, and their words live in the HTML file, not
+in `content.js`. `admin.html` writes that file; editing one needs the editor
+opened over http so it can read the page back.
 
 **Missing files are a normal state.** A work with no `files` array renders as
 "Not published here yet". Do not delete such entries or invent placeholder URLs.

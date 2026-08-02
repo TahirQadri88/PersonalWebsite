@@ -16,9 +16,13 @@
   /* ---- Category navigation ---- */
 
   if (nav) {
-    var navItems = (content.categories || []).map(function (category) {
-      return '<a href="#' + site.escapeHtml(category.id) + '">' + site.escapeHtml(category.title) + '</a>';
-    });
+    var navItems = (content.categories || [])
+      .filter(function (category) {
+        return (category.works || []).length > 0;
+      })
+      .map(function (category) {
+        return '<a href="#' + site.escapeHtml(category.id) + '">' + site.escapeHtml(category.title) + '</a>';
+      });
     navItems.push('<a href="#rulings">Fatawa</a>');
     nav.innerHTML = navItems.join('');
   }
@@ -43,19 +47,26 @@
   }
 
   function workMarkup(work) {
-    var status = work.files && work.files.length ? '' : '<p class="availability-note">Not published here yet.</p>';
+    /* A post has no file and needs none — the writing is the page. Only a
+       record that is waiting for a document says so. */
+    var published = (work.files && work.files.length) || work.page;
+    var status = published ? '' : '<p class="availability-note">Not published here yet.</p>';
+    var date = site.formatDate(work.date);
     return (
-      '<details class="work' + (work.files && work.files.length ? '' : ' work-pending') + '"' + searchAttr(work.id) + '>' +
+      '<details class="work' + (published ? '' : ' work-pending') + '"' + searchAttr(work.id) + '>' +
       '<summary>' +
       (work.kind ? '<span class="work-kind" lang="ur" dir="rtl">' + site.escapeHtml(work.kind) + '</span>' : '<span class="work-kind"></span>') +
       site.titleMarkup(work) +
       '<span class="toggle" aria-hidden="true">+</span>' +
       '</summary>' +
       '<div class="work-detail">' +
+      (date ? '<p class="work-date">' + site.escapeHtml(date) + '</p>' : '') +
       (work.description ? '<p>' + site.escapeHtml(work.description) + '</p>' : '') +
       status +
       '<div class="work-actions">' +
-      '<a class="text-link" href="work.html?work=' + encodeURIComponent(work.id) + '">Open details →</a>' +
+      '<a class="text-link" href="' + site.escapeHtml(site.recordHref(work)) + '">' +
+      (work.page ? 'Read →' : 'Open details →') +
+      '</a>' +
       site.fileLinks(work) +
       '</div>' +
       /* Tags sit below the download, not above it. They are for browsing,
@@ -67,6 +78,11 @@
 
   if (library) {
     library.innerHTML = (content.categories || [])
+      /* A category with nothing in it yet renders as a heading over empty
+         space, so it waits until it has something to show. */
+      .filter(function (category) {
+        return (category.works || []).length > 0;
+      })
       .map(function (category) {
         return (
           '<section class="work-category" id="' + site.escapeHtml(category.id) + '">' +

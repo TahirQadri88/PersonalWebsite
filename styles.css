@@ -647,6 +647,64 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .work-page-gallery a:hover { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(24, 62, 51, 0.16); }
 .work-page-gallery img { display: block; width: 100%; height: auto; }
 
+/* 11a ── Posts ────────────────────────────────────────────── */
+
+.work-date {
+  margin: 10px 0 0;
+  color: var(--gold-on-light);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.work-detail .work-date { margin: 0 0 10px; }
+
+/* A written piece, not a record of a file. The measure is deliberately
+   narrower than the page — prose wants 60-odd characters a line, and
+   Nastaliq wants the leading it always wants. */
+.post-body {
+  max-width: 62ch;
+  margin: 34px 0 0;
+  color: #38443f;
+  font-size: 17px;
+  line-height: 1.75;
+}
+.post-body.urdu,
+.post-body.arabic { max-width: 44ch; margin-left: auto; }
+.post-body.urdu { font-size: 19px; line-height: 2.15; }
+.post-body.arabic { font-size: 21px; line-height: 1.9; }
+.post-body > * { margin: 0 0 1.1em; }
+.post-body > *:last-child { margin-bottom: 0; }
+.post-body h2 {
+  margin-top: 1.7em;
+  font-size: 1.32em;
+  line-height: 1.35;
+  color: var(--moss-deep);
+}
+.post-body.urdu h2 { line-height: 2.05; }
+.post-body blockquote {
+  padding: 2px 0 2px 18px;
+  border-left: 3px solid var(--gold-rule);
+  color: var(--muted);
+}
+.post-body.urdu blockquote,
+.post-body.arabic blockquote {
+  padding: 2px 18px 2px 0;
+  border-left: 0;
+  border-right: 3px solid var(--gold-rule);
+}
+.post-body .arabic,
+.post-body .urdu { display: block; }
+
+.post-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 44px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
 /* 11b ── The reading column ───────────────────────────────── */
 
 /* Full-bleed sections, centred contents. Declared after the sections

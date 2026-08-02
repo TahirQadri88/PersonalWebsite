@@ -21,6 +21,13 @@
     return;
   }
 
+  /* A post keeps its own page. If a link to the template arrives anyway,
+     send it on rather than showing a second, emptier version of it. */
+  if (record.page) {
+    window.location.replace(record.page);
+    return;
+  }
+
   document.title = record.title + ' — Abul Laith Muhammad Tahir Qadri';
 
   /* Each work is its own page as far as search and sharing are concerned.
@@ -59,6 +66,7 @@
     '<a class="back-link" href="' + site.escapeHtml(backHref) + '">← ' + site.escapeHtml(record.category.title) + '</a>' +
     (record.kind ? '<p class="section-label urdu" lang="ur" dir="rtl">' + site.escapeHtml(record.kind) + '</p>' : '') +
     site.titleMarkup(record, 'h1') +
+    (site.formatDate(record.date) ? '<p class="work-date">' + site.escapeHtml(site.formatDate(record.date)) + '</p>' : '') +
     (record.description ? '<p class="work-page-description">' + site.escapeHtml(record.description) + '</p>' : '') +
     (files
       ? '<div class="work-page-files">' + files + '</div>'

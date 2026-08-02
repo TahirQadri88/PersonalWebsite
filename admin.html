@@ -13,7 +13,23 @@
     <link rel="stylesheet" href="admin.css" />
   </head>
 
-  <body class="admin">
+  <body class="admin is-locked">
+    <div class="gate" id="gate">
+      <form class="gate-card" id="gate-form">
+        <img src="files/images/logo-circle-180.png" alt="" width="180" height="178" />
+        <h1>Editor</h1>
+        <label for="pass">Passphrase</label>
+        <input id="pass" type="password" autocomplete="current-password" autofocus />
+        <p class="gate-error" id="gate-error" role="alert"></p>
+        <button class="button button-dark" type="submit">Unlock</button>
+        <p class="gate-note">
+          This keeps the editor out of the way of passers-by. It is not a lock —
+          the page holds nothing private and can save nothing, and only you can
+          push to GitHub.
+        </p>
+      </form>
+    </div>
+
     <header class="admin-bar">
       <span class="admin-title">
         <img src="files/images/logo-circle-180.png" alt="" width="180" height="178" />
@@ -39,6 +55,7 @@
           <input id="filter" type="search" placeholder="Filter by title, id or category" autocomplete="off" />
         </label>
         <button class="text-link" type="button" id="add-work">+ Add a work</button>
+        <button class="text-link" type="button" id="add-post">+ Add a post</button>
         <button class="text-link" type="button" id="add-ruling">+ Add a fatwa</button>
       </div>
 
@@ -71,9 +88,11 @@
         <textarea id="out-sitemap" spellcheck="false" readonly></textarea>
       </section>
 
+      <div id="out-posts"></div>
+
       <ol class="admin-steps">
-        <li>Open the file on GitHub, click the pencil, select all, paste, <strong>Commit changes</strong>.</li>
-        <li>Do the same for the other file.</li>
+        <li>Open each file on GitHub, click the pencil, select all, paste, <strong>Commit changes</strong>.</li>
+        <li>A post page that does not exist yet: <strong>Add file → Create new file</strong>, type the whole path shown above, paste, commit.</li>
         <li>Upload any new PDFs into the right folder under <code>files/</code>.</li>
         <li>Wait a minute, then reload the site.</li>
       </ol>

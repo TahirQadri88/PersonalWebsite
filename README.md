@@ -9,6 +9,7 @@ A plain static website. No build step, no framework, no server code. Double-clic
 | --- | --- |
 | `content.js` | **Everything you edit.** All works, categories, fatawa, links |
 | `admin.html` | A form for editing `content.js` without touching the code |
+| `posts/` | One HTML file per post — written by `admin.html`, not by hand |
 | `files/` | Put your PDFs and documents here |
 | `index.html` | The homepage |
 | `work.html` | One page that renders any single work or fatwa |
@@ -71,6 +72,28 @@ the whole `files` line out if nothing is ready yet; the work then shows as
 
 **`tags`** appear as small pills and are included in the search.
 
+## Writing a post
+
+Posts, notes and reflections are different from everything else here: the
+writing *is* the page, so each one is its own HTML file in `posts/` rather
+than a download.
+
+1. Open `admin.html` and press **+ Add a post**. It fills in today's date and a
+   file name for you.
+2. Give it a title, a one-line description, and write the piece in **The
+   writing** box. Blank line between paragraphs. `## ` at the start of a line
+   makes a heading, `> ` makes a quote, and `[ar] ` or `[en] ` at the start of a
+   block switches script for that block — for an Arabic citation inside an Urdu
+   piece.
+3. **Save changes** now gives you three things: `content.js`, `sitemap.xml`, and
+   the post's own page. Create that page on GitHub with **Add file → Create new
+   file**, typing the full path shown, e.g. `posts/my-post.html`.
+
+To edit a post later, open `admin.html` **over the web** (not by double-clicking
+the file) — it reads the existing page back into the box. Opened from the file
+system the browser will not let it read the file, and it says so rather than
+quietly emptying your post.
+
 ## Adding a fatwa
 
 Same shape, added to the `rulings` list at the bottom of `content.js`. Fatawa get
@@ -81,6 +104,20 @@ their own detail pages too, so `files` works there as well.
 Copy a whole category block in `content.js` and give it a new English `id`. It
 appears in the category bar automatically. To reorder categories, move the blocks
 — the page follows the file.
+
+## The editor's passphrase
+
+`admin.html` asks for a passphrase. It is **maktaba** — change it. The word is
+compared against a SHA-256 digest at the top of `admin.js`, and the comment
+there gives the one line to run in the browser console to make a new one.
+
+It is a latch, not a lock: the site is static, so there is no server to check
+anything, and anyone determined can read past it in the developer tools. That
+is acceptable because the editor holds nothing private — every word in it is
+already published — and it cannot save anything. What actually protects the
+library is that only you can push to GitHub. For real authentication, put the
+site behind Cloudflare Access, which is free and checks before the page is
+served.
 
 ## Publishing on GitHub Pages
 
