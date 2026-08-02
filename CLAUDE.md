@@ -1,6 +1,6 @@
 # My Works — project notes
 
-Personal scholarly library for **Abul Laith Muhammad Tahir Qadri Al-Naeemi**
+Personal scholarly library for **Abul Laith Muhammad Tahir Qadri An-Naeemi**
 (أبو اللّیث محمد طاہر القادری النّعیمی), teacher of dars-e-niẓāmī at Jamia tun Noor,
 Karachi. Publishes his booklets, edited Ḥanafī manuscripts, charts, articles and
 fatāwā in Urdu, Arabic and English.

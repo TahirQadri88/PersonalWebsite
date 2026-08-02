@@ -91,7 +91,16 @@ h1, h2, h3 {
   text-transform: uppercase;
   color: var(--gold-on-light);
 }
-.eyebrow { color: var(--gold-on-dark); text-transform: none; letter-spacing: 0.06em; }
+/* The author's name, above the heading. It was the gold used for small
+   labels, which reads as a caption; it is the one name on the page and
+   should be legible at a glance. */
+.eyebrow {
+  color: #f7f4ec;
+  text-transform: none;
+  letter-spacing: 0.04em;
+  font-size: clamp(15px, 1.5vw, 18px);
+  margin-bottom: 14px;
+}
 
 /* Urdu and Arabic need their own size and leading, everywhere. */
 .urdu {

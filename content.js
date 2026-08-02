@@ -23,7 +23,7 @@
 
 window.siteContent = {
   site: {
-    name: "Abul Laith Muhammad Tahir Qadri Al-Naeemi",
+    name: "Abul Laith Muhammad Tahir Qadri An-Naeemi",
     nameUr: "أبو اللّیث محمد طاہر القادری النّعیمی",
     email: "tahir.razavi@gmail.com",
     // Used for sharing previews, canonical links and structured data.
