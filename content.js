@@ -175,7 +175,7 @@ window.siteContent = {
         },
         {
           id: "roza-ka-naqsha",
-          title: "روزے کے اہم مسائل کا نقشہ",
+          title: "روزے کے اہم مسائل",
           language: "ur",
           kind: "پریزینٹیشن",
           description: "A teaching presentation on the important rulings of fasting.",
