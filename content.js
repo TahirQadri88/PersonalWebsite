@@ -50,48 +50,6 @@ window.siteContent = {
           files: [{ label: "Urdu PDF", url: "files/booklets-authored/saa-ki-tahqeeq.pdf" }]
         },
         {
-          id: "ilm-ul-meerath",
-          title: "علم المیراث — رسالہ اور پریزینٹیشن سلائڈز",
-          language: "ur",
-          kind: "رسالہ و پریزینٹیشن",
-          description: "A short modern treatment of the law of inheritance, with the accompanying teaching slides.",
-          tags: ["میراث", "تدریس"],
-          // The booklet itself is not uploaded yet — only the two slide decks.
-          files: [
-            { label: "Slides — colour print", url: "files/presentations/ilm-ul-meerath-slides-colour.pdf" },
-            { label: "Slides — printable", url: "files/presentations/ilm-ul-meerath-slides-printable.pdf" }
-          ]
-        },
-        {
-          id: "asbab-e-saba",
-          title: "اسبابِ سبعہ کی تفصیل",
-          language: "ur",
-          kind: "رسالہ",
-          description:
-            "A study of the seven grounds recognised in fatwā — ḍarūra, ḥāja, dafʿ-e-ḥaraj, ʿumūm-e-balwā and the rest. Part of the سلسلہءِ رسائل: اُصولِ افتاء series.",
-          tags: ["اصولِ افتاء", "سلسلہ اصولِ افتاء"],
-          files: [
-            {
-              label: "Urdu PDF",
-              url: "files/study-notes-for-specialization-students-of-hanafi-fiqh/asbab-e-saba.pdf"
-            }
-          ]
-        },
-        {
-          id: "sai-ul-ifham",
-          title: "سعى الإفهام تلخيص أجلى الإعلام",
-          language: "ar",
-          kind: "تلخیص",
-          description: "A restructured summary of Aʿlā Ḥaḍrat's أجلى الإعلام.",
-          tags: ["اصولِ افتاء"],
-          files: [
-            {
-              label: "Arabic PDF",
-              url: "files/study-notes-for-specialization-students-of-hanafi-fiqh/sai-ul-ifham.pdf"
-            }
-          ]
-        },
-        {
           id: "khutba-hajjatul-wida",
           title: "خطبہءِ حجۃ الوداع کی ریکارڈنگ کے دعوے کی حقیقت",
           language: "ur",
@@ -104,9 +62,10 @@ window.siteContent = {
           id: "nfts",
           title: "این ایف ٹیز N.F.Ts (نان فنجیبل ٹوکنز) — شرعی نقطۂ نگاہ سے ایک تجزیہ",
           language: "ur",
-          // kind and description left for the author — see the note in the
-          // commit. Title transcribed from the title page.
-          tags: ["عصری مسائل"],
+          kind: "فتویٰ",
+          description:
+            "A ruling on non-fungible tokens in Ḥanafī fiqh, issued as a fatwā and published as a booklet.",
+          tags: ["عصری مسائل", "بیوع"],
           files: [{ label: "Urdu PDF", url: "files/booklets-authored/nfts.pdf" }]
         }
       ]
@@ -181,6 +140,57 @@ window.siteContent = {
           description: "A teaching presentation on the important rulings of fasting.",
           tags: ["روزہ", "رمضان"],
           files: [{ label: "Urdu PDF", url: "files/presentations/roza-ke-ahem-masail.pdf" }]
+        }
+      ]
+    },
+
+    {
+      id: "ilmi-mawad",
+      title: "Study material",
+      titleUr: "تخصص فی الفقہ کے طلباء کے لئے آسان علمی مواد",
+      blurb: "Prepared for students of Takhaṣṣuṣ fil Fiqh — slides, summaries and notes.",
+      works: [
+        {
+          id: "ilm-ul-meerath",
+          title: "علم المیراث — رسالہ اور پریزینٹیشن سلائڈز",
+          language: "ur",
+          kind: "رسالہ و پریزینٹیشن",
+          description: "A short modern treatment of the law of inheritance, with the accompanying teaching slides.",
+          tags: ["میراث", "تدریس"],
+          // The booklet itself is not uploaded yet — only the two slide decks.
+          files: [
+            { label: "Slides — colour print", url: "files/presentations/ilm-ul-meerath-slides-colour.pdf" },
+            { label: "Slides — printable", url: "files/presentations/ilm-ul-meerath-slides-printable.pdf" }
+          ]
+        },
+        {
+          id: "asbab-e-saba",
+          title: "اسبابِ سبعہ کی تفصیل",
+          language: "ur",
+          kind: "رسالہ",
+          description:
+            "A study of the seven grounds recognised in fatwā — ḍarūra, ḥāja, dafʿ-e-ḥaraj, ʿumūm-e-balwā and the rest. Part of the سلسلہءِ رسائل: اُصولِ افتاء series.",
+          tags: ["اصولِ افتاء", "سلسلہ اصولِ افتاء"],
+          files: [
+            {
+              label: "Urdu PDF",
+              url: "files/study-notes-for-specialization-students-of-hanafi-fiqh/asbab-e-saba.pdf"
+            }
+          ]
+        },
+        {
+          id: "sai-ul-ifham",
+          title: "سعى الإفهام تلخيص أجلى الإعلام",
+          language: "ar",
+          kind: "تلخیص",
+          description: "A restructured summary of Aʿlā Ḥaḍrat's أجلى الإعلام.",
+          tags: ["اصولِ افتاء"],
+          files: [
+            {
+              label: "Arabic PDF",
+              url: "files/study-notes-for-specialization-students-of-hanafi-fiqh/sai-ul-ifham.pdf"
+            }
+          ]
         }
       ]
     },
