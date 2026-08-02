@@ -87,7 +87,14 @@
     (content.rulings || []).forEach(function (ruling) {
       records.push(
         Object.assign({}, ruling, {
-          category: { id: 'rulings', title: 'Islamic rulings', titleUr: 'فتاویٰ' },
+          category: {
+            id: 'rulings',
+            title: 'Islamic rulings',
+            titleUr: 'فتاویٰ',
+            /* Searched but never shown. The heading says "Islamic rulings"
+               and the nav says "Fatawa"; a reader may type either. */
+            keywords: 'fatwa fatawa ruling'
+          },
           kind: ruling.kind || 'فتویٰ'
         })
       );
@@ -135,7 +142,13 @@
         (record.tags || []).join(' '),
         record.category && record.category.title,
         record.category && record.category.titleUr,
-        (record.files || []).map(function (f) { return f.label; }).join(' ')
+        record.category && record.category.keywords,
+        (record.files || []).map(function (f) { return f.label; }).join(' '),
+        /* File paths are roman even when the label is Urdu, so indexing
+           them keeps the Hajj charts reachable by "ehram" or "kaffaray". */
+        (record.files || [])
+          .map(function (f) { return String(f.url || '').replace(/[\/\-_.]/g, ' '); })
+          .join(' ')
       ]
         .filter(Boolean)
         .join(' ')

@@ -534,12 +534,15 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 }
 .rulings .section-label { color: var(--gold-on-dark); }
 
+/* The cards used to be the same green as the panel behind them, divided
+   by hairlines — five rectangles that read as one flat slab, which is
+   why the eye slid straight past the section. They are paper now: the
+   green stays as the backdrop, and the fatawa sit on top of it as
+   objects you can see and count. */
 .ruling-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1px;
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  gap: 16px;
 }
 .ruling {
   display: flex;
@@ -548,20 +551,24 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   gap: 16px;
   min-height: 170px;
   padding: 22px 24px;
-  background: var(--moss-deep);
-  color: inherit;
+  background: var(--card);
+  border-top: 3px solid var(--gold-rule);
+  color: var(--ink);
   text-decoration: none;
-  transition: background 0.18s ease;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.16);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
-.ruling:hover { background: #1b4237; }
-.ruling h3 { font-size: 20px; line-height: 1.3; }
+.ruling:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22); }
+.ruling h3 { font-size: 20px; line-height: 1.3; color: var(--moss-deep); }
 /* 1.3 is a Latin leading. Nastaliq and Naskh keep their own, or a
    two-line Urdu title collides with itself. */
 .ruling h3.urdu { font-size: 24px; line-height: 2.05; }
 .ruling h3.arabic { font-size: 25px; line-height: 1.65; }
-.ruling p { margin: 0; color: #c3d0c9; font-size: 14px; }
-.ruling-open { color: var(--gold-on-dark); font-size: 13px; font-weight: 700; }
-.rulings .tag { background: rgba(255, 255, 255, 0.1); color: #e5dcc6; }
+/* On paper now, so these take the on-light values. The section's own
+   heading and note stay on the green and keep the on-dark ones — which
+   is the whole reason the two gold variables exist. */
+.ruling p { margin: 0; color: var(--muted); font-size: 14px; }
+.ruling-open { color: var(--gold-on-light); font-size: 13px; font-weight: 700; }
 
 /* 9 ── Contact ────────────────────────────────────────────── */
 

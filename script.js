@@ -99,14 +99,27 @@
     var rulingsSection = document.getElementById('rulings');
 
     searchInput.addEventListener('input', function () {
-      var term = site.fold(searchInput.value);
+      /* Every word has to appear, but not in the order given and not next
+         to each other. "zakat tax", "tax zakat" and "fatwa zakat" all find
+         the same ruling, which one long substring could not. */
+      var words = site.fold(searchInput.value).split(' ').filter(Boolean);
+      var term = words.length > 0;
+
+      function matches(element) {
+        if (!term) return true;
+        var hay = element.getAttribute('data-search') || '';
+        return words.every(function (word) {
+          return hay.indexOf(word) !== -1;
+        });
+      }
+
       var works = 0;
       var rulings = 0;
 
       library.querySelectorAll('.work-category').forEach(function (category) {
         var visibleHere = 0;
         category.querySelectorAll('.work').forEach(function (work) {
-          var hit = !term || (work.getAttribute('data-search') || '').indexOf(term) !== -1;
+          var hit = matches(work);
           work.hidden = !hit;
           if (hit) visibleHere += 1;
         });
@@ -119,11 +132,11 @@
          nothing matched while a fatwa on zakat was on screen. */
       if (rulingsGrid) {
         rulingsGrid.querySelectorAll('.ruling').forEach(function (ruling) {
-          var hit = !term || (ruling.getAttribute('data-search') || '').indexOf(term) !== -1;
+          var hit = matches(ruling);
           ruling.hidden = !hit;
           if (hit) rulings += 1;
         });
-        if (rulingsSection) rulingsSection.hidden = !!term && rulings === 0;
+        if (rulingsSection) rulingsSection.hidden = term && rulings === 0;
       }
 
       if (!searchCount) return;
