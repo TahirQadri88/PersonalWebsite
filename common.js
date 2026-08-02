@@ -201,7 +201,7 @@
       '@type': 'Person',
       name: (content.site && content.site.name) || '',
       alternateName: (content.site && content.site.nameUr) || undefined,
-      jobTitle: 'Teacher of Dars-e-Nizami',
+      jobTitle: 'Teacher of dars-e-niẓāmī',
       worksFor: { '@type': 'Organization', name: 'Jamia tun Noor, Karachi' },
       url: absoluteUrl('')
     };
