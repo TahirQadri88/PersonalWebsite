@@ -25,10 +25,22 @@
 
   /* ---- The library ---- */
 
+  /* What each entry can be found by, keyed on its id. Built once from
+     content.js through the same helper the detail page uses, so the
+     search never disagrees with what is on the page. */
+  var searchIndex = {};
+  site.allRecords().forEach(function (record) {
+    searchIndex[record.id] = site.searchText(record);
+  });
+
+  function searchAttr(id) {
+    return ' data-search="' + site.escapeHtml(searchIndex[id] || '') + '"';
+  }
+
   function workMarkup(work) {
     var status = work.files && work.files.length ? '' : '<p class="availability-note">Not published here yet.</p>';
     return (
-      '<details class="work' + (work.files && work.files.length ? '' : ' work-pending') + '">' +
+      '<details class="work' + (work.files && work.files.length ? '' : ' work-pending') + '"' + searchAttr(work.id) + '>' +
       '<summary>' +
       (work.kind ? '<span class="work-kind" lang="ur" dir="rtl">' + site.escapeHtml(work.kind) + '</span>' : '<span class="work-kind"></span>') +
       site.titleMarkup(work) +
@@ -68,7 +80,7 @@
     rulingsGrid.innerHTML = (content.rulings || [])
       .map(function (ruling) {
         return (
-          '<a class="ruling" href="work.html?work=' + encodeURIComponent(ruling.id) + '">' +
+          '<a class="ruling" href="work.html?work=' + encodeURIComponent(ruling.id) + '"' + searchAttr(ruling.id) + '>' +
           site.titleMarkup(ruling, 'h3') +
           (ruling.description ? '<p>' + site.escapeHtml(ruling.description) + '</p>' : '') +
           '<span class="ruling-open">Read →</span>' +
@@ -81,25 +93,49 @@
   /* ---- Search ---- */
 
   if (searchInput && library) {
+    var rulingsSection = document.getElementById('rulings');
+
     searchInput.addEventListener('input', function () {
-      var term = searchInput.value.trim().toLocaleLowerCase();
-      var matches = 0;
+      var term = site.fold(searchInput.value);
+      var works = 0;
+      var rulings = 0;
 
       library.querySelectorAll('.work-category').forEach(function (category) {
         var visibleHere = 0;
         category.querySelectorAll('.work').forEach(function (work) {
-          var hit = !term || work.textContent.toLocaleLowerCase().indexOf(term) !== -1;
+          var hit = !term || (work.getAttribute('data-search') || '').indexOf(term) !== -1;
           work.hidden = !hit;
           if (hit) visibleHere += 1;
         });
         category.hidden = visibleHere === 0;
-        matches += visibleHere;
+        works += visibleHere;
       });
 
+      /* The fatawa are part of the library too — they used to sit below
+         the search ignoring it entirely, so a search for "zakat" said
+         nothing matched while a fatwa on zakat was on screen. */
+      if (rulingsGrid) {
+        rulingsGrid.querySelectorAll('.ruling').forEach(function (ruling) {
+          var hit = !term || (ruling.getAttribute('data-search') || '').indexOf(term) !== -1;
+          ruling.hidden = !hit;
+          if (hit) rulings += 1;
+        });
+        if (rulingsSection) rulingsSection.hidden = !!term && rulings === 0;
+      }
+
       if (!searchCount) return;
-      if (!term) searchCount.textContent = '';
-      else if (matches === 0) searchCount.textContent = 'Nothing matches “' + searchInput.value.trim() + '”. Try a shorter word.';
-      else searchCount.textContent = matches + (matches === 1 ? ' work' : ' works');
+      if (!term) {
+        searchCount.textContent = '';
+        return;
+      }
+      if (works + rulings === 0) {
+        searchCount.textContent = 'Nothing matches “' + searchInput.value.trim() + '”. Try a shorter word.';
+        return;
+      }
+      var parts = [];
+      if (works) parts.push(works + (works === 1 ? ' work' : ' works'));
+      if (rulings) parts.push(rulings + (rulings === 1 ? ' fatwa' : ' fatawa'));
+      searchCount.textContent = parts.join(' and ');
     });
   }
 

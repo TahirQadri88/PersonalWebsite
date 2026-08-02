@@ -124,12 +124,12 @@ window.siteContent = {
           description: "Reference charts for the rulings of iḥrām in Hajj and ʿUmra.",
           tags: ["حج و عمرہ", "احرام"],
           files: [
-            { label: "Ehram kya hai", url: "files/presentations/hajj-charts/01-ehram-kya-hai.pdf" },
-            { label: "Meeqat aur Hudood-e-Haram", url: "files/presentations/hajj-charts/02-meeqat-aur-hudood-e-haram.pdf" },
-            { label: "Ehram ke haraam kaam", url: "files/presentations/hajj-charts/03-ehram-ke-haraam-kaam.pdf" },
-            { label: "Makroohat-e-Ehram", url: "files/presentations/hajj-charts/04-makroohat-e-ehram.pdf" },
-            { label: "Ehram ke jaaiz kaam", url: "files/presentations/hajj-charts/05-ehram-ke-jaaiz-kaam.pdf" },
-            { label: "Jurm aur kaffaray", url: "files/presentations/hajj-charts/06-jurm-aur-kaffaray.pdf" }
+            { label: "احرام کیا ہے", url: "files/presentations/hajj-charts/01-ehram-kya-hai.pdf" },
+            { label: "میقات اور حدودِ حرم", url: "files/presentations/hajj-charts/02-meeqat-aur-hudood-e-haram.pdf" },
+            { label: "احرام کے حرام کام", url: "files/presentations/hajj-charts/03-ehram-ke-haraam-kaam.pdf" },
+            { label: "مکروہاتِ احرام", url: "files/presentations/hajj-charts/04-makroohat-e-ehram.pdf" },
+            { label: "احرام کے جائز کام", url: "files/presentations/hajj-charts/05-ehram-ke-jaaiz-kaam.pdf" },
+            { label: "جرم اور کفارے", url: "files/presentations/hajj-charts/06-jurm-aur-kaffaray.pdf" }
           ]
         },
         {

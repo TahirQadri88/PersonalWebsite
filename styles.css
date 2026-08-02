@@ -119,11 +119,28 @@ h1, h2, h3 {
 }
 
 /* A label that happens to be Urdu or Arabic keeps label proportions —
-   it must not inflate to title size — but takes the right script. */
+   it must not inflate to title size — but takes the right script. The
+   same goes for a download button whose label is Urdu. */
 .section-label.urdu,
 .section-label.arabic {
   font-size: 15px;
   line-height: 1.9;
+}
+/* .document-link sets --font-ui and is declared after .urdu, so it wins on
+   source order. These have to name the script font again to take it back. */
+.document-link.urdu,
+.button.urdu {
+  font-family: var(--font-urdu);
+  font-size: 15px;
+  line-height: 1.9;
+  font-weight: 500;
+}
+.document-link.arabic,
+.button.arabic {
+  font-family: var(--font-arabic);
+  font-size: 15px;
+  line-height: 1.9;
+  font-weight: 500;
 }
 
 .button {
@@ -296,12 +313,16 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   color: #d3ddd7;
   font-size: 17px;
 }
+/* This was the smallest and faintest text on the page, and it is
+   Nastaliq — the script that suffers most from both. It now starts at
+   19px, the same floor the rest of the site's Urdu keeps, and takes the
+   same colour as the paragraph above it. */
 .hero-urdu {
   max-width: 40ch;
   margin: 0 0 30px;
-  color: #c9d6cf;
+  color: #dce6e0;
   font-family: var(--font-urdu);
-  font-size: clamp(16px, 1.6vw, 20px);
+  font-size: clamp(19px, 1.9vw, 23px);
   line-height: 2.1;
 }
 
@@ -616,6 +637,9 @@ footer {
   .category-nav { top: 62px; padding-inline: 16px; }
   .hero { padding-top: 56px; }
   .hero h1 { font-size: clamp(34px, 10vw, 46px); }
+  /* On a phone the ring crossed straight through the Urdu line. Drop it
+     below the text rather than behind it. */
+  .hero::after { right: -210px; bottom: -260px; }
 
   .work-category { padding: 16px 16px 4px; }
   .work summary { grid-template-columns: minmax(0, 1fr) 22px; gap: 10px; padding: 14px 0; }

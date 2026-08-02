@@ -34,14 +34,30 @@
     );
   }
 
+  /* True when a string is written in Arabic script. Used for file labels,
+     which the author writes in whichever script suits the document — a
+     label reading احرام کیا ہے must not come out in the Latin UI font. */
+  var ARABIC_SCRIPT = /[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/;
+
+  function isArabicScript(value) {
+    return ARABIC_SCRIPT.test(String(value == null ? '' : value));
+  }
+
   /* Download / open buttons. Returns '' when nothing is attached yet. */
   function fileLinks(record, className) {
     if (!record.files || !record.files.length) return '';
     return record.files
       .map(function (file) {
+        var label = file.label || 'Open';
+        /* file.language wins if the author set it; otherwise the script is
+           read off the label, so no existing entry needs editing. */
+        var language = file.language || (isArabicScript(label) ? 'ur' : 'en');
+        var rtl = language === 'ur' || language === 'ar';
         return (
-          '<a class="' + (className || 'document-link') + '" href="' + escapeHtml(file.url) + '" target="_blank" rel="noopener">' +
-          escapeHtml(file.label || 'Open') + ' <span aria-hidden="true">↗</span></a>'
+          '<a class="' + (className || 'document-link') + (rtl ? ' ' + scriptClass(language) : '') + '"' +
+          (rtl ? ' lang="' + language + '" dir="rtl"' : '') +
+          ' href="' + escapeHtml(file.url) + '" target="_blank" rel="noopener">' +
+          escapeHtml(label) + ' <span aria-hidden="true">↗</span></a>'
         );
       })
       .join('');
@@ -85,12 +101,45 @@
     })[0];
   }
 
+  /* Folds a string down to what someone actually types.
+
+     Descriptions here are full of scholarly transliteration — ṭawāf,
+     iḥrām, ṣāʿ, Ḥanafī, Raḍawiyya — and nobody types the dots and
+     macrons. Urdu carries its own marks: فتاویٰ ends in a superscript
+     alef, so a reader typing فتاوی would miss it. Both are combining
+     characters, so decomposing and dropping the marks makes the two
+     forms match. Latin letters that do not decompose are mapped by hand. */
+  function fold(value) {
+    return String(value == null ? '' : value)
+      .toLocaleLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')       // Latin combining marks
+      .replace(/[ً-ْٰ]/g, '') // Arabic harakat and superscript alef
+      .replace(/[‘’ʿʾ']/g, '') // ʿayn, hamza, apostrophes
+      .replace(/[ـ]/g, '')              // tatweel
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')      // punctuation, so "N.F.Ts" matches "nfts"
+      .trim();
+  }
+
   /* Everything a search should look inside. */
   function searchText(record) {
-    return [record.title, record.description, record.kind, (record.tags || []).join(' '), record.category && record.category.title]
-      .filter(Boolean)
-      .join(' ')
-      .toLocaleLowerCase();
+    return fold(
+      [
+        /* The id is a roman transliteration of the title — saa-ki-tahqeeq,
+           ilm-ul-meerath — so indexing it lets a reader find an Urdu work
+           by typing what they would say aloud. */
+        String(record.id || '').replace(/-/g, ' '),
+        record.title,
+        record.description,
+        record.kind,
+        (record.tags || []).join(' '),
+        record.category && record.category.title,
+        record.category && record.category.titleUr,
+        (record.files || []).map(function (f) { return f.label; }).join(' ')
+      ]
+        .filter(Boolean)
+        .join(' ')
+    );
   }
 
   /* An absolute address for a page or file, for canonical links, sharing
@@ -160,6 +209,7 @@
     tagMarkup: tagMarkup,
     allRecords: allRecords,
     findRecord: findRecord,
+    fold: fold,
     searchText: searchText
   };
 
