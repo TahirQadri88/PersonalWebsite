@@ -36,7 +36,10 @@ A plain static website. No build step, no framework, no server code. Double-clic
 }
 ```
 
-3. Save and refresh the page.
+3. Add a matching line to `sitemap.xml`, copying one of the existing `<url>`
+   blocks and changing the id. Without it search engines will not find the
+   new work.
+4. Save and refresh the page.
 
 **`language`** picks the font: `"ur"` gives Nastaleeq, `"ar"` gives Naskh, `"en"`
 gives the English serif.
@@ -79,8 +82,9 @@ Netlify and Vercel also work — drag the folder onto their dashboard.
 
 ## After publishing
 
-- Put your real domain into `robots.txt` and `sitemap.xml` (both say `example.com`
-  right now), and into `site.baseUrl` in `content.js`.
 - Submit the site once in Google Search Console so it can be found.
+- The address is already set to `https://tahirqadri88.github.io/PersonalWebsite/`
+  in `site.baseUrl`, `robots.txt`, `sitemap.xml` and the sharing tags in
+  `index.html`. If you move to your own domain, change all four together.
 - Add a link to the new site from your Google Site and your Super page, so
   existing readers follow across.

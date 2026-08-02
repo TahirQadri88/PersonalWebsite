@@ -61,12 +61,21 @@ values for a reason. Do not collapse them into one.
   Nastaliq breaks first.
 - Keep commits small and in plain language; the author reads the history.
 
+**Adding a work means editing sitemap.xml too.** It is the one file outside
+`content.js` that names a work, one `<url>` per id. Search engines find the
+detail pages through it — the homepage list is built by JS, so a crawler that
+does not run scripts sees nothing there. Miss the sitemap line and the work is
+published but unfindable.
+
 ## Outstanding
 
-- Ten works and all five fatāwā have no file attached yet. Adding one is a
-  `files: [{ label, url }]` line — see README.md.
-- `robots.txt`, `sitemap.xml` and `site.baseUrl` in `content.js` still say
-  `example.com`; replace once the domain is decided.
+- Five works still have no file: `ilm-ul-meerath` (only the slides are
+  uploaded), `asbab-e-saba`, `ihram-charts`, `roza-ka-naqsha` and
+  `arafat-mazhar-jawabat`. Adding one is a `files: [{ label, url }]` line —
+  see README.md.
+- The address is `https://tahirqadri88.github.io/PersonalWebsite/`, set in
+  `site.baseUrl`, `robots.txt`, `sitemap.xml` and the sharing tags in
+  `index.html`. All four change together if the site moves to its own domain.
 - Categories from the Google Site not yet represented: Presentations, Notes for
   Students, Apps.
 - Verify the name of the introduction's author: the source PDF reads

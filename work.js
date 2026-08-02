@@ -22,8 +22,34 @@
   }
 
   document.title = record.title + ' — Abul Laith Muhammad Tahir Qadri';
-  var description = document.querySelector('meta[name="description"]');
-  if (description && record.description) description.setAttribute('content', record.description);
+
+  /* Each work is its own page as far as search and sharing are concerned.
+     Everything here is derived from content.js — nothing is written twice. */
+  var pageUrl = site.absoluteUrl('work.html?work=' + encodeURIComponent(record.id));
+  site.setCanonical(pageUrl);
+  if (record.description) site.setMeta('description', record.description);
+  site.setMeta('og:type', 'article');
+  site.setMeta('og:title', record.title);
+  site.setMeta('og:description', record.description || '');
+  site.setMeta('og:url', pageUrl);
+  site.setMeta('og:image', site.absoluteUrl('share-card.png'));
+  site.setMeta('twitter:card', 'summary_large_image');
+
+  site.addJsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'CreativeWork',
+    name: record.title,
+    inLanguage: record.language || 'en',
+    description: record.description || undefined,
+    genre: record.kind || undefined,
+    keywords: (record.tags || []).join(', ') || undefined,
+    url: pageUrl,
+    author: site.author(),
+    isPartOf: { '@type': 'Collection', name: record.category.title, url: site.absoluteUrl('') },
+    associatedMedia: (record.files || []).map(function (file) {
+      return { '@type': 'MediaObject', name: file.label, contentUrl: site.absoluteUrl(file.url) };
+    })
+  });
 
   var backHref = record.category.id === 'rulings' ? 'index.html#rulings' : 'index.html#' + record.category.id;
   var files = site.fileLinks(record, 'button');

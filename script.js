@@ -115,6 +115,31 @@
     }, true);
   }
 
+  /* ---- Structured data ----
+     The library as a collection, with every work and fatwa listed, so a
+     search engine can see the titles even though the markup above is built
+     at runtime. Generated from content.js, so it cannot drift. */
+
+  site.addJsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: 'My Works — ' + ((content.site && content.site.name) || ''),
+    url: site.absoluteUrl(''),
+    inLanguage: ['ur', 'ar', 'en'],
+    author: site.author(),
+    about: site.author(),
+    hasPart: site.allRecords().map(function (record) {
+      return {
+        '@type': 'CreativeWork',
+        name: record.title,
+        inLanguage: record.language || 'en',
+        genre: record.kind || undefined,
+        description: record.description || undefined,
+        url: site.absoluteUrl('work.html?work=' + encodeURIComponent(record.id))
+      };
+    })
+  });
+
   /* ---- Deep links ---- */
 
   var bio = document.getElementById('bio');

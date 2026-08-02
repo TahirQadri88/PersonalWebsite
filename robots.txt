@@ -1,5 +1,4 @@
 User-agent: *
 Allow: /
 
-# Replace with your real domain once the site is published.
-Sitemap: https://example.com/sitemap.xml
+Sitemap: https://tahirqadri88.github.io/PersonalWebsite/sitemap.xml

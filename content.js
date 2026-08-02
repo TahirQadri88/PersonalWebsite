@@ -26,8 +26,10 @@ window.siteContent = {
     name: "Abul Laith Muhammad Tahir Qadri Al-Naeemi",
     nameUr: "أبو اللّیث محمد طاہر القادری النّعیمی",
     email: "tahir.razavi@gmail.com",
-    // Set this once you have a real domain — used for sharing previews.
-    baseUrl: ""
+    // Used for sharing previews, canonical links and structured data.
+    // Change this if the site later moves to its own domain — and change
+    // robots.txt and sitemap.xml with it.
+    baseUrl: "https://tahirqadri88.github.io/PersonalWebsite/"
   },
 
   categories: [

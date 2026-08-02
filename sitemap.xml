@@ -1,12 +1,119 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Replace https://example.com/ with your real domain, then submit this
-     file once in Google Search Console. Re-run nothing: detail pages are
-     generated from content.js and are marked noindex on purpose, so the
-     homepage is the only URL search engines need. -->
+<!-- The homepage plus one entry per work and fatwa.
+
+     THIS LIST IS THE ONE PLACE OUTSIDE content.js THAT NAMES A WORK.
+     When you add or remove an entry in content.js, add or remove its line
+     here too, or the new work will not be offered to search engines.
+
+     Change the domain here, in robots.txt and in site.baseUrl in
+     content.js together if the site ever moves. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://example.com/</loc>
+    <loc>https://tahirqadri88.github.io/PersonalWebsite/</loc>
+    <lastmod>2026-08-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://tahirqadri88.github.io/PersonalWebsite/work.html?work=saa-ki-tahqeeq</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://tahirqadri88.github.io/PersonalWebsite/work.html?work=ilm-ul-meerath</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://tahirqadri88.github.io/PersonalWebsite/work.html?work=asbab-e-saba</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://tahirqadri88.github.io/PersonalWebsite/work.html?work=sai-ul-ifham</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://tahirqadri88.github.io/PersonalWebsite/work.html?work=khutba-hajjatul-wida</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://tahirqadri88.github.io/PersonalWebsite/work.html?work=al-ithaf-fazail-tawaf</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://tahirqadri88.github.io/PersonalWebsite/work.html?work=bustan-bani-amir</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://tahirqadri88.github.io/PersonalWebsite/work.html?work=bay-al-hayawan</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://tahirqadri88.github.io/PersonalWebsite/work.html?work=ihram-charts</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://tahirqadri88.github.io/PersonalWebsite/work.html?work=roza-ka-naqsha</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://tahirqadri88.github.io/PersonalWebsite/work.html?work=arafat-mazhar-jawabat</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://tahirqadri88.github.io/PersonalWebsite/work.html?work=halloween</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://tahirqadri88.github.io/PersonalWebsite/work.html?work=zakat-tax-credit</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://tahirqadri88.github.io/PersonalWebsite/work.html?work=commodity-exchange</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://tahirqadri88.github.io/PersonalWebsite/work.html?work=wealth-abdul-rehman-ibn-auf</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://tahirqadri88.github.io/PersonalWebsite/work.html?work=qata-taalluq</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://tahirqadri88.github.io/PersonalWebsite/work.html?work=aik-hadees-ka-matlab</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
   </url>
 </urlset>

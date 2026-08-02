@@ -29,6 +29,10 @@
   --font-arabic: "Amiri", "Noto Naskh Arabic", serif;
 
   --gutter: clamp(20px, 8vw, 152px);
+  /* Widest the reading column ever gets. Backgrounds still run edge to
+     edge; only the words stop here, so lines stay readable on a large
+     monitor instead of running to 90-odd characters. */
+  --shell: 1180px;
   --block: clamp(56px, 8vw, 118px);
 }
 
@@ -140,6 +144,7 @@ h1, h2, h3 {
 
 .text-link,
 .document-link {
+  position: relative;
   color: var(--moss);
   font-family: var(--font-ui);
   font-weight: 700;
@@ -147,6 +152,17 @@ h1, h2, h3 {
   text-decoration: none;
   border-bottom: 1px solid currentColor;
   padding-bottom: 2px;
+}
+
+/* These links are the point of the site and they are only 21px tall.
+   The invisible pad brings the touch area to ~44px without moving the
+   underline or the layout by a pixel. Kept narrower than the 18px gap
+   between neighbouring links so no link steals another's taps. */
+.text-link::after,
+.document-link::after {
+  content: "";
+  position: absolute;
+  inset: -11px -8px;
 }
 .text-link:hover,
 .document-link:hover { color: var(--gold-on-light); }
@@ -196,12 +212,16 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 
 .header-nav { display: flex; gap: 22px; }
 .header-nav a {
+  position: relative;
   font-size: 14px;
   color: var(--muted);
   text-decoration: none;
   padding: 4px 0;
   border-bottom: 1px solid transparent;
 }
+/* Vertical only — the gap between these shrinks to 12px on a phone, so
+   widening them sideways would make neighbours overlap. */
+.header-nav a::after { content: ""; position: absolute; inset: -8px 0; }
 .header-nav a:hover { color: var(--moss-deep); border-bottom-color: var(--gold-rule); }
 
 .category-nav {
@@ -456,7 +476,9 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   line-height: 1.9;
 }
 
-.work-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; }
+/* 24px, not 18px: it has to clear the invisible touch padding on the
+   links above, or a wrapped second row steals taps from the first. */
+.work-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; }
 .work-pending summary { opacity: 0.72; }
 
 .empty-state { padding: 28px; background: var(--card); border: 1px solid var(--line); color: var(--muted); }
@@ -546,6 +568,21 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .work-page-description { max-width: 62ch; margin: 24px 0 18px; color: #4b5852; font-size: 17px; }
 .work-page-files { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 22px; }
 .work-page-files .button { background: var(--moss-deep); color: #f6f1e4; }
+
+/* 11b ── The reading column ───────────────────────────────── */
+
+/* Full-bleed sections, centred contents. Declared after the sections
+   themselves so it wins over the padding shorthand each one sets. */
+.site-header,
+.category-nav,
+.hero,
+.intro,
+.library,
+.rulings,
+.contact,
+footer {
+  padding-inline: max(var(--gutter), calc((100% - var(--shell)) / 2));
+}
 
 /* 12 ── Responsive & motion ───────────────────────────────── */
 
