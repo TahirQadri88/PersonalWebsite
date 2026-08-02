@@ -231,7 +231,7 @@
   site.addJsonLd({
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
-    name: 'My Works — ' + ((content.site && content.site.name) || ''),
+    name: 'Scholarly Works and Research — ' + ((content.site && content.site.name) || ''),
     url: site.absoluteUrl(''),
     inLanguage: ['ur', 'ar', 'en'],
     author: site.author(),

@@ -1,4 +1,4 @@
-# My Works — site guide
+# Scholarly Works and Research — site guide
 
 A plain static website. No build step, no framework, no server code. Double-click
 `index.html` to open it locally; upload the folder to publish it.
