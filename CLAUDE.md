@@ -77,5 +77,3 @@ published but unfindable.
   DNS, served by GitHub Pages. It is written in five places: `site.baseUrl` in
   `content.js`, `robots.txt`, `sitemap.xml`, the canonical and sharing tags in
   `index.html`, and the `CNAME` file. They all change together.
-- Apps and sites from the Google Site are not represented yet — the author's
-  other repositories, linked rather than uploaded.
