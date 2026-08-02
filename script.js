@@ -25,6 +25,36 @@
       });
     navItems.push('<a href="#rulings">Fatawa</a>');
     nav.innerHTML = navItems.join('');
+
+    /* The strip scrolls when it holds more than fits. Tell the reader so:
+       a fade and an arrow appear at whichever end still has something,
+       and both go when there is nothing more that way. Marked on the bar
+       so it is CSS that decides how to show it. */
+    var bar = document.getElementById('category-bar');
+    if (bar) {
+      var back = document.getElementById('cat-back');
+      var forward = document.getElementById('cat-forward');
+
+      var refreshEnds = function () {
+        /* A pixel of slack: browsers round fractional scroll positions,
+           and an arrow that never quite goes away looks broken. */
+        var max = nav.scrollWidth - nav.clientWidth;
+        bar.setAttribute('data-more-before', String(nav.scrollLeft > 1));
+        bar.setAttribute('data-more-after', String(nav.scrollLeft < max - 1));
+      };
+
+      var nudge = function (direction) {
+        return function () {
+          nav.scrollBy({ left: direction * Math.max(160, nav.clientWidth * 0.7), behavior: 'smooth' });
+        };
+      };
+
+      if (back) back.addEventListener('click', nudge(-1));
+      if (forward) forward.addEventListener('click', nudge(1));
+      nav.addEventListener('scroll', refreshEnds, { passive: true });
+      window.addEventListener('resize', refreshEnds);
+      refreshEnds();
+    }
   }
 
   /* ---- The library ---- */

@@ -265,20 +265,72 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .header-nav a::after { content: ""; position: absolute; inset: -8px 0; }
 .header-nav a:hover { color: var(--moss-deep); border-bottom-color: var(--gold-rule); }
 
-.category-nav {
+/* The strip holds more categories than fit on a phone. Nothing used to
+   say so — it simply ran off the edge mid-word. The bar around it now
+   carries a fade and an arrow at whichever end has more to see, and both
+   disappear when there is nothing left that way. */
+.category-bar {
   position: sticky;
   top: 72px;
   z-index: 19;
+  background: rgba(255, 253, 248, 0.96);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.category-bar::before,
+.category-bar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 68px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  z-index: 1;
+}
+.category-bar::before {
+  left: 0;
+  background: linear-gradient(to right, rgb(255, 253, 248) 46%, rgba(255, 253, 248, 0));
+}
+.category-bar::after {
+  right: 0;
+  background: linear-gradient(to left, rgb(255, 253, 248) 46%, rgba(255, 253, 248, 0));
+}
+.category-bar[data-more-before="true"]::before,
+.category-bar[data-more-after="true"]::after { opacity: 1; }
+
+.category-arrow {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  display: none;
+  place-items: center;
+  width: 34px;
+  padding: 0 0 3px;
+  border: 0;
+  background: none;
+  color: var(--gold-on-light);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+.category-arrow-start { left: 0; }
+.category-arrow-end { right: 0; }
+.category-bar[data-more-before="true"] .category-arrow-start,
+.category-bar[data-more-after="true"] .category-arrow-end { display: grid; }
+
+.category-nav {
   display: flex;
   gap: 6px;
   overflow-x: auto;
   padding: 11px var(--gutter);
-  background: rgba(255, 253, 248, 0.96);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--line);
   white-space: nowrap;
-  scrollbar-width: thin;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
 }
+.category-nav::-webkit-scrollbar { display: none; }
 .category-nav a {
   flex: none;
   padding: 6px 12px;
@@ -755,7 +807,10 @@ footer {
      gives the width back to the wordmark. */
   .header-nav .nav-echo { display: none; }
   .brand { max-width: 15ch; font-size: 11px; }
-  .category-nav { top: 62px; padding-inline: 16px; }
+  .category-bar[data-more-before="true"] .category-nav { padding-left: 38px; }
+  .category-bar[data-more-after="true"] .category-nav { padding-right: 38px; }
+  .category-bar { top: 62px; }
+  .category-nav { padding-inline: 16px; }
   .hero { padding-top: 56px; }
   .hero h1 { font-size: clamp(34px, 10vw, 46px); }
   /* On a phone the ring crossed straight through the Urdu line. Drop it
