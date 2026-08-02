@@ -177,8 +177,8 @@ window.siteContent = {
           id: "roza-ka-naqsha",
           title: "روزے کے اہم مسائل کا نقشہ",
           language: "ur",
-          kind: "نقشہ",
-          description: "A one-page map of the important rulings of fasting.",
+          kind: "پریزینٹیشن",
+          description: "A teaching presentation on the important rulings of fasting.",
           tags: ["روزہ", "رمضان"],
           files: [{ label: "Urdu PDF", url: "files/presentations/roza-ke-ahem-masail.pdf" }]
         }
