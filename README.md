@@ -8,6 +8,7 @@ A plain static website. No build step, no framework, no server code. Double-clic
 | File | What it is |
 | --- | --- |
 | `content.js` | **Everything you edit.** All works, categories, fatawa, links |
+| `admin.html` | A form for editing `content.js` without touching the code |
 | `files/` | Put your PDFs and documents here |
 | `index.html` | The homepage |
 | `work.html` | One page that renders any single work or fatwa |
@@ -17,6 +18,18 @@ A plain static website. No build step, no framework, no server code. Double-clic
 | `files/images/` | The seal and the calligraphed name — the site's own artwork, not works |
 
 ## Adding a work
+
+**The easy way:** open `admin.html` — in the browser, from the repo or just by
+double-clicking it. Every work and fatwa appears as a form. Add, edit, reorder
+or delete, then press **Save changes**: it writes a new `content.js` *and* a
+matching `sitemap.xml` for you to paste into GitHub. It checks the file parses
+before handing it over, so a stray comma cannot take the library down, and it
+keeps the sitemap in step, which is the easiest thing to forget by hand.
+
+It saves nothing by itself — a static site has nothing to save to — so nothing
+you do in it touches the live site until you commit the two files.
+
+**By hand**, if you prefer:
 
 1. Copy the PDF into the `files/` folder. Use a lowercase name with hyphens and
    no spaces — `ilm-ul-meerath.pdf`, not `Ilm ul Meerath Final (2).pdf`.

@@ -25,6 +25,8 @@ work.html      one template rendering any single work or fatwa
 common.js      shared helpers (escaping, script/direction, file links, lookup)
 script.js      homepage rendering, category nav, search
 work.js        detail page rendering
+admin.html     form editor — writes content.js and sitemap.xml, saves nothing
+admin.css admin.js   its styles and logic, loaded by nothing else
 styles.css     all design, in 12 numbered sections
 404.html robots.txt sitemap.xml share-card.png CNAME
 files/images/   the seal used as favicon and header mark, and the calligraphed name
