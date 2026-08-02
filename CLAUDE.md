@@ -70,15 +70,12 @@ published but unfindable.
 
 ## Outstanding
 
-- Five works still have no file: `ilm-ul-meerath` (only the slides are
-  uploaded), `asbab-e-saba`, `ihram-charts`, `roza-ka-naqsha` and
-  `arafat-mazhar-jawabat`. Adding one is a `files: [{ label, url }]` line —
-  see README.md.
+- Every work and fatwa has its files. Two things are still promised: the
+  `ilm-ul-meerath` booklet itself — only its slides are up — and the study
+  notes, which belong in the `ilmi-mawad` category.
 - The address is `https://tahirqadri.com.pk/` — a PKNIC domain on Cloudflare
   DNS, served by GitHub Pages. It is written in five places: `site.baseUrl` in
   `content.js`, `robots.txt`, `sitemap.xml`, the canonical and sharing tags in
   `index.html`, and the `CNAME` file. They all change together.
-- Categories from the Google Site not yet represented: Presentations, Notes for
-  Students, Apps.
-- Verify the name of the introduction's author: the source PDF reads
-  **علّامہ سیّد محمد منیر شاہ**.
+- Apps and sites from the Google Site are not represented yet — the author's
+  other repositories, linked rather than uploaded.
