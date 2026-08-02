@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Replace https://example.com/ with your real domain, then submit this
+     file once in Google Search Console. Re-run nothing: detail pages are
+     generated from content.js and are marked noindex on purpose, so the
+     homepage is the only URL search engines need. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://example.com/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>
