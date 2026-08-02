@@ -45,7 +45,7 @@ window.siteContent = {
           description:
             "Establishes the weight of a ṣāʿ in modern units from Fatāwā Raḍawiyya, working through the tola and bhar to a figure in grams, with a documented appendix on the standardised tola.",
           tags: ["اصولِ افتاء", "صدقۃ الفطر", "اوزان"],
-          files: [{ label: "Urdu PDF", url: "files/saa-ki-tahqeeq.pdf" }]
+          files: [{ label: "Urdu PDF", url: "files/booklets-authored/saa-ki-tahqeeq.pdf" }]
         },
         {
           id: "ilm-ul-meerath",
@@ -72,7 +72,13 @@ window.siteContent = {
           language: "ar",
           kind: "تلخیص",
           description: "A restructured summary of Aʿlā Ḥaḍrat's أجلى الإعلام.",
-          tags: ["اصولِ افتاء"]
+          tags: ["اصولِ افتاء"],
+          files: [
+            {
+              label: "Arabic PDF",
+              url: "files/study-notes-for-specialization-students-of-hanafi-fiqh/sai-ul-ifham.pdf"
+            }
+          ]
         },
         {
           id: "khutba-hajjatul-wida",
@@ -80,7 +86,8 @@ window.siteContent = {
           language: "ur",
           kind: "تحقیقی رسالہ",
           description: "An examination of the claim that the Farewell Sermon was recorded — in the light of Sharīʿa, reason and science.",
-          tags: ["تحقیق", "عصری مسائل"]
+          tags: ["تحقیق", "عصری مسائل"],
+          files: [{ label: "Urdu PDF", url: "files/booklets-authored/khutba-hajjatul-wida.pdf" }]
         }
       ]
     },
@@ -98,7 +105,8 @@ window.siteContent = {
           kind: "ترجمہ و تخریج",
           description:
             "Translation, takhrīj and notes on the treatise of the Muftī of Makka, Shaykh al-Islām Burhān al-Dīn Ibrāhīm b. Ḥusayn, known as Bīrī Zāda.",
-          tags: ["حج و عمرہ", "طواف", "بیری زادہ"]
+          tags: ["حج و عمرہ", "طواف", "بیری زادہ"],
+          files: [{ label: "Urdu PDF", url: "files/researched-upon-booklets/al-ithaf-fazail-tawaf.pdf" }]
         },
         {
           id: "bustan-bani-amir",
@@ -107,7 +115,8 @@ window.siteContent = {
           kind: "ترجمہ و تخریج",
           description:
             "On someone who passes the mīqāt intending Bustān Banī ʿĀmir or another place in the Ḥill — translated and referenced from the treatise of Bīrī Zāda.",
-          tags: ["حج و عمرہ", "احرام", "میقات", "بیری زادہ"]
+          tags: ["حج و عمرہ", "احرام", "میقات", "بیری زادہ"],
+          files: [{ label: "Urdu PDF", url: "files/researched-upon-booklets/bustan-bani-amir.pdf" }]
         },
         {
           id: "bay-al-hayawan",
@@ -116,7 +125,8 @@ window.siteContent = {
           kind: "ترجمہ و تخریج",
           description:
             "Translation, introduction, takhrīj and marginal notes on the treatise of ʿAllāma Akmal al-Dīn al-Bābartī, author of ʿInāya Sharḥ al-Hidāya, on selling an animal for an animal on deferred terms.",
-          tags: ["بیوع", "بابرتی"]
+          tags: ["بیوع", "بابرتی"],
+          files: [{ label: "Urdu PDF", url: "files/researched-upon-booklets/bay-al-hayawan.pdf" }]
         }
       ]
     },
@@ -166,7 +176,12 @@ window.siteContent = {
           language: "ur",
           kind: "مضمون",
           description: "What Muslims should know about Halloween.",
-          tags: ["عصری مسائل"]
+          tags: ["عصری مسائل"],
+          files: [
+            { label: "Part 1", url: "files/social-media-posts-and-pamphlets/halloween-part-1.jpg" },
+            { label: "Part 2", url: "files/social-media-posts-and-pamphlets/halloween-part-2.jpg" },
+            { label: "Part 3", url: "files/social-media-posts-and-pamphlets/halloween-part-3.jpg" }
+          ]
         }
       ]
     }
@@ -178,30 +193,41 @@ window.siteContent = {
       id: "zakat-tax-credit",
       title: "Tax credit on zakat paid to non-profit organisations",
       language: "en",
-      description: "Whether claiming a tax credit affects the validity of zakat paid to a registered non-profit."
+      description: "Whether claiming a tax credit affects the validity of zakat paid to a registered non-profit.",
+      files: [{ label: "Urdu PDF", url: "files/my-fatawa/zakat-tax-credit-urdu.pdf" }]
     },
     {
       id: "commodity-exchange",
       title: "Commodity exchange",
       language: "en",
       description: "Available in Urdu and English.",
-      tags: ["بیوع"]
+      tags: ["بیوع"],
+      files: [
+        { label: "Urdu PDF", url: "files/my-fatawa/commodity-exchange-urdu.pdf" },
+        { label: "English PDF", url: "files/my-fatawa/commodity-exchange-english.pdf" }
+      ]
     },
     {
       id: "wealth-abdul-rehman-ibn-auf",
       title: "The wealth of Sayyidunā ʿAbd al-Raḥmān ibn ʿAwf",
       language: "en",
-      description: "Available in Urdu and English."
+      description: "Available in Urdu and English.",
+      files: [
+        { label: "Urdu PDF", url: "files/my-fatawa/wealth-abdul-rehman-ibn-auf-urdu.pdf" },
+        { label: "English PDF", url: "files/my-fatawa/wealth-abdul-rehman-ibn-auf-english.pdf" }
+      ]
     },
     {
       id: "qata-taalluq",
       title: "قطعِ تعلق کی ایک صورت پر فتویٰ",
-      language: "ur"
+      language: "ur",
+      files: [{ label: "Urdu PDF", url: "files/my-fatawa/qata-taalluq.pdf" }]
     },
     {
       id: "aik-hadees-ka-matlab",
       title: "ایک حدیث کا مطلب",
-      language: "ur"
+      language: "ur",
+      files: [{ label: "English PDF", url: "files/my-fatawa/aik-hadees-ka-matlab-english.pdf" }]
     }
   ]
 };
