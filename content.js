@@ -238,7 +238,8 @@ window.siteContent = {
       id: "zakat-tax-credit",
       title: "Tax credit on zakat paid to non-profit organisations",
       language: "en",
-      description: "Whether claiming a tax credit affects the validity of zakat paid to a registered non-profit.",
+      description:
+        "A ruling on taking tax credits from governments and tax authorities for zakāt — obligatory charity — given to certain approved organisations.",
       files: [{ label: "Urdu PDF", url: "files/my-fatawa/zakat-tax-credit-urdu.pdf" }]
     },
     {

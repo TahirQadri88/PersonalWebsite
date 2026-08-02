@@ -29,12 +29,17 @@
      content.js through the same helper the detail page uses, so the
      search never disagrees with what is on the page. */
   var searchIndex = {};
+  var skeletonIndex = {};
   site.allRecords().forEach(function (record) {
     searchIndex[record.id] = site.searchText(record);
+    skeletonIndex[record.id] = site.skeleton(searchIndex[record.id]);
   });
 
   function searchAttr(id) {
-    return ' data-search="' + site.escapeHtml(searchIndex[id] || '') + '"';
+    return (
+      ' data-search="' + site.escapeHtml(searchIndex[id] || '') + '"' +
+      ' data-skeleton="' + site.escapeHtml(skeletonIndex[id] || '') + '"'
+    );
   }
 
   function workMarkup(work) {
@@ -105,13 +110,47 @@
       var words = site.fold(searchInput.value).split(' ').filter(Boolean);
       var term = words.length > 0;
 
-      function matches(element) {
-        if (!term) return true;
-        var hay = element.getAttribute('data-search') || '';
-        return words.every(function (word) {
-          return hay.indexOf(word) !== -1;
+      /* Skeletons of the words typed, kept only where they are long enough
+         to mean something. "saa" leaves "s", which would match half the
+         library, so anything under two consonants is dropped. */
+      var loose = words
+        .map(function (word) { return site.skeleton(word); })
+        .filter(function (word) { return word.length >= 2; });
+
+      /* Two passes. Exact first: every word must appear somewhere in the
+         entry. Only if that finds nothing anywhere does the search fall
+         back to skeletons, and it says so rather than pretending the
+         looser results were what was asked for. */
+      var approximate = false;
+
+      function hits(element, attribute, needles) {
+        if (!needles.length) return false;
+        var hay = element.getAttribute(attribute) || '';
+        return needles.every(function (needle) {
+          return hay.indexOf(needle) !== -1;
         });
       }
+
+      function matches(element) {
+        if (!term) return true;
+        if (approximate) return hits(element, 'data-skeleton', loose);
+        return hits(element, 'data-search', words);
+      }
+
+      function countAll() {
+        var n = 0;
+        library.querySelectorAll('.work').forEach(function (work) {
+          if (matches(work)) n += 1;
+        });
+        if (rulingsGrid) {
+          rulingsGrid.querySelectorAll('.ruling').forEach(function (ruling) {
+            if (matches(ruling)) n += 1;
+          });
+        }
+        return n;
+      }
+
+      if (term && loose.length && countAll() === 0) approximate = true;
 
       var works = 0;
       var rulings = 0;
@@ -151,7 +190,8 @@
       var parts = [];
       if (works) parts.push(works + (works === 1 ? ' work' : ' works'));
       if (rulings) parts.push(rulings + (rulings === 1 ? ' fatwa' : ' fatawa'));
-      searchCount.textContent = parts.join(' and ');
+      searchCount.textContent =
+        (approximate ? 'No exact match — closest: ' : '') + parts.join(' and ');
     });
   }
 

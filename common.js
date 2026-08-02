@@ -128,6 +128,28 @@
       .trim();
   }
 
+  /* Strips a word to its consonants.
+
+     Roman Urdu has no fixed spelling. The same work is tahqeeq or tahqiq,
+     ehram or ihram, zakat or zakaat, meerath or meeraas — and readers
+     type whichever they learnt. Arabic-script languages carry their sense
+     in the consonants, so dropping the vowels and the doubled letters
+     leaves a skeleton the variants share: tahqeeq and tahqiq both give
+     thq. It absorbs ordinary typos for free, since most are vowels or a
+     doubled letter. Arabic script has no Latin vowels, so it passes
+     through untouched and Urdu queries are unaffected. */
+  function skeleton(value) {
+    return fold(value)
+      .split(' ')
+      .map(function (word) {
+        /* Vowels first, then doubles — that order also folds gemination
+           away, so presentation and presentaion land on the same key. */
+        return word.replace(/[aeiou]/g, '').replace(/(.)\1+/g, '$1');
+      })
+      .filter(Boolean)
+      .join(' ');
+  }
+
   /* Everything a search should look inside. */
   function searchText(record) {
     return fold(
@@ -223,6 +245,7 @@
     allRecords: allRecords,
     findRecord: findRecord,
     fold: fold,
+    skeleton: skeleton,
     searchText: searchText
   };
 
