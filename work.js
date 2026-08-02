@@ -31,7 +31,7 @@
   main.innerHTML =
     '<section class="work-hero">' +
     '<a class="back-link" href="' + site.escapeHtml(backHref) + '">← ' + site.escapeHtml(record.category.title) + '</a>' +
-    (record.kind ? '<p class="section-label" lang="ur" dir="rtl">' + site.escapeHtml(record.kind) + '</p>' : '') +
+    (record.kind ? '<p class="section-label urdu" lang="ur" dir="rtl">' + site.escapeHtml(record.kind) + '</p>' : '') +
     site.titleMarkup(record, 'h1') +
     (record.description ? '<p class="work-page-description">' + site.escapeHtml(record.description) + '</p>' : '') +
     site.tagMarkup(record) +
