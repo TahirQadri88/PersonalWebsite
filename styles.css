@@ -132,7 +132,7 @@ h1, h2, h3 {
    same goes for a download button whose label is Urdu. */
 .section-label.urdu,
 .section-label.arabic {
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.9;
 }
 /* .document-link sets --font-ui and is declared after .urdu, so it wins on
@@ -398,12 +398,15 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   border: 1px solid var(--line);
 }
 .bio-facts div { padding: 16px 20px; background: var(--card); }
+/* نام, کنیت, مرشدِ گرامی — Urdu words that were set in the Latin UI font
+   at 12px with 0.08em tracking, which pulls the joined letters apart. */
 .bio-facts dt {
-  font-family: var(--font-ui);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-family: var(--font-urdu);
+  font-size: 15px;
+  line-height: 1.9;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--gold-on-light);
   direction: rtl;
   text-align: right;
@@ -490,22 +493,30 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .work:hover { background: #faf6ed; }
 .work[open] { background: #f6f1e6; }
 
+/* Aligned to the top, not the middle: a title that wraps to two or three
+   lines left its kind label and its toggle floating halfway down beside
+   it, attached to nothing. */
 .work summary {
   display: grid;
   grid-template-columns: 118px minmax(0, 1fr) 24px;
-  align-items: center;
+  align-items: start;
   gap: 16px;
   padding: 16px 0;
   cursor: pointer;
   list-style: none;
 }
+.work summary .work-kind,
+.work summary .toggle { padding-top: 6px; }
 .work summary::-webkit-details-marker { display: none; }
 
 /* The small label says what kind of thing it is — that is real
    information, unlike a sequence number. */
+/* Nastaliq carries more detail per glyph than Latin does, so it needs
+   more size for the same legibility. 13px was below what the script can
+   hold on a phone. */
 .work-kind {
   font-family: var(--font-urdu);
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.9;
   color: var(--gold-on-light);
   text-align: right;
@@ -523,7 +534,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   border-radius: 999px;
   color: #5d4a25;
   font-family: var(--font-urdu);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.9;
 }
 
