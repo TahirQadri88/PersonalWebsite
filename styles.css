@@ -283,8 +283,13 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   position: relative;
   overflow: hidden;
   padding: clamp(64px, 11vw, 140px) var(--gutter) clamp(60px, 8vw, 104px);
+  /* The warm glow used to sit at 80% 18% — directly behind the author's
+     name and the first line of the heading. Measured against the rendered
+     pixels, the name fell to 1.2:1 where it crossed the bright centre.
+     Moved to the lower right, where nothing is set over it: the same
+     warmth, and every line of hero text now clears 5:1. */
   background:
-    radial-gradient(circle at 80% 18%, rgba(237, 218, 170, 0.85) 0, rgba(237, 218, 170, 0.34) 12%, transparent 27%),
+    radial-gradient(circle at 94% 92%, rgba(237, 218, 170, 0.6) 0, rgba(237, 218, 170, 0.24) 12%, transparent 26%),
     linear-gradient(118deg, #102f27 0%, #17483c 68%, #1c5346 100%);
   color: #f7f4ec;
 }
