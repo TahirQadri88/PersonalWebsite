@@ -48,12 +48,15 @@
       '</summary>' +
       '<div class="work-detail">' +
       (work.description ? '<p>' + site.escapeHtml(work.description) + '</p>' : '') +
-      site.tagMarkup(work) +
       status +
       '<div class="work-actions">' +
       '<a class="text-link" href="work.html?work=' + encodeURIComponent(work.id) + '">Open details →</a>' +
       site.fileLinks(work) +
-      '</div></div></details>'
+      '</div>' +
+      /* Tags sit below the download, not above it. They are for browsing,
+         not for reading before you reach the file. */
+      site.tagMarkup(work) +
+      '</div></details>'
     );
   }
 

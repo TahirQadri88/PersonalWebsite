@@ -60,9 +60,9 @@
     (record.kind ? '<p class="section-label urdu" lang="ur" dir="rtl">' + site.escapeHtml(record.kind) + '</p>' : '') +
     site.titleMarkup(record, 'h1') +
     (record.description ? '<p class="work-page-description">' + site.escapeHtml(record.description) + '</p>' : '') +
-    site.tagMarkup(record) +
     (files
       ? '<div class="work-page-files">' + files + '</div>'
       : '<p class="availability-note">This one isn’t published here yet. Write to the author if you need it.</p>') +
+    site.tagMarkup(record) +
     '</section>';
 })();

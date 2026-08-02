@@ -506,7 +506,8 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .work-detail { padding: 0 34px 22px 134px; max-width: 78ch; color: var(--muted); }
 .work-detail p { margin: 0 0 12px; }
 
-.tag-row { display: flex; flex-wrap: wrap; gap: 7px; margin: 0 0 14px; padding: 0; list-style: none; }
+/* The tags now come after the download links, so the space goes above. */
+.tag-row { display: flex; flex-wrap: wrap; gap: 7px; margin: 22px 0 0; padding: 0; list-style: none; }
 .tag {
   padding: 3px 11px 5px;
   background: var(--paper-warm);
