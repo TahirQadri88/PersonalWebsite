@@ -208,7 +208,17 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   text-decoration: none;
   white-space: nowrap;
 }
-.brand-mark { color: var(--gold-rule); font-size: 19px; margin-right: 6px; }
+/* The author's calligraphic seal. The PNG is neutral black with the white
+   knocked out, so it takes a colour from the CSS filter and sits on any
+   background. */
+.brand-mark {
+  width: 26px;
+  height: 26px;
+  margin-right: 8px;
+  vertical-align: -7px;
+  /* black ink -> the gold rule colour */
+  filter: invert(48%) sepia(58%) saturate(560%) hue-rotate(2deg) brightness(92%);
+}
 
 .header-nav { display: flex; gap: 22px; }
 .header-nav a {
@@ -306,16 +316,21 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   border-top: 3px solid var(--gold-rule);
 }
 .intro-mark {
-  display: grid;
-  place-items: center;
   width: 60px;
   height: 60px;
-  background: var(--gold-rule);
-  color: #fff;
-  font-size: 27px;
-  box-shadow: 6px 6px 0 rgba(45, 87, 73, 0.13);
+  object-fit: contain;
+  /* black ink -> the deep moss of the headings */
+  filter: invert(24%) sepia(19%) saturate(830%) hue-rotate(112deg) brightness(94%);
 }
 .intro h2 { font-size: clamp(30px, 3.6vw, 46px); margin-bottom: 16px; }
+/* The name in the author's own calligraphy, above the same name set in
+   type. Decorative, so the heading below it stays the real text. */
+.bio-calligraphy {
+  display: block;
+  width: min(100%, 420px);
+  height: auto;
+  margin: 0 0 6px auto;
+}
 .intro-body > p { margin: 0 0 24px; color: #4c5651; }
 
 .bio { border-top: 1px solid #cfd3c6; }

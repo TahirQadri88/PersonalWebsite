@@ -26,7 +26,8 @@ common.js      shared helpers (escaping, script/direction, file links, lookup)
 script.js      homepage rendering, category nav, search
 work.js        detail page rendering
 styles.css     all design, in 12 numbered sections
-404.html favicon.svg robots.txt sitemap.xml share-card.png
+404.html robots.txt sitemap.xml share-card.png CNAME
+files/images/   the seal used as favicon and header mark, and the calligraphed name
 ```
 
 ## Rules that matter

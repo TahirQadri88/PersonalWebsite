@@ -13,7 +13,8 @@ A plain static website. No build step, no framework, no server code. Double-clic
 | `work.html` | One page that renders any single work or fatwa |
 | `common.js` · `script.js` · `work.js` | The code that builds the pages from `content.js` |
 | `styles.css` | All the design, organised into numbered sections |
-| `404.html` · `favicon.svg` · `robots.txt` · `sitemap.xml` · `share-card.png` | Supporting files |
+| `404.html` · `robots.txt` · `sitemap.xml` · `share-card.png` · `CNAME` | Supporting files |
+| `files/images/` | The seal and the calligraphed name — the site's own artwork, not works |
 
 ## Adding a work
 
