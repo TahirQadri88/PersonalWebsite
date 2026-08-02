@@ -55,9 +55,12 @@ window.siteContent = {
           language: "ur",
           kind: "رسالہ و پریزینٹیشن",
           description: "A short modern treatment of the law of inheritance, with the accompanying teaching slides.",
-          tags: ["میراث", "تدریس"]
-          // files: [{ label: "Urdu PDF", url: "files/ilm-ul-meerath.pdf" },
-          //         { label: "Slides", url: "files/ilm-ul-meerath-slides.pdf" }]
+          tags: ["میراث", "تدریس"],
+          // The booklet itself is not uploaded yet — only the two slide decks.
+          files: [
+            { label: "Slides — colour print", url: "files/presentations/ilm-ul-meerath-slides-colour.pdf" },
+            { label: "Slides — printable", url: "files/presentations/ilm-ul-meerath-slides-printable.pdf" }
+          ]
         },
         {
           id: "asbab-e-saba",
@@ -66,7 +69,13 @@ window.siteContent = {
           kind: "رسالہ",
           description:
             "A study of the seven grounds recognised in fatwā — ḍarūra, ḥāja, dafʿ-e-ḥaraj, ʿumūm-e-balwā and the rest. Part of the سلسلہءِ رسائل: اُصولِ افتاء series.",
-          tags: ["اصولِ افتاء", "سلسلہ اصولِ افتاء"]
+          tags: ["اصولِ افتاء", "سلسلہ اصولِ افتاء"],
+          files: [
+            {
+              label: "Urdu PDF",
+              url: "files/study-notes-for-specialization-students-of-hanafi-fiqh/asbab-e-saba.pdf"
+            }
+          ]
         },
         {
           id: "sai-ul-ifham",
@@ -90,6 +99,15 @@ window.siteContent = {
           description: "An examination of the claim that the Farewell Sermon was recorded — in the light of Sharīʿa, reason and science.",
           tags: ["تحقیق", "عصری مسائل"],
           files: [{ label: "Urdu PDF", url: "files/booklets-authored/khutba-hajjatul-wida.pdf" }]
+        },
+        {
+          id: "nfts",
+          title: "این ایف ٹیز N.F.Ts (نان فنجیبل ٹوکنز) — شرعی نقطۂ نگاہ سے ایک تجزیہ",
+          language: "ur",
+          // kind and description left for the author — see the note in the
+          // commit. Title transcribed from the title page.
+          tags: ["عصری مسائل"],
+          files: [{ label: "Urdu PDF", url: "files/booklets-authored/nfts.pdf" }]
         }
       ]
     },
@@ -145,7 +163,15 @@ window.siteContent = {
           language: "ur",
           kind: "چارٹس",
           description: "Reference charts for the rulings of iḥrām in Hajj and ʿUmra.",
-          tags: ["حج و عمرہ", "احرام"]
+          tags: ["حج و عمرہ", "احرام"],
+          files: [
+            { label: "Ehram kya hai", url: "files/presentations/hajj-charts/01-ehram-kya-hai.pdf" },
+            { label: "Meeqat aur Hudood-e-Haram", url: "files/presentations/hajj-charts/02-meeqat-aur-hudood-e-haram.pdf" },
+            { label: "Ehram ke haraam kaam", url: "files/presentations/hajj-charts/03-ehram-ke-haraam-kaam.pdf" },
+            { label: "Makroohat-e-Ehram", url: "files/presentations/hajj-charts/04-makroohat-e-ehram.pdf" },
+            { label: "Ehram ke jaaiz kaam", url: "files/presentations/hajj-charts/05-ehram-ke-jaaiz-kaam.pdf" },
+            { label: "Jurm aur kaffaray", url: "files/presentations/hajj-charts/06-jurm-aur-kaffaray.pdf" }
+          ]
         },
         {
           id: "roza-ka-naqsha",
@@ -153,7 +179,8 @@ window.siteContent = {
           language: "ur",
           kind: "نقشہ",
           description: "A one-page map of the important rulings of fasting.",
-          tags: ["روزہ", "رمضان"]
+          tags: ["روزہ", "رمضان"],
+          files: [{ label: "Urdu PDF", url: "files/presentations/roza-ke-ahem-masail.pdf" }]
         }
       ]
     },
@@ -170,7 +197,13 @@ window.siteContent = {
           language: "ur",
           kind: "مضمون",
           description: "Replies to objections raised against the Ḥanafī position.",
-          tags: ["احناف", "جوابات"]
+          tags: ["احناف", "جوابات"],
+          files: [
+            {
+              label: "English PDF",
+              url: "files/study-notes-for-specialization-students-of-hanafi-fiqh/arafat-mazhar-jawabat-english.pdf"
+            }
+          ]
         },
         {
           id: "halloween",
