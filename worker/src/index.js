@@ -306,6 +306,11 @@ async function publish(request, env) {
    here rather than linking to the public address is what puts the editor
    behind Access and keeps it on one origin with /publish. */
 async function passThrough(request, env) {
+  /* Without this the failure is `new URL` complaining about an invalid URL
+     string, which tells you nothing about the variable that is missing. */
+  if (!env.SITE_ORIGIN) {
+    throw new HttpError(500, 'the Worker has no SITE_ORIGIN set — add it under Settings → Variables, as https://tahirqadri.com.pk');
+  }
   const incoming = new URL(request.url);
   const target = new URL(incoming.pathname + incoming.search, env.SITE_ORIGIN);
   if (incoming.pathname === '/') target.pathname = '/admin.html';
