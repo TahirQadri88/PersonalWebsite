@@ -73,7 +73,7 @@
 .admin-title img {
   width: 24px;
   height: 24px;
-  filter: invert(48%) sepia(58%) saturate(560%) hue-rotate(2deg) brightness(92%);
+  filter: invert(53%) sepia(49%) saturate(486%) hue-rotate(-1deg) brightness(68%) contrast(112%);
 }
 .admin-note { color: var(--gold-on-light); font-size: 13px; font-weight: 700; }
 .admin-actions { display: flex; gap: 10px; margin-left: auto; }

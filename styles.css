@@ -266,8 +266,10 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   height: 34px;
   margin-right: 10px;
   vertical-align: -7px;
-  /* black ink -> the gold rule colour */
-  filter: invert(48%) sepia(58%) saturate(560%) hue-rotate(2deg) brightness(92%);
+  /* Black ink to exactly --gold-on-light. The chain was guessed before and
+     landed on #ab7a17 when it meant #b8863a; these numbers were solved for,
+     and the rendered pixels were checked against the value afterwards. */
+  filter: invert(53%) sepia(49%) saturate(486%) hue-rotate(-1deg) brightness(68%) contrast(112%);
 }
 
 .header-nav { display: flex; gap: 22px; }
@@ -440,8 +442,8 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   width: var(--seal);
   height: var(--seal);
   object-fit: contain;
-  /* black ink -> the deep moss of the headings */
-  filter: invert(24%) sepia(19%) saturate(830%) hue-rotate(112deg) brightness(94%);
+  /* black ink -> exactly --moss, the colour of the headings beside it */
+  filter: invert(8%) sepia(74%) saturate(974%) hue-rotate(123deg) brightness(186%) contrast(65%);
 }
 .intro h2 { font-size: clamp(30px, 3.6vw, 46px); margin-bottom: 16px; }
 /* The name in the author's own calligraphy, above the same name set in
