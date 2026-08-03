@@ -104,6 +104,11 @@ than a download.
    the page — to GitHub in a single commit, and the site is live a minute later.
    **Files…** still gives you the same files to paste in by hand if you prefer.
 
+The description does **not** appear on the post's own page — the writing is
+already there, and a summary above it would only be read twice. It is used for
+the card on the homepage, for what Google shows, and for the preview when the
+link is shared. So it can safely repeat a line from the piece.
+
 To edit a post later, open `admin.html` **over the web** (not by double-clicking
 the file) — it reads the existing page back into the box. Opened from the file
 system the browser will not let it read the file, and it says so rather than

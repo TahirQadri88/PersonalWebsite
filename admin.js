@@ -364,8 +364,15 @@
       pretty ? '        <p class="work-date">' + e(pretty) + '</p>' : null,
       /* Through the same helper the rest of the site uses, so a description
          written in Urdu comes out in Nastaliq here too. */
-      record.descriptionUr ? '        ' + site.proseMarkup(record.descriptionUr, 'work-page-description', 'ur') : null,
-      record.description ? '        ' + site.proseMarkup(record.description, 'work-page-description', record.language) : null,
+      /* No summary above the writing. On a work the description says what
+         is inside the download; on a post the writing is already here, so
+         printing a summary of it first only makes the reader read the
+         same thing twice — which is exactly what happened when a
+         description was lifted verbatim from the piece.
+
+         The descriptions still do their work where a summary belongs: the
+         card on the homepage, the meta description, the sharing tags and
+         the structured data above. */
       '',
       '        <div class="post-body ' + scriptClass + '" id="post-body" lang="' + e(record.language || 'en') + '" dir="' + (rtl ? 'rtl' : 'ltr') + '">',
       bodyToHtml(bodies[record.id], 10),
