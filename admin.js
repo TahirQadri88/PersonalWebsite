@@ -33,8 +33,7 @@
 
      For real protection, put the site behind Cloudflare Access — free,
      and it authenticates before the page is ever served. */
-  /* Currently the word: maktaba — change it. */
-  var PASS_HASH = 'd68e1c2dc633eef7d23409ca1c403d5131f8449d0b1c98e59a2820bfb5b72125';
+  var PASS_HASH = '747402f385b5ce61e73972374c7749ecc86fda520bb7f0980deae111611d7207';
 
   var LANGUAGES = [
     { value: 'ur', label: 'Urdu — Nastaleeq' },
