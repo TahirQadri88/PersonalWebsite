@@ -1,0 +1,62 @@
+<!doctype html><html><head><meta charset="utf-8" />
+<meta name="robots" content="noindex" />
+<title>Sharing card — 1200×630</title>
+<!-- The picture that WhatsApp, Facebook and X show when a link to the
+     site is forwarded. It is a flat PNG, so it cannot follow content.js:
+     when the wording here changes, this page has to be re-shot.
+
+     To regenerate: open this file, set the window to exactly 1200x630,
+     screenshot it, and save over share-card.png. Nothing else reads this
+     page — it is the card's source, kept beside it so the next change
+     does not have to be guessed at in an image editor. -->
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,700&family=Newsreader:opsz,wght@6..72,400&display=swap" />
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1200px; height: 630px; }
+  body {
+    position: relative;
+    overflow: hidden;
+    padding: 118px 0 0 90px;
+    background: linear-gradient(118deg, #102f27 0%, #17483c 68%, #1c5346 100%);
+    font-family: "DM Sans", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* the thin ring, echoing the one behind the hero */
+  .ring {
+    position: absolute;
+    right: 20px; top: 57px;
+    width: 280px; height: 280px;
+    border: 1px solid rgba(232, 200, 130, 0.22);
+    border-radius: 50%;
+  }
+  .rule { width: 60px; height: 4px; background: #b8863a; }
+  .eyebrow {
+    margin-top: 26px;
+    color: #e8c882;
+    font-size: 19px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+  }
+  h1 {
+    margin-top: 24px;
+    max-width: 800px;
+    font-family: "Newsreader", Georgia, serif;
+    font-weight: 400;
+    font-size: 84px;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: #f7f4ec;
+  }
+  h1 em { font-style: normal; color: #ecd9b0; }
+  .name { margin-top: 52px; color: #dfe8e2; font-size: 30px; }
+  .meta { margin-top: 12px; color: #9fb3a8; font-size: 30px; }
+  .meta span { padding: 0 10px; color: #6f8a7d; }
+</style></head>
+<body>
+  <div class="ring"></div>
+  <div class="rule"></div>
+  <p class="eyebrow">Scholarly Works and Research</p>
+  <h1>A library of<br /><em>useful knowledge.</em></h1>
+  <p class="name">Abul Laith Muhammad Tahir Qadri An-Naeemi</p>
+  <p class="meta">Booklets<span>·</span>Manuscripts<span>·</span>Charts<span>·</span>Fatawa</p>
+</body></html>
