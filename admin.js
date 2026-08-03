@@ -347,7 +347,7 @@
       '',
       '  <body class="work-page">',
       '    <header class="site-header">',
-      '      <a class="brand" href="../index.html"><img class="brand-mark" src="../files/images/logo-circle-180.png" alt="" width="180" height="178" /> Scholarly Works and Research</a>',
+      '      <a class="brand" href="../index.html"><img class="brand-mark" src="../files/images/logo-circle-180.png" alt="" width="180" height="180" /> Scholarly Works and Research</a>',
       '      <nav class="header-nav" aria-label="Sections">',
       '        <a href="../index.html#about">Author</a>',
       '        <a class="nav-echo" href="../index.html#library">Library</a>',
