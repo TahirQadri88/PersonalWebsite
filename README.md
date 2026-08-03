@@ -22,13 +22,13 @@ A plain static website. No build step, no framework, no server code. Double-clic
 
 **The easy way:** open `admin.html` — in the browser, from the repo or just by
 double-clicking it. Every work and fatwa appears as a form. Add, edit, reorder
-or delete, then press **Save changes**: it writes a new `content.js` *and* a
-matching `sitemap.xml` for you to paste into GitHub. It checks the file parses
-before handing it over, so a stray comma cannot take the library down, and it
-keeps the sitemap in step, which is the easiest thing to forget by hand.
+or delete, then press **Publish** and it commits to GitHub for you. It checks
+the file parses before sending anything, so a stray comma cannot take the
+library down, and it writes `content.js` and `sitemap.xml` in the same commit,
+so they cannot fall out of step.
 
-It saves nothing by itself — a static site has nothing to save to — so nothing
-you do in it touches the live site until you commit the two files.
+**Files…** does the same work but hands you the text instead, to paste in by
+hand — useful if you would rather not keep a token.
 
 **By hand**, if you prefer:
 
@@ -85,9 +85,9 @@ than a download.
    makes a heading, `> ` makes a quote, and `[ar] ` or `[en] ` at the start of a
    block switches script for that block — for an Arabic citation inside an Urdu
    piece.
-3. **Save changes** now gives you three things: `content.js`, `sitemap.xml`, and
-   the post's own page. Create that page on GitHub with **Add file → Create new
-   file**, typing the full path shown, e.g. `posts/my-post.html`.
+3. Press **Publish**. It commits everything — the entry, the sitemap line and
+   the page — to GitHub in a single commit, and the site is live a minute later.
+   **Files…** still gives you the same files to paste in by hand if you prefer.
 
 To edit a post later, open `admin.html` **over the web** (not by double-clicking
 the file) — it reads the existing page back into the box. Opened from the file
@@ -104,6 +104,22 @@ their own detail pages too, so `files` works there as well.
 Copy a whole category block in `content.js` and give it a new English `id`. It
 appears in the category bar automatically. To reorder categories, move the blocks
 — the page follows the file.
+
+## Publishing from the editor
+
+The first time you press **Publish** it asks for a GitHub token. Make a
+**fine-grained** one at *Settings → Developer settings → Personal access tokens
+→ Fine-grained*: **Only select repositories** → this one, and under *Repository
+permissions* set **Contents: Read and write**. Give it an expiry. Nothing else
+is needed, and nothing less will work.
+
+Leave *Keep it on this device* unticked and the browser forgets the token when
+it closes. Tick it only on a device that is yours alone — a stored token can
+push to your repository, so it is a key, not a password. **Forget stored token**
+in the same dialog clears it.
+
+Everything goes in one commit, so `content.js` and `sitemap.xml` can never land
+out of step with each other.
 
 ## The editor's passphrase
 

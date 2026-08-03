@@ -25,7 +25,7 @@ work.html      one template rendering any single work or fatwa
 common.js      shared helpers (escaping, script/direction, file links, lookup)
 script.js      homepage rendering, category nav, search
 work.js        detail page rendering
-admin.html     form editor — writes content.js and sitemap.xml, saves nothing
+admin.html     form editor — publishes to GitHub, or hands you the files
 admin.css admin.js   its styles and logic, loaded by nothing else
 posts/         one HTML file per post — the writing is the page, not a download
 styles.css     all design, in 12 numbered sections

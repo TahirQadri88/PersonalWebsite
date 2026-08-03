@@ -199,3 +199,17 @@
   .admin-row-meta { display: none; }
   .admin-file { grid-template-columns: 1fr; }
 }
+
+/* Publishing */
+
+.admin-status { margin: 0 0 18px; font-size: 14px; color: var(--muted); min-height: 1.4em; }
+.admin-status.is-good { color: var(--moss); font-weight: 700; }
+.admin-status.is-bad { color: #a3341f; font-weight: 700; }
+.admin-status:empty { margin: 0; min-height: 0; }
+
+.admin-dialog-small { width: min(560px, 94vw); }
+.admin-dialog-small .admin-dialog-actions { justify-content: space-between; align-items: center; }
+.admin-check { display: flex; align-items: center; gap: 9px; margin: 12px 0 4px; font-size: 14px; }
+.admin-check input { width: 17px; height: 17px; }
+.admin-warn { border-left: 3px solid var(--gold-rule); padding-left: 12px; }
+.admin-dialog a { color: var(--moss); }

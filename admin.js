@@ -992,6 +992,208 @@
     event.returnValue = '';
   });
 
+
+  /* ---- Publishing -----------------------------------------------------
+
+     Commits straight to GitHub so a short note does not cost three visits
+     to the website. Everything changed goes into ONE commit through the
+     git data API — blobs, then a tree, then a commit, then move the
+     branch — so the library and its sitemap can never land half updated.
+
+     The token is a key to the repository. It is held in sessionStorage by
+     default, which the browser drops when it closes; "keep it on this
+     device" moves it to localStorage, which is convenient and less safe.
+     It is never written into the page or the URL. */
+
+  var REPO = { owner: 'TahirQadri88', name: 'PersonalWebsite', branch: 'main' };
+  var TOKEN_KEY = 'editor-github-token';
+
+  function readToken() {
+    try {
+      return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || '';
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function writeToken(value, remember) {
+    try {
+      sessionStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(TOKEN_KEY);
+      (remember ? localStorage : sessionStorage).setItem(TOKEN_KEY, value);
+    } catch (error) { /* private mode */ }
+  }
+
+  function forgetToken() {
+    try {
+      sessionStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(TOKEN_KEY);
+    } catch (error) { /* private mode */ }
+  }
+
+  /* UTF-8 to base64, in chunks so a long file does not blow the argument
+     limit of String.fromCharCode. */
+  function toBase64(text) {
+    var bytes = new TextEncoder().encode(text);
+    var binary = '';
+    for (var i = 0; i < bytes.length; i += 0x8000) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(binary);
+  }
+
+  var status = document.getElementById('publish-status');
+
+  function say(message, kind) {
+    status.textContent = message;
+    status.className = 'admin-status' + (kind ? ' is-' + kind : '');
+  }
+
+  function api(path, token, options) {
+    var settings = options || {};
+    return fetch('https://api.github.com/repos/' + REPO.owner + '/' + REPO.name + path, {
+      method: settings.method || 'GET',
+      headers: {
+        Authorization: 'Bearer ' + token,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      },
+      body: settings.body ? JSON.stringify(settings.body) : undefined
+    }).then(function (response) {
+      return response.json().then(function (data) {
+        if (!response.ok) {
+          var reason = data && data.message ? data.message : 'HTTP ' + response.status;
+          if (response.status === 401) reason = 'the token was refused — it may be wrong or expired';
+          if (response.status === 403 || response.status === 404) {
+            reason = 'the token cannot write to ' + REPO.owner + '/' + REPO.name +
+              ' — check it has Contents: Read and write on this repository';
+          }
+          throw new Error(reason);
+        }
+        return data;
+      });
+    });
+  }
+
+  /* Everything the current state of the editor should write. */
+  function filesToCommit() {
+    var out = [{ path: 'content.js', text: buildContent() }, { path: 'sitemap.xml', text: buildSitemap() }];
+    allRecords().forEach(function (entry) {
+      if (!isPost(entry) || !entry.record.page) return;
+      if (bodies[entry.record.id] === undefined) return;
+      out.push({ path: entry.record.page, text: buildPost(entry.record, entry) });
+    });
+    return out;
+  }
+
+  function commitAll(token, files, message) {
+    var head;
+    return api('/git/ref/heads/' + REPO.branch, token)
+      .then(function (ref) {
+        head = ref.object.sha;
+        return api('/git/commits/' + head, token);
+      })
+      .then(function (commit) {
+        var baseTree = commit.tree.sha;
+        return Promise.all(
+          files.map(function (file) {
+            return api('/git/blobs', token, {
+              method: 'POST',
+              body: { content: toBase64(file.text), encoding: 'base64' }
+            }).then(function (blob) {
+              return { path: file.path, mode: '100644', type: 'blob', sha: blob.sha };
+            });
+          })
+        ).then(function (tree) {
+          return api('/git/trees', token, { method: 'POST', body: { base_tree: baseTree, tree: tree } });
+        });
+      })
+      .then(function (tree) {
+        return api('/git/commits', token, {
+          method: 'POST',
+          body: { message: message, tree: tree.sha, parents: [head] }
+        });
+      })
+      .then(function (commit) {
+        return api('/git/refs/heads/' + REPO.branch, token, {
+          method: 'PATCH',
+          body: { sha: commit.sha }
+        }).then(function () {
+          return commit;
+        });
+      });
+  }
+
+  var tokenDialog = document.getElementById('token-dialog');
+  var tokenInput = document.getElementById('token');
+  var tokenRemember = document.getElementById('token-remember');
+  var tokenError = document.getElementById('token-error');
+  var publishing = false;
+
+  function publish(token) {
+    if (publishing) return;
+    var found = problems();
+    if (found.length) {
+      say('Fix these first: ' + found.join(' · '), 'bad');
+      return;
+    }
+
+    var files = filesToCommit();
+    var content = files[0].text;
+    try {
+      var check = {};
+      new Function('window', content).call(check, check);
+      if (!check.siteContent || !check.siteContent.categories) throw new Error('no categories');
+    } catch (error) {
+      say('The generated content.js did not parse, so nothing was sent: ' + error.message, 'bad');
+      return;
+    }
+
+    publishing = true;
+    say('Publishing ' + files.length + (files.length === 1 ? ' file…' : ' files…'));
+
+    var titles = files.map(function (file) { return file.path; }).join(', ');
+    commitAll(token, files, 'Update from the editor\n\n' + titles)
+      .then(function (commit) {
+        publishing = false;
+        dirty = false;
+        dirtyNote.textContent = '';
+        say('Published. The site rebuilds in about a minute. Commit ' + commit.sha.slice(0, 7) + '.', 'good');
+      })
+      .catch(function (error) {
+        publishing = false;
+        say('Nothing was published: ' + error.message, 'bad');
+        if (/token/.test(error.message)) {
+          tokenError.textContent = error.message;
+          tokenDialog.showModal();
+        }
+      });
+  }
+
+  document.getElementById('publish').addEventListener('click', function () {
+    var token = readToken();
+    if (token) {
+      publish(token);
+      return;
+    }
+    tokenError.textContent = '';
+    tokenInput.value = '';
+    tokenDialog.showModal();
+  });
+
+  document.getElementById('token-form').addEventListener('submit', function () {
+    var value = tokenInput.value.trim();
+    if (!value) return;
+    writeToken(value, tokenRemember.checked);
+    tokenInput.value = '';
+    publish(value);
+  });
+
+  document.getElementById('token-forget').addEventListener('click', function () {
+    forgetToken();
+    tokenError.textContent = 'Forgotten. You will be asked again next time you publish.';
+  });
+
   /* ---- Unlocking ---- */
 
   function digest(text) {

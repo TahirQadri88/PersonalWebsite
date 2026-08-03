@@ -237,7 +237,7 @@ window.siteContent = {
           language: "ur",
           kind: "مضمون",
           date: "2026-08-02",
-          description: "‏صرف یہ جاننا کافی نہیں کہ کیا کہنا ہے، بلکہ یہ بھی ضروری ہے کہ اسے کیسے کہنا ہے۔\n‏سچی بات بھی اگر بےموقع الفاظ میں کہی جائے تو لوگ اسے سننے سے پہلے ہی رد کر دیتے ہیں۔ پہلے لباس دیکھا جاتا ہے، پھر مضمون۔",
+          description: "الفاظ کے انتخاب پر ایک مختصر خیال — کہ بات کیا کہی جائے، اور کیسے۔",
           tags: ["Choose-your-words", "Be-careful-about-the-selection-of-words"],
           page: "posts/choose-your-words.html"
         }
