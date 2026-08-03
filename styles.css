@@ -325,6 +325,12 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   display: flex;
   gap: 6px;
   overflow-x: auto;
+  /* The links are written in by JavaScript, so for the first moment the
+     strip is empty and everything below it sits 35px too high, then jumps.
+     Hold the height one row of links will take — 20.8px of leading, 6px of
+     padding and a 1px border top and bottom, inside the strip's own 11px —
+     so the page below never moves. */
+  min-height: 56.8px;
   padding: 11px var(--gutter);
   white-space: nowrap;
   scroll-behavior: smooth;
