@@ -1,0 +1,36 @@
+# The editor's backend. Deployed separately from the website — the site
+# itself is still plain static files with no build step.
+#
+#   npx wrangler deploy          from inside this folder
+#
+# The GitHub token is NOT in this file. It is a secret, set once with:
+#
+#   npx wrangler secret put GITHUB_TOKEN
+
+name = "tahirqadri-editor"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+# The editor's own hostname. Needs an A or CNAME record for `admin` in the
+# tahirqadri.com.pk zone, set to Proxied (orange cloud) — a Worker route
+# only runs on a proxied record. The apex stays DNS-only and keeps serving
+# the public site from GitHub Pages, untouched.
+routes = [
+  { pattern = "admin.tahirqadri.com.pk/*", zone_name = "tahirqadri.com.pk" }
+]
+
+[vars]
+GITHUB_OWNER = "TahirQadri88"
+GITHUB_REPO = "PersonalWebsite"
+GITHUB_BRANCH = "main"
+
+# Where the editor's own files are fetched from. The public site.
+SITE_ORIGIN = "https://tahirqadri.com.pk"
+
+# Filled in from the Cloudflare dashboard — see README.md beside this file.
+# ACCESS_TEAM is the name in <team>.cloudflareaccess.com.
+# ACCESS_AUD is the Application Audience tag of the Access application.
+# ACCESS_EMAIL is optional: set it and only that address may publish.
+ACCESS_TEAM = ""
+ACCESS_AUD = ""
+ACCESS_EMAIL = ""

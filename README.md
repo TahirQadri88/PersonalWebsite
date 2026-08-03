@@ -9,6 +9,7 @@ A plain static website. No build step, no framework, no server code. Double-clic
 | --- | --- |
 | `content.js` | **Everything you edit.** All works, categories, fatawa, links |
 | `admin.html` | A form for editing `content.js` without touching the code |
+| `worker/` | The editor's backend, so publishing needs no token on your device |
 | `posts/` | One HTML file per post — written by `admin.html`, not by hand |
 | `files/` | Put your PDFs and documents here |
 | `index.html` | The homepage |
@@ -116,6 +117,15 @@ appears in the category bar automatically. To reorder categories, move the block
 — the page follows the file.
 
 ## Publishing from the editor
+
+**The short version:** open `https://admin.tahirqadri.com.pk`, sign in with the
+code Cloudflare emails you, edit, press **Publish**. Nothing to type, nothing
+stored on the device. The GitHub token lives in Cloudflare, not on your phone.
+`worker/README.md` has the one-time setup — about fifteen minutes, done once.
+
+Everything below applies only when the editor is opened some other way — by
+double-clicking the file, or from the public address — where there is no
+backend to call.
 
 The first time you press **Publish** it asks for a GitHub token. Make a
 **fine-grained** one at *Settings → Developer settings → Personal access tokens

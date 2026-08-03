@@ -19,10 +19,14 @@
   </head>
 
   <body class="admin is-locked">
-    <div class="gate" id="gate">
+    <!-- A section with a name is a landmark; a bare div is not, and while
+         the page is locked this is the only thing on it, so without one
+         everything a reader meets is outside every landmark. It cannot be
+         a second <main> — the editor below already is one. -->
+    <section class="gate" id="gate" aria-labelledby="gate-title">
       <form class="gate-card" id="gate-form">
         <img src="files/images/logo-circle-180.png" alt="" width="180" height="178" />
-        <h1>Editor</h1>
+        <h1 id="gate-title">Editor</h1>
         <label for="pass">Passphrase</label>
         <input id="pass" type="password" autocomplete="current-password" autofocus />
         <p class="gate-error" id="gate-error" role="alert"></p>
@@ -33,7 +37,7 @@
           push to GitHub.
         </p>
       </form>
-    </div>
+    </section>
 
     <header class="admin-bar">
       <!-- The gate's <h1> is display:none once the page is unlocked, so this

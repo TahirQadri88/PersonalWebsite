@@ -1017,6 +1017,22 @@
      It is never written into the page or the URL. */
 
   var REPO = { owner: 'TahirQadri88', name: 'PersonalWebsite', branch: 'main' };
+
+  /* ---- Where a publish goes ------------------------------------------
+
+     Served from admin.tahirqadri.com.pk, the editor is sitting behind
+     Cloudflare Access and a Worker is on the same origin. Publishing then
+     means posting the files to /publish and letting the Worker commit
+     them: the GitHub token lives there as a secret and never touches this
+     device. The Access cookie is what identifies you, so there is nothing
+     to type and nothing to keep.
+
+     Opened any other way — from the file system, or from the public
+     address — there is no Worker to call, so it falls back to asking for
+     a GitHub token as before. `Files…` works everywhere regardless. */
+  var BACKEND = location.protocol === 'https:' && /^admin\./.test(location.hostname)
+    ? '/publish'
+    : '';
   var TOKEN_KEY = 'editor-github-token';
 
   function readToken() {
@@ -1141,6 +1157,26 @@
   var tokenError = document.getElementById('token-error');
   var publishing = false;
 
+  /* The Worker does the same work commitAll does, on the other side of
+     the wire. It answers with the commit it made, or with a sentence
+     saying why it made none. */
+  function commitViaBackend(files, message) {
+    return fetch(BACKEND, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ files: files, message: message })
+    }).then(function (response) {
+      return response.json().catch(function () { return {}; }).then(function (data) {
+        if (response.ok) return data;
+        if (response.status === 401 || response.status === 403) {
+          throw new Error((data.message || 'you are not signed in') + '. Reload the page to sign in again.');
+        }
+        throw new Error(data.message || 'HTTP ' + response.status);
+      });
+    });
+  }
+
   function publish(token) {
     if (publishing) return;
     var found = problems();
@@ -1164,7 +1200,10 @@
     say('Publishing ' + files.length + (files.length === 1 ? ' file…' : ' files…'));
 
     var titles = files.map(function (file) { return file.path; }).join(', ');
-    commitAll(token, files, 'Update from the editor\n\n' + titles)
+    var sent = BACKEND
+      ? commitViaBackend(files, 'Update from the editor')
+      : commitAll(token, files, 'Update from the editor\n\n' + titles);
+    sent
       .then(function (commit) {
         publishing = false;
         dirty = false;
@@ -1182,6 +1221,12 @@
   }
 
   document.getElementById('publish').addEventListener('click', function () {
+    /* Behind Access there is nothing to ask for — the Worker holds the
+       token and the Access cookie says who you are. */
+    if (BACKEND) {
+      publish('');
+      return;
+    }
     var token = readToken();
     if (token) {
       publish(token);

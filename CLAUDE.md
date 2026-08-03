@@ -11,9 +11,15 @@ Google Site (`sites.google.com/view/tahirqadri88`).
 ## Stack
 
 Plain static HTML, CSS and vanilla JS. **No build step, no framework, no
-dependencies, no server code.** Opening `index.html` from the file system must
-keep working — do not introduce anything that requires bundling, `npm run`, or a
-dev server. Deployed on GitHub Pages.
+dependencies.** Opening `index.html` from the file system must keep working —
+do not introduce anything that requires bundling, `npm run`, or a dev server.
+Deployed on GitHub Pages.
+
+The one exception is `worker/`, and it is not part of the site. It is a
+Cloudflare Worker that exists so the editor can publish without a GitHub token
+sitting on a phone. Nothing the site serves depends on it; delete it and every
+page still works, and `admin.html` falls back to asking for a token. Do not
+let anything from `worker/` become a dependency of the pages.
 
 ## Layout
 
@@ -27,6 +33,7 @@ script.js      homepage rendering, category nav, search
 work.js        detail page rendering
 admin.html     form editor — publishes to GitHub, or hands you the files
 admin.css admin.js   its styles and logic, loaded by nothing else
+worker/        the editor's backend — Cloudflare Worker, deployed separately
 posts/         one HTML file per post — the writing is the page, not a download
 styles.css     all design, in 12 numbered sections
 404.html robots.txt sitemap.xml share-card.png CNAME
@@ -79,6 +86,10 @@ published but unfindable.
 ## Outstanding
 
 - Every work and fatwa has its files. Nothing is owed.
+- Publishing from the editor goes through `worker/` when it is opened at
+  `admin.tahirqadri.com.pk`, which Cloudflare Access guards. Opened any other
+  way it falls back to asking for a GitHub token, and `Files…` works
+  everywhere. `worker/README.md` has the one-time setup.
 - The `posts` category is empty and hidden. The machinery is all there —
   `page`/`date` entries, the editor's writing box, the page generator — and the
   author will start writing when the way in is easier than it is now. The plan
