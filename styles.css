@@ -248,7 +248,9 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .brand {
   display: flex;
   align-items: center;
-  max-width: 22ch;
+  /* Widened with the mark. At 22ch a larger seal pushed the four words
+     onto three lines and made the header taller than the nav beside it. */
+  max-width: 26ch;
   font-size: 14px;
   font-weight: 700;
   line-height: 1.3;
@@ -260,9 +262,9 @@ details[open] > summary .toggle { transform: rotate(45deg); }
    knocked out, so it takes a colour from the CSS filter and sits on any
    background. */
 .brand-mark {
-  width: 26px;
-  height: 26px;
-  margin-right: 8px;
+  width: 34px;
+  height: 34px;
+  margin-right: 10px;
   vertical-align: -7px;
   /* black ink -> the gold rule colour */
   filter: invert(48%) sepia(58%) saturate(560%) hue-rotate(2deg) brightness(92%);
@@ -423,16 +425,20 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 /* 6 ── Author ─────────────────────────────────────────────── */
 
 .intro {
+  /* The seal carries the author's name in his own calligraphy. At 60px it
+     was a mark; the words in it could not be read. This is the one place
+     on the site with room to show it properly, so it is shown properly. */
+  --seal: clamp(88px, 9vw, 128px);
   display: grid;
-  grid-template-columns: 72px minmax(0, 780px);
+  grid-template-columns: var(--seal) minmax(0, 780px);
   gap: 32px;
   padding: var(--block) var(--gutter);
   background: var(--paper-warm);
   border-top: 3px solid var(--gold-rule);
 }
 .intro-mark {
-  width: 60px;
-  height: 60px;
+  width: var(--seal);
+  height: var(--seal);
   object-fit: contain;
   /* black ink -> the deep moss of the headings */
   filter: invert(24%) sepia(19%) saturate(830%) hue-rotate(112deg) brightness(94%);
@@ -950,6 +956,9 @@ footer {
      gives the width back to the wordmark. */
   .header-nav .nav-echo { display: none; }
   .brand { max-width: 15ch; font-size: 11px; }
+  /* The header is 62px tall here and the wordmark has 15 characters to
+     wrap in. Anything larger than this costs it a whole line. */
+  .brand-mark { width: 26px; height: 26px; margin-right: 8px; }
   .category-bar[data-more-before="true"] .category-nav { padding-left: 38px; }
   .category-bar[data-more-after="true"] .category-nav { padding-right: 38px; }
   .category-bar { top: 62px; }
