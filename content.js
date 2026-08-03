@@ -334,6 +334,11 @@ window.siteContent = {
       id: "aik-hadees-ka-matlab",
       title: "ایک حدیث کا مطلب",
       language: "ur",
+      description:
+        "On the wording of a hadith in Ṣaḥīḥ al-Bukhārī — a duʿā for the deceased, واغسله بالماء والثلج والبرد, “and wash him with water, snow and hail” — and why three forms of water are named where cleansing alone would have been said.",
+      descriptionUr:
+        "صحیح البخاری میں میّت کے لیے دعا کے الفاظ ”واغسلہ بالماء والثلج والبرد“ (اور اسے پانی، برف اور اولوں سے دھو دے) کے بارے میں سوال — کہ محض دھونے کے ذکر پر اکتفا کے بجائے پانی کی تین صورتوں کا ذکر کیوں فرمایا گیا۔",
+      tags: ["حدیث", "دعا"],
       files: [{ label: "English PDF", url: "files/my-fatawa/aik-hadees-ka-matlab-english.pdf" }]
     }
   ]
