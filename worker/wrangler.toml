@@ -31,7 +31,7 @@ SITE_ORIGIN = "https://tahirqadri.com.pk"
 #
 # Firebase — free, no card. FIREBASE_PROJECT is the project id from the
 # Firebase console. The editor signs in against it and sends the token.
-FIREBASE_PROJECT = ""
+FIREBASE_PROJECT = "tahirqadri-website"
 #
 # Cloudflare Access — guards the page itself, but wants a payment method on
 # file even on the free plan. ACCESS_TEAM is the name in

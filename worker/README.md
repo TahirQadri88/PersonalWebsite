@@ -57,15 +57,23 @@ keeps being served straight from GitHub Pages exactly as now.
 In the [Firebase console](https://console.firebase.google.com), open your
 project (an existing one is fine — this only borrows its sign-in).
 
-**Authentication → Sign-in method →** enable **Email/Password**.
+**Authentication** lives under **Security** in the sidebar — it used to be
+under *Build*, and the console has moved it at least once, so look in both.
 
-**Authentication → Users → Add user:** your email, and a password you choose.
-That single user is who may publish.
+**Sign-in method →** enable **Email/Password**.
 
-**Authentication → Settings → Authorized domains → Add domain:**
-`admin.tahirqadri.com.pk`
+**Users → Add user:** your email, and a password you choose. That single user
+is who may publish.
 
-Then two values into `admin.js`, near the top, under `var FIREBASE`:
+You do **not** need to touch *Authorized domains*. That list governs the
+Firebase JavaScript SDK's redirect flows; the editor signs in over the plain
+REST endpoint instead, which is not domain-restricted — and which is why this
+project still has no dependencies.
+
+The two values then go into `admin.js`, near the top, under `var FIREBASE`.
+They come from **Project settings → General**. If it says *"There are no apps
+in your project"*, click the **`</>`** icon and register a web app first — the
+API key only appears once an app exists.
 
 ```js
 var FIREBASE = {

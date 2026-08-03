@@ -1046,8 +1046,8 @@
      do not authorise anything — what authorises is the signed-in user,
      and the Worker checks that. It is meant to be in the page. */
   var FIREBASE = {
-    apiKey: '',
-    project: ''
+    apiKey: 'AIzaSyAqRt1iipb_cJXg2kmB3sN16faagl39Ibo',
+    project: 'tahirqadri-website'
   };
 
   var SIGNED_IN = 'editor-firebase-session';
