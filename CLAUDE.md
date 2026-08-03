@@ -78,9 +78,7 @@ published but unfindable.
 
 ## Outstanding
 
-- Every work and fatwa has its files. Two things are still promised: the
-  `ilm-ul-meerath` booklet itself — only its slides are up — and the study
-  notes, which belong in the `ilmi-mawad` category.
+- Every work and fatwa has its files. Nothing is owed.
 - The `posts` category is empty and hidden. The machinery is all there —
   `page`/`date` entries, the editor's writing box, the page generator — and the
   author will start writing when the way in is easier than it is now. The plan
