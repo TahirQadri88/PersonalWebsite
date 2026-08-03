@@ -163,6 +163,7 @@
 
   if (searchInput && library) {
     var rulingsSection = document.getElementById('rulings');
+    var librarySection = document.getElementById('library');
 
     searchInput.addEventListener('input', function () {
       /* Every word has to appear, but not in the order given and not next
@@ -238,6 +239,13 @@
         });
         if (rulingsSection) rulingsSection.hidden = term && rulings === 0;
       }
+
+      /* While a search is running these two are results, not chapters of a
+         page being browsed. Left at chapter spacing, a search that matched
+         only a fatwa put it a screen and a half below the count that said
+         it was there — so the page read as empty. */
+      document.body.classList.toggle('is-searching', term);
+      if (librarySection) librarySection.classList.toggle('is-empty', term && works === 0);
 
       if (!searchCount) return;
       if (!term) {

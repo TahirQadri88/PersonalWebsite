@@ -54,6 +54,14 @@ body {
 a { color: inherit; }
 img { max-width: 100%; }
 
+/* The search hides what does not match by setting the `hidden` attribute.
+   That works through the browser's own `[hidden] { display: none }` — a
+   rule so weak that any author rule naming display beats it. `.ruling` is
+   `display: flex`, so a fatwa the search had hidden stayed on the screen:
+   the count said one and five were showing. Any stylesheet that sets
+   display on something the code hides needs this line. */
+[hidden] { display: none !important; }
+
 :focus-visible {
   outline: 2px solid var(--gold-rule);
   outline-offset: 3px;
@@ -699,6 +707,21 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   background: var(--moss-deep);
   color: #f6f3ea;
 }
+
+/* Searching turns the page into a list of results. The space that
+   separates one chapter from the next — 118px under the library and
+   118px again over the fatawa — then becomes a hole: a search matching
+   one fatwa and no works showed the count, then nothing, and the fatwa
+   itself sat below the fold. */
+body.is-searching .library.is-empty { padding-bottom: 0; }
+body.is-searching .library.is-empty .section-heading { margin-bottom: 18px; }
+body.is-searching .rulings { padding-top: 34px; }
+/* The heading still says these are fatawa — that is the signpost and it
+   stays. The sentence explaining where they come from is for someone
+   reading the page, not for someone who has already typed a word. */
+body.is-searching .rulings .section-note-light { display: none; }
+body.is-searching .rulings .section-label { margin-bottom: 6px; }
+body.is-searching .rulings h2 { margin-bottom: 26px; }
 .rulings .section-label { color: var(--gold-on-dark); }
 
 /* The cards used to be the same green as the panel behind them, divided
