@@ -109,8 +109,11 @@
       '<a class="text-link" href="' + site.escapeHtml(site.recordHref(work)) + '">' +
       (work.page ? 'Read →' : 'Open details →') +
       '</a>' +
-      site.fileLinks(work) +
       '</div>' +
+      /* The files are their own block, not more things on the end of that
+         row. Six charts wrapped into it came out ragged — every Download
+         landed wherever the title before it happened to finish. */
+      (site.fileLinks(work) ? '<div class="work-files">' + site.fileLinks(work) + '</div>' : '') +
       /* Tags sit below the download, not above it. They are for browsing,
          not for reading before you reach the file. */
       site.tagMarkup(work) +

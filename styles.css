@@ -640,7 +640,38 @@ details[open] > summary .toggle { transform: rotate(45deg); }
    could only serve the first: the browser's viewer had to render the
    whole booklet before anything could be kept. They are now a pair —
    the title reads it, the second link puts it on the device. */
-.file-item { display: inline-flex; align-items: center; gap: 20px; }
+.file-item { display: inline-flex; align-items: baseline; gap: 20px; }
+
+/* An arrow is not in any of the Arabic faces, so the browser fetches it
+   from wherever it can — on an iPhone that meant Apple Color Emoji and a
+   blue tile beside the Urdu. Naming the UI font keeps every arrow on the
+   page the same shape. */
+.glyph { font-family: var(--font-ui); font-weight: 400; }
+
+/* Six charts, each with a link that reads it and a link that saves it.
+   Flowed as one wrapping row they came out ragged — every Download sat
+   wherever the title before it happened to end. Two columns instead, so
+   the titles line up under each other and so do the Downloads. */
+.work-files {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  justify-content: start;
+  align-items: baseline;
+  gap: 16px 26px;
+  margin-top: 18px;
+}
+.work-files .file-item { display: contents; }
+/* Each link shrinks to its own words — stretched to the column it drew a
+   rule out into empty space and read as a form field. It is set against
+   the side its script starts from, so the titles still line up. */
+.work-files .document-link { grid-column: 1; justify-self: start; }
+.work-files .document-link.urdu,
+.work-files .document-link.arabic { justify-self: end; }
+.work-files .file-download { grid-column: 2; justify-self: start; }
+/* Nastaliq hangs a long way below the baseline. At 2px the rule was
+   drawn straight through the tails of ہے and کے. */
+.work-files .document-link.urdu,
+.work-files .document-link.arabic { padding-bottom: 7px; }
 .file-download {
   position: relative;
   flex: none;

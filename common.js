@@ -100,6 +100,14 @@
      rather than a Save that quietly does something else. */
   var OFFSITE = /^[a-z][a-z0-9+.-]*:/i;
 
+  /* Neither Nastaliq nor Naskh contains an arrow, so inside a link whose
+     label is Urdu the browser went looking elsewhere for one — and on an
+     iPhone it found Apple Color Emoji and drew a blue tile. The arrow is
+     given the UI font, which has the glyph, and U+FE0E after it asks for
+     the written shape rather than the emoji one. */
+  var GLYPH_OPEN = '<span class="glyph" aria-hidden="true">\u2197\uFE0E</span>';
+  var GLYPH_SAVE = '<span class="glyph" aria-hidden="true">\u2193\uFE0E</span>';
+
   function fileLinks(record, className) {
     if (!record.files || !record.files.length) return '';
     return record.files
@@ -114,13 +122,13 @@
           '<a class="' + (className || 'document-link') + (rtl ? ' ' + scriptClass(language) : '') + '"' +
           (rtl ? ' lang="' + language + '" dir="rtl"' : '') +
           ' href="' + url + '" target="_blank" rel="noopener">' +
-          escapeHtml(label) + ' <span aria-hidden="true">↗</span></a>';
+          escapeHtml(label) + ' ' + GLYPH_OPEN + '</a>';
         if (OFFSITE.test(String(file.url || ''))) return '<span class="file-item">' + open + '</span>';
         return (
           '<span class="file-item">' + open +
           '<a class="file-download" href="' + url + '" download' +
           ' aria-label="Download ' + escapeHtml(label) + '">' +
-          'Download <span aria-hidden="true">↓</span></a>' +
+          'Download ' + GLYPH_SAVE + '</a>' +
           '</span>'
         );
       })
