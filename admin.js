@@ -847,6 +847,23 @@
       if (category && category.id === POSTS_CATEGORY && !record.page) {
         found.push(where + ': a post needs a page, e.g. posts/' + (record.id || 'slug') + '.html');
       }
+
+      /* A post is its writing. Publishing the entry without it puts a
+         link to nothing on the homepage and hands the sitemap a 404 —
+         which is exactly what happened once: the page had never been
+         written, the editor could not read it back, and it went out
+         anyway with only the entry and the sitemap line.
+
+         Empty counts as missing. There is no such thing as a post with
+         no words in it. */
+      if (record.page) {
+        var body = bodies[record.id];
+        if (body === undefined) {
+          found.push(where + ': its writing is not loaded, so publishing would link to a page that does not exist — open its row first.');
+        } else if (!body.trim()) {
+          found.push(where + ': has no writing in it yet.');
+        }
+      }
     });
     return found;
   }
@@ -1409,8 +1426,17 @@
   }
 
   document.getElementById('publish').addEventListener('click', function () {
-    /* Behind Access there is nothing to ask for — the Worker holds the
-       token and the Access cookie says who you are. */
+    /* Check before asking for anything. Handing over a token and only
+       then being told a post has no writing in it is the wrong order to
+       find that out in. */
+    var found = problems();
+    if (found.length) {
+      say('Fix these first: ' + found.join(' · '), 'bad');
+      return;
+    }
+
+    /* Behind the backend there is nothing to ask for — the Worker holds
+       the token, and the sign-in says who you are. */
     if (BACKEND) {
       publish('');
       return;
