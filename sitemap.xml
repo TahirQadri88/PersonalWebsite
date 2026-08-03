@@ -4,6 +4,7 @@
      THIS LIST IS THE ONE PLACE OUTSIDE content.js THAT NAMES A WORK.
      When you add or remove an entry in content.js, add or remove its line
      here too, or the new work will not be offered to search engines.
+     admin.html writes both files together, which is the safe way to do it.
 
      Change the domain here, in robots.txt and in site.baseUrl in
      content.js together if the site ever moves. -->
