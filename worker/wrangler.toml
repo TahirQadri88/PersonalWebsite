@@ -27,10 +27,18 @@ GITHUB_BRANCH = "main"
 # Where the editor's own files are fetched from. The public site.
 SITE_ORIGIN = "https://tahirqadri.com.pk"
 
-# Filled in from the Cloudflare dashboard — see README.md beside this file.
-# ACCESS_TEAM is the name in <team>.cloudflareaccess.com.
-# ACCESS_AUD is the Application Audience tag of the Access application.
-# ACCESS_EMAIL is optional: set it and only that address may publish.
+# How the Worker checks who is publishing. Set ONE of the two.
+#
+# Firebase — free, no card. FIREBASE_PROJECT is the project id from the
+# Firebase console. The editor signs in against it and sends the token.
+FIREBASE_PROJECT = ""
+#
+# Cloudflare Access — guards the page itself, but wants a payment method on
+# file even on the free plan. ACCESS_TEAM is the name in
+# <team>.cloudflareaccess.com; ACCESS_AUD is the application's Audience tag.
 ACCESS_TEAM = ""
 ACCESS_AUD = ""
-ACCESS_EMAIL = ""
+#
+# Whichever is used: set this and only this address may publish. It is the
+# second lock — a policy widened by accident still cannot get past it.
+EDITOR_EMAIL = ""

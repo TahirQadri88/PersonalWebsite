@@ -118,10 +118,11 @@ appears in the category bar automatically. To reorder categories, move the block
 
 ## Publishing from the editor
 
-**The short version:** open `https://admin.tahirqadri.com.pk`, sign in with the
-code Cloudflare emails you, edit, press **Publish**. Nothing to type, nothing
-stored on the device. The GitHub token lives in Cloudflare, not on your phone.
-`worker/README.md` has the one-time setup — about fifteen minutes, done once.
+**The short version:** open `https://admin.tahirqadri.com.pk`, sign in, edit,
+press **Publish**. The GitHub token lives in Cloudflare, not on your phone.
+Signing in is either a Firebase email and password or a code Cloudflare emails
+you — `worker/README.md` compares the two and has the one-time setup, about
+fifteen minutes.
 
 Everything below applies only when the editor is opened some other way — by
 double-clicking the file, or from the public address — where there is no

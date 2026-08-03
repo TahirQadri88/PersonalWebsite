@@ -1034,6 +1034,96 @@
   var BACKEND = location.protocol === 'https:' && /^admin\./.test(location.hostname)
     ? '/publish'
     : '';
+
+  /* ---- Signing in ----------------------------------------------------
+
+     Fill these two in and the passphrase box becomes a real login: the
+     editor signs in against your Firebase project and sends the ID token
+     Google issues, which the Worker verifies before it commits anything.
+     Leave them empty and the passphrase latch below is all there is.
+
+     `apiKey` is not a secret. Firebase web keys identify a project, they
+     do not authorise anything — what authorises is the signed-in user,
+     and the Worker checks that. It is meant to be in the page. */
+  var FIREBASE = {
+    apiKey: '',
+    project: ''
+  };
+
+  var SIGNED_IN = 'editor-firebase-session';
+
+  function firebaseConfigured() {
+    return Boolean(FIREBASE.apiKey && FIREBASE.project);
+  }
+
+  function readSession() {
+    try {
+      return JSON.parse(sessionStorage.getItem(SIGNED_IN) || 'null');
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function writeSession(session) {
+    try {
+      sessionStorage.setItem(SIGNED_IN, JSON.stringify(session));
+    } catch (error) { /* private mode */ }
+  }
+
+  function identityCall(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (response) {
+      return response.json().then(function (data) {
+        if (response.ok) return data;
+        var reason = (data && data.error && data.error.message) || ('HTTP ' + response.status);
+        /* Google's wording is for developers. These three are the ones a
+           person actually hits. */
+        if (/EMAIL_NOT_FOUND|INVALID_PASSWORD|INVALID_LOGIN_CREDENTIALS/.test(reason)) {
+          reason = 'That email and password do not match.';
+        }
+        if (/TOO_MANY_ATTEMPTS/.test(reason)) reason = 'Too many tries. Wait a few minutes.';
+        throw new Error(reason);
+      });
+    });
+  }
+
+  function signIn(email, password) {
+    return identityCall(
+      'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + encodeURIComponent(FIREBASE.apiKey),
+      { email: email, password: password, returnSecureToken: true }
+    ).then(function (data) {
+      writeSession({
+        idToken: data.idToken,
+        refreshToken: data.refreshToken,
+        expiresAt: Date.now() + (Number(data.expiresIn || 3600) - 120) * 1000,
+        email: data.email
+      });
+      return data;
+    });
+  }
+
+  /* An ID token lasts an hour. A long editing session outlives it, so it
+     is exchanged for a fresh one before it goes rather than after — a
+     publish that fails on an expired token is a publish you have to think
+     about. */
+  function freshToken() {
+    var session = readSession();
+    if (!session) return Promise.reject(new Error('not signed in'));
+    if (Date.now() < session.expiresAt) return Promise.resolve(session.idToken);
+    return identityCall(
+      'https://securetoken.googleapis.com/v1/token?key=' + encodeURIComponent(FIREBASE.apiKey),
+      { grant_type: 'refresh_token', refresh_token: session.refreshToken }
+    ).then(function (data) {
+      session.idToken = data.id_token;
+      session.refreshToken = data.refresh_token;
+      session.expiresAt = Date.now() + (Number(data.expires_in || 3600) - 120) * 1000;
+      writeSession(session);
+      return session.idToken;
+    });
+  }
   var TOKEN_KEY = 'editor-github-token';
 
   function readToken() {
@@ -1162,16 +1252,23 @@
      the wire. It answers with the commit it made, or with a sentence
      saying why it made none. */
   function commitViaBackend(files, message) {
-    return fetch(BACKEND, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ files: files, message: message })
+    /* Firebase proves who you are with a token in the header. Cloudflare
+       Access proves it with a cookie the browser sends by itself. */
+    var withToken = firebaseConfigured() ? freshToken() : Promise.resolve('');
+    return withToken.then(function (token) {
+      var headers = { 'content-type': 'application/json' };
+      if (token) headers.Authorization = 'Bearer ' + token;
+      return fetch(BACKEND, {
+        method: 'POST',
+        credentials: 'include',
+        headers: headers,
+        body: JSON.stringify({ files: files, message: message })
+      });
     }).then(function (response) {
       return response.json().catch(function () { return {}; }).then(function (data) {
         if (response.ok) return data;
         if (response.status === 401 || response.status === 403) {
-          throw new Error((data.message || 'you are not signed in') + '. Reload the page to sign in again.');
+          throw new Error((data.message || 'you are not signed in') + ' Reload the page and sign in again.');
         }
         throw new Error(data.message || 'HTTP ' + response.status);
       });
@@ -1269,23 +1366,62 @@
 
   var gateForm = document.getElementById('gate-form');
   var gateError = document.getElementById('gate-error');
+  var emailInput = document.getElementById('email');
+  var passInput = document.getElementById('pass');
+
+  /* With Firebase configured the gate is a real sign-in rather than a
+     latch: the email and password go to Google, and what comes back is a
+     token the Worker can check. The passphrase, which only ever hid the
+     page from passers-by, is not asked for at all. */
+  if (firebaseConfigured()) {
+    document.getElementById('email-label').hidden = false;
+    emailInput.hidden = false;
+    document.getElementById('pass-label').textContent = 'Password';
+    passInput.autocomplete = 'current-password';
+    emailInput.focus();
+    document.querySelector('.gate-note').textContent =
+      'Signing in is what lets you publish. The words you type go to Firebase, ' +
+      'never into this page, and nothing that can write to GitHub is kept on this device.';
+  }
 
   gateForm.addEventListener('submit', function (event) {
     event.preventDefault();
-    var value = document.getElementById('pass').value;
-    digest(value).then(function (hash) {
+    gateError.textContent = '';
+
+    if (firebaseConfigured()) {
+      var email = emailInput.value.trim();
+      if (!email || !passInput.value) {
+        gateError.textContent = 'Both, please.';
+        return;
+      }
+      gateError.textContent = 'Signing in…';
+      signIn(email, passInput.value).then(function () {
+        passInput.value = '';
+        gateError.textContent = '';
+        unlock();
+      }).catch(function (error) {
+        gateError.textContent = error.message;
+        passInput.select();
+      });
+      return;
+    }
+
+    digest(passInput.value).then(function (hash) {
       if (hash === PASS_HASH) {
         unlock();
       } else {
         gateError.textContent = 'Not that one.';
-        document.getElementById('pass').select();
+        passInput.select();
       }
     });
   });
 
   /* Stays open for the rest of the browser session, so a reload while
-     writing does not ask again. */
+     writing does not ask again. With Firebase that shortcut is only taken
+     when there is still a session to go with it — otherwise the page
+     would open and the first publish would fail on a token it never had. */
   var alreadyOpen = false;
   try { alreadyOpen = sessionStorage.getItem('editor-open') === '1'; } catch (error) { /* private mode */ }
+  if (firebaseConfigured() && !readSession()) alreadyOpen = false;
   if (alreadyOpen) unlock();
 })();

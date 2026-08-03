@@ -5,8 +5,8 @@
    these exist to prove it refuses. */
 import worker from './src/index.js';
 
-const TEAM='tahirqadri', AUD='aud-tag-123', EMAIL='mtahir001@hotmail.com';
-const env={ ACCESS_TEAM:TEAM, ACCESS_AUD:AUD, ACCESS_EMAIL:EMAIL,
+const TEAM='tahirqadri', AUD='aud-tag-123', EMAIL='mtahir001@hotmail.com', FBPROJ='animalhealth-abc12';
+const env={ ACCESS_TEAM:TEAM, ACCESS_AUD:AUD, EDITOR_EMAIL:EMAIL,
   GITHUB_OWNER:'TahirQadri88', GITHUB_REPO:'PersonalWebsite', GITHUB_BRANCH:'main',
   GITHUB_TOKEN:'ghp_fake', SITE_ORIGIN:'https://tahirqadri.com.pk' };
 
@@ -29,6 +29,8 @@ async function mint(over={}, key=kp.privateKey){
 let gh=[];
 globalThis.fetch = async (url, opts={}) => {
   url=String(url);
+  if(url.includes('googleapis.com/service_accounts/v1/jwk/securetoken'))
+    return new Response(JSON.stringify({keys:[{...jwk,kid:KID,alg:'RS256'}]}),{status:200,headers:{'content-type':'application/json'}});
   if(url.includes('cloudflareaccess.com/cdn-cgi/access/certs'))
     return new Response(JSON.stringify({keys:[{...jwk,kid:KID,alg:'RS256'}]}),{status:200,headers:{'content-type':'application/json'}});
   if(url.startsWith('https://api.github.com/')){
@@ -55,6 +57,24 @@ async function post(files, jwt, msg){
     {method:'POST',headers:h,body:JSON.stringify({files,message:msg})}), env);
   return {status:r.status, body:await r.json()};
 }
+async function mintFb(over={}, key=kp.privateKey){
+  const now=Math.floor(Date.now()/1000);
+  const h=b64u({alg:'RS256',kid:KID,typ:'JWT'});
+  const p=b64u({aud:FBPROJ,email:EMAIL,sub:'uid-123',exp:now+3600,iat:now,
+    iss:`https://securetoken.google.com/${FBPROJ}`,...over});
+  const sig=await crypto.subtle.sign('RSASSA-PKCS1-v1_5',key,new TextEncoder().encode(`${h}.${p}`));
+  return `${h}.${p}.${Buffer.from(sig).toString('base64url')}`;
+}
+const fbEnv={...env, ACCESS_TEAM:'', ACCESS_AUD:'', FIREBASE_PROJECT:FBPROJ};
+async function postFb(files, jwt){
+  gh=[];
+  const h={'content-type':'application/json'};
+  if(jwt) h['Authorization']='Bearer '+jwt;
+  const r=await worker.fetch(new Request('https://admin.tahirqadri.com.pk/publish',
+    {method:'POST',headers:h,body:JSON.stringify({files})}), fbEnv);
+  return {status:r.status, body:await r.json()};
+}
+
 const pass=[],fail=[];
 const t=(name,cond,extra='')=> (cond?pass:fail).push(name+(cond?'':'   << '+extra));
 
@@ -117,9 +137,37 @@ t('the editor is served through the Worker', page.status===200);
 t('  …and told not to be indexed', /noindex/.test(page.headers.get('x-robots-tag')||''));
 t('  …and not to be cached', /no-store/.test(page.headers.get('cache-control')||''));
 
+/* ---- the Firebase way in ---- */
+r = await postFb([{path:'content.js',text:GOOD}], null);
+t('firebase: no token → 401', r.status===401, JSON.stringify(r));
+
+r = await postFb([{path:'content.js',text:GOOD}], await mintFb({}, other.privateKey));
+t('firebase: signed by the wrong key → 401', r.status===401, JSON.stringify(r));
+
+r = await postFb([{path:'content.js',text:GOOD}], await mintFb({exp:Math.floor(Date.now()/1000)-10}));
+t('firebase: expired → 401', r.status===401, JSON.stringify(r));
+
+r = await postFb([{path:'content.js',text:GOOD}], await mintFb({aud:'some-other-project'}));
+t('firebase: token for another project → 401', r.status===401, JSON.stringify(r));
+
+r = await postFb([{path:'content.js',text:GOOD}], await mintFb({iss:'https://securetoken.google.com/someone-else'}));
+t('firebase: issued for another project → 401', r.status===401, JSON.stringify(r));
+
+r = await postFb([{path:'content.js',text:GOOD}], await mintFb({email:'someone@else.com'}));
+t('firebase: another account in the project → 403', r.status===403, JSON.stringify(r));
+
+r = await postFb([{path:'content.js',text:GOOD}], await mintFb({sub:''}));
+t('firebase: token naming no one → 401', r.status===401, JSON.stringify(r));
+
+r = await postFb([{path:'content.js',text:GOOD}], JWT);
+t('firebase: an Access token is not accepted in its place', r.status===401, JSON.stringify(r));
+
+r = await postFb([{path:'content.js',text:GOOD},{path:'sitemap.xml',text:'<urlset/>'}], await mintFb());
+t('firebase: a real publish succeeds', r.status===200 && r.body.sha==='c0ffee1234567890', JSON.stringify(r));
+
 const noEnv = await worker.fetch(new Request('https://admin.tahirqadri.com.pk/publish',
-  {method:'POST',headers:{'content-type':'application/json'},body:'{}'}), {...env, ACCESS_TEAM:'', ACCESS_AUD:''});
-t('unconfigured Access refuses rather than allows', noEnv.status===500);
+  {method:'POST',headers:{'content-type':'application/json'},body:'{}'}), {...env, ACCESS_TEAM:'', ACCESS_AUD:'', FIREBASE_PROJECT:''});
+t('with nothing configured it refuses rather than falls open', noEnv.status===500);
 
 console.log('PASS ('+pass.length+')'); pass.forEach(x=>console.log('  ✓ '+x));
 if(fail.length){console.log('\nFAIL ('+fail.length+')'); fail.forEach(x=>console.log('  ✗ '+x)); process.exit(1);}

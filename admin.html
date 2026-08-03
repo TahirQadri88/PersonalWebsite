@@ -27,7 +27,11 @@
       <form class="gate-card" id="gate-form">
         <img src="files/images/logo-circle-180.png" alt="" width="180" height="178" />
         <h1 id="gate-title">Editor</h1>
-        <label for="pass">Passphrase</label>
+        <!-- Shown only when the editor is signing in against Firebase.
+             Without it the passphrase below is the whole gate. -->
+        <label for="email" id="email-label" hidden>Email</label>
+        <input id="email" type="email" autocomplete="username" hidden />
+        <label for="pass" id="pass-label">Passphrase</label>
         <input id="pass" type="password" autocomplete="current-password" autofocus />
         <p class="gate-error" id="gate-error" role="alert"></p>
         <button class="button button-dark" type="submit">Unlock</button>

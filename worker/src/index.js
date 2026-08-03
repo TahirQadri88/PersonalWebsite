@@ -44,25 +44,22 @@ function json(status, body) {
   });
 }
 
-/* ---- Cloudflare Access ------------------------------------------------
+/* ---- Who is asking -----------------------------------------------------
 
-   Access puts a signed assertion on every request it lets through. The
-   Worker checks it rather than trusting that it is behind Access at all:
-   a route can be misconfigured, and a Worker that assumes it is protected
-   when it is not hands its token to the internet. */
+   Two ways of proving it, and the Worker takes whichever is configured.
 
-let jwks = { keys: null, fetchedAt: 0 };
+   Firebase — the editor signs in against a Firebase project and sends the
+   ID token Google issues. Free, no card, and if you already run a Firebase
+   project you already have the console for it.
 
-async function accessKeys(env) {
-  const age = Date.now() - jwks.fetchedAt;
-  if (jwks.keys && age < 60 * 60 * 1000) return jwks.keys;
-  const url = `https://${env.ACCESS_TEAM}.cloudflareaccess.com/cdn-cgi/access/certs`;
-  const response = await fetch(url);
-  if (!response.ok) throw new HttpError(500, 'could not read the Access signing keys');
-  const body = await response.json();
-  jwks = { keys: body.keys || [], fetchedAt: Date.now() };
-  return jwks.keys;
-}
+   Cloudflare Access — Access puts a signed assertion on every request it
+   lets through, and guards the page itself rather than only the publish.
+   Needs a payment method on file even on the free plan.
+
+   Either way the Worker verifies the signature itself rather than trusting
+   that something upstream already did. A route can be misconfigured, and a
+   Worker that assumes it is protected when it is not hands its token to
+   the internet. */
 
 function fromBase64Url(value) {
   const padded = value.replace(/-/g, '+').replace(/_/g, '/');
@@ -76,14 +73,23 @@ function decodeSegment(value) {
   return JSON.parse(new TextDecoder().decode(fromBase64Url(value)));
 }
 
-async function verifyAccess(request, env) {
-  if (!env.ACCESS_TEAM || !env.ACCESS_AUD) {
-    throw new HttpError(500, 'the Worker has no Access team or audience configured');
-  }
-  const token = request.headers.get('Cf-Access-Jwt-Assertion');
-  if (!token) throw new HttpError(401, 'not signed in — reload the page and sign in again');
+/* Both issuers publish their public keys as JWKS and rotate them, so the
+   set is fetched rather than pinned, and kept for an hour. */
+const keyCache = new Map();
 
-  const parts = token.split('.');
+async function signingKeys(url) {
+  const held = keyCache.get(url);
+  if (held && Date.now() - held.at < 60 * 60 * 1000) return held.keys;
+  const response = await fetch(url);
+  if (!response.ok) throw new HttpError(500, 'could not read the signing keys');
+  const body = await response.json();
+  const keys = body.keys || [];
+  keyCache.set(url, { keys, at: Date.now() });
+  return keys;
+}
+
+async function verifyJwt(token, options) {
+  const parts = String(token || '').split('.');
   if (parts.length !== 3) throw new HttpError(401, 'the sign-in token is malformed');
 
   /* Anything at all can arrive in that header. Garbage is a refusal, not
@@ -100,7 +106,9 @@ async function verifyAccess(request, env) {
   if (!header || !payload || typeof payload !== 'object') {
     throw new HttpError(401, 'the sign-in token is malformed');
   }
-  const keys = await accessKeys(env);
+  if (header.alg !== 'RS256') throw new HttpError(401, 'the sign-in token is signed the wrong way');
+
+  const keys = await signingKeys(options.jwksUrl);
   const key = keys.find((candidate) => candidate.kid === header.kid);
   if (!key) throw new HttpError(401, 'the sign-in token was signed by an unknown key');
 
@@ -116,19 +124,56 @@ async function verifyAccess(request, env) {
   if (!ok) throw new HttpError(401, 'the sign-in token did not verify');
 
   const now = Math.floor(Date.now() / 1000);
-  if (payload.exp && payload.exp < now) throw new HttpError(401, 'the sign-in has expired — reload the page');
+  if (payload.exp && payload.exp < now) throw new HttpError(401, 'the sign-in has expired — sign in again');
   if (payload.nbf && payload.nbf > now + 60) throw new HttpError(401, 'the sign-in is not valid yet');
 
   const audience = [].concat(payload.aud || []);
-  if (!audience.includes(env.ACCESS_AUD)) throw new HttpError(401, 'the sign-in is for a different application');
+  if (!audience.includes(options.audience)) throw new HttpError(401, 'the sign-in is for a different application');
+  if (payload.iss !== options.issuer) throw new HttpError(401, 'the sign-in came from somewhere else');
 
-  const issuer = `https://${env.ACCESS_TEAM}.cloudflareaccess.com`;
-  if (payload.iss !== issuer) throw new HttpError(401, 'the sign-in came from a different team');
+  return payload;
+}
 
-  /* Access already limits who may sign in. This is the second lock: if the
-     policy is ever widened by accident, the Worker still only commits for
-     the address named here. */
-  if (env.ACCESS_EMAIL && payload.email !== env.ACCESS_EMAIL) {
+async function verifyFirebase(request, env) {
+  const header = request.headers.get('Authorization') || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+  if (!token) throw new HttpError(401, 'not signed in — sign in and try again');
+  const payload = await verifyJwt(token, {
+    jwksUrl: 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com',
+    issuer: `https://securetoken.google.com/${env.FIREBASE_PROJECT}`,
+    audience: env.FIREBASE_PROJECT
+  });
+  if (!payload.sub) throw new HttpError(401, 'the sign-in names no one');
+  return payload;
+}
+
+async function verifyAccess(request, env) {
+  const token = request.headers.get('Cf-Access-Jwt-Assertion');
+  if (!token) throw new HttpError(401, 'not signed in — reload the page and sign in again');
+  return verifyJwt(token, {
+    jwksUrl: `https://${env.ACCESS_TEAM}.cloudflareaccess.com/cdn-cgi/access/certs`,
+    issuer: `https://${env.ACCESS_TEAM}.cloudflareaccess.com`,
+    audience: env.ACCESS_AUD
+  });
+}
+
+async function identify(request, env) {
+  let payload;
+  if (env.FIREBASE_PROJECT) {
+    payload = await verifyFirebase(request, env);
+  } else if (env.ACCESS_TEAM && env.ACCESS_AUD) {
+    payload = await verifyAccess(request, env);
+  } else {
+    /* Refusing is the only safe thing here. A Worker holding a token that
+       can write to the repository must never fall open because a variable
+       was left blank. */
+    throw new HttpError(500, 'the Worker has no way to check who you are — set FIREBASE_PROJECT, or ACCESS_TEAM and ACCESS_AUD');
+  }
+
+  /* The second lock. Whichever service did the signing in, only this
+     address may publish — so a policy widened by accident, or another
+     account in the same Firebase project, still cannot. */
+  if (env.EDITOR_EMAIL && payload.email !== env.EDITOR_EMAIL) {
     throw new HttpError(403, `${payload.email || 'that account'} may not publish`);
   }
   return payload;
@@ -231,7 +276,7 @@ function checkContentParses(files) {
 }
 
 async function publish(request, env) {
-  const identity = await verifyAccess(request, env);
+  const identity = await identify(request, env);
 
   let body;
   try {

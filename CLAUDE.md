@@ -87,9 +87,11 @@ published but unfindable.
 
 - Every work and fatwa has its files. Nothing is owed.
 - Publishing from the editor goes through `worker/` when it is opened at
-  `admin.tahirqadri.com.pk`, which Cloudflare Access guards. Opened any other
-  way it falls back to asking for a GitHub token, and `Files…` works
-  everywhere. `worker/README.md` has the one-time setup.
+  `admin.tahirqadri.com.pk`. The Worker checks who is asking — a Firebase
+  sign-in or a Cloudflare Access one, whichever is configured — and holds the
+  GitHub token itself, so no device ever does. Opened any other way the editor
+  falls back to asking for a token, and `Files…` works everywhere.
+  `worker/README.md` has the one-time setup.
 - The `posts` category is empty and hidden. The machinery is all there —
   `page`/`date` entries, the editor's writing box, the page generator — and the
   author will start writing when the way in is easier than it is now. The plan
