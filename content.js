@@ -49,7 +49,7 @@ window.siteContent = {
           description:
             "Establishes the weight of a ṣāʿ in modern units from Fatāwā Raḍawiyya, working through the tola and bhar to a figure in grams, with a documented appendix on the standardised tola.",
           descriptionUr:
-            "فتاویٰ رضویہ کی روشنی میں صاع کا وزن جدید اوزان میں متعین کیا گیا ہے۔ تولہ اور بھر سے ہوتے ہوئے گرام تک حساب پیش کیا گیا ہے، اور آخر میں معیاری تولہ پر ایک مستند ضمیمہ شامل ہے۔",
+            "فتاویٰ رضویہ کی روشنی میں صاع کا وزن جدید اوزان (گرام، کلو گرام) میں متعین کیا گیا ہے۔ تولہ اور بھر سے ہوتے ہوئے گرام تک حساب پیش کیا گیا ہے، اور آخر میں معیاری تولہ پر ایک مستند ضمیمہ شامل ہے۔",
           tags: ["اصولِ افتاء", "صدقۃ الفطر", "اوزان"],
           files: [{ label: "Urdu PDF", url: "files/booklets-authored/saa-ki-tahqeeq.pdf" }]
         },
@@ -72,7 +72,7 @@ window.siteContent = {
           description:
             "A ruling on non-fungible tokens in Ḥanafī fiqh, issued as a fatwā and published as a booklet.",
           descriptionUr:
-            "نان فنجیبل ٹوکنز (این ایف ٹیز) کے بارے میں فقہِ حنفی کی روشنی میں فتویٰ، جو بعد ازاں رسالے کی صورت میں شائع ہوا۔",
+            "نان فنجیبل ٹوکنز (این ایف ٹیز) کے بارے میں فقہِ حنفی کی روشنی میں تحقیقی فتویٰ، جو بعد ازاں رسالے کی صورت میں شائع ہوا۔",
           tags: ["عصری مسائل", "بیوع"],
           files: [{ label: "Urdu PDF", url: "files/booklets-authored/nfts.pdf" }]
         }
@@ -105,7 +105,7 @@ window.siteContent = {
           description:
             "On someone who passes the mīqāt intending Bustān Banī ʿĀmir or another place in the Ḥill — translated and referenced from the treatise of Bīrī Zāda.",
           descriptionUr:
-            "جو شخص میقات سے بستانِ بنی عامر یا حِل کے کسی اور مقام کے ارادے سے گزرے، اُس کے حکم پر بیری زادہ کے رسالے کا ترجمہ و تخریج۔",
+            "جو شخص میقات سے بستانِ بنی عامر یا حِل کے کسی اور مقام کے ارادے سے گزرے، اُس کے حکم پر مفتیِ مکہ شیخ الاسلام برہان الدین ابراہیم بن حسین المعروف بہ بیری زادہ کے رسالے کا ترجمہ و تخریج۔",
           tags: ["حج و عمرہ", "احرام", "میقات", "بیری زادہ"],
           files: [{ label: "Urdu PDF", url: "files/researched-upon-booklets/bustan-bani-amir.pdf" }]
         },
@@ -199,14 +199,13 @@ window.siteContent = {
       works: [
         {
           id: "ilm-ul-meerath",
-          title: "علم المیراث — رسالہ اور پریزینٹیشن سلائڈز",
+          title: "علم المیراث — تدریسی پریزینٹیشن سلائڈز",
           language: "ur",
           kind: "رسالہ و پریزینٹیشن",
           description: "A short modern treatment of the law of inheritance, with the accompanying teaching slides.",
           descriptionUr:
             "علمِ میراث پر ایک مختصر جدید تحریر، ہمراہ تدریسی پریزینٹیشن سلائڈز۔",
           tags: ["میراث", "تدریس"],
-          // The booklet itself is not uploaded yet — only the two slide decks.
           files: [
             { label: "Slides — colour print", url: "files/presentations/ilm-ul-meerath-slides-colour.pdf" },
             { label: "Slides — printable", url: "files/presentations/ilm-ul-meerath-slides-printable.pdf" }
@@ -304,7 +303,7 @@ window.siteContent = {
       description:
         "A ruling on futures and forward transactions in commodities — in commodities trading and on the exchanges.",
       descriptionUr:
-        "اجناس کے فیوچرز اور فارورڈ سودوں کے حکم پر فتویٰ — اجناس کی تجارت میں اور ایکسچینج پر۔",
+        "اجناس کے فیوچرز اور فارورڈ سودوں کے حکم پر فتویٰ — اجناس کی تجارت میں اور کموڈیٹی ایکسچینج پر۔",
       tags: ["بیوع"],
       files: [
         { label: "Urdu PDF", url: "files/my-fatawa/commodity-exchange-urdu.pdf" },
@@ -328,6 +327,9 @@ window.siteContent = {
       id: "qata-taalluq",
       title: "قطعِ تعلق کی ایک صورت پر فتویٰ",
       language: "ur",
+      description: "A fatwa on a legitimate case of cutting ties with relatives",
+      descriptionUr:
+        "رشتہ داروں سے قطعِ تعلق کی ایک جائز صورت پر فتویٰ",
       files: [{ label: "Urdu PDF", url: "files/my-fatawa/qata-taalluq.pdf" }]
     },
     {
