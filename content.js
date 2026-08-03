@@ -230,7 +230,18 @@ window.siteContent = {
       /* These are pages, not downloads. Each one names its own file in
          `page` and carries a `date`; the writing lives in that file, not
          here. The category stays hidden until the first is written. */
-      works: []
+      works: [
+        {
+          id: "choose-your-words",
+          title: "الفاظ کا انتخاب",
+          language: "ur",
+          kind: "مضمون",
+          date: "2026-08-02",
+          description: "‏صرف یہ جاننا کافی نہیں کہ کیا کہنا ہے، بلکہ یہ بھی ضروری ہے کہ اسے کیسے کہنا ہے۔\n‏سچی بات بھی اگر بےموقع الفاظ میں کہی جائے تو لوگ اسے سننے سے پہلے ہی رد کر دیتے ہیں۔ پہلے لباس دیکھا جاتا ہے، پھر مضمون۔",
+          tags: ["Choose-your-words", "Be-careful-about-the-selection-of-words"],
+          page: "posts/choose-your-words.html"
+        }
+      ]
     },
 
     {

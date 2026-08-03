@@ -274,7 +274,9 @@
       record.kind ? '        <p class="section-label urdu" lang="ur" dir="rtl">' + e(record.kind) + '</p>' : null,
       '        <h1 class="' + scriptClass + '" lang="' + e(record.language || 'en') + '" dir="' + (rtl ? 'rtl' : 'ltr') + '">' + e(record.title) + '</h1>',
       pretty ? '        <p class="work-date">' + e(pretty) + '</p>' : null,
-      record.description ? '        <p class="work-page-description">' + e(record.description) + '</p>' : null,
+      /* Through the same helper the rest of the site uses, so a description
+         written in Urdu comes out in Nastaliq here too. */
+      record.description ? '        ' + site.proseMarkup(record.description, 'work-page-description') : null,
       '',
       '        <div class="post-body ' + scriptClass + '" id="post-body" lang="' + e(record.language || 'en') + '" dir="' + (rtl ? 'rtl' : 'ltr') + '">',
       bodyToHtml(bodies[record.id], 10),
