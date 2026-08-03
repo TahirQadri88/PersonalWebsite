@@ -805,11 +805,29 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .work-hero h1.urdu { font-size: clamp(26px, 3.6vw, 48px); line-height: 1.95; }
 .work-hero h1.arabic { font-size: clamp(30px, 4vw, 54px); line-height: 1.6; }
 .work-page-description { max-width: 62ch; margin: 24px 0 18px; color: #4b5852; font-size: 17px; }
-/* An English line on an Urdu page still reads left to right — but the
-   block is set against the right margin with everything else. Left
-   where it fell naturally, it floated in the middle of the page with
-   nothing above or below it to line up against. */
-.work-hero[dir="rtl"] .work-page-description[dir="ltr"],
+/* A paragraph in the other language, on either kind of page.
+
+   Two things have to be true at once. The words must read the way their
+   own script reads — English ragged-right, Urdu ragged-left — and the
+   block must sit against the page's margin with everything else. Setting
+   English flush right satisfied the second and broke the first: two lines
+   of English aligned on their right edge are genuinely harder to read.
+
+   Shrinking the box to its own longest line does both. The box ends at
+   the margin the rest of the page ends at; the text inside it starts
+   where its own script starts. */
+.work-hero[dir="rtl"] .work-page-description[dir="ltr"] {
+  width: fit-content;
+  max-width: min(62ch, 100%);
+  margin-inline-start: auto;
+  text-align: left;
+}
+.work-hero:not([dir="rtl"]) .work-page-description.urdu,
+.work-hero:not([dir="rtl"]) .work-page-description.arabic {
+  width: fit-content;
+  max-width: min(62ch, 100%);
+  text-align: right;
+}
 .work-hero[dir="rtl"] .work-date,
 .work-hero[dir="rtl"] .availability-note { text-align: right; }
 .work-page-files { display: flex; flex-wrap: wrap; gap: 14px 22px; margin-top: 22px; }

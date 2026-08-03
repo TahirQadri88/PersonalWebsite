@@ -147,6 +147,95 @@
   var POSTS_CATEGORY = 'posts';
   var bodies = {};
 
+  /* ---- The writing box's buttons -------------------------------------
+
+     The marks a post is written with — a blank line for a paragraph, `## `
+     for a heading, `> ` for a quote, `[ar] ` or `[en] ` to change script
+     for one block — are quick once known and invisible until then. They
+     were explained in a line of small print under the box, which is not
+     the same as being usable.
+
+     Each button does to the block the cursor is in what the author would
+     otherwise have typed at the start of it, and takes it off again if it
+     is already there. Nothing new can be written this way that could not
+     be typed by hand; the file on disk is the same either way. */
+
+  var BLOCK_MARKS = [
+    { label: 'Heading', title: 'Make this line a heading', mark: '## ' },
+    { label: 'Quote', title: 'Make this block a quotation', mark: '> ' },
+    { label: 'عربی', title: 'Set this block in Arabic', mark: '[ar] ' },
+    { label: 'English', title: 'Set this block in English', mark: '[en] ' }
+  ];
+
+  /* The block the cursor sits in: from the blank line before it to the
+     blank line after, which is exactly what the page generator treats as
+     one paragraph. */
+  function blockAround(text, caret) {
+    var start = text.lastIndexOf('\n\n', Math.max(0, caret - 1));
+    start = start === -1 ? 0 : start + 2;
+    var end = text.indexOf('\n\n', caret);
+    if (end === -1) end = text.length;
+    return { start: start, end: end, text: text.slice(start, end) };
+  }
+
+  function toggleMark(area, mark) {
+    var value = area.value;
+    var block = blockAround(value, area.selectionStart);
+    var body = block.text;
+    var had = body.indexOf(mark) === 0;
+
+    /* Only one of these can lead a block, so an existing one steps aside
+       rather than stacking up: "[ar] ## " is not a thing. */
+    BLOCK_MARKS.forEach(function (other) {
+      if (body.indexOf(other.mark) === 0) body = body.slice(other.mark.length);
+    });
+    var next = had ? body : mark + body;
+
+    area.value = value.slice(0, block.start) + next + value.slice(block.end);
+    var moved = next.length - block.text.length;
+    area.selectionStart = area.selectionEnd = Math.max(block.start, area.selectionStart + moved);
+    area.focus();
+    area.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function newParagraph(area) {
+    var at = area.selectionStart;
+    area.value = area.value.slice(0, at) + '\n\n' + area.value.slice(area.selectionEnd);
+    area.selectionStart = area.selectionEnd = at + 2;
+    area.focus();
+    area.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function writingTools(area, record) {
+    var bar = el('div', 'writing-tools');
+
+    var para = el('button', 'writing-tool');
+    para.type = 'button';
+    para.textContent = '¶ New paragraph';
+    para.title = 'Start a new paragraph here';
+    para.addEventListener('click', function () { newParagraph(area); });
+    bar.appendChild(para);
+
+    BLOCK_MARKS.forEach(function (item) {
+      /* An Urdu post does not need a button that says "set this in
+         Urdu" — that is what it already is. */
+      if (item.mark === '[en] ' && record.language === 'en') return;
+      if (item.mark === '[ar] ' && record.language === 'ar') return;
+      var button = el('button', 'writing-tool');
+      button.type = 'button';
+      button.textContent = item.label;
+      button.title = item.title;
+      if (item.mark === '[ar] ') button.classList.add('arabic');
+      button.addEventListener('click', function () { toggleMark(area, item.mark); });
+      bar.appendChild(button);
+    });
+
+    var note = el('span', 'writing-tools-note');
+    note.textContent = 'Put the cursor in a block, then press one. Press again to undo it.';
+    bar.appendChild(note);
+    return bar;
+  }
+
   function isPost(entry) {
     return !!(entry.record.page || (entry.category && entry.category.id === POSTS_CATEGORY));
   }
@@ -445,13 +534,14 @@
 
       var bodyField = field(
         'The writing',
-        'blank line between paragraphs · “## ” for a heading · “> ” for a quote · “[ar] ” or “[en] ” at the start of a block to switch script'
+        'a blank line starts a new paragraph — the buttons do the rest'
       );
       var bodyArea = textArea(bodies[record.id] || '', function (value) {
         bodies[record.id] = value;
       });
       bodyArea.style.minHeight = '260px';
       applyScript(bodyArea, record.language);
+      bodyField.appendChild(writingTools(bodyArea, record));
       bodyField.appendChild(bodyArea);
       var bodyNote = el('p', 'hint');
       bodyField.appendChild(bodyNote);

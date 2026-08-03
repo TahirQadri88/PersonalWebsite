@@ -215,3 +215,40 @@
 .admin-check input { width: 17px; height: 17px; }
 .admin-warn { border-left: 3px solid var(--gold-rule); padding-left: 12px; }
 .admin-dialog a { color: var(--moss); }
+
+/* The writing box's buttons. The marks a post is written with were once
+   a line of small print under the box, which is not the same as being
+   usable. */
+.writing-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.writing-tool {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper-warm);
+  color: var(--moss-deep);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.writing-tool:hover { border-color: var(--gold-rule); background: #f4eddc; }
+.writing-tool:focus-visible { outline: 2px solid var(--gold-rule); outline-offset: 1px; }
+/* Nastaliq has no Latin and the Latin faces have no Arabic, so a button
+   labelled in one script has to say which it is. */
+.writing-tool.arabic {
+  font-family: var(--font-arabic);
+  font-size: 15px;
+  font-weight: 700;
+}
+.writing-tools-note {
+  flex: 1 1 100%;
+  color: var(--muted);
+  font-size: 12px;
+}

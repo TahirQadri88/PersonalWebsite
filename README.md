@@ -92,10 +92,14 @@ than a download.
 1. Open `admin.html` and press **+ Add a post**. It fills in today's date and a
    file name for you.
 2. Give it a title, a one-line description, and write the piece in **The
-   writing** box. Blank line between paragraphs. `## ` at the start of a line
-   makes a heading, `> ` makes a quote, and `[ar] ` or `[en] ` at the start of a
-   block switches script for that block — for an Arabic citation inside an Urdu
-   piece.
+   writing** box. A blank line starts a new paragraph; the buttons above the
+   box do the rest — put the cursor in a block and press **Heading**,
+   **Quote**, **عربی** or **English**, and press again to undo it. Only one
+   can lead a block, so choosing another replaces it rather than stacking.
+
+   They only type what you could type yourself: `## ` for a heading, `> ` for
+   a quote, `[ar] ` or `[en] ` to change script for one block — useful for an
+   Arabic citation inside an Urdu piece. The file is the same either way.
 3. Press **Publish**. It commits everything — the entry, the sitemap line and
    the page — to GitHub in a single commit, and the site is live a minute later.
    **Files…** still gives you the same files to paste in by hand if you prefer.
