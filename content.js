@@ -9,7 +9,9 @@
      title: "عنوان",                    // required
      language: "ur",                   // "ur" = Nastaleeq, "ar" = Naskh, "en" = English
      kind: "رسالہ",                     // small label: رسالہ / چارٹ / پریزینٹیشن / ترجمہ و تخریج / مضمون / فتویٰ
-     description: "One or two lines.",  // optional
+     description: "One or two lines.",  // optional, English
+     descriptionUr: "وہی بات اردو میں۔", // optional; on an Urdu work it
+                                        // is shown first, English under it
      tags: ["حج و عمرہ"],               // optional, also searchable
      files: [                           // optional; leave out entirely if nothing is uploaded yet
        { label: "Urdu PDF", url: "files/my-file.pdf" },
@@ -46,6 +48,8 @@ window.siteContent = {
           kind: "رسالہ",
           description:
             "Establishes the weight of a ṣāʿ in modern units from Fatāwā Raḍawiyya, working through the tola and bhar to a figure in grams, with a documented appendix on the standardised tola.",
+          descriptionUr:
+            "فتاویٰ رضویہ کی روشنی میں صاع کا وزن جدید اوزان میں متعین کیا گیا ہے۔ تولہ اور بھر سے ہوتے ہوئے گرام تک حساب پیش کیا گیا ہے، اور آخر میں معیاری تولہ پر ایک مستند ضمیمہ شامل ہے۔",
           tags: ["اصولِ افتاء", "صدقۃ الفطر", "اوزان"],
           files: [{ label: "Urdu PDF", url: "files/booklets-authored/saa-ki-tahqeeq.pdf" }]
         },
@@ -55,6 +59,8 @@ window.siteContent = {
           language: "ur",
           kind: "تحقیقی رسالہ",
           description: "An examination of the claim that the Farewell Sermon was recorded — in the light of Sharīʿa, reason and science.",
+          descriptionUr:
+            "خطبۂ حجۃ الوداع کی ریکارڈنگ کے دعوے کا شرعی، عقلی اور سائنسی اعتبار سے جائزہ۔",
           tags: ["تحقیق", "عصری مسائل"],
           files: [{ label: "Urdu PDF", url: "files/booklets-authored/khutba-hajjatul-wida.pdf" }]
         },
@@ -65,6 +71,8 @@ window.siteContent = {
           kind: "فتویٰ",
           description:
             "A ruling on non-fungible tokens in Ḥanafī fiqh, issued as a fatwā and published as a booklet.",
+          descriptionUr:
+            "نان فنجیبل ٹوکنز (این ایف ٹیز) کے بارے میں فقہِ حنفی کی روشنی میں فتویٰ، جو بعد ازاں رسالے کی صورت میں شائع ہوا۔",
           tags: ["عصری مسائل", "بیوع"],
           files: [{ label: "Urdu PDF", url: "files/booklets-authored/nfts.pdf" }]
         }
@@ -84,6 +92,8 @@ window.siteContent = {
           kind: "ترجمہ و تخریج",
           description:
             "Translation, takhrīj and notes on the treatise of the Muftī of Makka, Shaykh al-Islām Burhān al-Dīn Ibrāhīm b. Ḥusayn, known as Bīrī Zāda.",
+          descriptionUr:
+            "مفتیِ مکہ شیخ الاسلام برہان الدین ابراہیم بن حسین المعروف بہ بیری زادہ کے رسالے کا ترجمہ، تخریج اور حواشی۔",
           tags: ["حج و عمرہ", "طواف", "بیری زادہ"],
           files: [{ label: "Urdu PDF", url: "files/researched-upon-booklets/al-ithaf-fazail-tawaf.pdf" }]
         },
@@ -94,6 +104,8 @@ window.siteContent = {
           kind: "ترجمہ و تخریج",
           description:
             "On someone who passes the mīqāt intending Bustān Banī ʿĀmir or another place in the Ḥill — translated and referenced from the treatise of Bīrī Zāda.",
+          descriptionUr:
+            "جو شخص میقات سے بستانِ بنی عامر یا حِل کے کسی اور مقام کے ارادے سے گزرے، اُس کے حکم پر بیری زادہ کے رسالے کا ترجمہ و تخریج۔",
           tags: ["حج و عمرہ", "احرام", "میقات", "بیری زادہ"],
           files: [{ label: "Urdu PDF", url: "files/researched-upon-booklets/bustan-bani-amir.pdf" }]
         },
@@ -104,6 +116,8 @@ window.siteContent = {
           kind: "ترجمہ و تخریج",
           description:
             "Translation, introduction, takhrīj and marginal notes on the treatise of ʿAllāma Akmal al-Dīn al-Bābartī, author of ʿInāya Sharḥ al-Hidāya, on selling an animal for an animal on deferred terms.",
+          descriptionUr:
+            "صاحبِ عنایہ شرح الہدایہ علّامہ اکمل الدین بابرتی کے رسالے کا ترجمہ، مقدمہ، تخریج اور حواشی — جانور کے بدلے جانور کی اُدھار بیع کے حکم پر۔",
           tags: ["بیوع", "بابرتی"],
           files: [{ label: "Urdu PDF", url: "files/researched-upon-booklets/bay-al-hayawan.pdf" }]
         }
@@ -122,6 +136,8 @@ window.siteContent = {
           language: "ur",
           kind: "چارٹس",
           description: "Reference charts for the rulings of iḥrām in Hajj and ʿUmra.",
+          descriptionUr:
+            "حج و عمرہ کے احرام سے متعلق مسائل کے نقشہ جات، ایک نظر میں دیکھنے کے لیے۔",
           tags: ["حج و عمرہ", "احرام"],
           files: [
             { label: "احرام کیا ہے", url: "files/presentations/hajj-charts/01-ehram-kya-hai.pdf" },
@@ -138,6 +154,8 @@ window.siteContent = {
           language: "ur",
           kind: "پریزینٹیشن",
           description: "A teaching presentation on the important rulings of fasting.",
+          descriptionUr:
+            "روزے کے اہم مسائل پر تدریسی پریزینٹیشن۔",
           tags: ["روزہ", "رمضان"],
           files: [{ label: "Urdu PDF", url: "files/presentations/roza-ke-ahem-masail.pdf" }]
         },
@@ -147,6 +165,8 @@ window.siteContent = {
           language: "ur",
           kind: "معلوماتی پمفلٹ",
           description: "What Muslims should know about Halloween.",
+          descriptionUr:
+            "ہیلو وین کے تہوار کے بارے میں مسلمانوں کے لیے ضروری معلومات۔",
           tags: ["عصری مسائل"],
           /* `preview` is a lighter copy for the page; the download stays
              the full-resolution sheet. */
@@ -183,6 +203,8 @@ window.siteContent = {
           language: "ur",
           kind: "رسالہ و پریزینٹیشن",
           description: "A short modern treatment of the law of inheritance, with the accompanying teaching slides.",
+          descriptionUr:
+            "علمِ میراث پر ایک مختصر جدید تحریر، ہمراہ تدریسی پریزینٹیشن سلائڈز۔",
           tags: ["میراث", "تدریس"],
           // The booklet itself is not uploaded yet — only the two slide decks.
           files: [
@@ -197,6 +219,8 @@ window.siteContent = {
           kind: "رسالہ",
           description:
             "A study of the seven grounds recognised in fatwā — ḍarūra, ḥāja, dafʿ-e-ḥaraj, ʿumūm-e-balwā and the rest. Part of the سلسلہءِ رسائل: اُصولِ افتاء series.",
+          descriptionUr:
+            "فتویٰ میں معتبر سات اسباب — ضرورت، حاجت، دفعِ حرج، عمومِ بلویٰ اور دیگر — کی تفصیل۔ سلسلہءِ رسائل: اُصولِ افتاء کا ایک رسالہ۔",
           tags: ["اصولِ افتاء", "سلسلہ اصولِ افتاء"],
           files: [
             {
@@ -211,6 +235,8 @@ window.siteContent = {
           language: "ar",
           kind: "تلخیص",
           description: "A restructured summary of Aʿlā Ḥaḍrat's أجلى الإعلام.",
+          descriptionUr:
+            "اعلیٰ حضرت رحمۃ اللہ علیہ کے رسالے أجلى الإعلام کی، ترتیبِ نو کے ساتھ، تلخیص۔",
           tags: ["اصولِ افتاء"],
           files: [
             {
@@ -245,6 +271,8 @@ window.siteContent = {
           language: "ur",
           kind: "مضمون",
           description: "Replies to objections raised against the Ḥanafī position.",
+          descriptionUr:
+            "احناف کے مؤقف پر اُٹھائے گئے اشکالات کے جوابات۔",
           tags: ["احناف", "جوابات"],
           files: [
             {
@@ -265,6 +293,8 @@ window.siteContent = {
       language: "en",
       description:
         "A ruling on taking tax credits from governments and tax authorities for zakāt — obligatory charity — given to certain approved organisations.",
+      descriptionUr:
+        "بعض منظور شدہ اداروں کو دی گئی زکوٰۃ پر حکومت یا محکمۂ ٹیکس سے ٹیکس کریڈٹ لینے کے حکم پر فتویٰ۔",
       files: [{ label: "Urdu PDF", url: "files/my-fatawa/zakat-tax-credit-urdu.pdf" }]
     },
     {
@@ -273,6 +303,8 @@ window.siteContent = {
       language: "en",
       description:
         "A ruling on futures and forward transactions in commodities — in commodities trading and on the exchanges.",
+      descriptionUr:
+        "اجناس کے فیوچرز اور فارورڈ سودوں کے حکم پر فتویٰ — اجناس کی تجارت میں اور ایکسچینج پر۔",
       tags: ["بیوع"],
       files: [
         { label: "Urdu PDF", url: "files/my-fatawa/commodity-exchange-urdu.pdf" },
@@ -285,6 +317,8 @@ window.siteContent = {
       language: "en",
       description:
         "What his net worth came to in present-day value and in dollar terms, and how he used it.",
+      descriptionUr:
+        "حضرت سیّدنا عبد الرحمٰن بن عوف رضی اللہ عنہ کے کل اثاثے موجودہ قیمت اور ڈالر کے حساب سے کتنے بنتے ہیں، اور آپ نے انہیں کہاں خرچ کیا۔",
       files: [
         { label: "Urdu PDF", url: "files/my-fatawa/wealth-abdul-rehman-ibn-auf-urdu.pdf" },
         { label: "English PDF", url: "files/my-fatawa/wealth-abdul-rehman-ibn-auf-english.pdf" }

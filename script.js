@@ -76,6 +76,18 @@
     );
   }
 
+  /* Both descriptions, the record's own language first. A work written
+     in Urdu leads with the Urdu; an English fatwa leads with the English. */
+  function prose(record) {
+    var rtl = site.direction(record.language) === 'rtl';
+    return (rtl
+      ? [[record.descriptionUr, 'ur'], [record.description, record.language]]
+      : [[record.description, record.language], [record.descriptionUr, 'ur']])
+      .filter(function (pair) { return pair[0]; })
+      .map(function (pair) { return site.proseMarkup(pair[0], '', pair[1]); })
+      .join('');
+  }
+
   function workMarkup(work) {
     /* A post has no file and needs none — the writing is the page. Only a
        record that is waiting for a document says so. */
@@ -91,7 +103,7 @@
       '</summary>' +
       '<div class="work-detail">' +
       (date ? '<p class="work-date">' + site.escapeHtml(date) + '</p>' : '') +
-      (work.description ? site.proseMarkup(work.description) : '') +
+      prose(work) +
       status +
       '<div class="work-actions">' +
       '<a class="text-link" href="' + site.escapeHtml(site.recordHref(work)) + '">' +
@@ -136,7 +148,7 @@
         return (
           '<a class="ruling" href="work.html?work=' + encodeURIComponent(ruling.id) + '"' + searchAttr(ruling.id) + '>' +
           site.titleMarkup(ruling, 'h3') +
-          (ruling.description ? site.proseMarkup(ruling.description) : '') +
+          prose(ruling) +
           '<span class="ruling-open">Read →</span>' +
           '</a>'
         );

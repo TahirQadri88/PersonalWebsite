@@ -127,6 +127,15 @@ h1, h2, h3 {
   text-transform: none;
 }
 
+/* An Arabic phrase quoted inside an English sentence — a book title in
+   a description. The paragraph stays Latin; only the phrase takes Naskh,
+   and only at the size the surrounding line can carry. */
+.arabic-inline {
+  font-family: var(--font-arabic);
+  font-size: 1.08em;
+  line-height: 1;
+}
+
 /* A label that happens to be Urdu or Arabic keeps label proportions —
    it must not inflate to title size — but takes the right script. The
    same goes for a download button whose label is Urdu. */
@@ -626,6 +635,28 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 /* 24px, not 18px: it has to clear the invisible touch padding on the
    links above, or a wrapped second row steals taps from the first. */
 .work-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; }
+
+/* Opening a PDF and saving it are two different wants, and one link
+   could only serve the first: the browser's viewer had to render the
+   whole booklet before anything could be kept. They are now a pair —
+   the title reads it, the second link puts it on the device. */
+.file-item { display: inline-flex; align-items: center; gap: 20px; }
+.file-download {
+  position: relative;
+  flex: none;
+  color: var(--gold-on-light);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  border-bottom: 1px solid currentColor;
+  white-space: nowrap;
+}
+/* The same invisible 44px the other small links carry, so a thumb can
+   land on it. Narrower than theirs — these two sit 20px apart. */
+.file-download::after { content: ""; position: absolute; inset: -12px -6px; }
+.file-download:hover { color: var(--moss-deep); }
 .work-pending summary { opacity: 0.72; }
 
 .empty-state { padding: 28px; background: var(--card); border: 1px solid var(--line); color: var(--muted); }
@@ -720,8 +751,20 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .work-hero h1.urdu { font-size: clamp(26px, 3.6vw, 48px); line-height: 1.95; }
 .work-hero h1.arabic { font-size: clamp(30px, 4vw, 54px); line-height: 1.6; }
 .work-page-description { max-width: 62ch; margin: 24px 0 18px; color: #4b5852; font-size: 17px; }
-.work-page-files { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 22px; }
+/* An English line on an Urdu page still reads left to right — but the
+   block is set against the right margin with everything else. Left
+   where it fell naturally, it floated in the middle of the page with
+   nothing above or below it to line up against. */
+.work-hero[dir="rtl"] .work-page-description[dir="ltr"],
+.work-hero[dir="rtl"] .work-date,
+.work-hero[dir="rtl"] .availability-note { text-align: right; }
+.work-page-files { display: flex; flex-wrap: wrap; gap: 14px 22px; margin-top: 22px; }
 .work-page-files .button { background: var(--moss-deep); color: #f6f1e4; }
+/* Here the pair stacks: the button reads it, the line under it saves it.
+   Side by side, six charts would have made twelve things in a row. */
+.work-page-files .file-item { flex-direction: column; align-items: stretch; gap: 9px; }
+.work-page-files .file-download { border-bottom: 0; text-align: center; }
+.work-page-files .file-download::after { inset: -12px -6px; }
 
 /* Charts and pamphlets shown, not just offered. Each one links to the
    full-size file, so the thumbnail only has to be legible enough to tell

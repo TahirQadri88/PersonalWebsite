@@ -276,7 +276,8 @@
       pretty ? '        <p class="work-date">' + e(pretty) + '</p>' : null,
       /* Through the same helper the rest of the site uses, so a description
          written in Urdu comes out in Nastaliq here too. */
-      record.description ? '        ' + site.proseMarkup(record.description, 'work-page-description') : null,
+      record.descriptionUr ? '        ' + site.proseMarkup(record.descriptionUr, 'work-page-description', 'ur') : null,
+      record.description ? '        ' + site.proseMarkup(record.description, 'work-page-description', record.language) : null,
       '',
       '        <div class="post-body ' + scriptClass + '" id="post-body" lang="' + e(record.language || 'en') + '" dir="' + (rtl ? 'rtl' : 'ltr') + '">',
       bodyToHtml(bodies[record.id], 10),
@@ -393,14 +394,22 @@
       markDirty();
     });
 
-    /* description */
-    var descField = field('Description', 'one or two lines — this is what search and Google read');
+    /* description — both languages; either may be left empty */
+    var descField = field('Description (English)', 'one or two lines — this is what search and Google read');
     descField.appendChild(
       textArea(record.description, function (value) {
         record.description = value.trim() || undefined;
       })
     );
     fields.appendChild(descField);
+
+    var descUrField = field('Description (Urdu)', 'the same in Urdu — shown above the English on an Urdu work');
+    var descUrBox = textArea(record.descriptionUr, function (value) {
+      record.descriptionUr = value.trim() || undefined;
+    });
+    applyScript(descUrBox, 'ur');
+    descUrField.appendChild(descUrBox);
+    fields.appendChild(descUrField);
 
     /* tags */
     var tagField = field('Tags', 'separated by commas');
@@ -605,6 +614,7 @@
       entry.record.id,
       entry.record.title,
       entry.record.description,
+      entry.record.descriptionUr,
       entry.category ? entry.category.title : 'fatwa fatawa'
     ]
       .filter(Boolean)
@@ -768,6 +778,7 @@
     '     language: "ur",                   // "ur" = Nastaleeq, "ar" = Naskh, "en" = English',
     '     kind: "رسالہ",                     // small label: رسالہ / چارٹ / پریزینٹیشن / ترجمہ و تخریج / مضمون / فتویٰ',
     '     description: "One or two lines.",  // optional',
+    '     descriptionUr: "وہی بات اردو میں۔",   // optional',
     '     tags: ["حج و عمرہ"],               // optional, also searchable',
     '     files: [                           // optional; leave out entirely if nothing is uploaded yet',
     '       { label: "Urdu PDF", url: "files/my-file.pdf" },',
@@ -809,6 +820,7 @@
     if (record.kind) lines.push(pad + 'kind: ' + str(record.kind));
     if (record.date) lines.push(pad + 'date: ' + str(record.date));
     if (record.description) lines.push(pad + 'description: ' + str(record.description));
+    if (record.descriptionUr) lines.push(pad + 'descriptionUr: ' + str(record.descriptionUr));
     if (record.tags && record.tags.length) {
       lines.push(pad + 'tags: [' + record.tags.map(str).join(', ') + ']');
     }

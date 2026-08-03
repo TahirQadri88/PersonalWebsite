@@ -34,16 +34,72 @@
     );
   }
 
-  /* True when a string is written in Arabic script. Used for file labels,
-     which the author writes in whichever script suits the document — a
-     label reading احرام کیا ہے must not come out in the Latin UI font. */
+  /* True when a string contains any Arabic-script letter. Used for file
+     labels, which the author writes in whichever script suits the
+     document — a label reading احرام کیا ہے must not come out in the
+     Latin UI font. */
   var ARABIC_SCRIPT = /[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/;
+  var ARABIC_CHARS = /[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/g;
+  var LATIN_CHARS = /[A-Za-zÀ-ɏḀ-ỿ]/g;
 
   function isArabicScript(value) {
     return ARABIC_SCRIPT.test(String(value == null ? '' : value));
   }
 
-  /* Download / open buttons. Returns '' when nothing is attached yet. */
+  /* Which script a passage is mostly written in.
+
+     "A restructured summary of Aʿlā Ḥaḍrat's أجلى الإعلام" is an English
+     sentence with an Arabic title quoted inside it. Asking only whether
+     any Arabic letter was present called the whole thing Arabic, so the
+     sentence was set right to left in Nastaliq and came out reversed on
+     the page. Counting decides it instead: the script that owns most of
+     the letters owns the paragraph. */
+  function dominantScript(value) {
+    var text = String(value == null ? '' : value);
+    var arabic = (text.match(ARABIC_CHARS) || []).length;
+    if (!arabic) return 'latin';
+    return arabic >= (text.match(LATIN_CHARS) || []).length ? 'arabic' : 'latin';
+  }
+
+  /* Escapes a passage, wrapping each Arabic-script run in a span so it
+     takes an Arabic face. Neither Newsreader nor DM Sans has any Arabic
+     in it, so a phrase quoted inside an English line fell to whatever
+     the system happened to substitute. The paragraph itself stays left
+     to right — only the run inside it is marked. */
+  var ARABIC_RUN = /[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿][؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿  ]*/g;
+
+  function mixedMarkup(value) {
+    var text = String(value == null ? '' : value);
+    var out = '';
+    var last = 0;
+    var match;
+    ARABIC_RUN.lastIndex = 0;
+    while ((match = ARABIC_RUN.exec(text))) {
+      /* A run may have swallowed the space that separates it from the
+         next English word. Give it back, or the two collide. */
+      var run = match[0].replace(/[\s ]+$/, '');
+      out += escapeHtml(text.slice(last, match.index));
+      out += '<span class="arabic-inline" lang="ar" dir="rtl">' + escapeHtml(run) + '</span>';
+      last = match.index + run.length;
+      ARABIC_RUN.lastIndex = last;
+    }
+    return out + escapeHtml(text.slice(last));
+  }
+
+  /* A link to a file, and beside it a link that saves it.
+
+     Clicking a PDF used to open it in the browser's viewer and nothing
+     else, so a reader who wanted the file on their device had to wait
+     for the whole thing to render first — slow work on a phone with a
+     long booklet. The two are now separate: the title opens it to read,
+     the second link puts it on the device.
+
+     `download` only works on files served from this site. A link to
+     Google Drive or anywhere else is another origin, and the browser
+     ignores the attribute there — so that file offers opening only,
+     rather than a Save that quietly does something else. */
+  var OFFSITE = /^[a-z][a-z0-9+.-]*:/i;
+
   function fileLinks(record, className) {
     if (!record.files || !record.files.length) return '';
     return record.files
@@ -53,11 +109,19 @@
            read off the label, so no existing entry needs editing. */
         var language = file.language || (isArabicScript(label) ? 'ur' : 'en');
         var rtl = language === 'ur' || language === 'ar';
-        return (
+        var url = escapeHtml(file.url);
+        var open =
           '<a class="' + (className || 'document-link') + (rtl ? ' ' + scriptClass(language) : '') + '"' +
           (rtl ? ' lang="' + language + '" dir="rtl"' : '') +
-          ' href="' + escapeHtml(file.url) + '" target="_blank" rel="noopener">' +
-          escapeHtml(label) + ' <span aria-hidden="true">↗</span></a>'
+          ' href="' + url + '" target="_blank" rel="noopener">' +
+          escapeHtml(label) + ' <span aria-hidden="true">↗</span></a>';
+        if (OFFSITE.test(String(file.url || ''))) return '<span class="file-item">' + open + '</span>';
+        return (
+          '<span class="file-item">' + open +
+          '<a class="file-download" href="' + url + '" download' +
+          ' aria-label="Download ' + escapeHtml(label) + '">' +
+          'Download <span aria-hidden="true">↓</span></a>' +
+          '</span>'
         );
       })
       .join('');
@@ -116,14 +180,24 @@
   /* A paragraph of prose from content.js, in whatever script it is
      written in. Descriptions and blurbs were assumed to be English —
      every one of them was — so an Urdu description came out in whatever
-     the system happened to substitute rather than in Nastaliq. */
-  function proseMarkup(text, className) {
-    var rtl = isArabicScript(text);
-    var classes = [className, rtl ? 'urdu' : ''].filter(Boolean).join(' ');
+     the system happened to substitute rather than in Nastaliq.
+
+     `language` says which Arabic-script face to reach for when the
+     passage turns out to be right-to-left: "ar" gives Naskh, anything
+     else Nastaliq. It is a hint, not a instruction — the text itself
+     decides the direction. */
+  function proseMarkup(text, className, language) {
+    var rtl = dominantScript(text) === 'arabic';
+    var script = rtl ? (language === 'ar' ? 'arabic' : 'urdu') : '';
+    var classes = [className, script].filter(Boolean).join(' ');
+    /* dir is always written out, never left to be inherited. The work
+       page sets itself right to left for an Urdu work, and an English
+       paragraph that said nothing about itself was inheriting that and
+       coming out reversed. */
     return (
       '<p' + (classes ? ' class="' + classes + '"' : '') +
-      (rtl ? ' lang="ur" dir="rtl"' : '') + '>' +
-      escapeHtml(text) +
+      (rtl ? ' lang="' + (language === 'ar' ? 'ar' : 'ur') + '" dir="rtl"' : ' dir="ltr"') + '>' +
+      (rtl ? escapeHtml(text) : mixedMarkup(text)) +
       '</p>'
     );
   }
@@ -234,6 +308,7 @@
         String(record.id || '').replace(/-/g, ' '),
         record.title,
         record.description,
+        record.descriptionUr,
         record.kind,
         (record.tags || []).join(' '),
         record.category && record.category.title,

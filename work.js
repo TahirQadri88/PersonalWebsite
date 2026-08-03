@@ -61,13 +61,35 @@
   var backHref = record.category.id === 'rulings' ? 'index.html#rulings' : 'index.html#' + record.category.id;
   var files = site.fileLinks(record, 'button');
 
+  /* An Urdu booklet's page should read as an Urdu page. The kind label
+     and the title were already set right to left, but everything under
+     them — the description, the buttons, the tags — still began at the
+     left margin, so the page had two edges and belonged to neither. The
+     whole block now takes the direction of the work itself. */
+  var rtl = site.direction(record.language) === 'rtl';
+
+  /* The work's own language first, then the other. */
+  var prose = (rtl
+    ? [[record.descriptionUr, 'ur'], [record.description, record.language]]
+    : [[record.description, record.language], [record.descriptionUr, 'ur']])
+    .filter(function (pair) { return pair[0]; })
+    .map(function (pair) { return site.proseMarkup(pair[0], 'work-page-description', pair[1]); })
+    .join('');
+
   main.innerHTML =
-    '<section class="work-hero">' +
-    '<a class="back-link" href="' + site.escapeHtml(backHref) + '">← ' + site.escapeHtml(record.category.title) + '</a>' +
+    '<section class="work-hero"' + (rtl ? ' dir="rtl"' : '') + '>' +
+    /* The arrow points the way back, which on a right-to-left page is
+       rightwards. Written first either way: bidi puts the first thing
+       at the reading edge, so it lands left on one and right on the
+       other without a second rule. */
+    '<a class="back-link" href="' + site.escapeHtml(backHref) + '">' +
+    '<span aria-hidden="true">' + (rtl ? '→' : '←') + '</span> ' +
+    site.escapeHtml(record.category.title) +
+    '</a>' +
     (record.kind ? '<p class="section-label urdu" lang="ur" dir="rtl">' + site.escapeHtml(record.kind) + '</p>' : '') +
     site.titleMarkup(record, 'h1') +
     (site.formatDate(record.date) ? '<p class="work-date">' + site.escapeHtml(site.formatDate(record.date)) + '</p>' : '') +
-    (record.description ? site.proseMarkup(record.description, 'work-page-description') : '') +
+    prose +
     (files
       ? '<div class="work-page-files">' + files + '</div>'
       : '<p class="availability-note">This one isn’t published here yet. Write to the author if you need it.</p>') +

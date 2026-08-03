@@ -43,6 +43,7 @@ hand — useful if you would rather not keep a token.
   language: "ur",
   kind: "رسالہ",
   description: "One or two lines about it.",
+  descriptionUr: "وہی بات اردو میں۔",
   tags: ["میراث"],
   files: [
     { label: "Urdu PDF", url: "files/ilm-ul-meerath.pdf" },
@@ -70,7 +71,16 @@ the whole `files` line out if nothing is ready yet; the work then shows as
 **`kind`** is the small Urdu label beside the title — رسالہ, چارٹ, پریزینٹیشن,
 ترجمہ و تخریج, مضمون. It tells the reader what form the work takes.
 
+**`descriptionUr`** is the same sentence in Urdu, and either may be left
+out. On an Urdu or Arabic work the Urdu is shown first and the English under
+it; on an English fatwa it is the other way round. Both are searchable.
+
 **`tags`** appear as small pills and are included in the search.
+
+**Each file gets two links** — the label opens it to read, and *Download* puts
+it on the device without waiting for the browser's viewer. The second link
+only appears for files kept in `files/`; a link out to Google Drive cannot be
+made to save, so it offers opening alone rather than a button that lies.
 
 ## Writing a post
 
