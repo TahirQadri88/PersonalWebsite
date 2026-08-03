@@ -133,9 +133,10 @@ out of step with each other.
 
 ## The editor's passphrase
 
-`admin.html` asks for a passphrase. It is **maktaba** — change it. The word is
-compared against a SHA-256 digest at the top of `admin.js`, and the comment
-there gives the one line to run in the browser console to make a new one.
+`admin.html` asks for a passphrase. The word itself is written down nowhere —
+what `admin.js` holds is a SHA-256 digest of it, which cannot be turned back
+into the word. The comment beside that digest gives the one line to run in the
+browser console if you ever want to change it.
 
 It is a latch, not a lock: the site is static, so there is no server to check
 anything, and anyone determined can read past it in the developer tools. That
