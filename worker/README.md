@@ -184,7 +184,7 @@ node test.mjs
 ```
 
 No dependencies and no network — Cloudflare's signing keys and the GitHub API
-are both stood in for. Thirty-one checks, most of them proving the Worker
+are both stood in for. Thirty-six checks, most of them proving the Worker
 refuses things — for both ways of signing in: an absent token, a forged one,
 an expired one, one for a different project or application, one for a
 different person, an Access token offered where a Firebase one is wanted, an
@@ -204,8 +204,11 @@ Only these, and nothing else, whatever it is asked for:
 
 A single request may carry all of them and they are committed together, so
 `content.js` and `sitemap.xml` can never land out of step. `content.js` is
-executed before the commit is made — if it would not parse, nothing is sent
-at all, because a broken `content.js` empties the library for every visitor.
+checked before the commit is made — brackets, quotes and comments all closed,
+and `window.siteContent` actually set — because a broken one empties the
+library for every visitor. The editor has already run the file properly in
+the browser; the Workers runtime forbids building code from strings, so here
+it is read rather than run.
 
 ## If something goes wrong
 
@@ -219,7 +222,7 @@ The editor prints what happened on the line under its opening paragraph.
 | *…may not publish* | You are signed in as a different address than `EDITOR_EMAIL`. |
 | *That email and password do not match* | Firebase said no. Check the user exists under Authentication → Users. |
 | *the stored GitHub token was refused* | It expired. Make a new one and `wrangler secret put GITHUB_TOKEN` again. |
-| *content.js did not parse* | Nothing was committed. Something in the form is malformed. |
+| *content.js is missing … / has a stray … / unclosed …* | Nothing was committed. Tell me and I will look — it should not happen. |
 | *the Worker has no way to check who you are* | Section 4 was skipped. It refuses rather than run unprotected. |
 
 **Files…** always works regardless, and needs no token and no Worker — it

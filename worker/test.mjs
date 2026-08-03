@@ -109,11 +109,30 @@ t('path traversal refused', r.status===400 && /not a file the editor may write/.
 r = await post([{path:'admin.js',text:'x'}], JWT);
 t('writing admin.js refused', r.status===400, JSON.stringify(r));
 
-r = await post([{path:'content.js',text:'window.siteContent = {{{ broken'}], JWT);
-t('content.js that does not parse is refused', r.status===400 && /did not parse/.test(r.body.message), JSON.stringify(r));
-
 r = await post([{path:'content.js',text:'window.siteContent = { rulings: [] };'}], JWT);
 t('content.js with no categories is refused', r.status===400 && /categories/.test(r.body.message), JSON.stringify(r));
+
+/* The malformed shapes the checker can catch by reading rather than
+   running — an upload cut short, an edit that drops a brace. */
+r = await post([{path:'content.js',text:'window.siteContent = { categories: [ { works: [] } '}], JWT);
+t('content.js cut short is refused', r.status===400 && /closing bracket/.test(r.body.message), JSON.stringify(r));
+
+r = await post([{path:'content.js',text:'window.siteContent = { categories: [] } };'}], JWT);
+t('content.js with a stray brace is refused', r.status===400 && /stray/.test(r.body.message), JSON.stringify(r));
+
+r = await post([{path:'content.js',text:'window.siteContent = { categories: [{ title: "unclosed }] };'}], JWT);
+t('content.js with an unclosed quote is refused', r.status===400 && /quote/.test(r.body.message), JSON.stringify(r));
+
+r = await post([{path:'content.js',text:'window.siteContent = { categories: [] }; /* never closed'}], JWT);
+t('content.js with an unclosed comment is refused', r.status===400 && /comment/.test(r.body.message), JSON.stringify(r));
+
+r = await post([{path:'content.js',text:'var x = 1;'}], JWT);
+t('content.js that sets nothing is refused', r.status===400 && /siteContent/.test(r.body.message), JSON.stringify(r));
+
+/* And the shapes it must NOT trip over: braces inside strings and
+   comments, and apostrophes in the prose. */
+r = await post([{path:'content.js',text:'/* a } and a ] in a comment */\nwindow.siteContent = { categories: [{ id: "a", blurb: "a { and a [ and an isn\'t", works: [] }], rulings: [] };'}], JWT);
+t('braces inside strings and comments do not trip it', r.status===200, JSON.stringify(r));
 
 r = await post([{path:'content.js',text:'x'.repeat(600*1024)}], JWT);
 t('oversized file refused', r.status===400 && /too large/.test(r.body.message), JSON.stringify(r));

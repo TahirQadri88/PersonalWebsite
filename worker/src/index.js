@@ -256,22 +256,70 @@ function checkFiles(files) {
   });
 }
 
-/* content.js is executed by every visitor's browser. If the editor ever
-   sends something that does not parse, the library goes blank for
-   everyone — so it is run here, in a Function with no access to anything,
-   before it is allowed anywhere near the repository. */
+/* content.js is loaded by every visitor's browser. If the editor ever
+   sends something malformed the library goes blank for everyone, so it is
+   checked before it is allowed anywhere near the repository.
+
+   The editor has already run it through `new Function` in the browser,
+   which is the stronger test. That cannot be repeated here: the Workers
+   runtime forbids building code from strings, and an earlier version of
+   this file tried anyway — the refusal came back as "content.js did not
+   parse", blaming the author for a check that never ran.
+
+   So this reads the text instead of executing it: it walks the file
+   tracking strings and comments, and counts the brackets. That catches
+   what actually goes wrong — an upload cut short, an edit that loses a
+   brace — without generating any code. */
 function checkContentParses(files) {
   const content = files.find((file) => file.path === 'content.js');
   if (!content) return;
-  let holder = {};
-  try {
-    // eslint-disable-next-line no-new-func
-    new Function('window', content.text).call(holder, holder);
-  } catch (error) {
-    throw new HttpError(400, `content.js did not parse, so nothing was committed: ${error.message}`);
+  const text = content.text;
+
+  if (!/window\s*\.\s*siteContent\s*=/.test(text)) {
+    throw new HttpError(400, 'content.js does not set window.siteContent, so nothing was committed');
   }
-  if (!holder.siteContent || !Array.isArray(holder.siteContent.categories)) {
-    throw new HttpError(400, 'content.js parsed but held no categories, so nothing was committed');
+  if (!/categories\s*:/.test(text)) {
+    throw new HttpError(400, 'content.js names no categories, so nothing was committed');
+  }
+
+  const pairs = { '}': '{', ']': '[', ')': '(' };
+  const stack = [];
+  let quote = '';
+  let comment = '';
+
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    const next = text[i + 1];
+
+    if (comment === 'line') {
+      if (ch === '\n') comment = '';
+      continue;
+    }
+    if (comment === 'block') {
+      if (ch === '*' && next === '/') { comment = ''; i += 1; }
+      continue;
+    }
+    if (quote) {
+      if (ch === '\\') { i += 1; continue; }
+      if (ch === quote) quote = '';
+      continue;
+    }
+    if (ch === '/' && next === '/') { comment = 'line'; i += 1; continue; }
+    if (ch === '/' && next === '*') { comment = 'block'; i += 1; continue; }
+    if (ch === '"' || ch === "'" || ch === '`') { quote = ch; continue; }
+
+    if (ch === '{' || ch === '[' || ch === '(') stack.push(ch);
+    else if (pairs[ch]) {
+      if (stack.pop() !== pairs[ch]) {
+        throw new HttpError(400, `content.js has a stray ${ch}, so nothing was committed`);
+      }
+    }
+  }
+
+  if (quote) throw new HttpError(400, 'content.js has a quote that is never closed, so nothing was committed');
+  if (comment === 'block') throw new HttpError(400, 'content.js has a comment that is never closed, so nothing was committed');
+  if (stack.length) {
+    throw new HttpError(400, `content.js is missing ${stack.length} closing bracket${stack.length === 1 ? '' : 's'}, so nothing was committed`);
   }
 }
 
