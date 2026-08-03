@@ -81,6 +81,11 @@ published but unfindable.
 - Every work and fatwa has its files. Two things are still promised: the
   `ilm-ul-meerath` booklet itself — only its slides are up — and the study
   notes, which belong in the `ilmi-mawad` category.
+- The `posts` category is empty and hidden. The machinery is all there —
+  `page`/`date` entries, the editor's writing box, the page generator — and the
+  author will start writing when the way in is easier than it is now. The plan
+  is a GitHub Action: commit one Markdown file from the phone app, and it builds
+  the page, the entry and the sitemap line.
 - The address is `https://tahirqadri.com.pk/` — a PKNIC domain on Cloudflare
   DNS, served by GitHub Pages. It is written in five places: `site.baseUrl` in
   `content.js`, `robots.txt`, `sitemap.xml`, the canonical and sharing tags in
