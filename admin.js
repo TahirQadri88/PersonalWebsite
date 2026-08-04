@@ -2095,7 +2095,19 @@
       .catch(function (error) {
         publishing = false;
         say('Nothing was published: ' + error.message, 'bad');
-        if (/token/.test(error.message)) {
+        /* This dialog asks for a personal GitHub token, which only means
+           anything in the no-backend path — behind the Worker there is
+           nothing to type into it, and re-opening it there sends the
+           same request again with the same result, which reads as the
+           editor being stuck. It used to open on the word "token"
+           appearing anywhere in the error, which also matched two
+           messages that have nothing to do with a token this device
+           could supply: the Worker's own stored GitHub secret expiring,
+           and a sign-in that has lapsed. Both are real, both are already
+           said plainly on the line above — reload and sign in again for
+           the second, a new `wrangler secret put GITHUB_TOKEN` for the
+           first, worker/README.md has both. */
+        if (!BACKEND && /token/.test(error.message)) {
           tokenError.textContent = error.message;
           tokenDialog.showModal();
         }

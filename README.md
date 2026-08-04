@@ -149,29 +149,38 @@ quietly emptying your post.
 
 ## Sharing and printing
 
-Every post and every work page carries two buttons under it: **Share** and
-**Print**.
+Every work, every fatwa and every post carries a **Share** button — on its
+own page and next to it in the library list on the homepage. A post also
+carries **Print**; a work or a fatwa does not, because its page is a record
+of a PDF, not the thing itself, and printing that page would only print a
+Download button that does nothing on paper. The PDF already prints itself.
 
 **Share** writes the caption for you, so what arrives is not a bare address:
 
 ```
+مضمون
 The Books That Aren’t Coming Back
+by Abul Laith Muhammad Tahir Qadri An-Naeemi
 
 Books are being bought and shredded to feed machines — what the court
 allowed, what it cost, and why a printed copy still matters.
 
-Abul Laith Muhammad Tahir Qadri An-Naeemi
 https://tahirqadri.com.pk/posts/books-that-arent-coming-back.html
 ```
 
-The line under the title is the **description** from `content.js` — the same
-one Google shows — so a description worth reading is worth writing. On an
-Urdu or Arabic piece the Urdu description is used and the Urdu form of the
-name, because whoever receives it reads the caption before deciding whether
-to open the page.
+**Kind**, **title**, **by** whoever wrote it — read top to bottom the way a
+masthead does — then the **description** from `content.js`, the same one
+Google shows, so a description worth reading is worth writing. On an Urdu or
+Arabic piece the Urdu description leads and the byline reads **از** rather
+than **by**, because whoever receives it reads the caption before deciding
+whether to open the page. `kind` is always the small Urdu label, whatever
+script the piece itself is in — the same as the page shows it — so it stays
+on its own line above the title rather than beside it.
 
 On a phone it opens the usual sharing sheet, so WhatsApp is one tap. On a
-computer it copies the caption and the link together, ready to paste.
+computer it copies the caption and the link together, ready to paste. A
+share sheet that fails to open for a real reason — not the reader simply
+closing it — falls back to the copy too, so a tap never does nothing.
 
 **Print** gives a clean sheet: no header, no menus, no buttons — the title,
 the date, the writing, the tags, and one line at the foot with the author's
@@ -179,9 +188,10 @@ name and the page's address, so a printed copy can be traced back. Choose
 *Save as PDF* in the print dialog and you have a PDF to send or keep. Urdu
 prints in Nastaleeq at a size that survives paper.
 
-Nothing needs to be done to a post to give it these. They are added by
-`common.js` when the page opens, so posts written before this work have them
-too, and posts written later will as well.
+Nothing needs to be done to a post — or a work, for Share — to give it
+these. They are added by `common.js` when the page opens, so everything
+written before this feature existed has them too, and everything written
+after it will as well.
 
 ## Adding a fatwa
 

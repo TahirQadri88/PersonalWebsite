@@ -412,6 +412,19 @@
      `navigator.share` gets the caption without the address, since every
      sheet appends the link itself and it would otherwise arrive twice.
      Only the clipboard copy carries both. */
+  /* Kind, title, byline, tight together — the way a masthead reads: what
+     this is, what it's called, who wrote it — then a blank line, the
+     description, another blank line, the address. A bare name sitting
+     on its own line before the link read like a signature that had
+     wandered off from what it was signing; "by" or "از" says plainly
+     what the line is.
+
+     `kind` is always written in Urdu — رسالہ, فتویٰ, مضمون — whatever
+     script the piece itself is in; that is the whole site's own
+     convention, not something invented for this caption, so it sits on
+     its own line here too rather than beside an English title where
+     mixing the two directions on one line of plain text has no dir
+     attribute to fall back on. */
   function shareCaption(record, url, withUrl) {
     var rtl = direction(record.language) === 'rtl';
     var intro = rtl
@@ -421,10 +434,12 @@
       ? (content.site && content.site.nameUr) || (content.site && content.site.name)
       : (content.site && content.site.name);
 
-    var lines = [record.title];
+    var lines = [];
+    if (record.kind) lines.push(record.kind);
+    lines.push(record.title);
+    if (who) lines.push((rtl ? 'از ' : 'by ') + who);
     if (intro) lines.push('', intro);
-    if (who) lines.push('', who);
-    if (withUrl) lines.push(url);
+    if (withUrl) lines.push('', url);
     return lines.join('\n');
   }
 

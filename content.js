@@ -256,11 +256,11 @@ window.siteContent = {
           id: "alfaz-ka-intikhab",
           title: "الفاظ کا انتخاب",
           language: "ur",
-          kind: "مختصر مضامین و خیالات ( سوشل میڈیا پوسٹ )",
+          kind: "مضمون",
           date: "2026-08-03",
           description: "Importance of Choosing the Right Words and Avoiding Wrong Words",
           descriptionUr: "‏سچی بات بھی اگر بےموقع الفاظ میں کہی جائے تو لوگ اسے سننے سے پہلے ہی رد کر دیتے ہیں۔ پہلے لباس دیکھا جاتا ہے، پھر مضمون۔",
-          tags: ["Choose Your Words Wisely"],
+          tags: ["Choose Your Words Wisely", "سوشل میڈیا پوسٹ"],
           page: "posts/choice-of-words.html"
         }
       ]

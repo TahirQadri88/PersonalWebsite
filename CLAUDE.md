@@ -91,11 +91,12 @@ for a post or `works/<id>.html` otherwise — finding the mount point by
 into the generated files themselves, so a change here reaches every post and
 work already written without regenerating one of them. Print only ever
 appears on a post — `record.page` is the same field that says a page holds
-the whole piece rather than a download. The caption is the title, the
-description in the piece's own script, the author, and the link —
-`navigator.share` gets it without the link, since every sheet appends one; a
-real failure (not the reader cancelling) falls back to copying it instead of
-doing nothing. Printing is section 13 of `styles.css` and needs no script.
+the whole piece rather than a download. The caption reads kind, title, byline
+("by" / "از"), a blank line, the description, in the piece's own script —
+`shareCaption` in `common.js`. `navigator.share` gets it without the link,
+since every sheet appends one; a real failure (not the reader cancelling)
+falls back to copying it instead of doing nothing. Printing is section 13 of
+`styles.css` and needs no script.
 
 **Colour contrast.** `--gold-on-light` and `--gold-on-dark` are two different
 values for a reason. Do not collapse them into one.
