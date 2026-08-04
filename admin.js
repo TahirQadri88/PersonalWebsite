@@ -160,11 +160,22 @@
      is already there. Nothing new can be written this way that could not
      be typed by hand; the file on disk is the same either way. */
 
-  var BLOCK_MARKS = [
-    { label: 'Heading', title: 'Make this line a heading', mark: '## ' },
-    { label: 'Quote', title: 'Make this block a quotation', mark: '> ' },
-    { label: 'عربی', title: 'Set this block in Arabic', mark: '[ar] ' },
-    { label: 'English', title: 'Set this block in English', mark: '[en] ' }
+  var TOOL_GROUPS = [
+    { field: 'kind', label: 'Block', items: [
+      { value: 'p', text: '¶ Paragraph', title: 'Ordinary paragraph' },
+      { value: 'h2', text: 'Heading', title: 'A heading inside the piece' },
+      { value: 'blockquote', text: 'Quote', title: 'A quotation, set apart' }
+    ] },
+    { field: 'language', label: 'Script', items: [
+      { value: 'ur', text: 'اردو', title: 'Set this block in Urdu — Nastaleeq', cls: 'urdu' },
+      { value: 'ar', text: 'عربی', title: 'Set this block in Arabic — Naskh', cls: 'arabic' },
+      { value: 'en', text: 'English', title: 'Set this block in English' }
+    ] },
+    { field: 'align', label: 'Align', items: [
+      { value: 'r', text: '⇥ Right', title: 'Align this block to the right' },
+      { value: 'c', text: '↔ Centre', title: 'Centre this block' },
+      { value: 'l', text: '⇤ Left', title: 'Align this block to the left' }
+    ] }
   ];
 
   /* The block the cursor sits in: from the blank line before it to the
@@ -178,22 +189,28 @@
     return { start: start, end: end, text: text.slice(start, end) };
   }
 
-  function toggleMark(area, mark) {
-    var value = area.value;
-    var block = blockAround(value, area.selectionStart);
-    var body = block.text;
-    var had = body.indexOf(mark) === 0;
+  function writeBlock(b) {
+    var lead = b.kind === 'h2' ? '## ' : b.kind === 'blockquote' ? '> ' : '';
+    return lead +
+      (b.language ? '[' + b.language + '] ' : '') +
+      (b.align ? '[' + b.align + '] ' : '') +
+      b.text;
+  }
 
-    /* Only one of these can lead a block, so an existing one steps aside
-       rather than stacking up: "[ar] ## " is not a thing. */
-    BLOCK_MARKS.forEach(function (other) {
-      if (body.indexOf(other.mark) === 0) body = body.slice(other.mark.length);
-    });
-    var next = had ? body : mark + body;
+  /* Sets one thing about the block the cursor is in, leaving the other two
+     alone — a verse can be a quotation and Arabic and centred at once.
+     Pressing the same button again takes that one thing off. */
+  function applyToBlock(area, field, value) {
+    var whole = area.value;
+    var found = blockAround(whole, area.selectionStart);
+    var block = readBlock(found.text);
+    var blank = field === 'kind' ? 'p' : '';
+    block[field] = block[field] === value ? blank : value;
 
-    area.value = value.slice(0, block.start) + next + value.slice(block.end);
-    var moved = next.length - block.text.length;
-    area.selectionStart = area.selectionEnd = Math.max(block.start, area.selectionStart + moved);
+    var next = writeBlock(block);
+    area.value = whole.slice(0, found.start) + next + whole.slice(found.end);
+    var moved = next.length - found.text.length;
+    area.selectionStart = area.selectionEnd = Math.max(found.start, area.selectionStart + moved);
     area.focus();
     area.dispatchEvent(new Event('input', { bubbles: true }));
   }
@@ -208,30 +225,57 @@
 
   function writingTools(area, record) {
     var bar = el('div', 'writing-tools');
+    var buttons = [];
 
-    var para = el('button', 'writing-tool');
-    para.type = 'button';
-    para.textContent = '¶ New paragraph';
-    para.title = 'Start a new paragraph here';
-    para.addEventListener('click', function () { newParagraph(area); });
-    bar.appendChild(para);
-
-    BLOCK_MARKS.forEach(function (item) {
-      /* An Urdu post does not need a button that says "set this in
-         Urdu" — that is what it already is. */
-      if (item.mark === '[en] ' && record.language === 'en') return;
-      if (item.mark === '[ar] ' && record.language === 'ar') return;
-      var button = el('button', 'writing-tool');
-      button.type = 'button';
-      button.textContent = item.label;
-      button.title = item.title;
-      if (item.mark === '[ar] ') button.classList.add('arabic');
-      button.addEventListener('click', function () { toggleMark(area, item.mark); });
-      bar.appendChild(button);
+    TOOL_GROUPS.forEach(function (group) {
+      var box = el('div', 'writing-group');
+      var name = el('span', 'writing-group-label');
+      name.textContent = group.label;
+      box.appendChild(name);
+      group.items.forEach(function (item) {
+        var button = el('button', 'writing-tool' + (item.cls ? ' ' + item.cls : ''));
+        button.type = 'button';
+        button.textContent = item.text;
+        button.title = item.title;
+        button.setAttribute('aria-pressed', 'false');
+        button.addEventListener('click', function () {
+          applyToBlock(area, group.field, item.value);
+          refresh();
+        });
+        buttons.push({ button: button, field: group.field, value: item.value });
+        box.appendChild(button);
+      });
+      bar.appendChild(box);
     });
 
-    var note = el('span', 'writing-tools-note');
-    note.textContent = 'Put the cursor in a block, then press one. Press again to undo it.';
+    var breakBox = el('div', 'writing-group');
+    var breakLabel = el('span', 'writing-group-label');
+    breakLabel.textContent = 'Split';
+    breakBox.appendChild(breakLabel);
+    var split = el('button', 'writing-tool');
+    split.type = 'button';
+    split.textContent = '↵ New block';
+    split.title = 'Start a new paragraph here';
+    split.addEventListener('click', function () { newParagraph(area); refresh(); });
+    breakBox.appendChild(split);
+    bar.appendChild(breakBox);
+
+    /* The buttons show what the block under the cursor already is, so the
+       bar reads as the state of the writing rather than a row of verbs. */
+    function refresh() {
+      var block = readBlock(blockAround(area.value, area.selectionStart).text);
+      buttons.forEach(function (entry) {
+        var on = block[entry.field] === entry.value;
+        entry.button.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
+    ['click', 'keyup', 'input', 'focus'].forEach(function (event) {
+      area.addEventListener(event, refresh);
+    });
+    refresh();
+
+    var note = el('p', 'writing-tools-note');
+    note.textContent = 'These describe the block your cursor is in. A verse can be a quote, Arabic and centred all at once — press one from each row.';
     bar.appendChild(note);
     return bar;
   }
@@ -243,44 +287,81 @@
   var SCRIPT_MARK = { arabic: '[ar] ', latin: '[en] ', urdu: '[ur] ' };
 
   /* The page back into the plain text the box shows. */
+  /* The exact inverse, so opening a post and publishing it again without
+     touching anything produces the same file. */
   function htmlToBody(article) {
     var blocks = [];
     Array.prototype.forEach.call(article.children, function (node) {
-      var mark = '';
-      ['arabic', 'latin', 'urdu'].forEach(function (name) {
-        if (node.classList.contains(name)) mark = SCRIPT_MARK[name];
-      });
       var text = node.textContent.trim().replace(/\s+/g, ' ');
       if (!text) return;
-      if (node.tagName === 'H2') blocks.push('## ' + mark + text);
-      else if (node.tagName === 'BLOCKQUOTE') blocks.push('> ' + mark + text);
-      else blocks.push(mark + text);
+      var mark = '';
+      ['arabic', 'latin', 'urdu'].forEach(function (name) {
+        if (node.classList.contains(name)) mark += SCRIPT_MARK[name];
+      });
+      Object.keys(ALIGN).forEach(function (key) {
+        if (node.classList.contains('align-' + ALIGN[key])) mark += '[' + key + '] ';
+      });
+      var lead = node.tagName === 'H2' ? '## ' : node.tagName === 'BLOCKQUOTE' ? '> ' : '';
+      blocks.push(lead + mark + text);
     });
     return blocks.join('\n\n');
   }
 
   /* And the plain text into the page. */
+  /* What a block may carry, and in what order it is written.
+
+     A Qur'anic verse inside an Urdu piece is a quotation AND Arabic AND
+     usually centred — three things about one block, so they combine
+     rather than replace each other:
+
+       > [ar] [c] ٱدْعُ إِلَىٰ سَبِيلِ رَبِّكَ
+
+     The block kind comes first because it decides the element; the rest
+     are attributes of it and may be given in any order. */
+  var SCRIPTS = { ar: { cls: 'arabic', dir: 'rtl' },
+                  ur: { cls: 'urdu', dir: 'rtl' },
+                  en: { cls: 'latin', dir: 'ltr' } };
+  var ALIGN = { l: 'left', c: 'center', r: 'right', j: 'justify' };
+
+  function readBlock(raw) {
+    var block = String(raw || '').trim();
+    var kind = 'p';
+    if (block.indexOf('## ') === 0) { kind = 'h2'; block = block.slice(3); }
+    else if (block.indexOf('> ') === 0) { kind = 'blockquote'; block = block.slice(2); }
+
+    var language = '';
+    var align = '';
+    var token;
+    while ((token = block.match(/^\[([a-z]{1,2})\]\s*/))) {
+      var key = token[1];
+      if (SCRIPTS[key]) language = key;
+      else if (ALIGN[key]) align = key;
+      else break;
+      block = block.slice(token[0].length);
+    }
+    return { kind: kind, language: language, align: align, text: block };
+  }
+
   function bodyToHtml(text, indent) {
     var pad = ' '.repeat(indent);
     return String(text || '')
       .split(/\n\s*\n/)
-      .map(function (block) { return block.trim(); })
-      .filter(Boolean)
-      .map(function (block) {
-        var tag = 'p';
-        if (block.indexOf('## ') === 0) { tag = 'h2'; block = block.slice(3); }
-        else if (block.indexOf('> ') === 0) { tag = 'blockquote'; block = block.slice(2); }
-
+      .filter(function (raw) { return raw.trim(); })
+      .map(function (raw) {
+        var b = readBlock(raw);
+        var classes = [];
         var attrs = '';
-        var forced = block.match(/^\[(ar|en|ur)\]\s*/);
-        if (forced) {
-          var language = forced[1];
-          block = block.slice(forced[0].length);
-          attrs =
-            ' class="' + (language === 'ar' ? 'arabic' : language === 'ur' ? 'urdu' : 'latin') + '"' +
-            ' lang="' + language + '" dir="' + (language === 'en' ? 'ltr' : 'rtl') + '"';
+        if (b.language) {
+          var script = SCRIPTS[b.language];
+          classes.push(script.cls);
+          attrs += ' lang="' + b.language + '" dir="' + script.dir + '"';
         }
-        return pad + '<' + tag + attrs + '>' + site.escapeHtml(block.replace(/\s+/g, ' ')) + '</' + tag + '>';
+        /* Alignment is a class rather than a style attribute so the
+           stylesheet keeps the say, and so a post page carries no inline
+           CSS for a content-security policy to object to later. */
+        if (b.align) classes.push('align-' + ALIGN[b.align]);
+        if (classes.length) attrs = ' class="' + classes.join(' ') + '"' + attrs;
+        return pad + '<' + b.kind + attrs + '>' + site.escapeHtml(b.text.replace(/\s+/g, ' ')) + '</' + b.kind + '>';
       })
       .join('\n');
   }

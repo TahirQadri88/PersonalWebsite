@@ -93,13 +93,25 @@ than a download.
    file name for you.
 2. Give it a title, a one-line description, and write the piece in **The
    writing** box. A blank line starts a new paragraph; the buttons above the
-   box do the rest — put the cursor in a block and press **Heading**,
-   **Quote**, **عربی** or **English**, and press again to undo it. Only one
-   can lead a block, so choosing another replaces it rather than stacking.
+   box do the rest. Put the cursor in a block and the buttons light up to
+   show what that block already is.
 
-   They only type what you could type yourself: `## ` for a heading, `> ` for
-   a quote, `[ar] ` or `[en] ` to change script for one block — useful for an
-   Arabic citation inside an Urdu piece. The file is the same either way.
+   Three rows, and they **combine** — a Qur'anic verse is a quotation *and*
+   Arabic *and* centred, all at once:
+
+   | Row | Choices |
+   | --- | --- |
+   | Block | ¶ Paragraph · Heading · Quote |
+   | Script | اردو · عربی · English |
+   | Align | Right · Centre · Left |
+
+   Press a button again to take that one thing off; the other two stay.
+
+   They only type what you could type by hand: `## ` for a heading, `> ` for a
+   quote, `[ur] ` `[ar] ` `[en] ` for script, `[r] ` `[c] ` `[l] ` for
+   alignment. So `> [ar] [c] …` is a centred Arabic quotation. The file is
+   the same either way, and opening a post and republishing it untouched
+   gives back exactly the same file.
 3. Press **Publish**. It commits everything — the entry, the sitemap line and
    the page — to GitHub in a single commit, and the site is live a minute later.
    **Files…** still gives you the same files to paste in by hand if you prefer.

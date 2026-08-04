@@ -197,9 +197,50 @@
 .admin-dialog-actions { display: flex; justify-content: flex-end; }
 
 @media (max-width: 620px) {
-  .admin-row > summary { grid-template-columns: minmax(0, 1fr) 22px; }
+  /* The bar keeps one line. Three buttons at desktop size wrapped "View
+     site" onto two lines and made the sticky bar 85px tall on a screen
+     that has 900. */
+  .admin-bar { gap: 10px; padding: 10px 16px; }
+  .admin-title { font-size: 11px; letter-spacing: 0.06em; }
+  .admin-title img { width: 20px; height: 20px; }
+  .admin-actions { gap: 6px; }
+  .admin-actions .button { padding: 8px 10px; font-size: 12px; white-space: nowrap; }
+  /* Three buttons and a title do not fit across a phone, and the title was
+     losing its last letters to make room. On a phone the editor is for
+     editing and publishing; the site is one tap away in another tab. */
+  .admin-actions a.button { display: none; }
+  .admin-title { min-width: 0; }
+  /* Empty almost always, and it must not claim room it is not using —
+     given a full-width basis it squeezed the title down to five pixels
+     of the word Editor. */
+  .admin-note { flex: 0 1 auto; min-width: 0; font-size: 12px; }
+
+  /* A row has four children and this had two columns, so the title —
+     usually a long Urdu one — was landing in the 22px toggle column and
+     coming out a letter per line. Named places instead of counted ones. */
+  .admin-row > summary {
+    grid-template-columns: minmax(0, 1fr) 24px;
+    grid-template-areas:
+      "title toggle"
+      "id    toggle";
+    align-items: start;
+    gap: 4px 10px;
+    padding: 12px 14px;
+  }
+  .admin-row-title { grid-area: title; }
+  .admin-row-id { grid-area: id; }
   .admin-row-meta { display: none; }
+  .admin-row > summary .toggle { grid-area: toggle; justify-self: end; }
+
+  .admin-fields { padding: 4px 14px 18px; }
   .admin-file { grid-template-columns: 1fr; }
+  .admin-row-tools { gap: 14px; }
+
+  /* The writing buttons stack into rows of their own group rather than
+     running together into one wall of pills. */
+  .writing-tools { gap: 8px; padding: 9px 10px; }
+  .writing-group { flex: 1 1 100%; }
+  .writing-group-label { flex: 1 1 100%; margin-bottom: -2px; }
 }
 
 /* Publishing */
@@ -222,9 +263,21 @@
 .writing-tools {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 6px 18px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  background: var(--paper-warm);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.writing-group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.writing-group-label {
+  margin-right: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
 }
 .writing-tool {
   padding: 6px 12px;
@@ -240,6 +293,12 @@
 }
 .writing-tool:hover { border-color: var(--gold-rule); background: #f4eddc; }
 .writing-tool:focus-visible { outline: 2px solid var(--gold-rule); outline-offset: 1px; }
+/* What the block already is, not merely what the button would do. */
+.writing-tool[aria-pressed="true"] {
+  background: var(--moss-deep);
+  border-color: var(--moss-deep);
+  color: #f6f1e4;
+}
 /* Nastaliq has no Latin and the Latin faces have no Arabic, so a button
    labelled in one script has to say which it is. */
 .writing-tool.arabic {
@@ -249,6 +308,8 @@
 }
 .writing-tools-note {
   flex: 1 1 100%;
+  margin: 2px 0 0;
   color: var(--muted);
   font-size: 12px;
+  line-height: 1.5;
 }
