@@ -103,4 +103,8 @@
     site.imageGallery(record) +
     site.tagMarkup(record) +
     '</section>';
+
+  /* Appended rather than written into the string above, because the
+     buttons carry their own listeners. Same helper the post pages use. */
+  main.querySelector('.work-hero').appendChild(site.pageTools(record, pageUrl));
 })();

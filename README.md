@@ -126,6 +126,42 @@ the file) — it reads the existing page back into the box. Opened from the file
 system the browser will not let it read the file, and it says so rather than
 quietly emptying your post.
 
+## Sharing and printing
+
+Every post and every work page carries two buttons under it: **Share** and
+**Print**.
+
+**Share** writes the caption for you, so what arrives is not a bare address:
+
+```
+The Books That Aren’t Coming Back
+
+Books are being bought and shredded to feed machines — what the court
+allowed, what it cost, and why a printed copy still matters.
+
+Abul Laith Muhammad Tahir Qadri An-Naeemi
+https://tahirqadri.com.pk/posts/books-that-arent-coming-back.html
+```
+
+The line under the title is the **description** from `content.js` — the same
+one Google shows — so a description worth reading is worth writing. On an
+Urdu or Arabic piece the Urdu description is used and the Urdu form of the
+name, because whoever receives it reads the caption before deciding whether
+to open the page.
+
+On a phone it opens the usual sharing sheet, so WhatsApp is one tap. On a
+computer it copies the caption and the link together, ready to paste.
+
+**Print** gives a clean sheet: no header, no menus, no buttons — the title,
+the date, the writing, the tags, and one line at the foot with the author's
+name and the page's address, so a printed copy can be traced back. Choose
+*Save as PDF* in the print dialog and you have a PDF to send or keep. Urdu
+prints in Nastaleeq at a size that survives paper.
+
+Nothing needs to be done to a post to give it these. They are added by
+`common.js` when the page opens, so posts written before this work have them
+too, and posts written later will as well.
+
 ## Adding a fatwa
 
 Same shape, added to the `rulings` list at the bottom of `content.js`. Fatawa get

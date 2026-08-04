@@ -386,6 +386,130 @@
     };
   }
 
+  /* ---- Sending a piece on, and taking it off the screen -------------
+
+     What gets shared is usually a bare address, and the person on the
+     other end has no idea what is behind it before they tap. So the
+     caption is written here rather than left to whoever is sharing: the
+     title, the one line that says what it is, the author, and then the
+     link.
+
+     The line comes in the script the piece is written in — an Urdu post
+     is introduced in Urdu — because the caption is read before the page
+     is opened, by someone who may not open it at all.
+
+     `navigator.share` gets the caption without the address, since every
+     sheet appends the link itself and it would otherwise arrive twice.
+     Only the clipboard copy carries both. */
+  function shareCaption(record, url, withUrl) {
+    var rtl = direction(record.language) === 'rtl';
+    var intro = rtl
+      ? record.descriptionUr || record.description
+      : record.description || record.descriptionUr;
+    var who = rtl
+      ? (content.site && content.site.nameUr) || (content.site && content.site.name)
+      : (content.site && content.site.name);
+
+    var lines = [record.title];
+    if (intro) lines.push('', intro);
+    if (who) lines.push('', who);
+    if (withUrl) lines.push(url);
+    return lines.join('\n');
+  }
+
+  /* Clipboard, by whichever route this browser allows.
+
+     Asking first — `isSecureContext`, feature tests — gets it wrong:
+     Chrome calls a page opened from the file system secure and then
+     refuses the write anyway, and these pages do get opened that way.
+     So it tries the modern call and, if that is refused for any reason,
+     the old one. If neither works the caller says so rather than
+     claiming a copy that never happened. */
+  function copyBySelection(text) {
+    return new Promise(function (resolve, reject) {
+      var box = document.createElement('textarea');
+      box.value = text;
+      box.setAttribute('readonly', '');
+      box.style.position = 'fixed';
+      box.style.top = '-1000px';
+      document.body.appendChild(box);
+      box.select();
+      var done = false;
+      try { done = document.execCommand('copy'); } catch (error) { done = false; }
+      document.body.removeChild(box);
+      done ? resolve() : reject(new Error('copy refused'));
+    });
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).catch(function () {
+        return copyBySelection(text);
+      });
+    }
+    return copyBySelection(text);
+  }
+
+  /* The two buttons, and the credit line that only paper sees.
+
+     Printing needs no script — the stylesheet does that work, and
+     Ctrl+P has always been there. The button is here because nothing on
+     the page otherwise says the page prints well, and because a reader
+     who wants it on paper is usually looking for a way to ask. */
+  function pageTools(record, url) {
+    var box = document.createElement('div');
+    box.className = 'page-tools';
+
+    /* No arrows on these two. The glyphs elsewhere on the site say two
+       specific things — ↗ opens something away from here, ↓ puts a file
+       on the device — and neither of these does either. A third arrow
+       meaning nothing in particular would only weaken the two that do.
+       The words are unambiguous on their own. */
+    var share = document.createElement('button');
+    share.type = 'button';
+    share.className = 'text-link';
+    share.textContent = 'Share';
+
+    var print = document.createElement('button');
+    print.type = 'button';
+    print.className = 'text-link';
+    print.textContent = 'Print';
+
+    /* Spoken when it changes, so the copy is confirmed to a reader who
+       cannot see the line appear. */
+    var say = document.createElement('p');
+    say.className = 'page-tools-note';
+    say.setAttribute('role', 'status');
+    say.setAttribute('aria-live', 'polite');
+
+    share.addEventListener('click', function () {
+      if (navigator.share) {
+        navigator
+          .share({ title: record.title, text: shareCaption(record, url, false), url: url })
+          .catch(function () { /* dismissed — not an error worth reporting */ });
+        return;
+      }
+      copyText(shareCaption(record, url, true))
+        .then(function () { say.textContent = 'Caption and link copied — paste it anywhere.'; })
+        .catch(function () { say.textContent = 'Could not copy. The address is ' + url; });
+    });
+
+    print.addEventListener('click', function () { window.print(); });
+
+    box.appendChild(share);
+    box.appendChild(print);
+    box.appendChild(say);
+
+    /* Paper carries no address, so a printed page would have no way back
+       to the site it came from. Hidden on screen; the print rules show it. */
+    var credit = document.createElement('p');
+    credit.className = 'print-credit';
+    credit.textContent = ((content.site && content.site.name) || '') + ' · ' + url;
+    box.appendChild(credit);
+
+    return box;
+  }
+
   window.site = {
     content: content,
     escapeHtml: escapeHtml,
@@ -408,8 +532,33 @@
     findRecord: findRecord,
     fold: fold,
     skeleton: skeleton,
-    searchText: searchText
+    searchText: searchText,
+    shareCaption: shareCaption,
+    pageTools: pageTools
   };
+
+  /* A post is a file of its own, written once by the editor and then left
+     alone. Putting the buttons in from here rather than into the generated
+     markup means every post already written has them, and no page has to
+     be rewritten to gain the next thing they learn to do.
+
+     The record is found by the address: a post entry carries the path of
+     its own page. Nothing is added if no entry claims this file — better
+     no button than one captioned with the wrong piece. */
+  var postBody = document.getElementById('post-body');
+  if (postBody) {
+    var here = location.pathname;
+    var mine = allRecords().filter(function (record) {
+      return record.page && here.slice(-(record.page.length + 1)) === '/' + record.page;
+    })[0];
+    var article = postBody.closest('article');
+    if (mine && article) {
+      var canonical = document.head.querySelector('link[rel="canonical"]');
+      var address = (canonical && canonical.getAttribute('href')) || absoluteUrl(mine.page);
+      var foot = article.querySelector('.post-foot');
+      article.insertBefore(pageTools(mine, address), foot);
+    }
+  }
 
   /* Footer year and the mailto link, on every page that has them. */
   var year = document.getElementById('year');

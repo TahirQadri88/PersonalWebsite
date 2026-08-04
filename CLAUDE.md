@@ -67,6 +67,15 @@ opened over http so it can read the page back.
 **Escape user content.** All strings from `content.js` go through
 `site.escapeHtml` before reaching `innerHTML`.
 
+**Share and Print are mounted, not written.** `common.js` adds them to any
+page holding a `#post-body`, finding the record by matching `page` against
+the address; `work.js` calls `site.pageTools` for a work. Nothing is baked
+into the generated post files, so a change here reaches every post already
+written without regenerating one of them. The caption is the title, the
+description in the piece's own script, the author, and the link —
+`navigator.share` gets it without the link, since every sheet appends one.
+Printing is section 13 of `styles.css` and needs no script.
+
 **Colour contrast.** `--gold-on-light` and `--gold-on-dark` are two different
 values for a reason. Do not collapse them into one.
 
