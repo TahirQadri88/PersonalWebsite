@@ -450,31 +450,67 @@
     return copyBySelection(text);
   }
 
-  /* Sharing one record, from wherever the button was pressed — the row on
-     the homepage, the work page, the foot of a post. Resolves with the
-     line to show the reader, which is empty when the system sheet took
-     it and there is nothing to report. */
-  function shareRecord(record, url) {
-    if (navigator.share) {
-      return navigator
-        .share({ title: record.title, text: shareCaption(record, url, false), url: url })
-        .then(function () { return ''; }, function () { return ''; });
-    }
+  function copyCaption(record, url) {
     return copyText(shareCaption(record, url, true)).then(
       function () { return 'Caption and link copied — paste it anywhere.'; },
       function () { return 'Could not copy. The address is ' + url; }
     );
   }
 
-  /* The two buttons, and the credit line that only paper sees.
+  /* Sharing one record, from wherever the button was pressed — the row on
+     the homepage, the work page, the foot of a post. Resolves with the
+     line to show the reader, which is empty when the system sheet took
+     it and there is nothing left to say.
 
-     Printing needs no script — the stylesheet does that work, and
-     Ctrl+P has always been there. The button is here because nothing on
-     the page otherwise says the page prints well, and because a reader
-     who wants it on paper is usually looking for a way to ask. */
+     The system sheet is offered first everywhere it exists — WhatsApp,
+     Messages, whatever the device has — and copying the caption is the
+     fallback for the browsers that never had one, chiefly on a computer.
+     A phone that exposes `navigator.share` always gets the sheet.
+
+     Two things narrow that further, both worth naming because a silent
+     no-op reads as a broken button: the API needs a secure page, so it
+     is absent over plain `http://`; and it is missing inside some
+     in-app browsers (Instagram, Facebook) that a link can be opened in
+     without ever reaching the device's own browser. Neither has a code
+     fix — the fallback below is what a reader in either case gets. */
+  function shareRecord(record, url) {
+    if (navigator.share) {
+      var opened;
+      try {
+        opened = navigator.share({ title: record.title, text: shareCaption(record, url, false), url: url });
+      } catch (error) {
+        opened = Promise.reject(error);
+      }
+      return opened.then(
+        function () { return ''; },
+        function (error) {
+          /* Closing the sheet without picking anything is not a failure —
+             it is the whole point of a sheet, and saying so would scold a
+             reader for changing their mind. Anything else means the sheet
+             most likely never opened, so the caption still has to reach
+             them some way. */
+          if (error && error.name === 'AbortError') return '';
+          return copyCaption(record, url);
+        }
+      );
+    }
+    return copyCaption(record, url);
+  }
+
+  /* Share everywhere; Print only where there is a page worth printing.
+
+     A work or a fatwa is a record of a PDF — the page holds a title, a
+     line or two, a button to the actual document. Printing that page
+     prints a stub with a download button that does nothing on paper; the
+     PDF is what a reader wants on paper, and it already prints itself.
+     A post has no PDF — the writing IS the page, so printing the page
+     prints the piece. `record.page` is exactly that distinction; it is
+     the same field the rest of the codebase already reads to tell a post
+     from a download (see CLAUDE.md, "A post is a page, not a download"). */
   function pageTools(record, url) {
     var box = document.createElement('div');
     box.className = 'page-tools';
+    var printable = !!record.page;
 
     /* No arrows on these two. The glyphs elsewhere on the site say two
        specific things — ↗ opens something away from here, ↓ puts a file
@@ -485,11 +521,6 @@
     share.type = 'button';
     share.className = 'text-link';
     share.textContent = 'Share';
-
-    var print = document.createElement('button');
-    print.type = 'button';
-    print.className = 'text-link';
-    print.textContent = 'Print';
 
     /* Spoken when it changes, so the copy is confirmed to a reader who
        cannot see the line appear. */
@@ -502,14 +533,24 @@
       shareRecord(record, url).then(function (line) { say.textContent = line; });
     });
 
-    print.addEventListener('click', function () { window.print(); });
-
     box.appendChild(share);
-    box.appendChild(print);
+
+    if (printable) {
+      var print = document.createElement('button');
+      print.type = 'button';
+      print.className = 'text-link';
+      print.textContent = 'Print';
+      print.addEventListener('click', function () { window.print(); });
+      box.appendChild(print);
+    }
+
     box.appendChild(say);
 
     /* Paper carries no address, so a printed page would have no way back
-       to the site it came from. Hidden on screen; the print rules show it. */
+       to the site it came from. Hidden on screen; the print rules show
+       it. Written even where the button above is absent — Ctrl+P has
+       always worked regardless of what this row offers, and a work page
+       printed that way still deserves a way back to where it came from. */
     var credit = document.createElement('p');
     credit.className = 'print-credit';
     credit.textContent = ((content.site && content.site.name) || '') + ' · ' + url;

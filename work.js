@@ -98,13 +98,25 @@
     (site.formatDate(record.date) ? '<p class="work-date">' + site.escapeHtml(site.formatDate(record.date)) + '</p>' : '') +
     prose +
     (files
-      ? '<div class="work-page-files">' + files + '</div>'
-      : '<p class="availability-note">This one isn’t published here yet. Write to the author if you need it.</p>') +
+      ? '<div class="work-page-files" id="work-page-files">' + files + '</div>'
+      : '<p class="availability-note" id="work-page-files">This one isn’t published here yet. Write to the author if you need it.</p>') +
     site.imageGallery(record) +
     site.tagMarkup(record) +
     '</section>';
 
-  /* Appended rather than written into the string above, because the
-     buttons carry their own listeners. Same helper the post pages use. */
-  main.querySelector('.work-hero').appendChild(site.pageTools(record, pageUrl));
+  /* Built as a DOM node rather than a string, because the buttons carry
+     their own listeners — same helper the post pages use.
+
+     A work page has no Print (see pageTools: it only ever offers that
+     where the writing itself is the page), so what lands here is a lone
+     Share button. Set at the very end of the section it would read as an
+     afterthought, stranded below tags that have nothing to do with it —
+     it belongs with the thing it shares, which is the file above, not
+     with the metadata below. So it goes right after the download
+     buttons — or the "not published yet" note, when there is nothing to
+     download — and before the gallery and tags. */
+  var tools = site.pageTools(record, pageUrl);
+  var anchor = document.getElementById('work-page-files');
+  if (anchor) anchor.insertAdjacentElement('afterend', tools);
+  else main.querySelector('.work-hero').appendChild(tools);
 })();
