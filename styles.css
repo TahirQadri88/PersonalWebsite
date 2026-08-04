@@ -203,6 +203,22 @@ h1, h2, h3 {
   border-bottom: 1px solid currentColor;
   padding-bottom: 2px;
 }
+/* `.text-link` was written for an `<a>`, which has no chrome of its own to
+   strip. Share and Print are `<button>`s — nothing to navigate to, only
+   something to do on the page they're on — so wherever `.text-link` lands
+   on a button, this comes with it to remove the parts a button adds that
+   a link never had: face, frame, the hand cursor a link gets for free. */
+button.text-link {
+  background: none;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  cursor: pointer;
+  padding: 0 0 2px;
+  font: inherit;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 14px;
+}
 
 /* These links are the point of the site and they are only 21px tall.
    The invisible pad brings the touch area to ~44px without moving the
@@ -968,13 +984,6 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   gap: 26px;
   margin-top: 40px;
 }
-.page-tools .text-link {
-  background: none;
-  border: 0;
-  border-bottom: 1px solid currentColor;
-  cursor: pointer;
-  padding: 0 0 2px;
-}
 /* Its own line, so confirming a copy never reflows the two buttons. */
 .page-tools-note {
   flex: 1 0 100%;
@@ -987,21 +996,14 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .print-credit { display: none; }
 .work-hero[dir="rtl"] .page-tools { direction: rtl; }
 
-/* Share, on a row in the library. A button among links, so it has to be
-   stripped back to look like one. */
-.share-button {
-  background: none;
-  border: 0;
-  border-bottom: 1px solid currentColor;
-  cursor: pointer;
-  padding: 0 0 2px;
-  font: inherit;
-  font-family: var(--font-ui);
-  font-weight: 700;
-  font-size: 14px;
-  color: var(--moss);
-}
+/* Share, on a row in the library — `button.text-link` above does the
+   resetting; this only adds what a library row needs that the foot of a
+   page does not: reserved height, so confirming a copy does not push the
+   file links below it down a line. */
 .share-note {
+  flex: 1 0 100%;
+  min-height: 1.4em;
+  margin: 0;
   color: var(--gold-on-light);
   font-family: var(--font-ui);
   font-size: 13px;
