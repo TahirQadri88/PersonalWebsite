@@ -109,6 +109,12 @@
       '<a class="text-link" href="' + site.escapeHtml(site.recordHref(work)) + '">' +
       (work.page ? 'Read →' : 'Open details →') +
       '</a>' +
+      /* Sharing from the list, without opening the piece first. Someone
+         who knows the library is usually looking for the one thing a
+         student asked about, and making them open it to find the button
+         is a step for nothing. */
+      '<button class="text-link share-button" type="button" data-share="' + site.escapeHtml(work.id) + '">Share</button>' +
+      '<span class="share-note" role="status" aria-live="polite"></span>' +
       '</div>' +
       /* The files are their own block, not more things on the end of that
          row. Six charts wrapped into it came out ragged — every Download
@@ -141,6 +147,22 @@
         );
       })
       .join('');
+  }
+
+  /* One listener for the whole library rather than one per row: the list
+     is rebuilt whenever a category is chosen, and handlers attached to
+     rows would have to be attached again every time. */
+  if (library) {
+    library.addEventListener('click', function (event) {
+      var button = event.target.closest('[data-share]');
+      if (!button) return;
+      var record = site.findRecord(button.getAttribute('data-share'));
+      if (!record) return;
+      var note = button.parentNode.querySelector('.share-note');
+      site.shareRecord(record, site.absoluteUrl(site.recordHref(record))).then(function (line) {
+        if (note) note.textContent = line;
+      });
+    });
   }
 
   /* ---- Fatawa ---- */

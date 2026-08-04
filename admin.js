@@ -35,10 +35,13 @@
      and it authenticates before the page is ever served. */
   var PASS_HASH = '747402f385b5ce61e73972374c7749ecc86fda520bb7f0980deae111611d7207';
 
+  /* Each set in the script it names, so the button for Urdu is written in
+     Nastaleeq and the choice can be made by looking rather than by
+     knowing what Nastaleeq means. */
   var LANGUAGES = [
-    { value: 'ur', label: 'Urdu — Nastaleeq' },
-    { value: 'ar', label: 'Arabic — Naskh' },
-    { value: 'en', label: 'English' }
+    { value: 'ur', label: 'اردو', cls: 'urdu' },
+    { value: 'ar', label: 'عربی', cls: 'arabic' },
+    { value: 'en', label: 'English', cls: '' }
   ];
 
   var source = window.siteContent || {};
@@ -97,6 +100,14 @@
     return node;
   }
 
+  var fieldSerial = 0;
+
+  /* The label was never joined to its control — a sighted mouse user
+     never notices, because the text sits right above the box either way,
+     but a screen reader announces the field as unlabelled, and a click on
+     the words does nothing. `wrap.own(control)` closes that: it gives the
+     control the id the label already points to, on whichever element in
+     the field is the one a person actually types into. */
   function field(labelText, hintText) {
     var wrap = el('div', 'admin-field');
     var label = el('label', null, labelText);
@@ -105,6 +116,24 @@
       label.appendChild(hint);
     }
     wrap.appendChild(label);
+    var id = 'field-' + (++fieldSerial);
+    label.id = id + '-label';
+    label.htmlFor = id;
+    /* The one-control case: the field has a single input or textarea, and
+       the label's `for` points straight at it. */
+    wrap.own = function (control) {
+      control.id = id;
+      return control;
+    };
+    /* The several-controls case — a row of chip buttons, a tag box with
+       its own input inside. `for` needs one target and there isn't one,
+       so the row is a labelled group instead; each button or pill still
+       carries its own text, so nothing inside goes unnamed. */
+    wrap.group = function (container) {
+      container.setAttribute('role', 'group');
+      container.setAttribute('aria-labelledby', label.id);
+      return container;
+    };
     return wrap;
   }
 
@@ -138,6 +167,122 @@
     return area;
   }
 
+  /* A row of buttons where a dropdown would have been. One is on; pressing
+     it again turns it off where that is allowed, which is how the kind is
+     cleared without selecting an empty option nobody can see. */
+  function chipGroup(items, value, onPick, clearable) {
+    var box = el('div', 'chip-group');
+    var buttons = [];
+
+    function select(chosen) {
+      buttons.forEach(function (entry) {
+        entry.button.setAttribute('aria-pressed', entry.value === chosen ? 'true' : 'false');
+      });
+    }
+
+    items.forEach(function (item) {
+      var button = el('button', 'chip' + (item.cls ? ' ' + item.cls : ''));
+      button.type = 'button';
+      button.textContent = item.text;
+      button.setAttribute('aria-pressed', 'false');
+      button.addEventListener('click', function () {
+        var next = clearable && button.getAttribute('aria-pressed') === 'true' ? '' : item.value;
+        select(next);
+        onPick(next);
+      });
+      buttons.push({ button: button, value: item.value });
+      box.appendChild(button);
+    });
+
+    select(value);
+    box.select = select;
+    return box;
+  }
+
+  /* Every kind already used in the library, so the buttons offer the
+     author's own vocabulary rather than a list guessed here. */
+  function kindsInUse() {
+    var seen = {};
+    var out = [];
+    eachRecord(function (record) {
+      if (record.kind && !seen[record.kind]) {
+        seen[record.kind] = true;
+        out.push(record.kind);
+      }
+    });
+    return out;
+  }
+
+  /* Tags as pills, each with its own ×, and a box that takes one at a
+     time. Enter or a comma commits it; backspace in an empty box takes
+     the last one back, which is what every tag field anyone has used
+     does. */
+  function tagBox(record) {
+    var box = el('div', 'tag-box');
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'tag-input';
+    input.placeholder = 'add a tag';
+    /* The group's aria-labelledby names the box as a whole — "Tags" — not
+       this input specifically, so the input still needs a name of its own
+       to announce what typing into it does. */
+    input.setAttribute('aria-label', 'Add a tag');
+
+    function draw() {
+      Array.prototype.slice.call(box.querySelectorAll('.tag-pill')).forEach(function (node) {
+        box.removeChild(node);
+      });
+      (record.tags || []).forEach(function (tag, index) {
+        /* An English tag in Nastaliq is unreadable, so each pill takes the
+           script it is written in — the same test the site itself uses. */
+        var pill = el('span', 'tag-pill' + (/[؀-ۿݐ-ݿ]/.test(tag) ? ' urdu' : ''));
+        pill.appendChild(document.createTextNode(tag));
+        var kill = el('button', 'tag-kill', '×');
+        kill.type = 'button';
+        kill.title = 'Remove ' + tag;
+        kill.setAttribute('aria-label', 'Remove ' + tag);
+        kill.addEventListener('click', function () {
+          record.tags.splice(index, 1);
+          if (!record.tags.length) record.tags = undefined;
+          draw();
+          markDirty();
+        });
+        pill.appendChild(kill);
+        box.insertBefore(pill, input);
+      });
+    }
+
+    function commit() {
+      var value = input.value.trim().replace(/[,،]+$/, '').trim();
+      if (!value) { input.value = ''; return; }
+      if (!record.tags) record.tags = [];
+      if (record.tags.indexOf(value) === -1) record.tags.push(value);
+      input.value = '';
+      draw();
+      markDirty();
+    }
+
+    input.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' || event.key === ',' || event.key === '،') {
+        event.preventDefault();
+        commit();
+        return;
+      }
+      if (event.key === 'Backspace' && !input.value && (record.tags || []).length) {
+        record.tags.pop();
+        if (!record.tags.length) record.tags = undefined;
+        draw();
+        markDirty();
+      }
+    });
+    /* Clicking away should not throw away what was typed. */
+    input.addEventListener('blur', commit);
+
+    box.appendChild(input);
+    draw();
+    return box;
+  }
+
   /* ---- Posts ----
 
      A post is a page of writing rather than a record of a file, so its
@@ -147,24 +292,34 @@
   var POSTS_CATEGORY = 'posts';
   var bodies = {};
 
-  /* ---- The writing box's buttons -------------------------------------
+  /* ---- The writing box ------------------------------------------------
 
-     The marks a post is written with — a blank line for a paragraph, `## `
-     for a heading, `> ` for a quote, `[ar] ` or `[en] ` to change script
-     for one block — are quick once known and invisible until then. They
-     were explained in a line of small print under the box, which is not
-     the same as being usable.
+     What the author sees is the piece, set the way the page will set it:
+     Nastaliq in Nastaliq, a heading at heading size, a quotation indented
+     from the reading edge. Not a box of `## ` and `[ur] ` marks with the
+     result somewhere else, which is what this was, and which asked
+     someone who does not write code to hold the page in their head.
 
-     Each button does to the block the cursor is in what the author would
-     otherwise have typed at the start of it, and takes it off again if it
-     is already there. Nothing new can be written this way that could not
-     be typed by hand; the file on disk is the same either way. */
+     It is the same model underneath. The box is a `contenteditable`
+     whose children are exactly the blocks a post page is made of — `p`,
+     `h2`, `blockquote`, carrying the same `urdu`/`arabic`/`latin` and
+     `align-*` classes — so the two functions that already existed do the
+     reading and the writing: `bodyToHtml` fills it, `htmlToBody` reads it
+     back out. Nothing can be expressed in here that the file cannot
+     hold, which is why opening a post and publishing it untouched still
+     gives back the same bytes.
+
+     There is deliberately no Bold. The format has no way to write it, so
+     the button would set something on screen that the file would drop
+     without saying so. What looks bold in a piece here is a heading, and
+     there is a button for that — pressing Ctrl+B says so rather than
+     doing nothing. */
 
   var TOOL_GROUPS = [
-    { field: 'kind', label: 'Block', items: [
-      { value: 'p', text: '¶ Paragraph', title: 'Ordinary paragraph' },
-      { value: 'h2', text: 'Heading', title: 'A heading inside the piece' },
-      { value: 'blockquote', text: 'Quote', title: 'A quotation, set apart' }
+    { field: 'kind', label: 'Style', items: [
+      { value: 'p', text: 'Text', title: 'Ordinary paragraph' },
+      { value: 'h2', text: 'Heading', title: 'A heading inside the piece', cls: 'is-heading' },
+      { value: 'blockquote', text: 'Quote', title: 'A quotation, set apart', cls: 'is-quote' }
     ] },
     { field: 'language', label: 'Script', items: [
       { value: 'ur', text: 'اردو', title: 'Set this block in Urdu — Nastaleeq', cls: 'urdu' },
@@ -172,112 +327,349 @@
       { value: 'en', text: 'English', title: 'Set this block in English' }
     ] },
     { field: 'align', label: 'Align', items: [
-      { value: 'r', text: '⇥ Right', title: 'Align this block to the right' },
-      { value: 'c', text: '↔ Centre', title: 'Centre this block' },
-      { value: 'l', text: '⇤ Left', title: 'Align this block to the left' }
+      { value: 'r', icon: 'r', title: 'Align this block to the right', cls: 'is-align' },
+      { value: 'c', icon: 'c', title: 'Centre this block', cls: 'is-align' },
+      { value: 'l', icon: 'l', title: 'Align this block to the left', cls: 'is-align' },
+      { value: 'j', icon: 'j', title: 'Justify this block — both edges straight', cls: 'is-align' }
     ] }
   ];
 
-  /* The block the cursor sits in: from the blank line before it to the
-     blank line after, which is exactly what the page generator treats as
-     one paragraph. */
-  function blockAround(text, caret) {
-    var start = text.lastIndexOf('\n\n', Math.max(0, caret - 1));
-    start = start === -1 ? 0 : start + 2;
-    var end = text.indexOf('\n\n', caret);
-    if (end === -1) end = text.length;
-    return { start: start, end: end, text: text.slice(start, end) };
+  /* Four lines of text, ragged on whichever side is not being aligned to.
+     Drawn rather than lettered: there is no character that means "centred"
+     and a word for each would need reading, in a language that is not
+     necessarily the one being typed. Every word processor draws these,
+     which is the point — they are already known. */
+  var ALIGN_LINES = {
+    l: [14, 9, 14, 9],
+    r: [14, 9, 14, 9],
+    c: [14, 9, 14, 9],
+    j: [14, 14, 14, 14]
+  };
+
+  function alignIcon(kind) {
+    var rows = ALIGN_LINES[kind].map(function (width, index) {
+      var x = kind === 'r' ? 15 - width : kind === 'c' ? (16 - width) / 2 : 1;
+      return '<rect x="' + x + '" y="' + (1 + index * 3) + '" width="' + width +
+        '" height="1.6" rx="0.8" />';
+    });
+    return '<svg viewBox="0 0 16 12.6" width="17" height="13" aria-hidden="true" focusable="false" fill="currentColor">' +
+      rows.join('') + '</svg>';
   }
 
-  function writeBlock(b) {
-    var lead = b.kind === 'h2' ? '## ' : b.kind === 'blockquote' ? '> ' : '';
-    return lead +
-      (b.language ? '[' + b.language + '] ' : '') +
-      (b.align ? '[' + b.align + '] ' : '') +
-      b.text;
+  var BLOCK_TAG = { p: 'p', h2: 'h2', blockquote: 'blockquote' };
+
+  /* The block the caret is in: the direct child of the box that contains
+     it. Anything deeper is inside one of them. */
+  function caretBlock(canvas) {
+    var selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return null;
+    var node = selection.getRangeAt(0).startContainer;
+    if (!canvas.contains(node)) return null;
+    while (node && node.parentNode !== canvas) node = node.parentNode;
+    return node && node.nodeType === 1 ? node : null;
   }
 
-  /* Sets one thing about the block the cursor is in, leaving the other two
-     alone — a verse can be a quotation and Arabic and centred at once.
-     Pressing the same button again takes that one thing off. */
-  function applyToBlock(area, field, value) {
-    var whole = area.value;
-    var found = blockAround(whole, area.selectionStart);
-    var block = readBlock(found.text);
-    var blank = field === 'kind' ? 'p' : '';
-    block[field] = block[field] === value ? blank : value;
-
-    var next = writeBlock(block);
-    area.value = whole.slice(0, found.start) + next + whole.slice(found.end);
-    var moved = next.length - found.text.length;
-    area.selectionStart = area.selectionEnd = Math.max(found.start, area.selectionStart + moved);
-    area.focus();
-    area.dispatchEvent(new Event('input', { bubbles: true }));
+  /* What one block already is, read off the element — the same three
+     things the marks in the file record. */
+  function blockState(node) {
+    var state = { kind: 'p', language: '', align: '' };
+    if (!node) return state;
+    state.kind = node.tagName === 'H2' ? 'h2' : node.tagName === 'BLOCKQUOTE' ? 'blockquote' : 'p';
+    Object.keys(SCRIPTS).forEach(function (key) {
+      if (node.classList.contains(SCRIPTS[key].cls)) state.language = key;
+    });
+    Object.keys(ALIGN).forEach(function (key) {
+      if (node.classList.contains('align-' + ALIGN[key])) state.align = key;
+    });
+    return state;
   }
 
-  function newParagraph(area) {
-    var at = area.selectionStart;
-    area.value = area.value.slice(0, at) + '\n\n' + area.value.slice(area.selectionEnd);
-    area.selectionStart = area.selectionEnd = at + 2;
-    area.focus();
-    area.dispatchEvent(new Event('input', { bubbles: true }));
+  function makeBlock(state, html) {
+    var node = document.createElement(BLOCK_TAG[state.kind] || 'p');
+    if (state.language && SCRIPTS[state.language]) {
+      node.classList.add(SCRIPTS[state.language].cls);
+      node.setAttribute('lang', state.language);
+      node.setAttribute('dir', SCRIPTS[state.language].dir);
+    }
+    if (state.align && ALIGN[state.align]) node.classList.add('align-' + ALIGN[state.align]);
+    if (html != null) node.innerHTML = html;
+    fillEmpty(node);
+    return node;
   }
 
-  function writingTools(area, record) {
+  /* An empty block needs a `br` inside it or it has no height, and a block
+     with no height cannot hold a caret — the browser quietly moves it to
+     the end of the block above instead. That is what made Enter appear to
+     do nothing: the split happened, and everything typed afterwards went
+     on the end of the paragraph that had just been split.
+
+     An empty text node counts as a child but draws nothing, so it defeats
+     a plain `firstChild` test. `extractContents` leaves them behind all
+     the time, which is why this has to clear them first. */
+  function fillEmpty(node) {
+    Array.prototype.slice.call(node.childNodes).forEach(function (child) {
+      if (child.nodeType === 3 && !child.textContent) node.removeChild(child);
+    });
+    if (!node.firstChild) node.appendChild(document.createElement('br'));
+  }
+
+  /* Replacing an element throws the caret away, so its place is measured
+     in characters before and put back after. Counting characters rather
+     than remembering the node survives the element being a different
+     element afterwards, which is the whole point of the operation. */
+  function caretOffset(block) {
+    var selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return 0;
+    var range = selection.getRangeAt(0);
+    var measure = document.createRange();
+    measure.selectNodeContents(block);
+    try { measure.setEnd(range.endContainer, range.endOffset); } catch (error) { return 0; }
+    return measure.toString().length;
+  }
+
+  function putCaret(block, offset) {
+    var walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, null);
+    var seen = 0;
+    var node;
+    var range = document.createRange();
+    while ((node = walker.nextNode())) {
+      if (seen + node.length >= offset) {
+        range.setStart(node, Math.max(0, offset - seen));
+        range.collapse(true);
+        select(range);
+        return;
+      }
+      seen += node.length;
+    }
+    range.selectNodeContents(block);
+    range.collapse(false);
+    select(range);
+  }
+
+  function select(range) {
+    var selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  /* One of the three things about a block, set or taken off again,
+     leaving the other two alone — a verse is a quotation and Arabic and
+     centred all at once. */
+  function setBlockField(canvas, field, value) {
+    var block = caretBlock(canvas) || canvas.firstElementChild;
+    if (!block) return;
+    var offset = caretOffset(block);
+    var state = blockState(block);
+    state[field] = state[field] === value ? (field === 'kind' ? 'p' : '') : value;
+    var next = makeBlock(state, block.innerHTML);
+    block.parentNode.replaceChild(next, block);
+    canvas.focus();
+    putCaret(next, offset);
+  }
+
+  /* Enter. Left to the browser this copies the element it was pressed in,
+     so Enter at the end of a heading gives a second heading — which is
+     never what was meant, and is what every word processor learnt not to
+     do. The split is done here instead: what follows the caret moves into
+     a new block, and that block is ordinary text unless a quotation was
+     being written, where carrying on in the quotation is the likelier
+     want. Script and alignment carry over either way. */
+  function splitBlock(canvas) {
+    var block = caretBlock(canvas);
+    if (!block) return false;
+    var selection = window.getSelection();
+    if (!selection.rangeCount) return false;
+    var range = selection.getRangeAt(0);
+
+    var tail = document.createRange();
+    tail.selectNodeContents(block);
+    try { tail.setStart(range.endContainer, range.endOffset); } catch (error) { return false; }
+    var moved = tail.extractContents();
+
+    var state = blockState(block);
+    var next = makeBlock({
+      kind: state.kind === 'blockquote' ? 'blockquote' : 'p',
+      language: state.language,
+      align: state.align
+    }, null);
+    next.textContent = '';
+    next.appendChild(moved);
+    fillEmpty(next);
+    fillEmpty(block);
+
+    block.parentNode.insertBefore(next, block.nextSibling);
+    putCaret(next, 0);
+    return true;
+  }
+
+  /* Anything the browser leaves behind that is not one of the three
+     blocks — a bare `div` from a paste, loose text after a delete —
+     becomes a paragraph. Run after every change, so the box can never
+     hold a shape the file has no way to record. */
+  function tidy(canvas) {
+    var children = Array.prototype.slice.call(canvas.childNodes);
+    children.forEach(function (node) {
+      if (node.nodeType === 1 && BLOCK_TAG[node.tagName.toLowerCase()]) return;
+      if (node.nodeType === 3 && !node.textContent.trim()) {
+        canvas.removeChild(node);
+        return;
+      }
+      var replacement = makeBlock(blockState(node.nodeType === 1 ? node : null), null);
+      replacement.textContent = '';
+      if (node.nodeType === 1) {
+        while (node.firstChild) replacement.appendChild(node.firstChild);
+      } else {
+        replacement.appendChild(document.createTextNode(node.textContent));
+      }
+      fillEmpty(replacement);
+      canvas.replaceChild(replacement, node);
+    });
+    if (!canvas.firstElementChild) canvas.appendChild(makeBlock({ kind: 'p' }, null));
+  }
+
+  /* Pasted text arrives as whatever the other program wrote — Word's
+     markup, a WhatsApp message, a web page. None of it can be kept, so
+     only the words are, split into blocks on blank lines exactly as the
+     file format splits them. */
+  function pastePlain(canvas, text) {
+    var chunks = String(text || '')
+      .split(/\n\s*\n/)
+      .map(function (part) { return part.replace(/\s+/g, ' ').trim(); })
+      .filter(Boolean);
+    if (!chunks.length) return;
+
+    var selection = window.getSelection();
+    if (!selection.rangeCount) return;
+    var range = selection.getRangeAt(0);
+    range.deleteContents();
+    var head = document.createTextNode(chunks[0]);
+    range.insertNode(head);
+    range.setStartAfter(head);
+    range.collapse(true);
+    select(range);
+
+    var block = caretBlock(canvas);
+    if (!block) return;
+    var state = blockState(block);
+    var after = block;
+    chunks.slice(1).forEach(function (chunk) {
+      var next = makeBlock({ kind: 'p', language: state.language, align: state.align }, null);
+      next.textContent = chunk;
+      after.parentNode.insertBefore(next, after.nextSibling);
+      after = next;
+    });
+    putCaret(after, after.textContent.length);
+  }
+
+  /* The box, its buttons, and the two ways in and out of it. */
+  function writingBox(record, onChange) {
+    var wrap = el('div', 'writing');
     var bar = el('div', 'writing-tools');
     var buttons = [];
+
+    var canvas = el('div', 'writing-canvas post-body');
+    canvas.contentEditable = 'true';
+    canvas.spellcheck = false;
+    canvas.setAttribute('role', 'textbox');
+    canvas.setAttribute('aria-multiline', 'true');
+    canvas.setAttribute('aria-label', 'The writing');
 
     TOOL_GROUPS.forEach(function (group) {
       var box = el('div', 'writing-group');
       var name = el('span', 'writing-group-label');
       name.textContent = group.label;
       box.appendChild(name);
+      var row = el('div', 'writing-group-buttons');
       group.items.forEach(function (item) {
         var button = el('button', 'writing-tool' + (item.cls ? ' ' + item.cls : ''));
         button.type = 'button';
-        button.textContent = item.text;
+        if (item.icon) button.innerHTML = alignIcon(item.icon);
+        else button.textContent = item.text;
         button.title = item.title;
+        button.setAttribute('aria-label', item.title);
         button.setAttribute('aria-pressed', 'false');
-        button.addEventListener('click', function () {
-          applyToBlock(area, group.field, item.value);
+        /* mousedown, not click: by the time click fires the box has lost
+           the selection to the button, and there is no block to act on. */
+        button.addEventListener('mousedown', function (event) {
+          event.preventDefault();
+          setBlockField(canvas, group.field, item.value);
+          changed();
           refresh();
         });
         buttons.push({ button: button, field: group.field, value: item.value });
-        box.appendChild(button);
+        row.appendChild(button);
       });
+      box.appendChild(row);
       bar.appendChild(box);
     });
 
-    var breakBox = el('div', 'writing-group');
-    var breakLabel = el('span', 'writing-group-label');
-    breakLabel.textContent = 'Split';
-    breakBox.appendChild(breakLabel);
-    var split = el('button', 'writing-tool');
-    split.type = 'button';
-    split.textContent = '↵ New block';
-    split.title = 'Start a new paragraph here';
-    split.addEventListener('click', function () { newParagraph(area); refresh(); });
-    breakBox.appendChild(split);
-    bar.appendChild(breakBox);
+    function changed() {
+      tidy(canvas);
+      bodies[record.id] = htmlToBody(canvas);
+      onChange();
+    }
 
-    /* The buttons show what the block under the cursor already is, so the
-       bar reads as the state of the writing rather than a row of verbs. */
     function refresh() {
-      var block = readBlock(blockAround(area.value, area.selectionStart).text);
+      var state = blockState(caretBlock(canvas));
       buttons.forEach(function (entry) {
-        var on = block[entry.field] === entry.value;
-        entry.button.setAttribute('aria-pressed', on ? 'true' : 'false');
+        entry.button.setAttribute('aria-pressed', state[entry.field] === entry.value ? 'true' : 'false');
       });
     }
-    ['click', 'keyup', 'input', 'focus'].forEach(function (event) {
-      area.addEventListener(event, refresh);
-    });
-    refresh();
 
-    var note = el('p', 'writing-tools-note');
-    note.textContent = 'These describe the block your cursor is in. A verse can be a quote, Arabic and centred all at once — press one from each row.';
-    bar.appendChild(note);
-    return bar;
+    canvas.addEventListener('input', changed);
+    canvas.addEventListener('keyup', refresh);
+    canvas.addEventListener('mouseup', refresh);
+    canvas.addEventListener('focus', refresh);
+
+    canvas.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        if (splitBlock(canvas)) {
+          event.preventDefault();
+          changed();
+          refresh();
+        }
+        return;
+      }
+      /* The one thing the format cannot record. Saying so beats a button
+         that appears to work until the file is written. */
+      if ((event.ctrlKey || event.metaKey) && /^[biu]$/i.test(event.key)) {
+        event.preventDefault();
+        note.textContent = 'There is no bold or italic in a post here — a line that stands out is a Heading, and a passage set apart is a Quote.';
+      }
+    });
+
+    canvas.addEventListener('paste', function (event) {
+      event.preventDefault();
+      var data = event.clipboardData || window.clipboardData;
+      pastePlain(canvas, data ? data.getData('text/plain') : '');
+      changed();
+      refresh();
+    });
+
+    var note = el('p', 'writing-note');
+
+    wrap.appendChild(bar);
+    wrap.appendChild(canvas);
+    wrap.appendChild(note);
+
+    return {
+      node: wrap,
+      note: note,
+      /* The base script of the box, so an Urdu post is typed in Nastaliq
+         without every block having to say so. Blocks that carry their own
+         mark keep it. */
+      setLanguage: function (language) {
+        canvas.classList.remove('urdu', 'arabic', 'latin');
+        canvas.classList.add(site.scriptClass(language));
+        canvas.setAttribute('dir', site.direction(language));
+        canvas.setAttribute('lang', language || 'en');
+      },
+      setText: function (text) {
+        canvas.innerHTML = bodyToHtml(text, 0);
+        tidy(canvas);
+      },
+      focus: function () { canvas.focus(); }
+    };
   }
 
   function isPost(entry) {
@@ -525,7 +917,7 @@
       record.id = value.trim();
       refreshSummary();
     });
-    idField.appendChild(idInput);
+    idField.appendChild(idField.own(idInput));
     var idWarn = el('p', 'admin-error');
     idField.appendChild(idWarn);
     idInput.addEventListener('input', function () {
@@ -537,29 +929,55 @@
     idInput.dataset.was = record.id || '';
     fields.appendChild(idField);
 
-    /* language + kind */
-    var pair = el('div', 'admin-two');
+    /* language — three buttons rather than a dropdown. A dropdown hides
+       two of three choices behind a click and shows the chosen one as a
+       word; these show all three, each set in the script it names, so the
+       answer to "which is Nastaleeq" is on the screen. */
+    var languageChanged = [];
+    var langField = field('Language', 'sets the font and the direction of everything below');
+    langField.appendChild(
+      langField.group(
+        chipGroup(
+          LANGUAGES.map(function (option) {
+            return { value: option.value, text: option.label, cls: option.cls };
+          }),
+          record.language || 'en',
+          function (value) {
+            record.language = value;
+            applyScript(titleInput, record.language);
+            refreshSummary();
+            languageChanged.forEach(function (fn) { fn(value); });
+            markDirty();
+          }
+        )
+      )
+    );
+    fields.appendChild(langField);
 
-    var langField = field('Language', 'sets the font and direction');
-    var langSelect = document.createElement('select');
-    LANGUAGES.forEach(function (option) {
-      var node = document.createElement('option');
-      node.value = option.value;
-      node.textContent = option.label;
-      langSelect.appendChild(node);
-    });
-    langSelect.value = record.language || 'en';
-    langField.appendChild(langSelect);
-    pair.appendChild(langField);
-
-    var kindField = field('Kind', 'the small Urdu label — رسالہ, چارٹ, فتویٰ');
+    /* kind — the labels already in use, as buttons, and a box for a new
+       one. It was a bare text field, which means knowing the vocabulary
+       by heart and matching it letter for letter or ending up with two
+       spellings of رسالہ in the library. */
+    var kindField = field('Kind', 'the small Urdu label above the title');
     var kindInput = textInput(record.kind, function (value) {
       record.kind = value.trim() || undefined;
+      kindChips.select(record.kind);
     });
     applyScript(kindInput, 'ur');
-    kindField.appendChild(kindInput);
-    pair.appendChild(kindField);
-    fields.appendChild(pair);
+    kindInput.placeholder = 'or type another';
+    var kindChips = chipGroup(
+      kindsInUse().map(function (kind) { return { value: kind, text: kind, cls: 'urdu' }; }),
+      record.kind,
+      function (value) {
+        record.kind = value || undefined;
+        kindInput.value = value || '';
+        markDirty();
+      },
+      true
+    );
+    kindField.appendChild(kindField.group(kindChips));
+    kindField.appendChild(kindField.own(kindInput));
+    fields.appendChild(kindField);
 
     /* title */
     var titleField = field('Title');
@@ -568,22 +986,15 @@
       refreshSummary();
     });
     applyScript(titleInput, record.language);
-    titleField.appendChild(titleInput);
+    titleField.appendChild(titleField.own(titleInput));
     fields.appendChild(titleField);
-
-    langSelect.addEventListener('change', function () {
-      record.language = langSelect.value;
-      applyScript(titleInput, record.language);
-      refreshSummary();
-      markDirty();
-    });
 
     /* description — both languages; either may be left empty */
     var descField = field('Description (English)', 'one or two lines — this is what search and Google read');
     descField.appendChild(
-      textArea(record.description, function (value) {
+      descField.own(textArea(record.description, function (value) {
         record.description = value.trim() || undefined;
-      })
+      }))
     );
     fields.appendChild(descField);
 
@@ -592,20 +1003,14 @@
       record.descriptionUr = value.trim() || undefined;
     });
     applyScript(descUrBox, 'ur');
-    descUrField.appendChild(descUrBox);
+    descUrField.appendChild(descUrField.own(descUrBox));
     fields.appendChild(descUrField);
 
-    /* tags */
-    var tagField = field('Tags', 'separated by commas');
-    tagField.appendChild(
-      textInput((record.tags || []).join('، '), function (value) {
-        var tags = value
-          .split(/[,،]/)
-          .map(function (tag) { return tag.trim(); })
-          .filter(Boolean);
-        record.tags = tags.length ? tags : undefined;
-      })
-    );
+    /* tags — one pill each, with its own ×. A single comma-separated line
+       meant deleting one tag by counting commas, and a stray comma inside
+       a tag silently made two. */
+    var tagField = field('Tags', 'for browsing and for the search — press Enter after each');
+    tagField.appendChild(tagField.group(tagBox(record)));
     fields.appendChild(tagField);
 
     /* date — posts want one; anything else may have one */
@@ -614,7 +1019,7 @@
       record.date = value.trim() || undefined;
     });
     dateInput.type = 'date';
-    dateField.appendChild(dateInput);
+    dateField.appendChild(dateField.own(dateInput));
     fields.appendChild(dateField);
 
     /* A post is a page of writing. Everything else is a record of a file.
@@ -625,27 +1030,25 @@
         record.page = value.trim() || undefined;
       });
       pageInput.placeholder = 'posts/' + (record.id || 'slug') + '.html';
-      pageField.appendChild(pageInput);
+      pageField.appendChild(pageField.own(pageInput));
       fields.appendChild(pageField);
 
       var bodyField = field(
         'The writing',
-        'a blank line starts a new paragraph — the buttons do the rest'
+        'type it as it should read — put the cursor in a line and the buttons above say what that line is'
       );
-      var bodyArea = textArea(bodies[record.id] || '', function (value) {
-        bodies[record.id] = value;
-      });
-      bodyArea.style.minHeight = '260px';
-      applyScript(bodyArea, record.language);
-      bodyField.appendChild(writingTools(bodyArea, record));
-      bodyField.appendChild(bodyArea);
+      var writing = writingBox(record, markDirty);
+      writing.setLanguage(record.language);
+      writing.setText(bodies[record.id] || '');
+      /* The canvas already names itself — aria-label="The writing", set in
+         writingBox — so this only wraps the toolbar and the note into the
+         same announced group rather than relabelling the canvas. */
+      bodyField.appendChild(bodyField.group(writing.node));
       var bodyNote = el('p', 'hint');
       bodyField.appendChild(bodyNote);
       fields.appendChild(bodyField);
 
-      langSelect.addEventListener('change', function () {
-        applyScript(bodyArea, record.language);
-      });
+      languageChanged.push(function (language) { writing.setLanguage(language); });
 
       /* An existing post keeps its words in its own file, so they have to
          be read back before they can be edited. Over file:// the browser
@@ -662,7 +1065,7 @@
             var parsed = new DOMParser().parseFromString(html, 'text/html');
             var article = parsed.getElementById('post-body');
             bodies[record.id] = article ? htmlToBody(article) : '';
-            bodyArea.value = bodies[record.id];
+            writing.setText(bodies[record.id]);
             bodyNote.textContent = '';
           })
           .catch(function () {
@@ -677,7 +1080,7 @@
     /* files */
     var filesField = field('Files', 'label, then the path under files/ — leave empty for “not published yet”');
     var filesBox = el('div', 'admin-files');
-    filesField.appendChild(filesBox);
+    filesField.appendChild(filesField.group(filesBox));
 
     function drawFiles() {
       filesBox.textContent = '';
@@ -685,8 +1088,10 @@
         var line = el('div', 'admin-file');
         var label = textInput(file.label, function (value) { file.label = value; });
         label.placeholder = 'Urdu PDF';
+        label.setAttribute('aria-label', 'Label for this file');
         var url = textInput(file.url, function (value) { file.url = value.trim(); });
         url.placeholder = 'files/booklets-authored/name.pdf';
+        url.setAttribute('aria-label', 'Address of this file');
         var remove = el('button', 'text-link admin-danger', 'Remove');
         remove.type = 'button';
         remove.addEventListener('click', function () {
@@ -708,6 +1113,7 @@
             file.preview = value.trim() || undefined;
           });
           preview.placeholder = 'optional lighter copy to show on the page';
+          preview.setAttribute('aria-label', 'Preview image address, optional');
           previewLine.appendChild(preview);
           previewLine.appendChild(el('span'));
           filesBox.appendChild(previewLine);
@@ -754,7 +1160,7 @@
         markDirty();
         render();
       });
-      moveField.appendChild(moveSelect);
+      moveField.appendChild(moveField.own(moveSelect));
       fields.appendChild(moveField);
     }
 

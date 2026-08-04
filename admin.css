@@ -236,11 +236,12 @@
   .admin-file { grid-template-columns: 1fr; }
   .admin-row-tools { gap: 14px; }
 
-  /* The writing buttons stack into rows of their own group rather than
-     running together into one wall of pills. */
-  .writing-tools { gap: 8px; padding: 9px 10px; }
+  /* The three groups keep their own rows rather than running together
+     into one wall of buttons. Style and Script get a row each; the
+     alignment marks are small enough to sit beside Script. */
+  .writing-tools { gap: 10px 14px; padding: 9px 10px; }
   .writing-group { flex: 1 1 100%; }
-  .writing-group-label { flex: 1 1 100%; margin-bottom: -2px; }
+  .writing-canvas { min-height: 260px; padding: 14px 15px; }
 }
 
 /* Publishing */
@@ -257,33 +258,119 @@
 .admin-warn { border-left: 3px solid var(--gold-rule); padding-left: 12px; }
 .admin-dialog a { color: var(--moss); }
 
-/* The writing box's buttons. The marks a post is written with were once
-   a line of small print under the box, which is not the same as being
-   usable. */
-.writing-tools {
+/* ---- Buttons where a dropdown or a comma-separated line used to be ---- */
+
+.chip-group { display: flex; flex-wrap: wrap; gap: 7px; }
+.chip {
+  padding: 7px 15px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--moss-deep);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.chip:hover { border-color: var(--gold-rule); background: #f4eddc; }
+.chip:focus-visible { outline: 2px solid var(--gold-rule); outline-offset: 1px; }
+.chip[aria-pressed="true"] {
+  background: var(--moss-deep);
+  border-color: var(--moss-deep);
+  color: #f6f1e4;
+}
+/* Nastaliq has no Latin and the Latin faces have no Arabic, so a button
+   labelled in one script has to say which it is. */
+.chip.urdu { font-family: var(--font-urdu); font-size: 15px; line-height: 1.9; padding-bottom: 9px; }
+.chip.arabic { font-family: var(--font-arabic); font-size: 16px; line-height: 1.7; }
+
+/* Tags. One pill each, so removing one is a click on that one rather than
+   counting commas in a line. */
+.tag-box {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 18px;
-  margin-bottom: 10px;
-  padding: 10px 12px;
-  background: var(--paper-warm);
+  align-items: center;
+  gap: 7px;
+  padding: 7px 9px;
+  background: var(--card);
   border: 1px solid var(--line);
   border-radius: 4px;
 }
-.writing-group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.writing-group-label {
-  margin-right: 2px;
-  color: var(--muted);
-  font-size: 11px;
+.tag-box:focus-within { border-color: var(--moss); box-shadow: 0 0 0 3px rgba(45, 87, 73, 0.12); }
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 12px;
+  background: var(--paper-warm);
+  border-radius: 999px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.07em;
+  color: var(--moss-deep);
+}
+.tag-pill.urdu { font-family: var(--font-urdu); font-size: 14px; line-height: 1.9; padding-bottom: 6px; }
+.tag-kill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 19px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(21, 52, 43, 0.1);
+  color: var(--moss-deep);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.tag-kill:hover { background: #a3341f; color: #fff; }
+.tag-input {
+  flex: 1 1 120px;
+  min-width: 120px;
+  /* Inside the box, so it must not draw a second one. */
+  border: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  padding: 4px 2px !important;
+}
+
+/* ---- The writing box ------------------------------------------------
+
+   The piece as it will read, not a box of marks with the result
+   somewhere else. The canvas borrows `.post-body` from the site's own
+   stylesheet, so a heading here is the heading the reader will meet and
+   Nastaliq is Nastaliq; these rules only undo the things that belong to
+   a printed column rather than an editing box. */
+
+.writing-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 22px;
+  padding: 10px 12px;
+  background: var(--paper-warm);
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+}
+.writing-group { display: flex; flex-direction: column; gap: 5px; }
+.writing-group-buttons { display: flex; flex-wrap: wrap; gap: 5px; }
+.writing-group-label {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 .writing-tool {
+  min-width: 38px;
   padding: 6px 12px;
   border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--paper-warm);
+  border-radius: 4px;
+  background: var(--card);
   color: var(--moss-deep);
   font: inherit;
   font-size: 13px;
@@ -293,23 +380,63 @@
 }
 .writing-tool:hover { border-color: var(--gold-rule); background: #f4eddc; }
 .writing-tool:focus-visible { outline: 2px solid var(--gold-rule); outline-offset: 1px; }
-/* What the block already is, not merely what the button would do. */
+/* What the line already is, not merely what the button would do. */
 .writing-tool[aria-pressed="true"] {
   background: var(--moss-deep);
   border-color: var(--moss-deep);
   color: #f6f1e4;
 }
-/* Nastaliq has no Latin and the Latin faces have no Arabic, so a button
-   labelled in one script has to say which it is. */
-.writing-tool.arabic {
-  font-family: var(--font-arabic);
-  font-size: 15px;
-  font-weight: 700;
+.writing-tool.urdu { font-family: var(--font-urdu); font-size: 15px; line-height: 1.9; padding-bottom: 9px; }
+.writing-tool.arabic { font-family: var(--font-arabic); font-size: 16px; line-height: 1.7; }
+/* The style buttons show the style. A heading button set in the heading
+   face says more than the word does. */
+.writing-tool.is-heading { font-family: var(--font-display); font-size: 15px; }
+.writing-tool.is-quote { font-style: italic; }
+/* Lines standing for where the words will sit, which needs no translating
+   and no reading. */
+.writing-tool.is-align {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  padding: 7px 9px;
 }
-.writing-tools-note {
-  flex: 1 1 100%;
-  margin: 2px 0 0;
+
+/* Both classes named, not just `.writing-canvas`: `.post-body.urdu` in the
+   site's stylesheet is two classes' worth of weight, and one class cannot
+   overrule it however late it is declared. That left the Urdu box at a
+   44-character column hugging the right edge with half the row empty. */
+.writing-canvas.post-body {
+  /* A reading measure and a right-hand column are right on a page and
+     wrong in a box you type into, where the words should fill what is in
+     front of you. */
+  max-width: none;
+  margin: 0;
+  min-height: 320px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 18px 20px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 0 0 4px 4px;
+  color: var(--ink);
+}
+.writing-canvas:focus { outline: 0; border-color: var(--moss); box-shadow: 0 0 0 3px rgba(45, 87, 73, 0.12); }
+/* Blocks keep the site's proportions but lose the page's generous
+   spacing — a screenful of writing should be a screenful. */
+.writing-canvas > * { margin: 0 0 0.85em; }
+.writing-canvas > *:last-child { margin-bottom: 0; }
+.writing-canvas h2 { margin-top: 1.1em; }
+/* An empty box would otherwise be a blank rectangle with no way to know
+   it can be typed into. */
+.writing-canvas > p:only-child:empty::before,
+.writing-canvas > p:only-child > br:only-child::before {
+  content: "Start writing…";
   color: var(--muted);
-  font-size: 12px;
-  line-height: 1.5;
+}
+.writing-note {
+  margin: 8px 0 0;
+  color: var(--gold-on-light);
+  font-size: 12.5px;
+  line-height: 1.55;
 }

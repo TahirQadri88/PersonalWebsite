@@ -987,6 +987,26 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .print-credit { display: none; }
 .work-hero[dir="rtl"] .page-tools { direction: rtl; }
 
+/* Share, on a row in the library. A button among links, so it has to be
+   stripped back to look like one. */
+.share-button {
+  background: none;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  cursor: pointer;
+  padding: 0 0 2px;
+  font: inherit;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--moss);
+}
+.share-note {
+  color: var(--gold-on-light);
+  font-family: var(--font-ui);
+  font-size: 13px;
+}
+
 /* 11b ── The reading column ───────────────────────────────── */
 
 /* Full-bleed sections, centred contents. Declared after the sections

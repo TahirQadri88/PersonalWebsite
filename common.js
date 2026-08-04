@@ -450,6 +450,22 @@
     return copyBySelection(text);
   }
 
+  /* Sharing one record, from wherever the button was pressed — the row on
+     the homepage, the work page, the foot of a post. Resolves with the
+     line to show the reader, which is empty when the system sheet took
+     it and there is nothing to report. */
+  function shareRecord(record, url) {
+    if (navigator.share) {
+      return navigator
+        .share({ title: record.title, text: shareCaption(record, url, false), url: url })
+        .then(function () { return ''; }, function () { return ''; });
+    }
+    return copyText(shareCaption(record, url, true)).then(
+      function () { return 'Caption and link copied — paste it anywhere.'; },
+      function () { return 'Could not copy. The address is ' + url; }
+    );
+  }
+
   /* The two buttons, and the credit line that only paper sees.
 
      Printing needs no script — the stylesheet does that work, and
@@ -483,15 +499,7 @@
     say.setAttribute('aria-live', 'polite');
 
     share.addEventListener('click', function () {
-      if (navigator.share) {
-        navigator
-          .share({ title: record.title, text: shareCaption(record, url, false), url: url })
-          .catch(function () { /* dismissed — not an error worth reporting */ });
-        return;
-      }
-      copyText(shareCaption(record, url, true))
-        .then(function () { say.textContent = 'Caption and link copied — paste it anywhere.'; })
-        .catch(function () { say.textContent = 'Could not copy. The address is ' + url; });
+      shareRecord(record, url).then(function (line) { say.textContent = line; });
     });
 
     print.addEventListener('click', function () { window.print(); });
@@ -534,6 +542,7 @@
     skeleton: skeleton,
     searchText: searchText,
     shareCaption: shareCaption,
+    shareRecord: shareRecord,
     pageTools: pageTools
   };
 
