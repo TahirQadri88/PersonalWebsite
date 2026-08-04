@@ -23,9 +23,17 @@
 const GITHUB = 'https://api.github.com';
 
 /* The token here can write to the repository, so this endpoint must not
-   become a way to write anything anywhere. Only the three things the
-   editor legitimately produces are accepted. */
-const WRITABLE = [/^content\.js$/, /^sitemap\.xml$/, /^posts\/[a-z0-9-]+\.html$/];
+   become a way to write anything anywhere. Only what the editor
+   legitimately produces is accepted: content.js and sitemap.xml, a
+   post's own page, and — since every work and fatwa got one too, so a
+   shared link carries a real title and picture instead of the same
+   generic preview whichever one it named — a work's own page as well. */
+const WRITABLE = [
+  /^content\.js$/,
+  /^sitemap\.xml$/,
+  /^posts\/[a-z0-9-]+\.html$/,
+  /^works\/[a-z0-9-]+\.html$/
+];
 
 const MAX_FILE_BYTES = 512 * 1024;
 const MAX_FILES = 40;

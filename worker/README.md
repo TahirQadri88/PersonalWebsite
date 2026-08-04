@@ -201,6 +201,7 @@ Only these, and nothing else, whatever it is asked for:
 - `content.js`
 - `sitemap.xml`
 - `posts/<name>.html`
+- `works/<name>.html`
 
 A single request may carry all of them and they are committed together, so
 `content.js` and `sitemap.xml` can never land out of step. `content.js` is

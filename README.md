@@ -11,9 +11,10 @@ A plain static website. No build step, no framework, no server code. Double-clic
 | `admin.html` | A form for editing `content.js` without touching the code |
 | `worker/` | The editor's backend, so publishing needs no token on your device |
 | `posts/` | One HTML file per post — written by `admin.html`, not by hand |
+| `works/` | One HTML file per work and fatwa — also written by `admin.html`, not by hand |
 | `files/` | Put your PDFs and documents here |
 | `index.html` | The homepage |
-| `work.html` | One page that renders any single work or fatwa |
+| `work.html` | Kept for an old `work.html?work=<id>` link — sends it on to the work's real page in `works/` when one exists, or shows the work itself when it doesn't yet |
 | `common.js` · `script.js` · `work.js` | The code that builds the pages from `content.js` |
 | `styles.css` | All the design, organised into numbered sections |
 | `404.html` · `robots.txt` · `sitemap.xml` · `share-card.png` · `CNAME` | Supporting files |
@@ -58,12 +59,32 @@ hand — useful if you would rather not keep a token.
    new work.
 4. Save and refresh the page.
 
+Added this way, the work shows up right away — `work.html?work=ilm-ul-meerath`
+renders it on the spot when it finds no `works/ilm-ul-meerath.html` yet.
+What it will not have until then is a proper preview: WhatsApp, Facebook and
+the like read a page's file directly and never run its script, so a work
+added by hand looks generic if shared before its page exists. Open
+`admin.html` once, over the same content, and press **Publish** — or
+**Files…** and paste in the one extra page it now offers alongside
+`content.js` and `sitemap.xml` — and the entry you typed by hand gets the
+same page every other work has.
+
 **`language`** picks the font: `"ur"` gives Nastaleeq, `"ar"` gives Naskh, `"en"`
 gives the English serif.
 
 **`id`** must be unique and use only English letters, numbers and hyphens. It
-becomes the shareable address: `work.html?work=ilm-ul-meerath`. Once you have
-shared a link, don't change its `id` — the old link will stop working.
+becomes the shareable address: `works/ilm-ul-meerath.html`, written by
+`admin.html` alongside `content.js` and `sitemap.xml` whenever you press
+**Publish**. Once you have shared a link, don't change its `id` — the old
+link will stop working.
+
+Each of these pages carries its own title, description and picture for
+WhatsApp, Google and the rest to read straight off the file — they never run
+the page's script, so those three things have to already be in the file they
+fetch, not filled in afterwards. That's also why `admin.html` regenerates
+every one of them on every **Publish**: nothing about a work is written down
+anywhere except `content.js`, so keeping its page correct just means building
+it again from there each time, the same as `sitemap.xml` already is.
 
 **`files`** can point at a Google Drive link just as easily as a local file. Leave
 the whole `files` line out if nothing is ready yet; the work then shows as

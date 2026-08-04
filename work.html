@@ -4,9 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Work — Abul Laith Muhammad Tahir Qadri</title>
-    <meta name="description" content="A work by Abul Laith Muhammad Tahir Qadri An-Naeemi." />
-    <!-- work.js fills in the title, description, canonical, sharing tags and
-         structured data for whichever work is being shown. -->
+    <!-- Every work and fatwa published through admin.html has its own page
+         now, works/<id>.html — a crawler can read its title and
+         description without running a script, which this page could
+         never do: it filled them in from content.js after the page had
+         already loaded, and WhatsApp, Facebook and the rest never wait
+         that long. work.js below checks for that page and sends the
+         visitor straight there.
+
+         No noindex here on purpose. A work added straight into
+         content.js by hand — the README still allows it — has no such
+         page yet, and this one is where it still has to be found: by a
+         reader following an old work.html?work=<id> link, and by a
+         search engine, which does run the script and so still sees it
+         correctly either way. Only WhatsApp and the like miss out on
+         that one, until admin.html writes its page. -->
     <link rel="icon" type="image/png" sizes="32x32" href="files/images/logo-circle-32.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="files/images/logo-circle-512.png" />
     <link rel="apple-touch-icon" href="files/images/logo-circle-180.png" />

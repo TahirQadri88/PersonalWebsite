@@ -27,15 +27,17 @@ let anything from `worker/` become a dependency of the pages.
 content.js     the only file that holds content — works, categories, fatawa
 files/         PDFs and documents
 index.html     homepage
-work.html      one template rendering any single work or fatwa
+work.html      an old work.html?work=<id> link — redirects to works/, or renders
+                 the record itself when that page does not exist yet
 common.js      shared helpers (escaping, script/direction, file links, lookup)
 script.js      homepage rendering, category nav, search
-work.js        detail page rendering
+work.js        the work.html fallback above — nothing else uses it
 admin.html     form editor — publishes to GitHub, or hands you the files
 admin.css admin.js   its styles and logic, loaded by nothing else
 worker/        the editor's backend — Cloudflare Worker, deployed separately
 posts/         one HTML file per post — the writing is the page, not a download
-styles.css     all design, in 12 numbered sections
+works/         one HTML file per work and fatwa — written by admin.html, same as posts/
+styles.css     all design, in 13 numbered sections
 404.html robots.txt sitemap.xml share-card.png CNAME
 files/images/   the seal used as favicon and header mark, and the calligraphed name
 ```
@@ -46,9 +48,9 @@ files/images/   the seal used as favicon and header mark, and the calligraphed n
 into `index.html` — an earlier version did, and a work went missing because the
 two lists drifted.
 
-**IDs are permanent.** Each work and fatwa has an explicit `id` used in
-`work.html?work=<id>`. Links get shared with students. Never regenerate IDs from
-array position, and never rename an existing one.
+**IDs are permanent.** Each work and fatwa has an explicit `id` and its own
+page, `works/<id>.html`. Links get shared with students. Never regenerate IDs
+from array position, and never rename an existing one.
 
 **Typography is not cosmetic.** Urdu must render in Nastaleeq (`Noto Nastaliq
 Urdu`) and Arabic in Naskh (`Amiri`). Set `language: "ur" | "ar" | "en"` on every
@@ -61,6 +63,21 @@ against a long Urdu title.
 in `content.js`. `admin.html` writes that file; editing one needs the editor
 opened over http so it can read the page back.
 
+**A work or a fatwa also has its own page.** `works/<id>.html`, written by
+`buildWork` in `admin.js` and regenerated in full on every publish — nothing
+about one lives anywhere but `content.js`, so there is no "has it changed"
+question the way there is for a post's free-text body. This exists because a
+crawler — WhatsApp, Facebook, Telegram — reads only the file it fetches and
+never runs its script; before this, every work and fatwa shared the same
+generic preview, whichever one the link actually named, because the real
+title and description were filled in by `work.js` after the page had already
+loaded. `work.html?work=<id>` still answers an old link — it redirects to the
+real page when one exists, and renders the record itself, exactly as it used
+to, when a record has been added straight into `content.js` and not yet
+published through the editor. Relative file paths inside a work page climb
+back out with `../`, since the page now lives one folder down; an offsite
+link (Google Drive) is left alone. See `site.isOffsite`.
+
 **Missing files are a normal state.** A work with no `files` array renders as
 "Not published here yet". Do not delete such entries or invent placeholder URLs.
 
@@ -68,13 +85,17 @@ opened over http so it can read the page back.
 `site.escapeHtml` before reaching `innerHTML`.
 
 **Share and Print are mounted, not written.** `common.js` adds them to any
-page holding a `#post-body`, finding the record by matching `page` against
-the address; `work.js` calls `site.pageTools` for a work. Nothing is baked
-into the generated post files, so a change here reaches every post already
-written without regenerating one of them. The caption is the title, the
+page whose address matches a record's own page — `site.ownPage`, `record.page`
+for a post or `works/<id>.html` otherwise — finding the mount point by
+`#post-body` for a post and `#work-page-files` for a work. Nothing is baked
+into the generated files themselves, so a change here reaches every post and
+work already written without regenerating one of them. Print only ever
+appears on a post — `record.page` is the same field that says a page holds
+the whole piece rather than a download. The caption is the title, the
 description in the piece's own script, the author, and the link —
-`navigator.share` gets it without the link, since every sheet appends one.
-Printing is section 13 of `styles.css` and needs no script.
+`navigator.share` gets it without the link, since every sheet appends one; a
+real failure (not the reader cancelling) falls back to copying it instead of
+doing nothing. Printing is section 13 of `styles.css` and needs no script.
 
 **Colour contrast.** `--gold-on-light` and `--gold-on-dark` are two different
 values for a reason. Do not collapse them into one.
@@ -86,15 +107,23 @@ values for a reason. Do not collapse them into one.
   Nastaliq breaks first.
 - Keep commits small and in plain language; the author reads the history.
 
-**Adding a work means editing sitemap.xml too.** It is the one file outside
-`content.js` that names a work, one `<url>` per id. Search engines find the
-detail pages through it — the homepage list is built by JS, so a crawler that
-does not run scripts sees nothing there. Miss the sitemap line and the work is
-published but unfindable.
+**Adding a work by hand means editing sitemap.xml too, and its page is missing
+until admin.html writes it.** `sitemap.xml` is the one file outside
+`content.js` that names a work, one `<url>` per id — the homepage list is
+built by JS, so a crawler that does not run scripts sees nothing there. Miss
+the sitemap line and the work is published but unfindable. `admin.html`
+writes `content.js`, `sitemap.xml` and every work's own page together on
+every publish, so this only matters when content.js is hand-edited outside
+the editor.
 
 ## Outstanding
 
 - Every work and fatwa has its files. Nothing is owed.
+- Every work and fatwa has its own page now, `works/<id>.html`, so a shared
+  link shows the right title, description and picture instead of the one
+  generic preview every one of them used to share. `work.html?work=<id>`
+  still resolves an old link and still renders a record that has been added
+  by hand and not yet published — see the rule above and `work.js`.
 - Publishing from the editor goes through `worker/` when it is opened at
   `admin.tahirqadri.com.pk`. The Worker checks who is asking — a Firebase
   sign-in or a Cloudflare Access one, whichever is configured — and holds the

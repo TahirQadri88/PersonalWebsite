@@ -141,10 +141,11 @@ r = await post([], JWT);
 t('empty publish refused', r.status===400, JSON.stringify(r));
 
 r = await post([{path:'content.js',text:GOOD},{path:'sitemap.xml',text:'<urlset/>'},
-                {path:'posts/hello-world.html',text:'<h1>hi</h1>'}], JWT);
+                {path:'posts/hello-world.html',text:'<h1>hi</h1>'},
+                {path:'works/ilm-ul-meerath.html',text:'<h1>hi</h1>'}], JWT);
 t('a real publish succeeds', r.status===200 && r.body.sha==='c0ffee1234567890', JSON.stringify(r));
 t('  …in exactly one commit', gh.filter(x=>x.startsWith('POST /git/commits')).length===1, gh.join(' | '));
-t('  …with all three files', r.body.files.length===3, JSON.stringify(r.body.files));
+t('  …with all four files', r.body.files.length===4, JSON.stringify(r.body.files));
 t('  …and moves the branch once', gh.filter(x=>x.startsWith('PATCH')).length===1, gh.join(' | '));
 
 const g = await worker.fetch(new Request('https://admin.tahirqadri.com.pk/publish',{method:'GET'}), env);

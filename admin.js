@@ -883,6 +883,160 @@
       .join('\n');
   }
 
+  /* A work or a fatwa's own page, works/<id>.html — the same reasoning as
+     buildPost above: a crawler reads whatever is in the file, and nothing
+     that runs after the page loads. This used to be work.js's job, filled
+     in after work.html had already reached the browser, which is exactly
+     what a link-preview bot never sticks around for — WhatsApp, Facebook,
+     Telegram all read the raw file and nothing else. That is why every
+     one of these looked identical when shared: the raw file was always
+     the same generic template, whichever work the link named.
+
+     What follows renders the same hero work.js used to build client-side
+     — same helpers, same markup — but into a file instead of the DOM. */
+  function buildWork(record, entry) {
+    var e = site.escapeHtml;
+    var base = String((model.site && model.site.baseUrl) || '').replace(/\/+$/, '') + '/';
+    var author = (model.site && model.site.name) || '';
+    var authorUr = (model.site && model.site.nameUr) || undefined;
+
+    /* A ruling carries no category of its own in this model — eachRecord
+       passes null for one, same as buildPost does for a post. The site's
+       own rendering (common.js, allRecords) fills in the same two
+       constants for a ruling; matched here so the page this generates
+       reads exactly like the one the live site already shows. */
+    var isRuling = !entry.category;
+    var categoryTitle = entry.category ? entry.category.title : 'Islamic rulings';
+    var categoryId = entry.category ? entry.category.id : 'rulings';
+    var kind = record.kind || (isRuling ? 'فتویٰ' : undefined);
+
+    var path = 'works/' + record.id + '.html';
+    var url = base + path;
+    var rtl = record.language === 'ur' || record.language === 'ar';
+    var scriptClass = record.language === 'ur' ? 'urdu' : record.language === 'ar' ? 'arabic' : 'latin';
+    var pretty = site.formatDate(record.date);
+    var backHref = isRuling ? '../index.html#rulings' : '../index.html#' + categoryId;
+
+    /* The work's own language first, then the other — same order the
+       live page uses. */
+    var prose = (rtl
+      ? [[record.descriptionUr, 'ur'], [record.description, record.language]]
+      : [[record.description, record.language], [record.descriptionUr, 'ur']])
+      .filter(function (pair) { return pair[0]; })
+      .map(function (pair) { return site.proseMarkup(pair[0], 'work-page-description', pair[1]); })
+      .join('');
+
+    /* A file path in content.js — "files/booklets-authored/x.pdf" — is
+       right from the site root, which is where work.html always lived.
+       This page lives one folder down, in works/, so the same path now
+       has to climb back out with a "../" or it resolves to
+       works/files/…, which does not exist. An address that already has
+       a scheme — a Google Drive link — is left exactly alone; only a
+       path relative to this site is adjusted. Structured data below
+       still reads the untouched record: site.absoluteUrl builds a full
+       address there regardless of which page is announcing it. */
+    var forPage = record;
+    if (record.files && record.files.length) {
+      forPage = Object.assign({}, record, {
+        files: record.files.map(function (file) {
+          var next = Object.assign({}, file);
+          if (!site.isOffsite(file.url)) next.url = '../' + file.url;
+          if (file.preview && !site.isOffsite(file.preview)) next.preview = '../' + file.preview;
+          return next;
+        })
+      });
+    }
+    var files = site.fileLinks(forPage, 'button');
+    var gallery = site.imageGallery(forPage);
+    var tags = (record.tags || []).length ? site.tagMarkup(record) : '';
+
+    var jsonLd = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'CreativeWork',
+      name: record.title,
+      inLanguage: record.language || 'en',
+      description: record.description || undefined,
+      genre: kind || undefined,
+      keywords: (record.tags || []).join(', ') || undefined,
+      url: url,
+      author: { '@type': 'Person', name: author, alternateName: authorUr, url: base },
+      isPartOf: { '@type': 'Collection', name: categoryTitle, url: base },
+      associatedMedia: (record.files || []).map(function (file) {
+        return { '@type': 'MediaObject', name: file.label, contentUrl: site.absoluteUrl(file.url) };
+      })
+    });
+
+    return [
+      '<!doctype html>',
+      '<html lang="' + e(record.language || 'en') + '">',
+      '  <head>',
+      '    <meta charset="UTF-8" />',
+      '    <meta name="viewport" content="width=device-width, initial-scale=1.0" />',
+      '    <title>' + e(record.title) + ' — ' + e(author) + '</title>',
+      record.description ? '    <meta name="description" content="' + e(record.description) + '" />' : null,
+      '    <meta name="author" content="' + e(author) + '" />',
+      '    <link rel="canonical" href="' + e(url) + '" />',
+      '',
+      '    <meta property="og:type" content="article" />',
+      '    <meta property="og:title" content="' + e(record.title) + '" />',
+      record.description ? '    <meta property="og:description" content="' + e(record.description) + '" />' : null,
+      '    <meta property="og:url" content="' + e(url) + '" />',
+      '    <meta property="og:image" content="' + e(base + 'share-card.png') + '" />',
+      '    <meta name="twitter:card" content="summary_large_image" />',
+      '',
+      '    <link rel="icon" type="image/png" sizes="32x32" href="../files/images/logo-circle-32.png" />',
+      '    <link rel="apple-touch-icon" href="../files/images/logo-circle-180.png" />',
+      '    <link rel="preconnect" href="https://fonts.googleapis.com" />',
+      '    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />',
+      '    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" rel="stylesheet" />',
+      '    <link rel="stylesheet" href="../styles.css" />',
+      '    <script type="application/ld+json">' + jsonLd + '</scr' + 'ipt>',
+      '  </head>',
+      '',
+      '  <body class="work-page">',
+      '    <header class="site-header">',
+      '      <a class="brand" href="../index.html"><img class="brand-mark" src="../files/images/logo-circle-180.png" alt="" width="180" height="180" /> Scholarly Works and Research</a>',
+      '      <nav class="header-nav" aria-label="Sections">',
+      '        <a href="../index.html#about">Author</a>',
+      '        <a class="nav-echo" href="../index.html#library">Library</a>',
+      '        <a class="nav-echo" href="../index.html#rulings">Fatawa</a>',
+      '        <a href="../index.html#contact">Contact</a>',
+      '      </nav>',
+      '    </header>',
+      '',
+      '    <main class="work-page-main">',
+      '      <article class="work-hero"' + (rtl ? ' dir="rtl"' : '') + '>',
+      '        <a class="back-link" href="' + e(backHref) + '"><span aria-hidden="true">' +
+        (rtl ? '→' : '←') + '</span> ' + e(categoryTitle) + '</a>',
+      kind
+        ? '        <p class="section-label urdu' + (rtl ? '' : ' align-left') + '" lang="ur" dir="rtl">' + e(kind) + '</p>'
+        : null,
+      '        ' + site.titleMarkup(record, 'h1'),
+      pretty ? '        <p class="work-date">' + e(pretty) + '</p>' : null,
+      prose ? '        ' + prose : null,
+      files
+        ? '        <div class="work-page-files" id="work-page-files">' + files + '</div>'
+        : '        <p class="availability-note" id="work-page-files">This one isn’t published here yet. Write to the author if you need it.</p>',
+      gallery ? '        ' + gallery : null,
+      tags ? '        ' + tags : null,
+      '      </article>',
+      '    </main>',
+      '',
+      '    <footer>',
+      '      <span>© <span id="year"></span> ' + e(author) + '</span>',
+      '      <a href="../index.html">All works</a>',
+      '    </footer>',
+      '',
+      '    <script src="../content.js"></scr' + 'ipt>',
+      '    <script src="../common.js"></scr' + 'ipt>',
+      '  </body>',
+      '</html>',
+      ''
+    ]
+      .filter(function (line) { return line !== null; })
+      .join('\n');
+  }
+
   /* ---- One entry ---- */
 
   function buildRow(entry) {
@@ -1479,10 +1633,14 @@
   function buildSitemap() {
     var base = String((model.site && model.site.baseUrl) || '').replace(/\/+$/, '') + '/';
     var today = new Date().toISOString().slice(0, 10);
-    /* A post has its own page; everything else is served by the template. */
+    /* A post has its own page at record.page; a work or a fatwa has its
+       own page too now, works/<id>.html — work.html?work=<id> is a
+       redirect kept only for links already shared, and offering that
+       address to a crawler instead of the real page would just have it
+       follow a redirect to find the same thing, for no benefit. */
     var paths = [];
     eachRecord(function (record) {
-      paths.push(record.page ? record.page : 'work.html?work=' + record.id);
+      paths.push(record.page ? record.page : 'works/' + record.id + '.html');
     });
     return (
       '<?xml version="1.0" encoding="UTF-8"?>\n' +
@@ -1536,26 +1694,27 @@
     document.getElementById('out-content').value = content;
     document.getElementById('out-sitemap').value = buildSitemap();
 
-    /* One more file for every post whose words are in hand. A post whose
-       page could not be read is left alone rather than overwritten with
-       an empty one. */
-    var extra = document.getElementById('out-posts');
+    /* One more file per record with a page of its own: a post's, if its
+       words are in hand — a post whose page could not be read is left
+       alone rather than overwritten with an empty one — and a work or a
+       fatwa's, always, since nothing about one lives anywhere but this
+       form and there is never a reason not to regenerate it. */
+    var extra = document.getElementById('out-pages');
     extra.textContent = '';
-    var written = 0;
-    allRecords().forEach(function (entry) {
-      if (!isPost(entry) || !entry.record.page) return;
-      if (bodies[entry.record.id] === undefined) return;
-      written += 1;
-      var id = 'out-post-' + written;
+    var writtenPosts = 0;
+    var writtenWorks = 0;
+
+    function offerFile(path, text) {
+      var id = 'out-file-' + (writtenPosts + writtenWorks);
       var section = document.createElement('section');
       var head = document.createElement('div');
       head.className = 'admin-file-head';
       var title = document.createElement('h3');
-      title.textContent = entry.record.page;
+      title.textContent = path;
       var buttons = document.createElement('span');
       buttons.innerHTML =
         '<button class="text-link" type="button" data-copy="' + id + '">Copy</button> ' +
-        '<button class="text-link" type="button" data-download="' + entry.record.page.split('/').pop() +
+        '<button class="text-link" type="button" data-download="' + path.split('/').pop() +
         '" data-source="' + id + '">Download</button>';
       head.appendChild(title);
       head.appendChild(buttons);
@@ -1563,10 +1722,21 @@
       area.id = id;
       area.readOnly = true;
       area.spellcheck = false;
-      area.value = buildPost(entry.record, entry);
+      area.value = text;
       section.appendChild(head);
       section.appendChild(area);
       extra.appendChild(section);
+    }
+
+    allRecords().forEach(function (entry) {
+      if (isPost(entry)) {
+        if (!entry.record.page || bodies[entry.record.id] === undefined) return;
+        writtenPosts += 1;
+        offerFile(entry.record.page, buildPost(entry.record, entry));
+      } else {
+        writtenWorks += 1;
+        offerFile('works/' + entry.record.id + '.html', buildWork(entry.record, entry));
+      }
     });
 
     var works = 0;
@@ -1574,8 +1744,10 @@
     (model.categories || []).forEach(function (c) { works += (c.works || []).length; });
     document.getElementById('export-summary').textContent =
       works + ' works and ' + rulings + ' fatawa, in ' + (model.categories || []).length +
-      ' categories. Checked — the file parses.' +
-      (written ? ' ' + written + (written === 1 ? ' post page' : ' post pages') + ' below, one file each.' : '');
+      ' categories. Checked — the file parses. ' +
+      writtenWorks + (writtenWorks === 1 ? ' work page' : ' work pages') +
+      (writtenPosts ? ' and ' + writtenPosts + (writtenPosts === 1 ? ' post page' : ' post pages') : '') +
+      ' below, one file each.';
 
     dialog.showModal();
   });
@@ -1806,9 +1978,12 @@
   function filesToCommit() {
     var out = [{ path: 'content.js', text: buildContent() }, { path: 'sitemap.xml', text: buildSitemap() }];
     allRecords().forEach(function (entry) {
-      if (!isPost(entry) || !entry.record.page) return;
-      if (bodies[entry.record.id] === undefined) return;
-      out.push({ path: entry.record.page, text: buildPost(entry.record, entry) });
+      if (isPost(entry)) {
+        if (!entry.record.page || bodies[entry.record.id] === undefined) return;
+        out.push({ path: entry.record.page, text: buildPost(entry.record, entry) });
+      } else {
+        out.push({ path: 'works/' + entry.record.id + '.html', text: buildWork(entry.record, entry) });
+      }
     });
     return out;
   }

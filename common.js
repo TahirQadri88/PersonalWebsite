@@ -135,11 +135,22 @@
       .join('');
   }
 
-  /* Most entries are a record about a file, and open work.html. A post is
-     its own page — the writing is in the HTML, not behind a download — so
-     it names that page and links straight to it. */
+  /* Every record has its own page now, generated once and committed —
+     `posts/<id>.html` for a post, `works/<id>.html` for anything else, so
+     a work or a fatwa has real title, description and image tags a
+     crawler can read without running a script. `work.html?work=<id>`
+     still exists and still opens the right thing — old links, already
+     shared, must not break — but it is a redirect now, not the page. */
+  function ownPage(record) {
+    return record.page || 'works/' + record.id + '.html';
+  }
+
   function recordHref(record) {
-    return record.page ? record.page : 'work.html?work=' + encodeURIComponent(record.id);
+    return ownPage(record);
+  }
+
+  function isOffsite(url) {
+    return OFFSITE.test(String(url || ''));
   }
 
   /* "2026-08-02" -> "2 August 2026". Returns '' for anything unparseable
@@ -572,6 +583,8 @@
     titleMarkup: titleMarkup,
     fileLinks: fileLinks,
     recordHref: recordHref,
+    ownPage: ownPage,
+    isOffsite: isOffsite,
     formatDate: formatDate,
     isImage: isImage,
     imageGallery: imageGallery,
@@ -587,26 +600,43 @@
     pageTools: pageTools
   };
 
-  /* A post is a file of its own, written once by the editor and then left
-     alone. Putting the buttons in from here rather than into the generated
-     markup means every post already written has them, and no page has to
-     be rewritten to gain the next thing they learn to do.
+  /* A post or a work is a file of its own, written once by the editor and
+     then left alone. Putting the buttons in from here rather than into
+     the generated markup means every page already written has them, and
+     no page has to be rewritten to gain the next thing they learn to do.
 
-     The record is found by the address: a post entry carries the path of
-     its own page. Nothing is added if no entry claims this file — better
-     no button than one captioned with the wrong piece. */
-  var postBody = document.getElementById('post-body');
-  if (postBody) {
-    var here = location.pathname;
-    var mine = allRecords().filter(function (record) {
-      return record.page && here.slice(-(record.page.length + 1)) === '/' + record.page;
-    })[0];
-    var article = postBody.closest('article');
-    if (mine && article) {
-      var canonical = document.head.querySelector('link[rel="canonical"]');
-      var address = (canonical && canonical.getAttribute('href')) || absoluteUrl(mine.page);
-      var foot = article.querySelector('.post-foot');
-      article.insertBefore(pageTools(mine, address), foot);
+     The record is found by the address, matched against `ownPage` —
+     `record.page` for a post, `works/<id>.html` for everything else.
+     Nothing is added if no entry claims this file — better no button
+     than one captioned with the wrong piece. */
+  var here = location.pathname;
+  var mine = allRecords().filter(function (record) {
+    var path = ownPage(record);
+    return here.slice(-(path.length + 1)) === '/' + path;
+  })[0];
+  if (mine) {
+    var canonical = document.head.querySelector('link[rel="canonical"]');
+    var address = (canonical && canonical.getAttribute('href')) || absoluteUrl(ownPage(mine));
+    var tools = pageTools(mine, address);
+
+    var postBody = document.getElementById('post-body');
+    if (postBody) {
+      var article = postBody.closest('article');
+      if (article) {
+        var foot = article.querySelector('.post-foot');
+        foot ? article.insertBefore(tools, foot) : article.appendChild(tools);
+      }
+    } else {
+      /* A work page: right after the download buttons, or the "not
+         published yet" note when there is nothing to download — see the
+         same reasoning in buildWork, admin.js. */
+      var filesAnchor = document.getElementById('work-page-files');
+      if (filesAnchor) {
+        filesAnchor.insertAdjacentElement('afterend', tools);
+      } else {
+        var hero = document.querySelector('.work-hero');
+        if (hero) hero.appendChild(tools);
+      }
     }
   }
 
