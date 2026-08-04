@@ -440,7 +440,13 @@
       '    <main class="work-page-main">',
       '      <article class="work-hero">',
       '        <a class="back-link" href="../index.html#' + e(categoryId) + '">← ' + e(categoryTitle) + '</a>',
-      record.kind ? '        <p class="section-label urdu" lang="ur" dir="rtl">' + e(record.kind) + '</p>' : null,
+      /* Same as work.js: the label is Urdu whatever the post is, so on an
+         English one it moves to the margin the page is read from rather
+         than sitting across the column from the title it names. */
+      record.kind
+        ? '        <p class="section-label urdu' + (rtl ? '' : ' align-left') + '" lang="ur" dir="rtl">' +
+          e(record.kind) + '</p>'
+        : null,
       '        <h1 class="' + scriptClass + '" lang="' + e(record.language || 'en') + '" dir="' + (rtl ? 'rtl' : 'ltr') + '">' + e(record.title) + '</h1>',
       pretty ? '        <p class="work-date">' + e(pretty) + '</p>' : null,
       /* Through the same helper the rest of the site uses, so a description
@@ -459,11 +465,13 @@
       bodyToHtml(bodies[record.id], 10),
       '        </div>',
       '',
-      (record.tags || []).length
-        ? '        <ul class="tag-row">' +
-          (record.tags || []).map(function (tag) { return '<li class="tag" lang="ur" dir="rtl">' + e(tag) + '</li>'; }).join('') +
-          '</ul>'
-        : null,
+      /* Through the same helper the rendered pages use, so a tag takes the
+         script it is actually written in. This wrote every tag lang="ur"
+         dir="rtl" whatever it held, which put an English one in Nastaliq
+         running the wrong way — the bug common.js had already fixed for
+         the pages it builds, still here in the one place that writes a
+         file. */
+      (record.tags || []).length ? '        ' + site.tagMarkup(record) : null,
       '        <p class="post-foot"><a class="text-link" href="../index.html#' + e(categoryId) + '">← All posts</a></p>',
       '      </article>',
       '    </main>',

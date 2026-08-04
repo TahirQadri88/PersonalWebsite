@@ -146,12 +146,19 @@ h1, h2, h3 {
 
 /* A label that happens to be Urdu or Arabic keeps label proportions —
    it must not inflate to title size — but takes the right script. The
-   same goes for a download button whose label is Urdu. */
+   same goes for a download button whose label is Urdu.
+
+   `.urdu` also aligns it right, which is wrong above an English title —
+   it strands the label across the column from the thing it names. That
+   cannot be fixed here: the label is Urdu whatever the page is, and CSS
+   at this point cannot see which script the title below it is in. So
+   work.js and admin.js add `align-left` when the page reads leftwards. */
 .section-label.urdu,
 .section-label.arabic {
   font-size: 16px;
   line-height: 1.9;
 }
+
 /* .document-link sets --font-ui and is declared after .urdu, so it wins on
    source order. These have to name the script font again to take it back. */
 .document-link.urdu,
@@ -895,6 +902,9 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   color: #38443f;
   font-size: 17px;
   line-height: 1.75;
+  /* A source line ends in a bare address, and some of them are longer than
+     a phone is wide. Without this the page scrolls sideways. */
+  overflow-wrap: break-word;
 }
 .post-body.urdu,
 .post-body.arabic { max-width: 44ch; margin-left: auto; }
@@ -922,6 +932,17 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 }
 .post-body .arabic,
 .post-body .urdu { display: block; }
+
+/* An English line inside an Urdu piece — the original title of a source
+   quoted under its Urdu one. Nastaliq has no Latin to draw, and the right
+   alignment belongs to the Urdu around it, not to this line. Smaller,
+   because a citation is not the argument. */
+.post-body .latin {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.65;
+  text-align: left;
+}
 
 .post-foot {
   display: flex;

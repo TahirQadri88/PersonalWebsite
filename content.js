@@ -231,6 +231,28 @@ window.siteContent = {
       blurb: "Shorter pieces written as they come.",
       works: [
         {
+          id: "books-that-arent-coming-back",
+          title: "The Books That Aren’t Coming Back",
+          language: "en",
+          kind: "مضمون",
+          date: "2026-08-04",
+          description: "Books are being bought and shredded to feed machines — what the court allowed, what it cost, and why a printed copy still matters.",
+          descriptionUr: "‏کتابیں خرید کر مشین کی خوراک بنائی جا رہی ہیں: عدالت نے کیا جائز ٹھہرایا، تاوان کتنا پڑا، اور چھپی ہوئی کتاب اب بھی کیوں ضروری ہے۔",
+          tags: ["Books", "Artificial Intelligence", "Copyright", "Print"],
+          page: "posts/books-that-arent-coming-back.html"
+        },
+        {
+          id: "kitabein-mashin-ki-khurak",
+          title: "کتابیں خرید کر کاٹی جا رہی ہیں، مشین کی خوراک کے لیے",
+          language: "ur",
+          kind: "مضمون",
+          date: "2026-08-04",
+          description: "The Urdu version: books bought and pulped to feed machines, and why a book on the shelf depends on no server.",
+          descriptionUr: "‏یہی مضمون اردو میں: کتابیں خرید کر گودے میں بدلی جا رہی ہیں، اور الماری کی کتاب کسی سرور کی محتاج نہیں۔",
+          tags: ["کتاب", "مصنوعی ذہانت", "حقوقِ اشاعت", "طباعت"],
+          page: "posts/kitabein-mashin-ki-khurak.html"
+        },
+        {
           id: "alfaz-ka-intikhab",
           title: "الفاظ کا انتخاب",
           language: "ur",

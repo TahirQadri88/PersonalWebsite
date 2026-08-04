@@ -86,7 +86,14 @@
     '<span aria-hidden="true">' + (rtl ? '→' : '←') + '</span> ' +
     site.escapeHtml(record.category.title) +
     '</a>' +
-    (record.kind ? '<p class="section-label urdu" lang="ur" dir="rtl">' + site.escapeHtml(record.kind) + '</p>' : '') +
+    /* The label is Urdu whatever the work is, so on an English page `.urdu`
+       would strand it at the far margin, across the column from the title
+       it names. It stays Urdu — Nastaliq, right to left within itself —
+       and moves to the margin the page is read from. */
+    (record.kind
+      ? '<p class="section-label urdu' + (rtl ? '' : ' align-left') + '" lang="ur" dir="rtl">' +
+        site.escapeHtml(record.kind) + '</p>'
+      : '') +
     site.titleMarkup(record, 'h1') +
     (site.formatDate(record.date) ? '<p class="work-date">' + site.escapeHtml(site.formatDate(record.date)) + '</p>' : '') +
     prose +

@@ -92,11 +92,14 @@ published but unfindable.
   GitHub token itself, so no device ever does. Opened any other way the editor
   falls back to asking for a token, and `Files…` works everywhere.
   `worker/README.md` has the one-time setup.
-- The `posts` category is empty and hidden. The machinery is all there —
-  `page`/`date` entries, the editor's writing box, the page generator — and the
-  author will start writing when the way in is easier than it is now. The plan
-  is a GitHub Action: commit one Markdown file from the phone app, and it builds
-  the page, the entry and the sitemap line.
+- The `posts` category holds three pieces now. Two of them are the same essay
+  in English and Urdu — separate entries with separate ids, not one entry with
+  two files, because each is a page to be read rather than a download to be
+  picked. Nothing links one to the other yet; the block format has no way to
+  write a link, and adding one is the next thing that category needs.
+- Writing a post still means opening the editor. The plan is a GitHub Action:
+  commit one Markdown file from the phone app, and it builds the page, the
+  entry and the sitemap line.
 - The address is `https://tahirqadri.com.pk/` — a PKNIC domain on Cloudflare
   DNS, served by GitHub Pages. It is written in five places: `site.baseUrl` in
   `content.js`, `robots.txt`, `sitemap.xml`, the canonical and sharing tags in
