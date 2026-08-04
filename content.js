@@ -155,7 +155,7 @@ window.siteContent = {
           language: "ur",
           kind: "پریزینٹیشن",
           description: "A teaching presentation on the important rulings of fasting.",
-          descriptionUr: "روزے  ٹوٹنے کے اہم مسائل پر معلوماتی ، مختصر اور جامع  پریزینٹیشن۔",
+          descriptionUr: "روزہ  ٹوٹنے کے اہم مسائل پر معلوماتی ، مختصر اور جامع  پریزینٹیشن۔",
           tags: ["روزہ", "رمضان"],
           files: [
             { label: "Urdu PDF", url: "files/presentations/roza-ke-ahem-masail.pdf" }
@@ -248,7 +248,7 @@ window.siteContent = {
           kind: "مضمون",
           date: "2026-08-04",
           description: "The Urdu version: books bought and pulped to feed machines, and why a book on the shelf depends on no server.",
-          descriptionUr: "‏یہی مضمون اردو میں: کتابیں خرید کر گودے میں بدلی جا رہی ہیں، اور الماری کی کتاب کسی سرور کی محتاج نہیں۔",
+          descriptionUr: "کتابیں خرید کر گودے میں بدلی جا رہی ہیں، اور الماری کی کتاب کسی سرور کی محتاج نہیں۔",
           tags: ["کتاب", "مصنوعی ذہانت", "حقوقِ اشاعت", "طباعت"],
           page: "posts/kitabein-mashin-ki-khurak.html"
         },
