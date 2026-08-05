@@ -421,10 +421,17 @@
 
      `kind` is always written in Urdu — رسالہ, فتویٰ, مضمون — whatever
      script the piece itself is in; that is the whole site's own
-     convention, not something invented for this caption, so it sits on
-     its own line here too rather than beside an English title where
-     mixing the two directions on one line of plain text has no dir
-     attribute to fall back on. */
+     convention, and it reads fine as a small label above a title on the
+     page itself. A plain-text message is a different medium: an Urdu
+     word leading an English piece's caption, with nothing near it to
+     say why, just reads as a mistake. So this only carries `kind` when
+     the piece itself is Urdu or Arabic — there is no English word for
+     it to fall back to.
+
+     The title is wrapped in *asterisks* — WhatsApp, Telegram and Signal
+     all render that as bold in plain text, and between the three of
+     them that covers most of where a share sheet actually sends this.
+     Anywhere else it does nothing worse than show the asterisks. */
   function shareCaption(record, url, withUrl) {
     var rtl = direction(record.language) === 'rtl';
     var intro = rtl
@@ -435,8 +442,8 @@
       : (content.site && content.site.name);
 
     var lines = [];
-    if (record.kind) lines.push(record.kind);
-    lines.push(record.title);
+    if (record.kind && rtl) lines.push(record.kind);
+    lines.push('*' + String(record.title || '').replace(/\*/g, '') + '*');
     if (who) lines.push((rtl ? 'از ' : 'by ') + who);
     if (intro) lines.push('', intro);
     if (withUrl) lines.push('', url);
