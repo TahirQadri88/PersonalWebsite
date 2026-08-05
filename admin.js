@@ -830,8 +830,20 @@
       '    </header>',
       '',
       '    <main class="work-page-main">',
-      '      <article class="work-hero">',
-      '        <a class="back-link" href="../index.html#' + e(categoryId) + '">← ' + e(categoryTitle) + '</a>',
+      /* Without dir="rtl" here, an Urdu or Arabic post still reads right
+         to left sentence by sentence — every element under it sets its
+         own dir — but anything that depends on inherited direction for
+         layout, not text, does not: the tag row packed its pills from
+         the left instead of the right, and Share/Print stayed in their
+         English order and margin instead of mirroring, because the CSS
+         rules for both key off `.work-hero[dir="rtl"]` and this was the
+         one piece of markup buildWork already knew to write and this
+         function did not. */
+      '      <article class="work-hero"' + (rtl ? ' dir="rtl"' : '') + '>',
+      /* The arrow points the way back, which on an RTL page is
+         rightwards — same reasoning as buildWork's own back-link. */
+      '        <a class="back-link" href="../index.html#' + e(categoryId) + '"><span aria-hidden="true">' +
+        (rtl ? '→' : '←') + '</span> ' + e(categoryTitle) + '</a>',
       /* Same as work.js: the label is Urdu whatever the post is, so on an
          English one it moves to the margin the page is read from rather
          than sitting across the column from the title it names. */
@@ -840,7 +852,12 @@
           e(record.kind) + '</p>'
         : null,
       '        <h1 class="' + scriptClass + '" lang="' + e(record.language || 'en') + '" dir="' + (rtl ? 'rtl' : 'ltr') + '">' + e(record.title) + '</h1>',
-      pretty ? '        <p class="work-date">' + e(pretty) + '</p>' : null,
+      /* formatDate always writes the month name in English, whatever the
+         post's own language — under an RTL article this paragraph would
+         otherwise inherit dir="rtl" with no strong character of its own
+         to anchor it, and the bidi algorithm moves the leading day number
+         to the end: "3 August 2026" renders as "August 2026 3". */
+      pretty ? '        <p class="work-date" dir="ltr">' + e(pretty) + '</p>' : null,
       /* Through the same helper the rest of the site uses, so a description
          written in Urdu comes out in Nastaliq here too. */
       /* No summary above the writing. On a work the description says what
@@ -1012,7 +1029,10 @@
         ? '        <p class="section-label urdu' + (rtl ? '' : ' align-left') + '" lang="ur" dir="rtl">' + e(kind) + '</p>'
         : null,
       '        ' + site.titleMarkup(record, 'h1'),
-      pretty ? '        <p class="work-date">' + e(pretty) + '</p>' : null,
+      /* Same reasoning as buildPost: formatDate's month name is always
+         English, so this needs its own dir="ltr" or an RTL article
+         reorders "3 August 2026" into "August 2026 3". */
+      pretty ? '        <p class="work-date" dir="ltr">' + e(pretty) + '</p>' : null,
       prose ? '        ' + prose : null,
       files
         ? '        <div class="work-page-files" id="work-page-files">' + files + '</div>'

@@ -503,7 +503,14 @@
     if (navigator.share) {
       var opened;
       try {
-        opened = navigator.share({ title: record.title, text: shareCaption(record, url, false), url: url });
+        /* The link goes inside `text`, not in its own `url` field. Handed
+           over separately, WhatsApp's own share handler was rejoining the
+           two with a single space rather than the blank line the caption
+           was written with, so the address ran straight into the last
+           sentence. Folded into the text there is nothing left to
+           rejoin — and WhatsApp still turns a plain-text address into a
+           link and a preview card on its own, the same as pasting one. */
+        opened = navigator.share({ title: record.title, text: shareCaption(record, url, true) });
       } catch (error) {
         opened = Promise.reject(error);
       }
