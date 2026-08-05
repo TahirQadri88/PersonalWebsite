@@ -280,6 +280,17 @@
 
     box.appendChild(input);
     draw();
+
+    /* The one way in besides typing: a suggestion accepted whole, still
+       just a pill with the same × as one typed by hand. */
+    box.addTags = function (list) {
+      list.forEach(function (tag) {
+        if (!record.tags) record.tags = [];
+        if (record.tags.indexOf(tag) === -1) record.tags.push(tag);
+      });
+      draw();
+      markDirty();
+    };
     return box;
   }
 
@@ -528,41 +539,166 @@
   }
 
   /* Pasted text arrives as whatever the other program wrote — Word's
-     markup, a WhatsApp message, a web page. None of it can be kept, so
-     only the words are, split into blocks on blank lines exactly as the
-     file format splits them. */
+     markup, a WhatsApp message, a web page. Most of that can't be kept,
+     but WhatsApp's own marks say something real about shape: a line that
+     is nothing but *this* is meant to stand out, the way a heading does;
+     one that is nothing but _this_, or every line of it starting with
+     '>', is a quotation set apart. Both become the block that already
+     means that here, rather than punctuation nobody asked to see in the
+     finished piece. Anything else is a paragraph with the marks removed,
+     since the format still has nowhere to put mid-sentence emphasis. */
+  function stripInlineMarks(text) {
+    return text
+      .replace(/```([^`]*)```/g, '$1')
+      .replace(/`([^`\n]+)`/g, '$1')
+      .replace(/\*([^*\n]+)\*/g, '$1')
+      .replace(/_([^_\n]+)_/g, '$1')
+      .replace(/~([^~\n]+)~/g, '$1');
+  }
+
+  var QUOTE_PREFIX = /^>\s?/;
+
+  function parseWhatsAppChunk(raw) {
+    var lines = String(raw || '').split('\n').map(function (line) { return line.trim(); }).filter(Boolean);
+    var joined = lines.join(' ');
+
+    var wholeBold = /^\*([^*]+)\*$/.exec(joined);
+    if (wholeBold) return { kind: 'h2', text: wholeBold[1].trim() };
+
+    var wholeItalic = /^_([^_]+)_$/.exec(joined);
+    if (wholeItalic) return { kind: 'blockquote', text: wholeItalic[1].trim() };
+
+    if (lines.length && lines.every(function (line) { return QUOTE_PREFIX.test(line); })) {
+      return {
+        kind: 'blockquote',
+        text: lines.map(function (line) { return line.replace(QUOTE_PREFIX, ''); }).join(' ').trim()
+      };
+    }
+
+    return { kind: 'p', text: stripInlineMarks(joined).replace(/\s+/g, ' ').trim() };
+  }
+
   function pastePlain(canvas, text) {
     var chunks = String(text || '')
       .split(/\n\s*\n/)
-      .map(function (part) { return part.replace(/\s+/g, ' ').trim(); })
-      .filter(Boolean);
+      .map(parseWhatsAppChunk)
+      .filter(function (chunk) { return chunk.text; });
     if (!chunks.length) return;
 
-    var selection = window.getSelection();
-    if (!selection.rangeCount) return;
-    var range = selection.getRangeAt(0);
-    range.deleteContents();
-    var head = document.createTextNode(chunks[0]);
-    range.insertNode(head);
-    range.setStartAfter(head);
-    range.collapse(true);
-    select(range);
-
-    var block = caretBlock(canvas);
+    var block = caretBlock(canvas) || canvas.firstElementChild;
     if (!block) return;
     var state = blockState(block);
-    var after = block;
+
+    /* A single ordinary phrase — the common case of pasting a few words
+       mid-sentence — splices into the block the caret is already in and
+       leaves its kind, script and alignment untouched. Anything with
+       structure of its own (a detected heading or quote, or more than
+       one paragraph) replaces that block instead, the way starting a new
+       piece over a single empty line would. */
+    if (chunks.length === 1 && chunks[0].kind === 'p') {
+      var selection = window.getSelection();
+      if (!selection.rangeCount) return;
+      var range = selection.getRangeAt(0);
+      range.deleteContents();
+      var head = document.createTextNode(chunks[0].text);
+      range.insertNode(head);
+      range.setStartAfter(head);
+      range.collapse(true);
+      select(range);
+      return;
+    }
+
+    var first = makeBlock({ kind: chunks[0].kind, language: state.language, align: state.align }, null);
+    first.textContent = chunks[0].text;
+    block.parentNode.replaceChild(first, block);
+
+    var after = first;
     chunks.slice(1).forEach(function (chunk) {
-      var next = makeBlock({ kind: 'p', language: state.language, align: state.align }, null);
-      next.textContent = chunk;
+      var next = makeBlock({ kind: chunk.kind, language: state.language, align: state.align }, null);
+      next.textContent = chunk.text;
       after.parentNode.insertBefore(next, after.nextSibling);
       after = next;
     });
     putCaret(after, after.textContent.length);
   }
 
-  /* The box, its buttons, and the two ways in and out of it. */
-  function writingBox(record, onChange) {
+  /* ---- First guesses from a paste ---------------------------------
+
+     Not analysis — a frequency count and a length limit, the same kind
+     of thing a person would do by eye on a short piece. Wrong less often
+     than empty, and a wrong tag costs one click to remove, the same as
+     one that was never suggested — which is the whole point of guessing
+     out loud instead of asking an AI to guess quietly. */
+
+  function truncateWords(text, limit) {
+    if (text.length <= limit) return text;
+    var cut = text.slice(0, limit);
+    var lastSpace = cut.lastIndexOf(' ');
+    if (lastSpace > limit * 0.6) cut = cut.slice(0, lastSpace);
+    return cut.replace(/[,;:—-]+$/, '').trim() + '…';
+  }
+
+  /* The first paragraph that isn't a heading or a quote — what a reader
+     coming in from a search result would see first. */
+  function firstPlainParagraph(text) {
+    var chunks = String(text || '').split(/\n\s*\n/).map(parseWhatsAppChunk).filter(function (c) { return c.text; });
+    var plain = chunks.filter(function (c) { return c.kind === 'p'; })[0];
+    return (plain || chunks[0] || { text: '' }).text;
+  }
+
+  function suggestDescription(pastedText) {
+    return truncateWords(firstPlainParagraph(pastedText), 160);
+  }
+
+  var STOP_EN = ['the', 'a', 'an', 'and', 'or', 'but', 'if', 'of', 'to', 'in', 'on', 'at', 'for',
+    'with', 'from', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'it', 'its', 'this',
+    'that', 'these', 'those', 'as', 'not', 'no', 'so', 'than', 'then', 'too', 'very', 'can',
+    'will', 'would', 'could', 'should', 'may', 'might', 'must', 'shall', 'do', 'does', 'did',
+    'has', 'have', 'had', 'i', 'you', 'he', 'she', 'we', 'they', 'them', 'his', 'her', 'their',
+    'our', 'your', 'my', 'me', 'us', 'which', 'who', 'whom', 'what', 'when', 'where', 'why',
+    'how', 'all', 'each', 'other', 'some', 'such', 'only', 'own', 'same', 'because', 'about',
+    'into', 'over', 'after', 'before', 'between', 'through', 'during', 'without', 'within',
+    'under', 'again', 'once', 'there', 'here', 'more', 'most', 'also'];
+  var STOP_UR = ['کے', 'کی', 'کا', 'کو', 'میں', 'سے', 'پر', 'ہے', 'ہیں', 'تھا', 'تھی', 'تھے',
+    'اور', 'یا', 'اگر', 'بھی', 'نہیں', 'تو', 'یہ', 'وہ', 'ان', 'اس', 'ایک', 'کچھ', 'جو', 'جس',
+    'کہ', 'لیے', 'لئے', 'بعد', 'پہلے', 'ساتھ', 'اپنے', 'اپنی', 'اپنا', 'گیا', 'گئی', 'گئے', 'ہو',
+    'ہوں', 'ہوا', 'ہوئی', 'ہوئے', 'کر', 'کرتے', 'کرتا', 'کرتی'];
+  var STOP_AR = ['في', 'من', 'إلى', 'على', 'عن', 'مع', 'هذا', 'هذه', 'ذلك', 'التي', 'الذي',
+    'الذين', 'هو', 'هي', 'هم', 'كان', 'كانت', 'لا', 'ما', 'إن', 'أن', 'ثم', 'أو', 'و', 'بل',
+    'قد', 'لم', 'لن', 'كل', 'بعض', 'غير', 'عند', 'بين', 'قبل', 'بعد'];
+  var TAG_STOP = {};
+  STOP_EN.concat(STOP_UR, STOP_AR).forEach(function (word) { TAG_STOP[word] = true; });
+
+  /* Whatever repeats is more likely to be what the piece is about than
+     whatever appears once — a word seen only once could be anything.
+     Arabic-range script gets a shorter minimum length since its words
+     run shorter than Latin ones. */
+  function suggestTags(pastedText) {
+    var counts = {};
+    var order = [];
+    var display = {};
+    var words = stripInlineMarks(String(pastedText || '')).match(/[\p{L}\p{M}]+/gu) || [];
+    words.forEach(function (word) {
+      var key = word.toLowerCase();
+      var minLen = /[؀-ۿ]/.test(word) ? 2 : 3;
+      if (word.length < minLen || TAG_STOP[key]) return;
+      if (!counts[key]) { counts[key] = 0; order.push(key); display[key] = word; }
+      counts[key]++;
+    });
+
+    return order
+      .filter(function (key) { return counts[key] > 1; })
+      .sort(function (a, b) { return counts[b] - counts[a] || order.indexOf(a) - order.indexOf(b); })
+      .slice(0, 5)
+      .map(function (key) { return display[key]; });
+  }
+
+  /* The box, its buttons, and the two ways in and out of it. `onPaste`,
+     if given, is told the raw text of a real paste — not every
+     keystroke — so the fields outside the box (description, tags) can
+     take a first guess at themselves without another trip through the
+     text. */
+  function writingBox(record, onChange, onPaste) {
     var wrap = el('div', 'writing');
     var bar = el('div', 'writing-tools');
     var buttons = [];
@@ -641,9 +777,11 @@
     canvas.addEventListener('paste', function (event) {
       event.preventDefault();
       var data = event.clipboardData || window.clipboardData;
-      pastePlain(canvas, data ? data.getData('text/plain') : '');
+      var text = data ? data.getData('text/plain') : '';
+      pastePlain(canvas, text);
       changed();
       refresh();
+      if (onPaste && text) onPaste(text);
     });
 
     var note = el('p', 'writing-note');
@@ -1165,11 +1303,10 @@
 
     /* description — both languages; either may be left empty */
     var descField = field('Description (English)', 'one or two lines — this is what search and Google read');
-    descField.appendChild(
-      descField.own(textArea(record.description, function (value) {
-        record.description = value.trim() || undefined;
-      }))
-    );
+    var descArea = textArea(record.description, function (value) {
+      record.description = value.trim() || undefined;
+    });
+    descField.appendChild(descField.own(descArea));
     fields.appendChild(descField);
 
     var descUrField = field('Description (Urdu)', 'the same in Urdu — shown above the English on an Urdu work');
@@ -1184,8 +1321,29 @@
        meant deleting one tag by counting commas, and a stray comma inside
        a tag silently made two. */
     var tagField = field('Tags', 'for browsing and for the search — press Enter after each');
-    tagField.appendChild(tagField.group(tagBox(record)));
+    var tagsBoxEl = tagBox(record);
+    tagField.appendChild(tagField.group(tagsBoxEl));
     fields.appendChild(tagField);
+
+    /* Pasting the piece in is also the first and cheapest chance to fill
+       in what search and sharing read — but only ever into what's still
+       blank. A description or a tag typed by hand is never overwritten,
+       pasted once or pasted again. */
+    function autoFillFromPaste(pastedText) {
+      var rtl = record.language === 'ur' || record.language === 'ar';
+      var target = rtl ? descUrBox : descArea;
+      if (!target.value.trim()) {
+        var description = suggestDescription(pastedText);
+        if (description) {
+          target.value = description;
+          target.dispatchEvent(new Event('input'));
+        }
+      }
+      if (!(record.tags || []).length) {
+        var tags = suggestTags(pastedText);
+        if (tags.length) tagsBoxEl.addTags(tags);
+      }
+    }
 
     /* date — posts want one; anything else may have one */
     var dateField = field('Date', 'YYYY-MM-DD, or leave empty');
@@ -1209,9 +1367,10 @@
 
       var bodyField = field(
         'The writing',
-        'type it as it should read — put the cursor in a line and the buttons above say what that line is'
+        'type it as it should read, or paste a WhatsApp message — a *line like this* becomes a Heading, ' +
+          'a _line like this_ or one starting with > becomes a Quote'
       );
-      var writing = writingBox(record, markDirty);
+      var writing = writingBox(record, markDirty, autoFillFromPaste);
       writing.setLanguage(record.language);
       writing.setText(bodies[record.id] || '');
       /* The canvas already names itself — aria-label="The writing", set in
