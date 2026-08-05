@@ -192,6 +192,14 @@
   line-height: 1.5;
   resize: vertical;
 }
+.admin-card-preview {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
 .admin-steps { margin: 0 0 18px; padding-left: 20px; color: var(--muted); font-size: 14px; }
 .admin-steps li { margin-bottom: 5px; }
 .admin-dialog-actions { display: flex; justify-content: flex-end; }

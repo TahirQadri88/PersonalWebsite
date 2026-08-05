@@ -202,6 +202,9 @@ Only these, and nothing else, whatever it is asked for:
 - `sitemap.xml`
 - `posts/<name>.html`
 - `works/<name>.html`
+- `files/cards/<name>.jpg` — the link-preview picture, sent as base64 and
+  committed as base64, not re-encoded as UTF-8 the way every other file
+  here is
 
 A single request may carry all of them and they are committed together, so
 `content.js` and `sitemap.xml` can never land out of step. `content.js` is

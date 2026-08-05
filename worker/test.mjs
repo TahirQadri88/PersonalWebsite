@@ -26,7 +26,7 @@ async function mint(over={}, key=kp.privateKey){
 }
 
 // stand in for the network
-let gh=[];
+let gh=[], blobBodies=[];
 globalThis.fetch = async (url, opts={}) => {
   url=String(url);
   if(url.includes('googleapis.com/service_accounts/v1/jwk/securetoken'))
@@ -38,7 +38,7 @@ globalThis.fetch = async (url, opts={}) => {
     const j=o=>new Response(JSON.stringify(o),{status:200,headers:{'content-type':'application/json'}});
     if(/\/git\/ref\/heads\//.test(url)) return j({object:{sha:'BASESHA'}});
     if(/\/git\/commits\/BASESHA/.test(url)) return j({tree:{sha:'TREESHA'}});
-    if(/\/git\/blobs$/.test(url)) return j({sha:'BLOB'+gh.length});
+    if(/\/git\/blobs$/.test(url)) { blobBodies.push(JSON.parse(opts.body)); return j({sha:'BLOB'+gh.length}); }
     if(/\/git\/trees$/.test(url)) return j({sha:'NEWTREE'});
     if(/\/git\/commits$/.test(url)) return j({sha:'c0ffee1234567890'});
     if(/\/git\/refs\/heads\//.test(url)) return j({});
@@ -50,7 +50,7 @@ globalThis.fetch = async (url, opts={}) => {
 
 const GOOD='window.siteContent = { site:{}, categories:[{id:"a",works:[]}], rulings:[] };';
 async function post(files, jwt, msg){
-  gh=[];
+  gh=[]; blobBodies=[];
   const h={'content-type':'application/json'};
   if(jwt) h['Cf-Access-Jwt-Assertion']=jwt;
   const r=await worker.fetch(new Request('https://admin.tahirqadri.com.pk/publish',
@@ -147,6 +147,18 @@ t('a real publish succeeds', r.status===200 && r.body.sha==='c0ffee1234567890', 
 t('  …in exactly one commit', gh.filter(x=>x.startsWith('POST /git/commits')).length===1, gh.join(' | '));
 t('  …with all four files', r.body.files.length===4, JSON.stringify(r.body.files));
 t('  …and moves the branch once', gh.filter(x=>x.startsWith('PATCH')).length===1, gh.join(' | '));
+
+/* A card image: its own path pattern, and the bytes are sent through as
+   base64 rather than re-encoded as UTF-8, which would corrupt them. */
+const TINY_IMAGE_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+r = await post([{path:'content.js',text:GOOD},{path:'sitemap.xml',text:'<urlset/>'},
+                {path:'files/cards/ilm-ul-meerath.jpg',text:TINY_IMAGE_BASE64,binary:true}], JWT);
+t('a card image is accepted', r.status===200, JSON.stringify(r));
+t('  …sent as base64, not re-encoded utf-8', blobBodies.some(b=>b.content===TINY_IMAGE_BASE64 && b.encoding==='base64'), JSON.stringify(blobBodies));
+t('  …while content.js still goes through as utf-8', blobBodies.some(b=>b.content===GOOD && b.encoding==='utf-8'), JSON.stringify(blobBodies));
+
+r = await post([{path:'content.js',text:GOOD},{path:'files/cards/../../evil.jpg',text:TINY_IMAGE_BASE64,binary:true}], JWT);
+t('a card path outside files/cards/ is refused', r.status===400 && /not a file the editor may write/.test(r.body.message), JSON.stringify(r));
 
 const g = await worker.fetch(new Request('https://admin.tahirqadri.com.pk/publish',{method:'GET'}), env);
 t('GET /publish → 405', g.status===405);

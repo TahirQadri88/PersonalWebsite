@@ -40,6 +40,7 @@ works/         one HTML file per work and fatwa — written by admin.html, same 
 styles.css     all design, in 13 numbered sections
 404.html robots.txt sitemap.xml share-card.png CNAME
 files/images/   the seal used as favicon and header mark, and the calligraphed name
+files/cards/    one link-preview picture per post/work/fatwa, drawn by admin.js
 ```
 
 ## Rules that matter
@@ -121,10 +122,17 @@ the editor.
 
 - Every work and fatwa has its files. Nothing is owed.
 - Every work and fatwa has its own page now, `works/<id>.html`, so a shared
-  link shows the right title, description and picture instead of the one
-  generic preview every one of them used to share. `work.html?work=<id>`
-  still resolves an old link and still renders a record that has been added
-  by hand and not yet published — see the rule above and `work.js`.
+  link shows the right title and description instead of the one generic
+  preview every one of them used to share. `work.html?work=<id>` still
+  resolves an old link and still renders a record that has been added by
+  hand and not yet published — see the rule above and `work.js`.
+- The picture that comes with a shared link is per-record too now, not the
+  one static `share-card.png` every page used to point at. `admin.js` draws
+  it on a canvas at publish time — title, kind and byline, in the record's
+  own script and font — and writes it to `files/cards/<id>.jpg`; `buildPost`
+  and `buildWork` point `og:image` there. Regenerated in full on every
+  publish, same as a work's own page, so there is no "does this still match
+  the title" question to answer by hand.
 - Publishing from the editor goes through `worker/` when it is opened at
   `admin.tahirqadri.com.pk`. The Worker checks who is asking — a Firebase
   sign-in or a Cloudflare Access one, whichever is configured — and holds the

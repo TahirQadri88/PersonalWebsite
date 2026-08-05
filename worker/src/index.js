@@ -32,7 +32,8 @@ const WRITABLE = [
   /^content\.js$/,
   /^sitemap\.xml$/,
   /^posts\/[a-z0-9-]+\.html$/,
-  /^works\/[a-z0-9-]+\.html$/
+  /^works\/[a-z0-9-]+\.html$/,
+  /^files\/cards\/[a-z0-9-]+\.jpg$/
 ];
 
 const MAX_FILE_BYTES = 512 * 1024;
@@ -225,7 +226,7 @@ async function commitAll(env, files, message) {
   for (const file of files) {
     const blob = await github(env, '/git/blobs', {
       method: 'POST',
-      body: { content: file.text, encoding: 'utf-8' }
+      body: { content: file.text, encoding: file.binary ? 'base64' : 'utf-8' }
     });
     blobs.push({ path: file.path, mode: '100644', type: 'blob', sha: blob.sha });
   }
@@ -257,10 +258,13 @@ function checkFiles(files) {
     if (!WRITABLE.some((allowed) => allowed.test(path))) {
       throw new HttpError(400, `${path} is not a file the editor may write`);
     }
+    /* A card image arrives as base64 text — file.text already holds the
+       encoded string, not the picture itself, so the size ceiling is
+       checked on that string the same way as any other file. */
     if (new TextEncoder().encode(text).length > MAX_FILE_BYTES) {
       throw new HttpError(400, `${path} is too large`);
     }
-    return { path, text };
+    return { path, text, binary: !!(file && file.binary) };
   });
 }
 

@@ -943,7 +943,9 @@
       '    <meta property="og:title" content="' + e(record.title) + '" />',
       record.description ? '    <meta property="og:description" content="' + e(record.description) + '" />' : null,
       '    <meta property="og:url" content="' + e(url) + '" />',
-      '    <meta property="og:image" content="' + e(base + 'share-card.png') + '" />',
+      /* Its own card, not the one generic image every page used to
+         share — rendered alongside this file at publish time, same id. */
+      '    <meta property="og:image" content="' + e(base + 'files/cards/' + record.id + '.jpg') + '" />',
       '    <meta name="twitter:card" content="summary_large_image" />',
       record.date ? '    <meta property="article:published_time" content="' + e(record.date) + '" />' : null,
       '',
@@ -1036,6 +1038,171 @@
     ]
       .filter(function (line) { return line !== null; })
       .join('\n');
+  }
+
+  /* ---- The card every link shares --------------------------------
+
+     One static share-card.png used to stand in for every work, post and
+     fatwa — whichever link a reader followed, the same picture came
+     with it. Drawn instead, per record, at publish time: a canvas, not
+     a template file, because it has to run in whatever browser is
+     doing the publishing and nowhere else — there is no server here to
+     render an image on request. */
+
+  var CARD_W = 1200, CARD_H = 630;
+
+  function cardFont(language, weight, px) {
+    var family = language === 'ur' ? 'Noto Nastaliq Urdu' : language === 'ar' ? 'Amiri' : 'Newsreader';
+    return weight + ' ' + px + 'px "' + family + '"';
+  }
+
+  /* admin.html already loads all four families for the editor's own
+     text; this only has to wait for the weights the card itself uses
+     to finish downloading before drawing with them, or the canvas
+     bakes in whatever fallback font was current at the time — a system
+     serif standing in for Nastaliq is wrong in a way a page's CSS
+     recovering from the same race never lets a reader see. */
+  function ensureCardFonts() {
+    return Promise.all([
+      document.fonts.load('600 60px "Newsreader"'),
+      document.fonts.load('500 60px "Newsreader"'),
+      document.fonts.load('500 60px "Noto Nastaliq Urdu"'),
+      document.fonts.load('700 60px "Amiri"'),
+      document.fonts.load('700 15px "DM Sans"'),
+      document.fonts.load('500 26px "DM Sans"'),
+      document.fonts.load('400 20px "DM Sans"')
+    ]).then(function () { return document.fonts.ready; });
+  }
+
+  /* Greedy wrap, word by word. A space still separates words in Urdu
+     and Arabic even though the letters within one join right to left,
+     so this needs no script-specific case — only the side the finished
+     lines are drawn from does. */
+  function wrapLines(ctx, text, maxWidth, maxLines) {
+    var words = String(text || '').split(/\s+/).filter(Boolean);
+    var lines = [];
+    var line = '';
+    words.forEach(function (word) {
+      var next = line ? line + ' ' + word : word;
+      if (line && ctx.measureText(next).width > maxWidth) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = next;
+      }
+    });
+    if (line) lines.push(line);
+    if (lines.length > maxLines) {
+      lines = lines.slice(0, maxLines);
+      lines[maxLines - 1] = lines[maxLines - 1].replace(/[,;:—-]+$/, '').trim() + '…';
+    }
+    return lines;
+  }
+
+  function drawCard(ctx, record, categoryTitle) {
+    var rtl = record.language === 'ur' || record.language === 'ar';
+    var margin = 90;
+    var x = rtl ? CARD_W - margin : margin;
+
+    var gradient = ctx.createLinearGradient(0, 0, CARD_W, CARD_H);
+    gradient.addColorStop(0, '#102f27');
+    gradient.addColorStop(0.68, '#17483c');
+    gradient.addColorStop(1, '#1c5346');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, CARD_W, CARD_H);
+
+    /* The same faint ring the site's own hero draws in the corner —
+       the one visual mark tying a shared card back to the page it
+       came from before a reader has read a word of it. Mirrored for a
+       right-to-left card, since that is the side the eyebrow and title
+       are about to anchor to, and the ring sat on top of them otherwise. */
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(rtl ? CARD_W - 1050 : 1050, 190, 150, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.direction = rtl ? 'rtl' : 'ltr';
+    ctx.textAlign = rtl ? 'right' : 'left';
+    ctx.textBaseline = 'alphabetic';
+
+    ctx.strokeStyle = '#b8863a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x, 118);
+    ctx.lineTo(rtl ? x - 44 : x + 44, 118);
+    ctx.stroke();
+
+    ctx.fillStyle = '#e8c882';
+    ctx.font = '700 15px "DM Sans"';
+    var eyebrow = (record.kind || categoryTitle || 'Scholarly Works and Research').toUpperCase();
+    ctx.fillText(eyebrow, x, 156);
+
+    var titlePx = record.title.length > 60 ? 44 : record.title.length > 34 ? 52 : 60;
+    ctx.fillStyle = '#faf8f2';
+    ctx.font = cardFont(record.language, record.language === 'ur' ? '500' : '600', titlePx);
+    var lines = wrapLines(ctx, record.title, CARD_W - margin * 2 - 110, 3);
+    var lineHeight = titlePx * (record.language === 'ur' ? 1.35 : 1.18);
+    var startY = 250;
+    lines.forEach(function (line, i) { ctx.fillText(line, x, startY + i * lineHeight); });
+
+    var footerY = 520;
+    var byline = rtl
+      ? (model.site && model.site.nameUr) || (model.site && model.site.name) || ''
+      : (model.site && model.site.name) || '';
+    ctx.fillStyle = '#faf8f2';
+    ctx.font = rtl ? cardFont(record.language, '500', 26) : '500 26px "DM Sans"';
+    ctx.fillText(byline, x, footerY);
+
+    ctx.fillStyle = 'rgba(250, 248, 242, 0.65)';
+    ctx.font = '400 20px "DM Sans"';
+    ctx.fillText('Scholarly Works and Research · tahirqadri.com.pk', x, footerY + 34);
+  }
+
+  /* base64 text, not raw bytes — the same shape every other file in the
+     commit already has, so both publish paths (a token straight to
+     GitHub, or the Worker behind admin.tahirqadri.com.pk) send this one
+     JSON-serializable thing rather than two different ones. */
+  function renderCardBase64(record, categoryTitle) {
+    return ensureCardFonts().then(function () {
+      var canvas = document.createElement('canvas');
+      canvas.width = CARD_W;
+      canvas.height = CARD_H;
+      drawCard(canvas.getContext('2d'), record, categoryTitle);
+      /* JPEG, not PNG — the card is a gradient and a few lines of type,
+         nothing PNG's lossless compression suits, and the difference is
+         an order of magnitude smaller for a picture nobody zooms into. */
+      return new Promise(function (resolve) { canvas.toBlob(resolve, 'image/jpeg', 0.88); });
+    }).then(function (blob) {
+      return blob.arrayBuffer();
+    }).then(function (buffer) {
+      return bytesToBase64(new Uint8Array(buffer));
+    });
+  }
+
+  /* One card per record with a page of its own — same set filesToCommit
+     and the export dialog already write an HTML page for. */
+  function cardTargets() {
+    var out = [];
+    allRecords().forEach(function (entry) {
+      var post = isPost(entry);
+      if (post && (!entry.record.page || bodies[entry.record.id] === undefined)) return;
+      var categoryTitle = entry.category
+        ? entry.category.title
+        : post ? 'Posts, Notes & Reflections' : 'Islamic rulings';
+      out.push({ record: entry.record, categoryTitle: categoryTitle });
+    });
+    return out;
+  }
+
+  function buildCardFiles() {
+    return Promise.all(
+      cardTargets().map(function (target) {
+        return renderCardBase64(target.record, target.categoryTitle).then(function (base64) {
+          return { path: 'files/cards/' + target.record.id + '.jpg', text: base64, binary: true };
+        });
+      })
+    );
   }
 
   /* A work or a fatwa's own page, works/<id>.html — the same reasoning as
@@ -1136,7 +1303,7 @@
       '    <meta property="og:title" content="' + e(record.title) + '" />',
       record.description ? '    <meta property="og:description" content="' + e(record.description) + '" />' : null,
       '    <meta property="og:url" content="' + e(url) + '" />',
-      '    <meta property="og:image" content="' + e(base + 'share-card.png') + '" />',
+      '    <meta property="og:image" content="' + e(base + 'files/cards/' + record.id + '.jpg') + '" />',
       '    <meta name="twitter:card" content="summary_large_image" />',
       '',
       '    <link rel="icon" type="image/png" sizes="32x32" href="../files/images/logo-circle-32.png" />',
@@ -1907,6 +2074,31 @@
       extra.appendChild(section);
     }
 
+    /* A card has nothing to copy as text and no textarea to read a
+       download from — the base64 sits on the button itself instead. */
+    function offerImageFile(path, base64) {
+      var section = document.createElement('section');
+      var head = document.createElement('div');
+      head.className = 'admin-file-head';
+      var title = document.createElement('h3');
+      title.textContent = path;
+      var button = document.createElement('button');
+      button.className = 'text-link';
+      button.type = 'button';
+      button.textContent = 'Download';
+      button.setAttribute('data-download', path.split('/').pop());
+      button.setAttribute('data-base64', base64);
+      head.appendChild(title);
+      head.appendChild(button);
+      var img = document.createElement('img');
+      img.className = 'admin-card-preview';
+      img.alt = path;
+      img.src = 'data:image/jpeg;base64,' + base64;
+      section.appendChild(head);
+      section.appendChild(img);
+      extra.appendChild(section);
+    }
+
     allRecords().forEach(function (entry) {
       if (isPost(entry)) {
         if (!entry.record.page || bodies[entry.record.id] === undefined) return;
@@ -1921,14 +2113,18 @@
     var works = 0;
     var rulings = (model.rulings || []).length;
     (model.categories || []).forEach(function (c) { works += (c.works || []).length; });
-    document.getElementById('export-summary').textContent =
-      works + ' works and ' + rulings + ' fatawa, in ' + (model.categories || []).length +
-      ' categories. Checked — the file parses. ' +
-      writtenWorks + (writtenWorks === 1 ? ' work page' : ' work pages') +
-      (writtenPosts ? ' and ' + writtenPosts + (writtenPosts === 1 ? ' post page' : ' post pages') : '') +
-      ' below, one file each.';
-
+    document.getElementById('export-summary').textContent = 'Drawing the link-preview cards…';
     dialog.showModal();
+
+    buildCardFiles().then(function (cards) {
+      cards.forEach(function (card) { offerImageFile(card.path, card.text); });
+      document.getElementById('export-summary').textContent =
+        works + ' works and ' + rulings + ' fatawa, in ' + (model.categories || []).length +
+        ' categories. Checked — the file parses. ' +
+        writtenWorks + (writtenWorks === 1 ? ' work page' : ' work pages') +
+        (writtenPosts ? ' and ' + writtenPosts + (writtenPosts === 1 ? ' post page' : ' post pages') : '') +
+        ', and ' + cards.length + (cards.length === 1 ? ' card' : ' cards') + ', below.';
+    });
   });
 
   document.getElementById('close-dialog').addEventListener('click', function () { dialog.close(); });
@@ -1949,12 +2145,18 @@
     }
     var name = event.target.getAttribute('data-download');
     if (name) {
-      var text = document.getElementById(event.target.getAttribute('data-source')).value;
       var link = document.createElement('a');
-      link.href = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
-      link.download = name;
-      link.click();
-      URL.revokeObjectURL(link.href);
+      if (event.target.hasAttribute('data-base64')) {
+        link.href = 'data:image/jpeg;base64,' + event.target.getAttribute('data-base64');
+        link.download = name;
+        link.click();
+      } else {
+        var text = document.getElementById(event.target.getAttribute('data-source')).value;
+        link.href = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+        link.download = name;
+        link.click();
+        URL.revokeObjectURL(link.href);
+      }
     }
   });
 
@@ -2112,7 +2314,12 @@
   /* UTF-8 to base64, in chunks so a long file does not blow the argument
      limit of String.fromCharCode. */
   function toBase64(text) {
-    var bytes = new TextEncoder().encode(text);
+    return bytesToBase64(new TextEncoder().encode(text));
+  }
+
+  /* The same chunking, but for bytes already raw — a card image, not
+     text re-encoded as UTF-8, which would corrupt it. */
+  function bytesToBase64(bytes) {
     var binary = '';
     for (var i = 0; i < bytes.length; i += 0x8000) {
       binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
@@ -2154,6 +2361,9 @@
   }
 
   /* Everything the current state of the editor should write. */
+  /* A Promise, not a plain array — rendering every card is the one part
+     of a publish that can't happen synchronously, since it waits on
+     fonts and on the canvas itself. */
   function filesToCommit() {
     var out = [{ path: 'content.js', text: buildContent() }, { path: 'sitemap.xml', text: buildSitemap() }];
     allRecords().forEach(function (entry) {
@@ -2164,7 +2374,7 @@
         out.push({ path: 'works/' + entry.record.id + '.html', text: buildWork(entry.record, entry) });
       }
     });
-    return out;
+    return buildCardFiles().then(function (cards) { return out.concat(cards); });
   }
 
   function commitAll(token, files, message) {
@@ -2178,9 +2388,12 @@
         var baseTree = commit.tree.sha;
         return Promise.all(
           files.map(function (file) {
+            /* A card image's `text` is already base64 — see buildCardFiles
+               — everything else is UTF-8 that still needs encoding. */
+            var content = file.binary ? file.text : toBase64(file.text);
             return api('/git/blobs', token, {
               method: 'POST',
-              body: { content: toBase64(file.text), encoding: 'base64' }
+              body: { content: content, encoding: 'base64' }
             }).then(function (blob) {
               return { path: file.path, mode: '100644', type: 'blob', sha: blob.sha };
             });
@@ -2246,25 +2459,28 @@
       return;
     }
 
-    var files = filesToCommit();
-    var content = files[0].text;
-    try {
-      var check = {};
-      new Function('window', content).call(check, check);
-      if (!check.siteContent || !check.siteContent.categories) throw new Error('no categories');
-    } catch (error) {
-      say('The generated content.js did not parse, so nothing was sent: ' + error.message, 'bad');
-      return;
-    }
-
     publishing = true;
-    say('Publishing ' + files.length + (files.length === 1 ? ' file…' : ' files…'));
+    say('Drawing this publish’s cards…');
 
-    var titles = files.map(function (file) { return file.path; }).join(', ');
-    var sent = BACKEND
-      ? commitViaBackend(files, 'Update from the editor')
-      : commitAll(token, files, 'Update from the editor\n\n' + titles);
-    sent
+    filesToCommit()
+      .then(function (files) {
+        var content = files[0].text;
+        try {
+          var check = {};
+          new Function('window', content).call(check, check);
+          if (!check.siteContent || !check.siteContent.categories) throw new Error('no categories');
+        } catch (error) {
+          var wrapped = new Error('The generated content.js did not parse, so nothing was sent: ' + error.message);
+          wrapped.silent = true;
+          throw wrapped;
+        }
+
+        say('Publishing ' + files.length + (files.length === 1 ? ' file…' : ' files…'));
+        var titles = files.map(function (file) { return file.path; }).join(', ');
+        return BACKEND
+          ? commitViaBackend(files, 'Update from the editor')
+          : commitAll(token, files, 'Update from the editor\n\n' + titles);
+      })
       .then(function (commit) {
         publishing = false;
         dirty = false;
@@ -2273,7 +2489,7 @@
       })
       .catch(function (error) {
         publishing = false;
-        say('Nothing was published: ' + error.message, 'bad');
+        say(error && error.silent ? error.message : 'Nothing was published: ' + error.message, 'bad');
         /* This dialog asks for a personal GitHub token, which only means
            anything in the no-backend path — behind the Worker there is
            nothing to type into it, and re-opening it there sends the
@@ -2286,7 +2502,7 @@
            said plainly on the line above — reload and sign in again for
            the second, a new `wrangler secret put GITHUB_TOKEN` for the
            first, worker/README.md has both. */
-        if (!BACKEND && /token/.test(error.message)) {
+        if (!BACKEND && !(error && error.silent) && /token/.test(error.message)) {
           tokenError.textContent = error.message;
           tokenDialog.showModal();
         }
