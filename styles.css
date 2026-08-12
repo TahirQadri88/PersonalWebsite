@@ -38,7 +38,17 @@
      have one. Noto Nastaliq Urdu as the fallback if Aslam's file — self-
      hosted, not on Google's CDN — is ever slow or unreachable: a real
      Nastaliq heading beats a bold one that never loaded. */
+  /* Aslam draws a space one pixel wide at 40px, where Mehr draws 13 and
+     Amiri 12 — near enough to nothing. Urdu survives it, because Nastaliq
+     and Naskh separate words by their own joining, but a run of English
+     inside a heading collapses into one word: "charity of impure income"
+     came out as charityofimpureincome on a published page. Every rule
+     that sets this face therefore also sets --space-urdu-heading as its
+     word-spacing, to put back what the font does not give. Measured, not
+     guessed: 0.22em brings its space to about a quarter of an em, which
+     is what the other faces here already draw. */
   --font-urdu-heading: "Aslam", "Noto Nastaliq Urdu", serif;
+  --space-urdu-heading: 0.22em;
   --font-arabic: "Amiri", "Noto Naskh Arabic", serif;
 
   --gutter: clamp(20px, 8vw, 152px);
@@ -168,6 +178,7 @@ h1, h2, h3 {
    their own, already scaled down to match. */
 .record-title.urdu {
   font-family: var(--font-urdu-heading);
+  word-spacing: var(--space-urdu-heading);
   font-size: clamp(16px, 1.7vw, 23px);
 }
 
@@ -1044,14 +1055,24 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    marked .latin or .arabic, which needs the *other* face — and did
    still get this one, since a rule reached through the container plus
    a bare tag outranks .post-body .latin's own two classes below. */
-.post-body.urdu h2:not(.latin):not(.arabic) { font-family: var(--font-urdu-heading); font-size: 23px; line-height: 2.05; }
+.post-body.urdu h2:not(.latin):not(.arabic) {
+  font-family: var(--font-urdu-heading);
+  word-spacing: var(--space-urdu-heading);
+  font-size: 23px;
+  line-height: 2.05;
+}
 .post-body h3 {
   margin-top: 1.5em;
   font-size: 1.1em;
   line-height: 1.4;
   color: var(--moss-deep);
 }
-.post-body.urdu h3:not(.latin):not(.arabic) { font-family: var(--font-urdu-heading); font-size: 20px; line-height: 2; }
+.post-body.urdu h3:not(.latin):not(.arabic) {
+  font-family: var(--font-urdu-heading);
+  word-spacing: var(--space-urdu-heading);
+  font-size: 20px;
+  line-height: 2;
+}
 .post-body .footnote {
   font-size: 0.85em;
   line-height: 1.6;
