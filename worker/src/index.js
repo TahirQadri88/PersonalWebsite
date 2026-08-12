@@ -34,7 +34,7 @@ const GITHUB = 'https://api.github.com';
    writes any, which at least means nothing lands half done. The editor
    asks /version on load now, so the drift is said before anything is
    sent rather than after. */
-const WORKER_VERSION = '2026-08-12.2';
+const WORKER_VERSION = '2026-08-12.3';
 
 /* The token here can write to the repository, so this endpoint must not
    become a way to write anything anywhere. Only what the editor
@@ -251,33 +251,88 @@ async function github(env, path, options) {
 
 /* One commit holding every file, so content.js and sitemap.xml can never
    land out of step with each other. */
-async function commitAll(env, files, message) {
+/* What git itself would call this file: sha1 over "blob <length>\0" and
+   then the bytes. Worked out here rather than asked for — asking costs a
+   request per file, and requests are the thing in short supply. */
+async function blobSha(file) {
+  const body = file.binary ? fromBase64Url(file.text) : new TextEncoder().encode(file.text);
+  const header = new TextEncoder().encode(`blob ${body.length}\0`);
+  const whole = new Uint8Array(header.length + body.length);
+  whole.set(header, 0);
+  whole.set(body, header.length);
+  const digest = await crypto.subtle.digest('SHA-1', whole);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/* The editor rewrites the whole library on every publish — every work's
+   page, every post's, every card — because nothing about a record lives
+   anywhere but content.js, and regenerating all of it is what stops a
+   page drifting from the entry it came from. That is right, and it is
+   not a reason to send all of it.
+
+   Sending all of it was costing a request per file. Cloudflare allows
+   fifty in one go, and the library reached forty-six files, so a publish
+   spent its allowance on blobs identical to the ones already there and
+   died at the end with "too many subrequests" — a limit nobody had gone
+   near when this was written, and one that arrives all at once.
+
+   So: what is already in the branch is read in a single request, every
+   file's sha is worked out here, and only what actually differs is sent.
+   A publish that changes one post now sends one post. The pages that go
+   are written straight into the tree, all of them in the one request the
+   tree costs anyway; a card cannot go that way, since the tree API reads
+   `content` as text and a picture is not text, so each changed card is
+   still its own blob. Nothing changed at all is not an error — there is
+   simply nothing to commit, and saying so is better than an empty one. */
+async function commitAll(env, files, describe) {
   const branch = env.GITHUB_BRANCH || 'main';
   const ref = await github(env, `/git/ref/heads/${branch}`);
   const head = await github(env, `/git/commits/${ref.object.sha}`);
 
-  const blobs = [];
+  const already = new Map();
+  const current = await github(env, `/git/trees/${head.tree.sha}?recursive=1`);
+  /* Truncated means the listing is incomplete, so an absent path proves
+     nothing. Send everything rather than skip a file that only looks
+     unchanged because its entry never arrived. */
+  if (!current.truncated) {
+    for (const entry of current.tree || []) {
+      if (entry.type === 'blob') already.set(entry.path, entry.sha);
+    }
+  }
+
+  const changed = [];
   for (const file of files) {
+    if (already.get(file.path) !== await blobSha(file)) changed.push(file);
+  }
+  if (!changed.length) return null;
+
+  const entries = [];
+  for (const file of changed) {
+    if (!file.binary) continue;
     const blob = await github(env, '/git/blobs', {
       method: 'POST',
-      body: { content: file.text, encoding: file.binary ? 'base64' : 'utf-8' }
+      body: { content: file.text, encoding: 'base64' }
     });
-    blobs.push({ path: file.path, mode: '100644', type: 'blob', sha: blob.sha });
+    entries.push({ path: file.path, mode: '100644', type: 'blob', sha: blob.sha });
+  }
+  for (const file of changed) {
+    if (file.binary) continue;
+    entries.push({ path: file.path, mode: '100644', type: 'blob', content: file.text });
   }
 
   const tree = await github(env, '/git/trees', {
     method: 'POST',
-    body: { base_tree: head.tree.sha, tree: blobs }
+    body: { base_tree: head.tree.sha, tree: entries }
   });
   const commit = await github(env, '/git/commits', {
     method: 'POST',
-    body: { message, tree: tree.sha, parents: [ref.object.sha] }
+    body: { message: describe(changed.map((file) => file.path)), tree: tree.sha, parents: [ref.object.sha] }
   });
   await github(env, `/git/refs/heads/${branch}`, {
     method: 'PATCH',
     body: { sha: commit.sha }
   });
-  return commit;
+  return { commit, changed: changed.map((file) => file.path) };
 }
 
 /* ---- Publishing ------------------------------------------------------ */
@@ -382,13 +437,19 @@ async function publish(request, env) {
   const files = checkFiles(body && body.files);
   checkContentParses(files);
 
-  const summary = files.map((file) => file.path).join(', ');
-  const message = `${(body && body.message) || 'Update from the editor'}\n\n${summary}\n\nPublished by ${identity.email || 'the editor'}`;
+  /* The message names what actually changed, not everything that was
+     offered — the history is easier to read back for it, and it is the
+     honest account of what the commit did. */
+  const title = (body && body.message) || 'Update from the editor';
+  const result = await commitAll(env, files, (paths) =>
+    `${title}\n\n${paths.join(', ')}\n\nPublished by ${identity.email || 'the editor'}`);
 
-  const commit = await commitAll(env, files, message);
+  if (!result) {
+    return json(200, { sha: null, files: [], message: 'Nothing had changed, so nothing was published.' });
+  }
   return json(200, {
-    sha: commit.sha,
-    files: files.map((file) => file.path),
+    sha: result.commit.sha,
+    files: result.changed,
     message: 'Published.'
   });
 }

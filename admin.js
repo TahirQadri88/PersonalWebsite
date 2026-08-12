@@ -2283,7 +2283,7 @@
      The paths catch one they changed and did not: whatever the version
      claims, a Worker that will not take a work page cannot publish this
      library, and it is better to hear that on load. */
-  var WORKER_EXPECTS = '2026-08-12.2';
+  var WORKER_EXPECTS = '2026-08-12.3';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */
@@ -2632,7 +2632,19 @@
         publishing = false;
         dirty = false;
         dirtyNote.textContent = '';
-        say('Published. The site rebuilds in about a minute. Commit ' + commit.sha.slice(0, 7) + '.', 'good');
+        /* The Worker sends back what it actually wrote, which is not what
+           it was handed: the whole library goes over, and only the files
+           that differ from the branch are committed. Saying "3 files"
+           after offering 46 is the truthful number, and the one that
+           makes it obvious when a change did not take. Nothing differing
+           at all is a real answer too, not a failure. */
+        var wrote = (commit.files || []).length;
+        if (!commit.sha) {
+          say(commit.message || 'Nothing had changed, so nothing was published.', 'good');
+          return;
+        }
+        say('Published ' + wrote + (wrote === 1 ? ' file' : ' files') +
+          '. The site rebuilds in about a minute. Commit ' + commit.sha.slice(0, 7) + '.', 'good');
       })
       .catch(function (error) {
         publishing = false;

@@ -27,6 +27,9 @@ async function mint(over={}, key=kp.privateKey){
 
 // stand in for the network
 let gh=[], blobBodies=[];
+/* What the branch already holds, as the tree API would list it. Tests set
+   this to say "this file is unchanged" and watch it not be sent. */
+let alreadyThere=[], treeSent='{}';
 globalThis.fetch = async (url, opts={}) => {
   url=String(url);
   if(url.includes('googleapis.com/service_accounts/v1/jwk/securetoken'))
@@ -38,8 +41,9 @@ globalThis.fetch = async (url, opts={}) => {
     const j=o=>new Response(JSON.stringify(o),{status:200,headers:{'content-type':'application/json'}});
     if(/\/git\/ref\/heads\//.test(url)) return j({object:{sha:'BASESHA'}});
     if(/\/git\/commits\/BASESHA/.test(url)) return j({tree:{sha:'TREESHA'}});
+    if(/\/git\/trees\/TREESHA/.test(url)) return j({sha:'TREESHA', truncated:false, tree:alreadyThere});
     if(/\/git\/blobs$/.test(url)) { blobBodies.push(JSON.parse(opts.body)); return j({sha:'BLOB'+gh.length}); }
-    if(/\/git\/trees$/.test(url)) return j({sha:'NEWTREE'});
+    if(/\/git\/trees$/.test(url)) { treeSent=opts.body; return j({sha:'NEWTREE'}); }
     if(/\/git\/commits$/.test(url)) return j({sha:'c0ffee1234567890'});
     if(/\/git\/refs\/heads\//.test(url)) return j({});
   }
@@ -146,6 +150,7 @@ t('oversized file refused', r.status===400 && /too large/.test(r.body.message), 
 r = await post([], JWT);
 t('empty publish refused', r.status===400, JSON.stringify(r));
 
+alreadyThere=[];
 r = await post([{path:'content.js',text:GOOD},{path:'sitemap.xml',text:'<urlset/>'},
                 {path:'posts/hello-world.html',text:'<h1>hi</h1>'},
                 {path:'works/ilm-ul-meerath.html',text:'<h1>hi</h1>'}], JWT);
@@ -154,14 +159,74 @@ t('  …in exactly one commit', gh.filter(x=>x.startsWith('POST /git/commits')).
 t('  …with all four files', r.body.files.length===4, JSON.stringify(r.body.files));
 t('  …and moves the branch once', gh.filter(x=>x.startsWith('PATCH')).length===1, gh.join(' | '));
 
+/* ---- only what changed goes ------------------------------------------
+
+   The editor hands over the whole library every time, on purpose: every
+   page is regenerated from content.js so none can drift from the entry it
+   came from. Sending all of it is a different matter. It cost a request
+   per file, Cloudflare allows fifty in one invocation, and at forty-six
+   files a publish died at the very end on "too many subrequests". */
+
+/* git's own sha for a blob, worked out the same way the Worker does, so a
+   test can say "this file is already there" truthfully. */
+async function gitSha(text){
+  const body=new TextEncoder().encode(text);
+  const head=new TextEncoder().encode(`blob ${body.length}\0`);
+  const all=new Uint8Array(head.length+body.length);
+  all.set(head,0); all.set(body,head.length);
+  const d=await crypto.subtle.digest('SHA-1',all);
+  return [...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+const PAGE='<!doctype html><title>a post</title>';
+alreadyThere=[{type:'blob',path:'content.js',sha:await gitSha(GOOD)},
+              {type:'blob',path:'posts/a.html',sha:await gitSha(PAGE)}];
+
+r = await post([{path:'content.js',text:GOOD},{path:'posts/a.html',text:PAGE}], JWT);
+t('a publish where nothing differs commits nothing',
+  r.status===200 && r.body.sha===null, JSON.stringify(r.body));
+t('  …and says so rather than reporting a commit',
+  /nothing was published/i.test(r.body.message||''), JSON.stringify(r.body));
+t('  …making no commit and moving no branch',
+  gh.filter(x=>x.startsWith('POST /git/commits')).length===0 && gh.filter(x=>x.startsWith('PATCH')).length===0,
+  gh.join(' | '));
+
+r = await post([{path:'content.js',text:GOOD},{path:'posts/a.html',text:PAGE+'<p>new</p>'}], JWT);
+t('a publish where one file differs commits that one file',
+  r.status===200 && r.body.files.length===1 && r.body.files[0]==='posts/a.html', JSON.stringify(r.body));
+t('  …and the unchanged file is not sent at all',
+  !gh.some(x=>x.includes('blobs')) , gh.join(' | '));
+t('  …the commit message naming only what changed',
+  gh.filter(x=>x.startsWith('POST /git/commits')).length===1, gh.join(' | '));
+
+/* The limit that broke it. A whole library's worth of pages must fit
+   inside one invocation's allowance, so text goes into the tree request
+   itself rather than a blob apiece. */
+alreadyThere=[];
+const many=[{path:'content.js',text:GOOD},{path:'sitemap.xml',text:'<urlset/>'}];
+for(let i=0;i<22;i++) many.push({path:`works/w${i}.html`,text:`<p>work ${i}</p>`});
+for(let i=0;i<22;i++) many.push({path:`posts/p${i}.html`,text:`<p>post ${i}</p>`});
+r = await post(many, JWT);
+t('a 46-file publish succeeds', r.status===200 && r.body.files.length===46, JSON.stringify(r.body).slice(0,200));
+t(`  …in ${gh.length} requests to GitHub, well inside Cloudflare's fifty`,
+  gh.length<=12, gh.length+' requests: '+gh.join(' | '));
+t('  …with every page written into the tree, not one blob each',
+  gh.filter(x=>x.includes('/git/blobs')).length===0, gh.join(' | '));
+
 /* A card image: its own path pattern, and the bytes are sent through as
-   base64 rather than re-encoded as UTF-8, which would corrupt them. */
+   base64 rather than re-encoded as UTF-8, which would corrupt them. It is
+   the one kind of file that still needs a blob of its own — the tree API
+   reads an inline `content` as text, and a picture is not text. */
 const TINY_IMAGE_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 r = await post([{path:'content.js',text:GOOD},{path:'sitemap.xml',text:'<urlset/>'},
                 {path:'files/cards/ilm-ul-meerath.jpg',text:TINY_IMAGE_BASE64,binary:true}], JWT);
 t('a card image is accepted', r.status===200, JSON.stringify(r));
 t('  …sent as base64, not re-encoded utf-8', blobBodies.some(b=>b.content===TINY_IMAGE_BASE64 && b.encoding==='base64'), JSON.stringify(blobBodies));
-t('  …while content.js still goes through as utf-8', blobBodies.some(b=>b.content===GOOD && b.encoding==='utf-8'), JSON.stringify(blobBodies));
+t('  …as the only blob, the text going into the tree instead',
+  blobBodies.length===1, JSON.stringify(blobBodies).slice(0,160));
+t('  …and content.js still lands, written into the tree as text',
+  JSON.parse(gh.filter(x=>x==='POST /git/trees').length ? treeSent : '{}').tree
+    .some(e=>e.path==='content.js' && e.content===GOOD), treeSent.slice(0,200));
 
 r = await post([{path:'content.js',text:GOOD},{path:'files/cards/../../evil.jpg',text:TINY_IMAGE_BASE64,binary:true}], JWT);
 t('a card path outside files/cards/ is refused', r.status===400 && /not a file the editor may write/.test(r.body.message), JSON.stringify(r));
