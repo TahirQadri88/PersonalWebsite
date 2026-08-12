@@ -45,13 +45,17 @@ const WORKER_VERSION = '2026-08-12.3';
 
    Capitals as well as lowercase, and that is not tidiness. An id is
    lowercase and checked for it, but a post's `page` is a separate field
-   and never was: posts/Reservations-Shariah-Screening-Stocks.html has
-   been in the library since August and could not be published from here,
-   because this list would not have it. It reached the repository at all
-   only through the token path, which does not come this way. Since every
+   and is not checked at all: posts/Reservations-Shariah-Screening-Stocks.html
+   sat in the library from August, and could not be published from here,
+   because this list would not have it. It had reached the repository
+   through the token path, which does not come this way. Since every
    publish rewrites every post, that one file refused every publish there
-   was — the library cannot be published while any one page in it is
-   unwritable.
+   was — the library cannot go up while any single page in it is
+   unwritable, so the failure named a piece nobody was editing.
+
+   That page has since been renamed to lowercase and the old one deleted.
+   Capitals stay allowed here anyway: what let it happen is that `page`
+   takes whatever it is given, and that is still true.
 
    Still no dot, no slash, no space inside a name: what this list is for
    is making sure a path cannot climb out of the folder it names. */
