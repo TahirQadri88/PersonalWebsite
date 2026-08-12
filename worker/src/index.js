@@ -29,9 +29,11 @@ const GITHUB = 'https://api.github.com';
    every load — so the two drift apart silently, and the first sign of it
    is a publish stopping half way on a path the deployed copy has never
    heard of. That is not a hypothetical: this sat a week behind, without
-   works/ or files/cards/ among the paths below, and every publish died
-   on the first work page it was handed. The editor asks /version on
-   load now, so the drift is said plainly before anything is sent. */
+   works/ or files/cards/ among the paths below, so every publish was
+   refused whole — checkFiles below reads every file before commitAll
+   writes any, which at least means nothing lands half done. The editor
+   asks /version on load now, so the drift is said before anything is
+   sent rather than after. */
 const WORKER_VERSION = '2026-08-12';
 
 /* The token here can write to the repository, so this endpoint must not

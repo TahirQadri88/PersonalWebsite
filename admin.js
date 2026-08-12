@@ -405,15 +405,23 @@
     return state;
   }
 
+  /* The classes go on in the order bodyToHtml writes them — script, then
+     alignment, then footnote. Nothing renders differently for it: a class
+     list is a set, and CSS reads it as one. It matters because the box on
+     screen and the file on disk are meant to be the same document, and
+     the test that proves it compares them as text. Left disagreeing, that
+     test can only be loosened to ignore the order, and a test loose
+     enough to ignore this is loose enough to miss a block quietly losing
+     its script. */
   function makeBlock(state, html) {
     var node = document.createElement(BLOCK_TAG[state.kind] || 'p');
-    if (state.kind === 'footnote') node.classList.add('footnote');
     if (state.language && SCRIPTS[state.language]) {
       node.classList.add(SCRIPTS[state.language].cls);
       node.setAttribute('lang', state.language);
       node.setAttribute('dir', SCRIPTS[state.language].dir);
     }
     if (state.align && ALIGN[state.align]) node.classList.add('align-' + ALIGN[state.align]);
+    if (state.kind === 'footnote') node.classList.add('footnote');
     if (html != null) node.innerHTML = html;
     fillEmpty(node);
     return node;
@@ -2304,9 +2312,15 @@
     var box = document.getElementById('worker-status');
     if (!box) return;
     box.hidden = false;
+    /* Refused outright, not half done: the Worker checks every file
+       before it writes any of them, so a publish it will not accept
+       leaves the repository exactly as it was. Worth saying — the
+       question on reading this is whether something is now half
+       published. */
     box.textContent = what +
-      ' Publishing would fail part way through. In Cloudflare open the Worker → Edit code,' +
-      ' replace all of it with worker/src/index.js from the repository, and Deploy.';
+      ' Publishing will be refused, and nothing committed, until it is brought up to date:' +
+      ' in Cloudflare open the Worker → Edit code, replace all of it with' +
+      ' worker/src/index.js from the repository, and Deploy.';
   }
 
   function checkWorker() {

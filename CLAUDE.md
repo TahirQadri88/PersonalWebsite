@@ -35,6 +35,7 @@ work.js        the work.html fallback above — nothing else uses it
 admin.html     form editor — publishes to GitHub, or hands you the files
 admin.css admin.js   its styles and logic, loaded by nothing else
 worker/        the editor's backend — Cloudflare Worker, deployed separately
+test/          drives a browser over admin.html — run it after touching the editor
 posts/         one HTML file per post — the writing is the page, not a download
 works/         one HTML file per work and fatwa — written by admin.html, same as posts/
 styles.css     all design, in 13 numbered sections
@@ -119,6 +120,24 @@ values for a reason. Do not collapse them into one.
 - Check Urdu at mobile width (~380px) after any layout change — that is where
   Nastaliq breaks first.
 - Keep commits small and in plain language; the author reads the history.
+
+**Touching `admin.js` means running `node test/editor.mjs`.** It types into
+the writing box, presses the toolbar, exports a post and reads it back, and
+counts a publish against the Worker's own limits. It exists because looking
+at the editor was the only check there was for months, and looking at it
+cannot see a Script button that clears a block's language instead of setting
+it, a heading ignoring the script marked on it, or a publish grown past what
+the Worker will take — all three of which shipped, and all three of which
+the author found mid-sentence while writing. `test/README.md` says more.
+
+**A change to `worker/` is not deployed by pushing it.** The Worker is put
+up by hand in Cloudflare, separately from the site, so it can sit weeks
+behind the repository with nothing to say so — it did, and publishing broke.
+Bump `WORKER_VERSION` in `worker/src/index.js` and `WORKER_EXPECTS` in
+`admin.js` together whenever the Worker changes in a way the editor depends
+on; the editor asks `/version` on load and says plainly when the two have
+parted. Then say clearly, in the reply, that the Worker still needs
+deploying — pasting the file into Cloudflare → Edit code → Deploy.
 
 **Adding a work by hand means editing sitemap.xml too, and its page is missing
 until admin.html writes it.** `sitemap.xml` is the one file outside

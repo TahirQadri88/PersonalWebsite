@@ -1,0 +1,12 @@
+{
+  "name": "editor-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Not part of the website — drives a browser over admin.html. See README.md.",
+  "scripts": {
+    "test": "node editor.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.1"
+  }
+}
