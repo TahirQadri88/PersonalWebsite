@@ -128,6 +128,15 @@
 .admin-row.is-new { border-color: var(--gold-rule); }
 
 .admin-fields { display: grid; gap: 14px; padding: 4px 16px 20px; }
+/* min-width: 0 because a grid item's automatic minimum is "as wide as
+   whatever is inside me", and something inside here is deliberately
+   wider than the screen: the toolbar scrolls sideways on a phone. Left
+   at auto, this field grew to the toolbar's full 696px instead, carried
+   the whole page with it, and the editor scrolled sideways on every
+   width below 768. The toolbar's own overflow never got a chance —
+   there was nothing left for it to overflow. */
+.admin-field,
+.admin-field > * { min-width: 0; }
 .admin-field { display: grid; gap: 5px; }
 .admin-field > label { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .admin-field .hint { font-size: 12px; color: var(--muted); font-weight: 400; text-transform: none; letter-spacing: 0; }
@@ -244,12 +253,6 @@
   .admin-file { grid-template-columns: 1fr; }
   .admin-row-tools { gap: 14px; }
 
-  /* The three groups keep their own rows rather than running together
-     into one wall of buttons. Style and Script get a row each; the
-     alignment marks are small enough to sit beside Script. */
-  .writing-tools { gap: 10px 14px; padding: 9px 10px; }
-  .writing-group { flex: 1 1 100%; }
-  .writing-canvas { min-height: 260px; padding: 14px 15px; }
 }
 
 /* Publishing */
@@ -353,7 +356,18 @@
    Nastaliq is Nastaliq; these rules only undo the things that belong to
    a printed column rather than an editing box. */
 
+/* Sticky, and that is the point of it on a phone. The buttons sat at the
+   top of the writing box and scrolled away with it, so marking a line
+   part way down a long piece meant scrolling up to the toolbar, pressing,
+   and scrolling back to find your place — for every heading, every verse,
+   every footnote. They now follow the text down the page and sit under
+   the bar at the top, which is 55px tall on a phone and 64 from 620px up
+   (measured, both). z-index above the writing box and below the bar, so
+   the three never argue about who is in front. */
 .writing-tools {
+  position: sticky;
+  top: 64px;
+  z-index: 5;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -448,4 +462,55 @@
   color: var(--gold-on-light);
   font-size: 12.5px;
   line-height: 1.55;
+}
+
+
+/* ---- The phone, for the writing box only ---------------------------
+
+   A second media query, and it has to be down here. The one above sits
+   at the top of the file, before the writing box is styled at all, so
+   every mobile rule it held for this part was overruled a few hundred
+   lines later by the ordinary rule of the same weight — the toolbar
+   never once used the padding that block asked for. Nothing announced
+   it: the rules were there, they simply lost. Anything written above
+   for something styled below this line will lose the same way. */
+@media (max-width: 620px) {
+  /* One row that swipes sideways, not four that stack. Stacked, the
+     toolbar stood 380px tall on an 820px phone — nearly half the screen
+     before the keyboard is even up, and this thing is now stuck to the
+     top, so every row it takes is a row of the piece nobody can see.
+     Swiping a toolbar is what a phone already asks of people everywhere
+     else, and it costs one row. */
+  .writing-tools {
+    top: 55px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    gap: 6px;
+    padding: 7px 8px;
+  }
+  .writing-group-buttons { flex-wrap: nowrap; }
+  .writing-tools::-webkit-scrollbar { height: 0; }
+  .writing-tools { scrollbar-width: none; }
+  .writing-group-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .writing-group { flex: 0 0 auto; gap: 0; }
+  .writing-group + .writing-group {
+    padding-left: 6px;
+    margin-left: 2px;
+    border-left: 1px solid var(--line);
+  }
+  .writing-group-buttons { gap: 4px; }
+  .writing-tool { min-width: 0; padding: 7px 9px; font-size: 12.5px; }
+  .writing-tool.urdu { font-size: 14px; padding: 5px 9px 8px; }
+  .writing-tool.arabic { font-size: 15px; padding: 5px 9px; }
+  .writing-tool.is-heading { font-size: 13px; }
+  .writing-tool.is-align { min-width: 30px; padding: 6px 6px; }
+  .writing-canvas { min-height: 260px; padding: 14px 15px; }
+  /* No cap and no scrollbar of its own on a phone. A box that scrolls
+     inside a page that scrolls means two things to keep track of, and a
+     caret that wanders behind whichever edge you are not watching. The
+     box grows to the piece instead and the page does the scrolling —
+     which only became affordable once the toolbar stuck to the top,
+     because the buttons no longer have to stay on screen by luck. */
+  .writing-canvas.post-body { max-height: none; overflow-y: visible; }
 }
