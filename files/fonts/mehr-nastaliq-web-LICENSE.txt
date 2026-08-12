@@ -1,0 +1,12 @@
+Mehr Nastaliq Web
+
+Created by Muhammad Zeeshan Nasar, following the calligraphy of
+Nasrullah Mehr. Distributed by Mehr Type (https://mehrtype.com/product/mehr-nastaliq-web/)
+and packaged for the web by Abbas Siddiqi (https://github.com/abbassiddiqi/mehr).
+
+Licensed under the Creative Commons Attribution-ShareAlike 4.0
+International License (CC BY-SA 4.0):
+https://creativecommons.org/licenses/by-sa/4.0/
+
+Used here unmodified, with attribution given on the site itself
+(see the footer of index.html).

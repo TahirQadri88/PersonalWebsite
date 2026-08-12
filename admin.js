@@ -1001,7 +1001,10 @@
         ? '        <p class="section-label urdu' + (rtl ? '' : ' align-left') + '" lang="ur" dir="rtl">' +
           e(record.kind) + '</p>'
         : null,
-      '        <h1 class="' + scriptClass + '" lang="' + e(record.language || 'en') + '" dir="' + (rtl ? 'rtl' : 'ltr') + '">' + e(record.title) + '</h1>',
+      /* record-title, not just the script class — matches site.titleMarkup,
+         which builds every other title on the site and is what lets an
+         Urdu title take the heading face in styles.css. */
+      '        <h1 class="record-title ' + scriptClass + '" lang="' + e(record.language || 'en') + '" dir="' + (rtl ? 'rtl' : 'ltr') + '">' + e(record.title) + '</h1>',
       /* formatDate always writes the month name in English, whatever the
          post's own language — under an RTL article this paragraph would
          otherwise inherit dir="rtl" with no strong character of its own

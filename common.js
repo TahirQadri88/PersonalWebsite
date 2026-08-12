@@ -23,12 +23,15 @@
     return language === 'ur' || language === 'ar' ? 'rtl' : 'ltr';
   }
 
-  /* Renders a title in the right script, direction and font. */
+  /* Renders a title in the right script, direction and font. `record-title`
+     is what lets an Urdu title take the heading face — see styles.css —
+     without touching an in-prose subheading or a label that happens to
+     share the same script class. */
   function titleMarkup(record, tag) {
     var element = tag || 'span';
     var language = record.language || 'en';
     return (
-      '<' + element + ' class="' + scriptClass(language) + '" lang="' + language + '" dir="' + direction(language) + '">' +
+      '<' + element + ' class="record-title ' + scriptClass(language) + '" lang="' + language + '" dir="' + direction(language) + '">' +
       escapeHtml(record.title) +
       '</' + element + '>'
     );

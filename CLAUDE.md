@@ -41,6 +41,10 @@ styles.css     all design, in 13 numbered sections
 404.html robots.txt sitemap.xml share-card.png CNAME
 files/images/   the seal used as favicon and header mark, and the calligraphed name
 files/cards/    one link-preview picture per post/work/fatwa, drawn by admin.js
+files/fonts/    Mehr Nastaliq Web (CC BY-SA, credited in the footer) and Aslam
+                  (no open license found — used anyway; see its NOTICE.txt).
+                  Neither is on Google's CDN, so each gets its own @font-face
+                  in styles.css instead of a <link> in every page's <head>.
 ```
 
 ## Rules that matter
@@ -53,11 +57,18 @@ two lists drifted.
 page, `works/<id>.html`. Links get shared with students. Never regenerate IDs
 from array position, and never rename an existing one.
 
-**Typography is not cosmetic.** Urdu must render in Nastaleeq (`Noto Nastaliq
-Urdu`) and Arabic in Naskh (`Amiri`). Set `language: "ur" | "ar" | "en"` on every
-entry; the code derives font, `dir` and size from it. Nastaliq needs generous
-line-height (~2.0) and vertical room for descenders — check any spacing change
-against a long Urdu title.
+**Typography is not cosmetic.** Urdu must render in Nastaleeq and Arabic in
+Naskh (`Amiri`). Set `language: "ur" | "ar" | "en"` on every entry; the code
+derives font, `dir` and size from it. Nastaliq needs generous line-height
+(~2.0) and vertical room for descenders — check any spacing change against a
+long Urdu title. Urdu body text is Mehr Nastaliq Web (`--font-urdu`); a
+record's own title — and an in-prose subheading inside a post — is Aslam
+(`--font-urdu-heading`) instead, a bold Naskh face, since Nastaliq mostly has
+no bold cut of its own to set a heading apart from the body under it. Both
+fall back to Noto Nastaliq Urdu, already loaded regardless, if their own file
+is ever slow or unreachable. See `.record-title` in common.js — that's the
+class that carries the heading font, on every title the site renders,
+wherever it's shown.
 
 **A post is a page, not a download.** Entries in the `posts` category carry
 `page` and `date` instead of `files`, and their words live in the HTML file, not

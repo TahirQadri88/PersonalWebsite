@@ -25,7 +25,20 @@
 
   --font-display: "Newsreader", Georgia, "Times New Roman", serif;
   --font-ui: "DM Sans", system-ui, -apple-system, sans-serif;
-  --font-urdu: "Noto Nastaliq Urdu", serif;
+  /* Mehr first — closer to traditional Nastaliq calligraphy than Noto's
+     own, which is why it's here at all — but Noto Nastaliq Urdu, already
+     loaded for this same fallback role, catches it if Mehr's file (self-
+     hosted, not on Google's CDN) is ever slow or unreachable. */
+  --font-urdu: "Mehr", "Noto Nastaliq Urdu", serif;
+  /* A record's own title, and an in-prose subheading inside a post —
+     see `.record-title` and `.post-body h2` below. Bold reads better
+     than Nastaliq at heading weight, which is the same reasoning Jameel
+     Noori Nastaleeq sites pair with a bold Naskh heading face rather
+     than a bold cut of the body font, because Nastaliq mostly doesn't
+     have one. Noto Nastaliq Urdu as the fallback if Aslam's file — self-
+     hosted, not on Google's CDN — is ever slow or unreachable: a real
+     Nastaliq heading beats a bold one that never loaded. */
+  --font-urdu-heading: "Aslam", "Noto Nastaliq Urdu", serif;
   --font-arabic: "Amiri", "Noto Naskh Arabic", serif;
 
   --gutter: clamp(20px, 8vw, 152px);
@@ -82,6 +95,28 @@ img { max-width: 100%; }
 
 /* 3 ── Typography ─────────────────────────────────────────── */
 
+/* Not on Google's CDN, so it needs its own @font-face rather than a
+   <link> in every page's <head> the way the rest of the type does.
+   Muhammad Zeeshan Nasar's Mehr Nastaliq Web, following the calligraphy
+   of Nasrullah Mehr — CC BY-SA 4.0, credited in the footer. */
+@font-face {
+  font-family: "Mehr";
+  src: url("files/fonts/mehr-nastaliq-web.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+/* Aslam — bold Naskh, used here for the same reason Jameel Noori
+   Nastaleeq sites pair it with a heading role: Nastaliq mostly has no
+   bold cut of its own. No open license found for this one — see
+   files/fonts/Aslam-NOTICE.txt. */
+@font-face {
+  font-family: "Aslam";
+  src: url("files/fonts/Aslam.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+
 h1, h2, h3 {
   font-family: var(--font-display);
   font-weight: 600;
@@ -118,6 +153,12 @@ h1, h2, h3 {
   line-height: 2.05;
   text-align: right;
 }
+/* A record's own title, wherever it's shown — the library list, the
+   fatawa grid, a work or post's own page — set by titleMarkup in
+   common.js. Nothing else carries this class, so it never touches an
+   in-prose subheading or a section label that happens to be Urdu. */
+.record-title.urdu { font-family: var(--font-urdu-heading); }
+
 .arabic {
   font-family: var(--font-arabic);
   font-size: clamp(21px, 2.1vw, 29px);
@@ -948,7 +989,9 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   line-height: 1.35;
   color: var(--moss-deep);
 }
-.post-body.urdu h2 { line-height: 2.05; }
+/* Same heading face as a record's own title, one size down — an
+   in-prose subheading is still a heading, just not the piece's own. */
+.post-body.urdu h2 { font-family: var(--font-urdu-heading); line-height: 2.05; }
 .post-body blockquote {
   padding: 2px 0 2px 18px;
   border-left: 3px solid var(--gold-rule);

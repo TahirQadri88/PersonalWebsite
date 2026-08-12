@@ -1,0 +1,10 @@
+Aslam
+
+A bold Naskh-inspired Urdu display font, copyright Axis SoftMedia Pvt.
+Ltd. (Mumbai, 2008), designed by Syed Manzar Hasan Zaidi. Widely
+distributed as a free download, but no open-source or redistribution
+license was found for it — this is not an SIL OFL / CC-licensed font
+the way Mehr Nastaliq Web (also in this folder) is.
+
+Used here anyway, at the author's explicit direction, accepting the
+redistribution risk that carries.
