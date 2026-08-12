@@ -2283,7 +2283,7 @@
      The paths catch one they changed and did not: whatever the version
      claims, a Worker that will not take a work page cannot publish this
      library, and it is better to hear that on load. */
-  var WORKER_EXPECTS = '2026-08-12';
+  var WORKER_EXPECTS = '2026-08-12.2';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */

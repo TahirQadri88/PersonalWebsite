@@ -354,11 +354,26 @@ const publish = await page.evaluate(() => {
     return { path: s.querySelector('h3').textContent.trim(),
              bytes: area ? new TextEncoder().encode(area.value).length : 0 };
   });
-  return { count: texts.length + 2, biggest: texts.reduce((a, b) => (b.bytes > a.bytes ? b : a), { bytes: 0 }) };
+  return { count: texts.length + 2, paths: ['content.js', 'sitemap.xml'].concat(texts.map((x) => x.path)),
+           biggest: texts.reduce((a, b) => (b.bytes > a.bytes ? b : a), { bytes: 0 }) };
 });
 const worker = await readFile(join(ROOT, 'worker/src/index.js'), 'utf8');
 const maxFiles = Number(/const MAX_FILES = (\d+)/.exec(worker)[1]);
 const maxBytes = eval(/const MAX_FILE_BYTES = ([^;]+);/.exec(worker)[1]);
+
+/* Every path a publish would send, against the list the Worker will
+   actually match it with. Counting the files was not enough: one post
+   had capitals in its file name and the list had none, so a publish
+   carrying it was refused whole, every time, however few files it was.
+   A page unwritable to the Worker cannot be found by looking at that
+   page — the whole library goes or none of it does — so the check has
+   to be every path, not a specimen of each shape. */
+const writable = [...worker.matchAll(/^\s*(\/\^.*\$\/),?$/gm)]
+  .map((m) => new RegExp(m[1].slice(1, -1)));
+t('the Worker\u2019s list of writable paths was read', writable.length >= 5, String(writable.length));
+const unwritable = publish.paths.filter((path) => !writable.some((allow) => allow.test(path)));
+t('every file a publish sends is one the Worker will write', unwritable.length === 0,
+  unwritable.join(', ') + ' \u2014 the publish is refused whole, and every other file with it');
 t(`a publish sends ${publish.count} files, and the Worker takes ${maxFiles}`,
   publish.count <= maxFiles, `${publish.count} > ${maxFiles} — publishing is refused outright`);
 t(`the largest file is ${Math.round(publish.biggest.bytes / 1024)}KB, and the Worker takes ${Math.round(maxBytes / 1024)}KB`,

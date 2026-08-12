@@ -34,20 +34,33 @@ const GITHUB = 'https://api.github.com';
    writes any, which at least means nothing lands half done. The editor
    asks /version on load now, so the drift is said before anything is
    sent rather than after. */
-const WORKER_VERSION = '2026-08-12';
+const WORKER_VERSION = '2026-08-12.2';
 
 /* The token here can write to the repository, so this endpoint must not
    become a way to write anything anywhere. Only what the editor
    legitimately produces is accepted: content.js and sitemap.xml, a
    post's own page, and — since every work and fatwa got one too, so a
    shared link carries a real title and picture instead of the same
-   generic preview whichever one it named — a work's own page as well. */
+   generic preview whichever one it named — a work's own page as well.
+
+   Capitals as well as lowercase, and that is not tidiness. An id is
+   lowercase and checked for it, but a post's `page` is a separate field
+   and never was: posts/Reservations-Shariah-Screening-Stocks.html has
+   been in the library since August and could not be published from here,
+   because this list would not have it. It reached the repository at all
+   only through the token path, which does not come this way. Since every
+   publish rewrites every post, that one file refused every publish there
+   was — the library cannot be published while any one page in it is
+   unwritable.
+
+   Still no dot, no slash, no space inside a name: what this list is for
+   is making sure a path cannot climb out of the folder it names. */
 const WRITABLE = [
   /^content\.js$/,
   /^sitemap\.xml$/,
-  /^posts\/[a-z0-9-]+\.html$/,
-  /^works\/[a-z0-9-]+\.html$/,
-  /^files\/cards\/[a-z0-9-]+\.jpg$/
+  /^posts\/[A-Za-z0-9-]+\.html$/,
+  /^works\/[A-Za-z0-9-]+\.html$/,
+  /^files\/cards\/[A-Za-z0-9-]+\.jpg$/
 ];
 
 const MAX_FILE_BYTES = 512 * 1024;
