@@ -899,7 +899,12 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 /* 11 ── Work detail page ──────────────────────────────────── */
 
 .work-page-main { min-height: calc(100vh - 190px); }
-.work-hero { max-width: 1100px; padding: clamp(56px, 10vw, 128px) var(--gutter); }
+/* Without the auto margins this sat flush against the left edge on a
+   wide screen, leaving the whole right half of the window blank — and
+   for an Urdu or Arabic piece, which pushes its own body to the right
+   of this box, that left space stacked with this one and read as the
+   text being shoved into a corner rather than centred on the page. */
+.work-hero { max-width: 1100px; margin: 0 auto; padding: clamp(56px, 10vw, 128px) var(--gutter); }
 .back-link {
   display: inline-block;
   margin-bottom: 34px;
