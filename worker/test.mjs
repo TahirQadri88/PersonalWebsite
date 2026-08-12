@@ -134,6 +134,12 @@ t('content.js that sets nothing is refused', r.status===400 && /siteContent/.tes
 r = await post([{path:'content.js',text:'/* a } and a ] in a comment */\nwindow.siteContent = { categories: [{ id: "a", blurb: "a { and a [ and an isn\'t", works: [] }], rulings: [] };'}], JWT);
 t('braces inside strings and comments do not trip it', r.status===200, JSON.stringify(r));
 
+/* content.js is two statements now — the record data, then a generated
+   search index appended after it — and the checker walks the whole file,
+   not just the first statement, so this must still balance. */
+r = await post([{path:'content.js',text:GOOD+'\nwindow.siteContent.searchIndex = { "a-post": { text: "some words { not a brace" } };\n'}], JWT);
+t('a second statement (the search index) after content.js does not trip it', r.status===200, JSON.stringify(r));
+
 r = await post([{path:'content.js',text:'x'.repeat(600*1024)}], JWT);
 t('oversized file refused', r.status===400 && /too large/.test(r.body.message), JSON.stringify(r));
 

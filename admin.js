@@ -872,6 +872,16 @@
     return { kind: kind, language: language, align: align, text: block };
   }
 
+  /* A post's words with every mark stripped — the same parse bodyToHtml
+     uses, kept to just the text, for the search index. */
+  function plainTextFromBody(text) {
+    return String(text || '')
+      .split(/\n\s*\n/)
+      .map(function (raw) { return readBlock(raw).text; })
+      .filter(Boolean)
+      .join(' ');
+  }
+
   function bodyToHtml(text, indent) {
     var pad = ' '.repeat(indent);
     return String(text || '')
@@ -1972,8 +1982,28 @@
     out += '  /* Fatāwā. Same fields as a work — id, title, language, description, files. */\n';
     out += '  rulings: [\n';
     out += (model.rulings || []).map(function (ruling) { return writeRecord(ruling, 6); }).join(',\n');
-    out += '\n  ]\n};\n';
+    out += '\n  ]\n};\n\n';
+    out += '/* A search index, generated at publish time from a post\'s own words —\n' +
+      '   not meant to be hand-edited, and not part of the record above because\n' +
+      '   the words themselves live in the post\'s own HTML file, not here. Only\n' +
+      '   posts get an entry: a work or a fatwa\'s content is inside a PDF, which\n' +
+      '   this cannot read into. */\n';
+    out += 'window.siteContent.searchIndex = ' + JSON.stringify(buildSearchIndex(), null, 2) + ';\n';
     return out;
+  }
+
+  /* Every post's words, keyed by id, so site.searchText can find a piece
+     by what it actually says and not only its title and description. */
+  function buildSearchIndex() {
+    var index = {};
+    allRecords().forEach(function (entry) {
+      if (!isPost(entry)) return;
+      var body = bodies[entry.record.id];
+      if (body === undefined) return;
+      var text = plainTextFromBody(body);
+      if (text) index[entry.record.id] = { text: text };
+    });
+    return index;
   }
 
   function buildSitemap() {

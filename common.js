@@ -319,6 +319,12 @@
 
   /* Everything a search should look inside. */
   function searchText(record) {
+    /* A post's own words, or whatever text layer a work's or fatwa's PDF
+       carries — generated at publish time, in searchIndex, keyed by id,
+       because neither lives in the record itself: a post's prose is in
+       its own HTML file, and a PDF's is inside the PDF. Empty for a
+       scanned PDF with no text layer — there was nothing to extract. */
+    var indexed = content.searchIndex && content.searchIndex[record.id];
     return fold(
       [
         /* The id is a roman transliteration of the title — saa-ki-tahqeeq,
@@ -338,7 +344,8 @@
            them keeps the Hajj charts reachable by "ehram" or "kaffaray". */
         (record.files || [])
           .map(function (f) { return String(f.url || '').replace(/[\/\-_.]/g, ' '); })
-          .join(' ')
+          .join(' '),
+        indexed && indexed.text
       ]
         .filter(Boolean)
         .join(' ')
