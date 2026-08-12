@@ -64,6 +64,10 @@
         changes to GitHub and the site is live a minute later. <strong>Files…</strong> gives you the
         same files to paste in by hand if you would rather.
       </p>
+      <!-- Only ever filled in when the deployed Worker is behind this page.
+           role=alert rather than status: it is worth interrupting for,
+           since everything below it is about to be published through it. -->
+      <p class="admin-status is-bad" id="worker-status" role="alert" hidden></p>
       <p class="admin-status" id="publish-status" role="status" aria-live="polite"></p>
 
       <div class="admin-toolbar">

@@ -22,6 +22,18 @@
 
 const GITHUB = 'https://api.github.com';
 
+/* Bumped whenever this file changes in a way the editor depends on.
+
+   This file is deployed by hand to Cloudflare, separately from the site.
+   The editor is not — it is fetched fresh from the public address on
+   every load — so the two drift apart silently, and the first sign of it
+   is a publish stopping half way on a path the deployed copy has never
+   heard of. That is not a hypothetical: this sat a week behind, without
+   works/ or files/cards/ among the paths below, and every publish died
+   on the first work page it was handed. The editor asks /version on
+   load now, so the drift is said plainly before anything is sent. */
+const WORKER_VERSION = '2026-08-12';
+
 /* The token here can write to the repository, so this endpoint must not
    become a way to write anything anywhere. Only what the editor
    legitimately produces is accepted: content.js and sitemap.xml, a
@@ -402,6 +414,23 @@ export default {
       if (url.pathname === '/publish') {
         if (request.method !== 'POST') return json(405, { message: 'POST only' });
         return await publish(request, env);
+      }
+      /* What is actually deployed here, for the editor to hold against
+         what it expects. The paths go out as well as the version: a
+         version only catches drift someone remembered to record, while
+         the list answers the question that actually matters — would this
+         Worker accept the files the editor is about to send.
+
+         No sign-in needed. It discloses nothing the public site does not
+         already show, and a check that fails for want of a credential is
+         a check that cries stale when it is not. */
+      if (url.pathname === '/version') {
+        return json(200, {
+          version: WORKER_VERSION,
+          writable: WRITABLE.map((pattern) => pattern.source),
+          maxFiles: MAX_FILES,
+          maxFileBytes: MAX_FILE_BYTES
+        });
       }
       return await passThrough(request, env);
     } catch (error) {

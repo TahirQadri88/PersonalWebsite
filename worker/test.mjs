@@ -169,6 +169,20 @@ t('a card path outside files/cards/ is refused', r.status===400 && /not a file t
 const g = await worker.fetch(new Request('https://admin.tahirqadri.com.pk/publish',{method:'GET'}), env);
 t('GET /publish → 405', g.status===405);
 
+/* /version is what the editor checks on load to catch a Worker deployed
+   by hand and left behind. It answers without a sign-in — a check that
+   needs a credential fails for the wrong reason — and names every path
+   it would write, so the editor can ask the question that matters
+   without trusting the version string alone. */
+const ver = await worker.fetch(new Request('https://admin.tahirqadri.com.pk/version'), env);
+const verBody = await ver.json();
+t('GET /version answers without signing in', ver.status===200, JSON.stringify(verBody));
+t('  …with a version', typeof verBody.version==='string' && verBody.version.length>0);
+t('  …and every path the editor publishes', ['content.js','sitemap.xml','posts/a.html','works/a.html','files/cards/a.jpg']
+  .every(p => verBody.writable.some(src => new RegExp(src).test(p))), JSON.stringify(verBody.writable));
+t('  …and the limits it enforces', verBody.maxFiles===1000 && verBody.maxFileBytes===512*1024, JSON.stringify(verBody));
+t('  …and is not cached', /no-store/.test(ver.headers.get('cache-control')||''));
+
 const page = await worker.fetch(new Request('https://admin.tahirqadri.com.pk/admin.html',
   {headers:{'Cf-Access-Jwt-Assertion':JWT}}), env);
 t('the editor is served through the Worker', page.status===200);

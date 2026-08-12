@@ -2261,6 +2261,75 @@
     ? '/publish'
     : '';
 
+  /* ---- Is the deployed Worker the one this editor expects? ------------
+
+     The Worker is deployed by hand, on its own. This page is not: the
+     Worker fetches it from the public address every time, so the editor
+     is always current and the Worker may be anything. Nothing said so
+     until a publish had already sent half the library and stopped on the
+     rest — the Worker was a week old, and did not count works/ or
+     files/cards/ among the paths it would write.
+
+     Two questions, then, asked before anything is written rather than
+     during. The version catches a Worker somebody changed and recorded.
+     The paths catch one they changed and did not: whatever the version
+     claims, a Worker that will not take a work page cannot publish this
+     library, and it is better to hear that on load. */
+  var WORKER_EXPECTS = '2026-08-12';
+
+  /* One of each kind of file a publish sends, as a specimen to test the
+     Worker's own list against — not real names, just shapes. */
+  var WRITES = ['content.js', 'sitemap.xml', 'posts/a.html', 'works/a.html', 'files/cards/a.jpg'];
+
+  function workerTrouble(report) {
+    var patterns = [];
+    (report.writable || []).forEach(function (source) {
+      try { patterns.push(new RegExp(source)); } catch (error) { /* not one we can read */ }
+    });
+    var refused = WRITES.filter(function (path) {
+      return !patterns.some(function (pattern) { return pattern.test(path); });
+    });
+    if (refused.length) {
+      return 'The Worker deployed at ' + location.hostname + ' will not write ' +
+        refused.join(' or ') + ', which this editor publishes.';
+    }
+    if (report.version !== WORKER_EXPECTS) {
+      return 'The Worker deployed at ' + location.hostname + ' is version ' +
+        (report.version || 'unknown') + '; this editor expects ' + WORKER_EXPECTS + '.';
+    }
+    return '';
+  }
+
+  function sayWorkerIsOld(what) {
+    var box = document.getElementById('worker-status');
+    if (!box) return;
+    box.hidden = false;
+    box.textContent = what +
+      ' Publishing would fail part way through. In Cloudflare open the Worker → Edit code,' +
+      ' replace all of it with worker/src/index.js from the repository, and Deploy.';
+  }
+
+  function checkWorker() {
+    if (!BACKEND) return;
+    fetch('/version')
+      .then(function (response) {
+        /* A Worker older than this check has no /version to answer with.
+           The request falls through to its pass-through instead and comes
+           back as the public site's own 404 — HTML, not JSON. Either way
+           it is not a Worker that can say, which is itself the answer. */
+        if (!response.ok) throw new Error('no /version');
+        return response.json();
+      })
+      .then(function (report) {
+        var trouble = workerTrouble(report);
+        if (trouble) sayWorkerIsOld(trouble);
+      })
+      .catch(function () {
+        sayWorkerIsOld('The Worker deployed at ' + location.hostname +
+          ' is too old to say which version it is.');
+      });
+  }
+
   /* ---- Signing in ----------------------------------------------------
 
      Fill these two in and the passphrase box becomes a real login: the
@@ -2626,6 +2695,7 @@
     document.body.classList.remove('is-locked');
     try { sessionStorage.setItem('editor-open', '1'); } catch (error) { /* private mode */ }
     render();
+    checkWorker();
   }
 
   var gateForm = document.getElementById('gate-form');
