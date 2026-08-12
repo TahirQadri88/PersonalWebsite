@@ -283,6 +283,17 @@ window.siteContent = {
           files: [
             { label: "English PDF", url: "files/study-notes-for-specialization-students-of-hanafi-fiqh/arafat-mazhar-jawabat-english.pdf" }
           ]
+        },
+        {
+          id: "reservations-shariah-screening-stocks",
+          title: "شیئرز کی شرعی اسکریننگ پر تحفظات",
+          language: "ur",
+          kind: "مضمون",
+          date: "2026-08-08",
+          description: "Reservations on conventional Shariah Screening of Stocks",
+          descriptionUr: "کیا فیصدی شرعی اسکریننگ شیئرز کو شرعاً جائز قرار دینے کے لیے کافی ہے؟",
+          tags: ["سودی", "کمپنی", "شرعی", "اسکریننگ", "فیصدی"],
+          page: "posts/Reservations-Shariah-Screening-Stocks.html"
         }
       ]
     }
