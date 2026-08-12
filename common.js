@@ -320,6 +320,93 @@
       .join(' ');
   }
 
+  /* Decomposes text one character at a time and remembers which
+     original character each decomposed character came from — safe
+     because canonical decomposition never depends on a character's
+     neighbours, only on itself. A match found in the decomposed copy
+     can still be pointed back at the span of the real, undecomposed
+     text it came from. */
+  function decomposeWithMap(text) {
+    var str = String(text == null ? '' : text);
+    var out = '';
+    var map = [];
+    for (var i = 0; i < str.length; i++) {
+      var piece = str[i].normalize('NFD');
+      for (var j = 0; j < piece.length; j++) {
+        out += piece[j];
+        map.push(i);
+      }
+    }
+    return { text: out, map: map };
+  }
+
+  var COMBINING_MARKS = '[̀-ًͯ-ٰٟۖ-ۭ]*';
+
+  function escapeRegExp(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /* fold()'s own words, turned into a pattern that finds them inside
+     ordinary text that still has its diacritics: each letter, with
+     whatever mark fold() would have stripped allowed right after it —
+     the same tolerance fold() has, run in the other direction. */
+  function fuzzyWordPattern(word) {
+    return Array.prototype.map
+      .call(word, function (ch) { return escapeRegExp(ch) + COMBINING_MARKS; })
+      .join('');
+  }
+
+  /* A title or description, with whichever already-fold()ed search
+     words appear in it wrapped in <mark>. Matching runs against a
+     decomposed, lowercased copy, so a search that ignores diacritics
+     still finds and highlights the word carrying them; the match is
+     then translated back to a span of the real text, which is what
+     actually gets escaped and marked up. At worst this misses a match
+     fold() only reached by collapsing punctuation — a smaller loss
+     than a mark landing on the wrong letters would be. */
+  function highlightText(text, words) {
+    var raw = String(text == null ? '' : text);
+    if (!words || !words.length) return escapeHtml(raw);
+
+    var decomposed = decomposeWithMap(raw);
+    var hay = decomposed.text.toLocaleLowerCase();
+    var pattern = words
+      .map(function (w) { return fuzzyWordPattern(String(w).toLocaleLowerCase()); })
+      .filter(Boolean)
+      .join('|');
+    if (!pattern) return escapeHtml(raw);
+
+    var re = new RegExp(pattern, 'gu');
+    var ranges = [];
+    var match;
+    while ((match = re.exec(hay))) {
+      if (!match[0]) { re.lastIndex += 1; continue; }
+      ranges.push([decomposed.map[match.index], decomposed.map[match.index + match[0].length - 1] + 1]);
+    }
+    if (!ranges.length) return escapeHtml(raw);
+
+    /* Two query words can land on overlapping letters once diacritics
+       are allowed to float between them, so touching or overlapping
+       ranges merge into one mark rather than nesting or colliding. */
+    ranges.sort(function (a, b) { return a[0] - b[0]; });
+    var merged = [ranges[0]];
+    ranges.slice(1).forEach(function (r) {
+      var last = merged[merged.length - 1];
+      if (r[0] <= last[1]) last[1] = Math.max(last[1], r[1]);
+      else merged.push(r);
+    });
+
+    var out = '';
+    var cursor = 0;
+    merged.forEach(function (r) {
+      out += escapeHtml(raw.slice(cursor, r[0]));
+      out += '<mark>' + escapeHtml(raw.slice(r[0], r[1])) + '</mark>';
+      cursor = r[1];
+    });
+    out += escapeHtml(raw.slice(cursor));
+    return out;
+  }
+
   /* Everything a search should look inside. */
   function searchText(record) {
     /* A post's own words, or whatever text layer a work's or fatwa's PDF
@@ -633,6 +720,7 @@
     findRecord: findRecord,
     fold: fold,
     skeleton: skeleton,
+    highlightText: highlightText,
     searchText: searchText,
     shareCaption: shareCaption,
     shareRecord: shareRecord,

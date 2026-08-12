@@ -171,6 +171,16 @@ h1, h2, h3 {
   font-size: clamp(16px, 1.7vw, 23px);
 }
 
+/* The word actually searched for, wherever script.js finds it inside a
+   title — the default yellow reads as a highlighter mark left by
+   accident, not something the page meant to show. */
+.record-title mark {
+  background: rgba(184, 134, 58, 0.28);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
 .arabic {
   font-family: var(--font-arabic);
   font-size: clamp(21px, 2.1vw, 29px);

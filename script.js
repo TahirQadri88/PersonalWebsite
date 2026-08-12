@@ -71,6 +71,7 @@
 
   function searchAttr(id) {
     return (
+      ' data-id="' + site.escapeHtml(id) + '"' +
       ' data-search="' + site.escapeHtml(searchIndex[id] || '') + '"' +
       ' data-skeleton="' + site.escapeHtml(skeletonIndex[id] || '') + '"'
     );
@@ -236,6 +237,22 @@
 
       if (term && loose.length && countAll() === 0) approximate = true;
 
+      /* The word actually typed, wherever it survives in a visible
+         title — not the id, the tags or a file label the search also
+         looks inside, since only the title is ever shown in the list.
+         approximate results use the skeleton, which no longer
+         resembles what was typed closely enough to mark inside the
+         real spelling, so those go back to plain text. */
+      function highlight(element, hit) {
+        var title = element.querySelector('.record-title');
+        if (!title) return;
+        var record = site.findRecord(element.getAttribute('data-id'));
+        if (!record) return;
+        title.innerHTML = (hit && term && !approximate)
+          ? site.highlightText(record.title, words)
+          : site.escapeHtml(record.title);
+      }
+
       var works = 0;
       var rulings = 0;
 
@@ -244,6 +261,7 @@
         category.querySelectorAll('.work').forEach(function (work) {
           var hit = matches(work);
           work.hidden = !hit;
+          highlight(work, hit);
           if (hit) visibleHere += 1;
         });
         category.hidden = visibleHere === 0;
@@ -257,6 +275,7 @@
         rulingsGrid.querySelectorAll('.ruling').forEach(function (ruling) {
           var hit = matches(ruling);
           ruling.hidden = !hit;
+          highlight(ruling, hit);
           if (hit) rulings += 1;
         });
         if (rulingsSection) rulingsSection.hidden = term && rulings === 0;
