@@ -37,7 +37,14 @@ const WRITABLE = [
 ];
 
 const MAX_FILE_BYTES = 512 * 1024;
-const MAX_FILES = 40;
+/* Every publish regenerates content.js, sitemap.xml, every work and post's
+   own page, and every record's card — the whole library, not just what
+   changed, so there is never a "does this still match" question to answer
+   by hand. That means the count grows with the library itself: it was
+   already past 40 with 22 works and posts (2 + 22 pages + 22 cards = 46),
+   which made an ordinary publish fail as "too many files." Room for the
+   library to keep growing for years, not a number sized to today's count. */
+const MAX_FILES = 1000;
 
 class HttpError extends Error {
   constructor(status, message) {
