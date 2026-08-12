@@ -1037,14 +1037,21 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    .post-body's own size, which just grew for Mehr's sake, and this
    needs Aslam's own width-compensated shrink instead, not to inherit
    the body's growth. */
-.post-body.urdu h2 { font-family: var(--font-urdu-heading); font-size: 23px; line-height: 2.05; }
+/* :not(.latin):not(.arabic) on both — a heading is still a bare h2/h3
+   with no class of its own for the common case where it carries the
+   piece's own language, so the rule has to name the container's script
+   to reach it at all. Naming h2/h3 outright also matches a heading
+   marked .latin or .arabic, which needs the *other* face — and did
+   still get this one, since a rule reached through the container plus
+   a bare tag outranks .post-body .latin's own two classes below. */
+.post-body.urdu h2:not(.latin):not(.arabic) { font-family: var(--font-urdu-heading); font-size: 23px; line-height: 2.05; }
 .post-body h3 {
   margin-top: 1.5em;
   font-size: 1.1em;
   line-height: 1.4;
   color: var(--moss-deep);
 }
-.post-body.urdu h3 { font-family: var(--font-urdu-heading); font-size: 20px; line-height: 2; }
+.post-body.urdu h3:not(.latin):not(.arabic) { font-family: var(--font-urdu-heading); font-size: 20px; line-height: 2; }
 .post-body .footnote {
   font-size: 0.85em;
   line-height: 1.6;
@@ -1062,8 +1069,8 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   border-left: 3px solid var(--gold-rule);
   color: var(--muted);
 }
-.post-body.urdu blockquote,
-.post-body.arabic blockquote {
+.post-body.urdu blockquote:not(.latin),
+.post-body.arabic blockquote:not(.latin) {
   padding: 2px 18px 2px 0;
   border-left: 0;
   border-right: 3px solid var(--gold-rule);
@@ -1290,13 +1297,13 @@ footer {
     page-break-after: avoid;
     font-size: 13pt;
   }
-  .post-body.urdu h2 { font-size: 16pt; }
+  .post-body.urdu h2:not(.latin):not(.arabic) { font-size: 16pt; }
   .post-body h3 {
     break-after: avoid;
     page-break-after: avoid;
     font-size: 12pt;
   }
-  .post-body.urdu h3 { font-size: 15pt; }
+  .post-body.urdu h3:not(.latin):not(.arabic) { font-size: 15pt; }
   .post-body .footnote { font-size: 9.5pt; line-height: 1.5; color: #333; }
   .post-body.urdu .footnote { font-size: 12pt; }
   .post-body.arabic .footnote { font-size: 12.5pt; }

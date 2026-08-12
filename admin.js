@@ -476,13 +476,21 @@
 
   /* One of the three things about a block, set or taken off again,
      leaving the other two alone — a verse is a quotation and Arabic and
-     centred all at once. */
+     centred all at once.
+
+     Script is the one exception: Enter carries the block before's
+     script onto the new one, so by the time a hand reaches for the
+     Script row the block already has one — often already the one about
+     to be clicked. Toggling that off, the way Quote or Centre do, would
+     silently drop the block back to the piece's own base language
+     instead of setting the one just clicked, which reads as the wrong
+     line suddenly changing font. A click on Script always sets. */
   function setBlockField(canvas, field, value) {
     var block = caretBlock(canvas) || canvas.firstElementChild;
     if (!block) return;
     var offset = caretOffset(block);
     var state = blockState(block);
-    state[field] = state[field] === value ? (field === 'kind' ? 'p' : '') : value;
+    state[field] = field !== 'language' && state[field] === value ? (field === 'kind' ? 'p' : '') : value;
     var next = makeBlock(state, block.innerHTML);
     block.parentNode.replaceChild(next, block);
     canvas.focus();
