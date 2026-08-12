@@ -145,10 +145,13 @@ h1, h2, h3 {
   margin-bottom: 14px;
 }
 
-/* Urdu and Arabic need their own size and leading, everywhere. */
+/* Urdu and Arabic need their own size and leading, everywhere. Mehr's
+   x-height reads smaller than Noto Nastaliq Urdu's did at the same
+   size — this runs about a tenth larger to read the same size on
+   screen as the Noto-only sizing this was tuned against. */
 .urdu {
   font-family: var(--font-urdu);
-  font-size: clamp(18px, 1.9vw, 25px);
+  font-size: clamp(20px, 2.1vw, 27px);
   font-weight: 500;
   line-height: 2.05;
   text-align: right;
@@ -156,8 +159,17 @@ h1, h2, h3 {
 /* A record's own title, wherever it's shown — the library list, the
    fatawa grid, a work or post's own page — set by titleMarkup in
    common.js. Nothing else carries this class, so it never touches an
-   in-prose subheading or a section label that happens to be Urdu. */
-.record-title.urdu { font-family: var(--font-urdu-heading); }
+   in-prose subheading or a section label that happens to be Urdu.
+
+   Aslam runs wider per character than Noto Nastaliq Urdu did at the
+   same size — about a tenth, measured — so a title that used to wrap
+   at two lines was wrapping at three. This size is the library list's
+   only rule; a work-hero h1 or a ruling h3 below overrides it with
+   their own, already scaled down to match. */
+.record-title.urdu {
+  font-family: var(--font-urdu-heading);
+  font-size: clamp(16px, 1.7vw, 23px);
+}
 
 .arabic {
   font-family: var(--font-arabic);
@@ -708,12 +720,12 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .work-detail p.urdu,
 .category-blurb.urdu,
 .ruling p.urdu {
-  font-size: 17px;
+  font-size: 19px;
   line-height: 2.05;
   text-align: right;
 }
 .work-page-description.urdu {
-  font-size: 19px;
+  font-size: 21px;
   line-height: 2.05;
   text-align: right;
 }
@@ -838,7 +850,7 @@ body.is-searching .rulings h2 { margin-bottom: 26px; }
 .ruling h3 { font-size: 20px; line-height: 1.3; color: var(--moss-deep); }
 /* 1.3 is a Latin leading. Nastaliq and Naskh keep their own, or a
    two-line Urdu title collides with itself. */
-.ruling h3.urdu { font-size: 24px; line-height: 2.05; }
+.ruling h3.urdu { font-size: 22px; line-height: 2.05; }
 .ruling h3.arabic { font-size: 25px; line-height: 1.65; }
 /* On paper now, so these take the on-light values. The section's own
    heading and note stay on the green and keep the on-dark ones — which
@@ -888,7 +900,15 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   border-bottom: 1px solid currentColor;
 }
 .work-hero h1 { max-width: 22ch; color: var(--moss-deep); font-size: clamp(32px, 4.4vw, 58px); }
-.work-hero h1.urdu { font-size: clamp(26px, 3.6vw, 48px); line-height: 1.95; }
+/* max-width: 22ch above is measured in Aslam's own digit width, which
+   is much narrower than Newsreader's or Amiri's — the same 22ch comes
+   out to 264px in Aslam against 308px in Noto Nastaliq Urdu, so a
+   title that used to wrap at two lines was wrapping at three. em
+   instead of ch here — relative to this rule's own font-size rather
+   than to a glyph whose width swings wildly between fonts — sized by
+   trying it against the site's longest title until the wrap stopped
+   leaving a single trailing word alone on its own line. */
+.work-hero h1.urdu { max-width: 18em; font-size: clamp(24px, 3.3vw, 44px); line-height: 1.95; }
 .work-hero h1.arabic { font-size: clamp(30px, 4vw, 54px); line-height: 1.6; }
 .work-page-description { max-width: 62ch; margin: 24px 0 18px; color: #4b5852; font-size: 17px; }
 /* A paragraph in the other language, on either kind of page.
@@ -979,7 +999,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 }
 .post-body.urdu,
 .post-body.arabic { max-width: 44ch; margin-left: auto; }
-.post-body.urdu { font-size: 19px; line-height: 2.15; }
+.post-body.urdu { font-size: 21px; line-height: 2.15; }
 .post-body.arabic { font-size: 21px; line-height: 1.9; }
 .post-body > * { margin: 0 0 1.1em; }
 .post-body > *:last-child { margin-bottom: 0; }
@@ -990,8 +1010,12 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   color: var(--moss-deep);
 }
 /* Same heading face as a record's own title, one size down — an
-   in-prose subheading is still a heading, just not the piece's own. */
-.post-body.urdu h2 { font-family: var(--font-urdu-heading); line-height: 2.05; }
+   in-prose subheading is still a heading, just not the piece's own.
+   An explicit size rather than the 1.32em above: that's relative to
+   .post-body's own size, which just grew for Mehr's sake, and this
+   needs Aslam's own width-compensated shrink instead, not to inherit
+   the body's growth. */
+.post-body.urdu h2 { font-family: var(--font-urdu-heading); font-size: 23px; line-height: 2.05; }
 .post-body blockquote {
   padding: 2px 0 2px 18px;
   border-left: 3px solid var(--gold-rule);
@@ -1118,7 +1142,7 @@ footer {
   .work-kind { grid-column: 1 / -1; margin-bottom: -8px; }
   .work-detail { padding: 0 0 20px; }
 
-  .urdu { font-size: 18px; line-height: 2.1; }
+  .urdu { font-size: 20px; line-height: 2.1; }
   .arabic { font-size: 20px; }
   .ruling-grid { grid-template-columns: 1fr; }
   .contact { display: block; }
