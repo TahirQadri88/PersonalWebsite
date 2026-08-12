@@ -1013,9 +1013,16 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   overflow-wrap: break-word;
 }
 .post-body.urdu,
-.post-body.arabic { max-width: 44ch; margin-left: auto; }
+.post-body.arabic { max-width: 54ch; margin-left: auto; }
 .post-body.urdu { font-size: 21px; line-height: 2.15; }
 .post-body.arabic { font-size: 21px; line-height: 1.9; }
+/* Straight edges on both sides, not just the one the text starts from
+   — a ragged left edge on a narrow, right-hung column is what made it
+   read as stranded rather than set. Paragraphs and footnotes only: a
+   heading or a quotation is short enough that justifying it would
+   space out a handful of words rather than a paragraph's worth. */
+.post-body.urdu p:not(.latin),
+.post-body.arabic p:not(.latin) { text-align: justify; }
 .post-body > * { margin: 0 0 1.1em; }
 .post-body > *:last-child { margin-bottom: 0; }
 .post-body h2 {
