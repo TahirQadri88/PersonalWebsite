@@ -1027,6 +1027,24 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .post-body.arabic { max-width: 54ch; margin-left: auto; }
 .post-body.urdu { font-size: 21px; line-height: 2.15; }
 .post-body.arabic { font-size: 21px; line-height: 1.9; }
+/* A block marked with the same script as the piece takes the piece's own
+   size, not the size `.urdu` gives an Urdu element anywhere on the site.
+   Both were landing on the same paragraph: the two rules match different
+   elements — the container here, the block inside it there — so neither
+   overrides the other and it came down to which blocks a piece happened
+   to carry marks on. A piece written with every block marked came out at
+   23.1px, one written with them unmarked at 21px, and the two Urdu
+   articles on the site did not match each other.
+
+   A block in the *other* script is left alone deliberately: an Arabic
+   verse inside an Urdu piece should keep Naskh's own measure, which is
+   not the measure Nastaliq wants. Placed above the headings and
+   footnotes below, which carry their own sizes and must still win. */
+.post-body.urdu > .urdu,
+.post-body.arabic > .arabic {
+  font-size: inherit;
+  line-height: inherit;
+}
 /* Straight edges on both sides, not just the one the text starts from
    — a ragged left edge on a narrow, right-hung column is what made it
    read as stranded rather than set. Paragraphs and footnotes only: a
@@ -1105,9 +1123,17 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    because a citation is not the argument. */
 .post-body .latin {
   font-family: var(--font-ui);
+  text-align: left;
+}
+/* The small size is for a citation, not for anything marked English.
+   A heading marked English was taking it too and coming out at 15px —
+   smaller than the 21px body beneath it, so the piece read as though
+   its sections were captions. Headings keep the sizes `.post-body h2`
+   and `h3` give them and only change face. */
+.post-body p.latin,
+.post-body blockquote.latin {
   font-size: 15px;
   line-height: 1.65;
-  text-align: left;
 }
 
 .post-foot {
