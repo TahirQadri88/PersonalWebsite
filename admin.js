@@ -329,8 +329,10 @@
   var TOOL_GROUPS = [
     { field: 'kind', label: 'Style', items: [
       { value: 'p', text: 'Text', title: 'Ordinary paragraph' },
-      { value: 'h2', text: 'Heading', title: 'A heading inside the piece', cls: 'is-heading' },
-      { value: 'blockquote', text: 'Quote', title: 'A quotation, set apart', cls: 'is-quote' }
+      { value: 'h2', text: 'Heading 1', title: 'A major heading inside the piece', cls: 'is-heading' },
+      { value: 'h3', text: 'Heading 2', title: 'A sub-heading, one level under Heading 1', cls: 'is-heading' },
+      { value: 'blockquote', text: 'Quote', title: 'A quotation, set apart', cls: 'is-quote' },
+      { value: 'footnote', text: 'Footnote', title: 'A citation or footnote, set apart from the body', cls: 'is-footnote' }
     ] },
     { field: 'language', label: 'Script', items: [
       { value: 'ur', text: 'اردو', title: 'Set this block in Urdu — Nastaleeq', cls: 'urdu' },
@@ -367,7 +369,11 @@
       rows.join('') + '</svg>';
   }
 
-  var BLOCK_TAG = { p: 'p', h2: 'h2', blockquote: 'blockquote' };
+  /* A footnote is a paragraph — a citation reads as prose, just set
+     apart from the body around it — so it shares p's tag and is told
+     apart by the 'footnote' class makeBlock and htmlToBody both check
+     for below, the same way a block's script or alignment already is. */
+  var BLOCK_TAG = { p: 'p', h2: 'h2', h3: 'h3', blockquote: 'blockquote', footnote: 'p' };
 
   /* The block the caret is in: the direct child of the box that contains
      it. Anything deeper is inside one of them. */
@@ -385,7 +391,11 @@
   function blockState(node) {
     var state = { kind: 'p', language: '', align: '' };
     if (!node) return state;
-    state.kind = node.tagName === 'H2' ? 'h2' : node.tagName === 'BLOCKQUOTE' ? 'blockquote' : 'p';
+    if (node.tagName === 'H2') state.kind = 'h2';
+    else if (node.tagName === 'H3') state.kind = 'h3';
+    else if (node.tagName === 'BLOCKQUOTE') state.kind = 'blockquote';
+    else if (node.classList.contains('footnote')) state.kind = 'footnote';
+    else state.kind = 'p';
     Object.keys(SCRIPTS).forEach(function (key) {
       if (node.classList.contains(SCRIPTS[key].cls)) state.language = key;
     });
@@ -397,6 +407,7 @@
 
   function makeBlock(state, html) {
     var node = document.createElement(BLOCK_TAG[state.kind] || 'p');
+    if (state.kind === 'footnote') node.classList.add('footnote');
     if (state.language && SCRIPTS[state.language]) {
       node.classList.add(SCRIPTS[state.language].cls);
       node.setAttribute('lang', state.language);
@@ -482,9 +493,10 @@
      so Enter at the end of a heading gives a second heading — which is
      never what was meant, and is what every word processor learnt not to
      do. The split is done here instead: what follows the caret moves into
-     a new block, and that block is ordinary text unless a quotation was
-     being written, where carrying on in the quotation is the likelier
-     want. Script and alignment carry over either way. */
+     a new block, and that block is ordinary text unless a quotation or a
+     footnote was being written, where carrying on as the same kind is the
+     likelier want — a citation is rarely alone. Script and alignment
+     carry over either way. */
   function splitBlock(canvas) {
     var block = caretBlock(canvas);
     if (!block) return false;
@@ -499,7 +511,7 @@
 
     var state = blockState(block);
     var next = makeBlock({
-      kind: state.kind === 'blockquote' ? 'blockquote' : 'p',
+      kind: (state.kind === 'blockquote' || state.kind === 'footnote') ? state.kind : 'p',
       language: state.language,
       align: state.align
     }, null);
@@ -770,7 +782,7 @@
          that appears to work until the file is written. */
       if ((event.ctrlKey || event.metaKey) && /^[biu]$/i.test(event.key)) {
         event.preventDefault();
-        note.textContent = 'There is no bold or italic in a post here — a line that stands out is a Heading, and a passage set apart is a Quote.';
+        note.textContent = 'There is no bold or italic in a post here — a line that stands out is a Heading 1 or Heading 2, and a passage set apart is a Quote or a Footnote.';
       }
     });
 
@@ -831,7 +843,11 @@
       Object.keys(ALIGN).forEach(function (key) {
         if (node.classList.contains('align-' + ALIGN[key])) mark += '[' + key + '] ';
       });
-      var lead = node.tagName === 'H2' ? '## ' : node.tagName === 'BLOCKQUOTE' ? '> ' : '';
+      var lead = node.tagName === 'H3' ? '### '
+        : node.tagName === 'H2' ? '## '
+        : node.tagName === 'BLOCKQUOTE' ? '> '
+        : node.classList.contains('footnote') ? '[fn] '
+        : '';
       blocks.push(lead + mark + text);
     });
     return blocks.join('\n\n');
@@ -856,8 +872,10 @@
   function readBlock(raw) {
     var block = String(raw || '').trim();
     var kind = 'p';
-    if (block.indexOf('## ') === 0) { kind = 'h2'; block = block.slice(3); }
+    if (block.indexOf('### ') === 0) { kind = 'h3'; block = block.slice(4); }
+    else if (block.indexOf('## ') === 0) { kind = 'h2'; block = block.slice(3); }
     else if (block.indexOf('> ') === 0) { kind = 'blockquote'; block = block.slice(2); }
+    else if (block.indexOf('[fn] ') === 0) { kind = 'footnote'; block = block.slice(5); }
 
     var language = '';
     var align = '';
@@ -900,8 +918,13 @@
            stylesheet keeps the say, and so a post page carries no inline
            CSS for a content-security policy to object to later. */
         if (b.align) classes.push('align-' + ALIGN[b.align]);
+        /* A footnote's tag is p — BLOCK_TAG says so — so it needs the
+           class that tells it apart from an ordinary paragraph, the
+           same way makeBlock adds it in the live box. */
+        if (b.kind === 'footnote') classes.push('footnote');
         if (classes.length) attrs = ' class="' + classes.join(' ') + '"' + attrs;
-        return pad + '<' + b.kind + attrs + '>' + site.escapeHtml(b.text.replace(/\s+/g, ' ')) + '</' + b.kind + '>';
+        var tag = BLOCK_TAG[b.kind] || 'p';
+        return pad + '<' + tag + attrs + '>' + site.escapeHtml(b.text.replace(/\s+/g, ' ')) + '</' + tag + '>';
       })
       .join('\n');
   }
