@@ -606,6 +606,35 @@
     return { kind: 'p', text: stripInlineMarks(joined).replace(/\s+/g, ' ').trim() };
   }
 
+  /* Which script some pasted text is in, so a paste can mark its own
+     blocks rather than take on whatever the caret happened to be sitting
+     in. That inheritance is what made pasting an article go in
+     backwards: at the end of a piece whose last line is an English
+     citation, Enter carries "English" onto the new block, and an Urdu
+     article pasted there arrived inside a block marked English and set
+     left to right. The words rendered in DM Sans, right to left reading
+     broke, and the space bar appeared to walk the caret backwards —
+     with nothing on screen saying why, because the block looked empty
+     when it was marked.
+
+     Urdu is told from Arabic by the letters Urdu added and Arabic does
+     not use — ٹ ڈ ڑ ں ھ ہ ے ژ گ چ پ. A Qur'anic verse has none of them
+     and stays Arabic, which is what a verse quoted inside an Urdu piece
+     needs. Counting, not detecting: a line is whichever script most of
+     its letters belong to, so an Urdu sentence with one English term in
+     it stays Urdu. */
+  var ARABIC_SCRIPT = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
+  var URDU_LETTERS = /[\u0679\u067E\u0686\u0688\u0691\u0698\u06AF\u06BA\u06BE\u06C1\u06C2\u06C3\u06D2\u06D3]/;
+
+  function scriptOf(text) {
+    var body = String(text || '');
+    var rtl = (body.match(ARABIC_SCRIPT) || []).length;
+    var latin = (body.match(/[A-Za-z]/g) || []).length;
+    if (!rtl && !latin) return '';
+    if (rtl >= latin) return URDU_LETTERS.test(body) ? 'ur' : 'ar';
+    return 'en';
+  }
+
   function pastePlain(canvas, text) {
     var chunks = String(text || '')
       .split(/\n\s*\n/)
@@ -623,7 +652,11 @@
        structure of its own (a detected heading or quote, or more than
        one paragraph) replaces that block instead, the way starting a new
        piece over a single empty line would. */
-    if (chunks.length === 1 && chunks[0].kind === 'p') {
+    /* Only when there are already words here to splice into. Dropping a
+       line into an empty block goes the other way instead, so the block
+       can be marked with the script that arrived rather than keep one
+       it was handed by the line above. */
+    if (chunks.length === 1 && chunks[0].kind === 'p' && block.textContent.trim()) {
       var selection = window.getSelection();
       if (!selection.rangeCount) return;
       var range = selection.getRangeAt(0);
@@ -636,13 +669,18 @@
       return;
     }
 
-    var first = makeBlock({ kind: chunks[0].kind, language: state.language, align: state.align }, null);
+    /* Each block takes the script of its own words. A pasted article
+       that turns from Urdu to an Arabic verse and back marks all three
+       correctly without anyone pressing a button; a line with no letters
+       either way — a row of numbers, a rule — keeps the script of the
+       block it replaced. */
+    var first = makeBlock({ kind: chunks[0].kind, language: scriptOf(chunks[0].text) || state.language, align: state.align }, null);
     first.textContent = chunks[0].text;
     block.parentNode.replaceChild(first, block);
 
     var after = first;
     chunks.slice(1).forEach(function (chunk) {
-      var next = makeBlock({ kind: chunk.kind, language: state.language, align: state.align }, null);
+      var next = makeBlock({ kind: chunk.kind, language: scriptOf(chunk.text) || state.language, align: state.align }, null);
       next.textContent = chunk.text;
       after.parentNode.insertBefore(next, after.nextSibling);
       after = next;

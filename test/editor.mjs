@@ -319,6 +319,69 @@ for (const [pasted, tag, why] of [['*A bold line*', 'H2', 'a whole line in aster
   t(why, got === tag, 'got ' + got);
 }
 
+console.log('\nwhat script a paste is in');
+
+/* The fault this section is for. At the end of a piece whose last line
+   is an English citation, Enter carries "English" onto the new block —
+   so an Urdu article pasted there landed inside a block marked English
+   and set left to right. It rendered in DM Sans, and the space bar
+   appeared to walk the caret backwards, because a space typed at the end
+   of right-to-left text inside a left-to-right block belongs on the
+   other side. Nothing on screen said so: an empty block shows no sign of
+   the language it is holding. */
+
+async function pasteInto(page, text) {
+  await page.evaluate((t) => {
+    const data = new DataTransfer();
+    data.setData('text/plain', t);
+    document.querySelector('.admin-row[open] .writing-canvas')
+      .dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+  }, text);
+  await page.waitForTimeout(120);
+}
+
+/* An empty block that has been handed English by the line above it. */
+async function emptyEnglishBlock(page) {
+  await newBlock(page, 'x');
+  await kindButton(row, 'English').click();
+  await page.keyboard.press('Backspace');
+  await page.waitForTimeout(60);
+}
+
+const URDU = 'اسلامی اسٹاک اسکریننگ میں عموماً مشترکہ سرمایہ کمپنی کے بنیادی کاروبار';
+const ARABIC = 'ٱدْعُ إِلَىٰ سَبِيلِ رَبِّكَ بِٱلْحِكْمَةِ وَٱلْمَوْعِظَةِ ٱلْحَسَنَةِ';
+const ENGLISH = 'Reservations on conventional Shariah screening of stocks.';
+
+for (const [text, cls, dir, label] of [
+  [URDU, 'urdu', 'rtl', 'Urdu pasted into a block marked English comes out Urdu, right to left'],
+  [ARABIC, 'arabic', 'rtl', 'an Arabic verse comes out Arabic, not Urdu'],
+  [ENGLISH, 'latin', 'ltr', 'English comes out English']]) {
+  await emptyEnglishBlock(page);
+  await pasteInto(page, text);
+  const at = await page.evaluate(CARET);
+  t(label, at.cls.split(' ').includes(cls) && at.dir === dir, JSON.stringify(at));
+}
+
+/* A whole article at once: the case actually complained about. */
+await emptyEnglishBlock(page);
+await pasteInto(page, [URDU, ARABIC, ENGLISH].join('\n\n'));
+const pasted = await page.evaluate(() => {
+  const kids = [...document.querySelector('.admin-row[open] .writing-canvas').children].slice(-3);
+  /* The script only — a block may also be carrying an alignment from
+     whatever it replaced, which is none of this test's business. */
+  return kids.map((k) => ['urdu', 'arabic', 'latin'].find((c) => k.classList.contains(c)) + '|' + k.getAttribute('dir'));
+});
+t('an article that changes script part way marks each block for itself',
+  pasted.join(' ') === 'urdu|rtl arabic|rtl latin|ltr', JSON.stringify(pasted));
+
+/* And the other half of it: a block with words of its own keeps them. */
+await newBlock(page, 'ایک جملہ');
+await kindButton(row, 'اردو').click();
+await pasteInto(page, ' (screening criteria)');
+const spliced = await page.evaluate(CARET);
+t('an English term pasted into an Urdu sentence leaves the line Urdu',
+  spliced.cls.split(' ').includes('urdu') && spliced.dir === 'rtl', JSON.stringify(spliced));
+
 console.log('\nwriting it out and reading it back');
 
 /* The strongest thing here. Everything above is built out of the block
