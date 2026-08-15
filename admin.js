@@ -2513,10 +2513,41 @@
   }
 
   var status = document.getElementById('publish-status');
+  var publishButton = document.getElementById('publish');
 
-  function say(message, kind) {
-    status.textContent = message;
+  /* The Publish button rides in the bar at the top; this line does not.
+     On a phone, part way down a long piece, that meant pressing Publish
+     and seeing nothing happen at all — the answer was on screen, several
+     screens away. So the button says what it is doing while it does it,
+     and anything final brings the line into view rather than waiting to
+     be found. */
+  function say(message, kind, items) {
     status.className = 'admin-status' + (kind ? ' is-' + kind : '');
+    status.textContent = message;
+    if (items && items.length) {
+      var list = document.createElement('ul');
+      list.className = 'admin-status-list';
+      items.forEach(function (item) {
+        var line = document.createElement('li');
+        line.textContent = item;
+        list.appendChild(line);
+      });
+      status.appendChild(list);
+    }
+    if (kind) bring(status);
+  }
+
+  /* Only when it is not already there — scrolling a page that is already
+     showing the thing is a jolt with nothing gained. */
+  function bring(node) {
+    var box = node.getBoundingClientRect();
+    if (box.top >= 60 && box.bottom <= window.innerHeight) return;
+    node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+
+  function busy(on, label) {
+    publishButton.disabled = on;
+    publishButton.textContent = on ? (label || 'Publishing…') : 'Publish';
   }
 
   function api(path, token, options) {
@@ -2640,11 +2671,12 @@
     if (publishing) return;
     var found = problems();
     if (found.length) {
-      say('Fix these first: ' + found.join(' · '), 'bad');
+      say('Fix these first:', 'bad', found);
       return;
     }
 
     publishing = true;
+    busy(true, 'Drawing…');
     say('Drawing this publish’s cards…');
 
     filesToCommit()
@@ -2660,6 +2692,7 @@
           throw wrapped;
         }
 
+        busy(true, 'Publishing…');
         say('Publishing ' + files.length + (files.length === 1 ? ' file…' : ' files…'));
         var titles = files.map(function (file) { return file.path; }).join(', ');
         return BACKEND
@@ -2668,6 +2701,7 @@
       })
       .then(function (commit) {
         publishing = false;
+        busy(false);
         dirty = false;
         dirtyNote.textContent = '';
         /* The Worker sends back what it actually wrote, which is not what
@@ -2686,6 +2720,7 @@
       })
       .catch(function (error) {
         publishing = false;
+        busy(false);
         say(error && error.silent ? error.message : 'Nothing was published: ' + error.message, 'bad');
         /* This dialog asks for a personal GitHub token, which only means
            anything in the no-backend path — behind the Worker there is
@@ -2712,7 +2747,7 @@
        find that out in. */
     var found = problems();
     if (found.length) {
-      say('Fix these first: ' + found.join(' · '), 'bad');
+      say('Fix these first:', 'bad', found);
       return;
     }
 

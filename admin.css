@@ -293,6 +293,12 @@
 .admin-status.is-good { color: var(--moss); font-weight: 700; }
 .admin-status.is-bad { color: #a3341f; font-weight: 700; }
 .admin-status:empty { margin: 0; min-height: 0; }
+/* Several things wrong with a piece used to arrive as one line with
+   middots between them, which on a phone is a paragraph to decipher
+   rather than a list to work through. */
+.admin-status-list { margin: 8px 0 0; padding-left: 20px; font-weight: 400; color: var(--ink); }
+.admin-status-list li { margin-bottom: 4px; }
+.button:disabled { opacity: 0.65; cursor: default; }
 
 .admin-dialog-small { width: min(560px, 94vw); }
 .admin-dialog-small .admin-dialog-actions { justify-content: space-between; align-items: center; }
