@@ -1783,6 +1783,23 @@
     tools.appendChild(remove);
     fields.appendChild(tools);
 
+    /* Built in one order and best met in another. A row is opened to
+       write, or to fix a title — not to look at the id, which is
+       permanent and set once, and was nonetheless the first thing on
+       screen every time. On a phone the writing box was the tenth field
+       down: nine to scroll past before reaching the thing the row was
+       opened for.
+
+       So the writing sits under the language that decides its script and
+       the title it belongs to, and everything settled once — the id, the
+       file it lives in, where it sits in the library — goes to the
+       bottom. Re-appending an element moves it rather than copying it,
+       so this is the order itself. The conditional ones are simply
+       absent on a record that has none. */
+    [langField, titleField, bodyField, descField, descUrField, tagField,
+     kindField, dateField, filesField, pageField, idField, moveField, tools]
+      .forEach(function (part) { if (part) fields.appendChild(part); });
+
     return row;
     }
   }
