@@ -329,8 +329,15 @@
   var TOOL_GROUPS = [
     { field: 'kind', label: 'Style', items: [
       { value: 'p', text: 'Text', title: 'Ordinary paragraph' },
-      { value: 'h2', text: 'Heading 1', title: 'A major heading inside the piece', cls: 'is-heading' },
-      { value: 'h3', text: 'Heading 2', title: 'A sub-heading, one level under Heading 1', cls: 'is-heading' },
+      /* "Heading" and "Sub-heading" rather than "Heading 1" and
+         "Heading 2". Numbered, nothing said that the first has to come
+         before the second, and two pieces were written using only
+         Heading 2 — which publishes a page that jumps from its title
+         straight to a third-level heading, so a reader listening to it
+         hears a level missing. A sub-heading is plainly something that
+         sits under a heading; a Heading 2 is just a smaller one. */
+      { value: 'h2', text: 'Heading', title: 'A section heading inside the piece', cls: 'is-heading' },
+      { value: 'h3', text: 'Sub-heading', title: 'A heading under a Heading — use one of those first', cls: 'is-heading' },
       { value: 'blockquote', text: 'Quote', title: 'A quotation, set apart', cls: 'is-quote' },
       { value: 'footnote', text: 'Footnote', title: 'A citation or footnote, set apart from the body', cls: 'is-footnote' }
     ] },
@@ -836,7 +843,7 @@
          that appears to work until the file is written. */
       if ((event.ctrlKey || event.metaKey) && /^[biu]$/i.test(event.key)) {
         event.preventDefault();
-        note.textContent = 'There is no bold or italic in a post here — a line that stands out is a Heading 1 or Heading 2, and a passage set apart is a Quote or a Footnote.';
+        note.textContent = 'There is no bold or italic in a post here — a line that stands out is a Heading or a Sub-heading, and a passage set apart is a Quote or a Footnote.';
       }
     });
 

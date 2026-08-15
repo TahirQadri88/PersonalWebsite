@@ -110,7 +110,10 @@ const POST = 'kitabein-mashin-ki-khurak';
 /* The buttons carry their own words for the kinds and the scripts, and a
    drawing for the alignments — so the alignments are found by the label
    read out to a screen reader, which is the only text they have. */
-const kindButton = (row, word) => row.locator('.writing-tool', { hasText: word });
+/* Anchored, not a substring: "Heading" is inside "Sub-heading", so a
+   loose match would find two buttons and act on whichever came first. */
+const kindButton = (row, word) =>
+  row.locator('.writing-tool', { hasText: new RegExp('^\\s*' + word + '\\s*$') });
 const alignButton = (row, which) => row.locator(`.writing-tool[aria-label="${which}"]`);
 
 /* Every row has a writing box; only the open one is on screen, so each
@@ -205,7 +208,7 @@ let row = await openEditor(page);
 
 console.log('\nthe Style buttons');
 
-for (const [word, tag, cls] of [['Heading 1', 'H2', ''], ['Heading 2', 'H3', ''],
+for (const [word, tag, cls] of [['Heading', 'H2', ''], ['Sub-heading', 'H3', ''],
                                 ['Quote', 'BLOCKQUOTE', ''], ['Footnote', 'P', 'footnote']]) {
   await newBlock(page, 'a line');
   await kindButton(row, word).click();
@@ -217,8 +220,8 @@ for (const [word, tag, cls] of [['Heading 1', 'H2', ''], ['Heading 2', 'H3', '']
 }
 
 await newBlock(page, 'a line');
-await kindButton(row, 'Heading 1').click();
-await kindButton(row, 'Heading 1').click();
+await kindButton(row, 'Heading').click();
+await kindButton(row, 'Heading').click();
 t('pressing a Style twice puts it back to ordinary text',
   (await page.evaluate(CARET)).tag === 'P');
 
@@ -262,7 +265,7 @@ console.log('\na block’s own script beats the piece’s');
 /* A line of the piece itself, carrying no script of its own — so what
    draws it is the piece's language and nothing else. */
 await caretInto(page, 'p:not([class])');
-await kindButton(row, 'Heading 1').click();
+await kindButton(row, 'Heading').click();
 const urduHeading = await page.evaluate(CARET);
 await kindButton(row, 'English').click();
 const latinHeading = await page.evaluate(CARET);
@@ -273,7 +276,7 @@ t('a heading marked English is drawn in the Latin face',
 
 console.log('\nEnter');
 
-for (const [word, carries] of [['Heading 1', 'P'], ['Quote', 'BLOCKQUOTE'], ['Footnote', 'P']]) {
+for (const [word, carries] of [['Heading', 'P'], ['Quote', 'BLOCKQUOTE'], ['Footnote', 'P']]) {
   await newBlock(page, 'first');
   await kindButton(row, word).click();
   await kindButton(row, 'عربی').click();

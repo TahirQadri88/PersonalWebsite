@@ -538,11 +538,15 @@
     border-left: 1px solid var(--line);
   }
   .writing-group-buttons { gap: 4px; }
-  .writing-tool { min-width: 0; padding: 7px 9px; font-size: 12.5px; }
-  .writing-tool.urdu { font-size: 14px; padding: 5px 9px 8px; }
-  .writing-tool.arabic { font-size: 15px; padding: 5px 9px; }
-  .writing-tool.is-heading { font-size: 13px; }
-  .writing-tool.is-align { min-width: 30px; padding: 6px 6px; }
+  /* Tight enough that Style and the beginning of Script are both on
+     screen before any swiping: the two groups reached for constantly
+     while writing in more than one language. Align is four small marks
+     at the far end, wanted rarely and worth a swipe. */
+  .writing-tool { min-width: 0; padding: 6px 7px; font-size: 12px; }
+  .writing-tool.urdu { font-size: 13px; padding: 4px 8px 7px; }
+  .writing-tool.arabic { font-size: 14px; padding: 4px 8px; }
+  .writing-tool.is-heading { font-size: 12.5px; }
+  .writing-tool.is-align { min-width: 28px; padding: 5px 5px; }
   .writing-canvas { min-height: 260px; padding: 14px 15px; }
   /* No cap and no scrollbar of its own on a phone. A box that scrolls
      inside a page that scrolls means two things to keep track of, and a
