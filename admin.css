@@ -83,7 +83,27 @@
 .admin-intro { max-width: 70ch; margin: 0 0 22px; color: var(--muted); font-size: 15px; }
 .admin-intro code, .admin-steps code { font-size: 13px; background: var(--paper-warm); padding: 1px 5px; }
 
+/* The filter follows you down the list while you are looking for
+   something, and gets out of the way the moment you open a row — with a
+   row open the writing toolbar wants this same place under the bar, and
+   two sticky things in one slot sit on top of each other. `:has` is what
+   lets "while nothing is open" be said in the stylesheet rather than
+   maintained by hand in JavaScript; where it is not understood the bar
+   simply scrolls, which is what it did before.
+
+   Twenty-two records is a lot of thumb on a phone. Typing two letters
+   here is the way to a record, so it has to be reachable from wherever
+   you have scrolled to. */
 .admin-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; margin-bottom: 24px; }
+.admin:not(:has(.admin-row[open])) .admin-toolbar {
+  position: sticky;
+  top: 64px;
+  z-index: 6;
+  margin-bottom: 14px;
+  padding: 10px 0;
+  background: var(--paper);
+  box-shadow: 0 6px 12px -10px rgba(27, 37, 33, 0.5);
+}
 .admin-toolbar .search-box { flex: 1 1 260px; }
 
 /* .text-link was written for anchors; as a <button> it would keep the
@@ -235,15 +255,27 @@
   /* A row has four children and this had two columns, so the title —
      usually a long Urdu one — was landing in the 22px toggle column and
      coming out a letter per line. Named places instead of counted ones. */
+  .admin:not(:has(.admin-row[open])) .admin-toolbar { top: 55px; padding: 8px 0; }
+  .admin-intro { font-size: 13px; margin-bottom: 16px; }
+
+  /* A row has four children and this had two columns, so the title —
+     usually a long Urdu one — was landing in the 22px toggle column and
+     coming out a letter per line. Named places instead of counted ones.
+
+     Tighter than it was, because twenty-two of these are scrolled past
+     to reach one: three rows filled a phone screen before, and the
+     scrolling was the complaint. */
   .admin-row > summary {
     grid-template-columns: minmax(0, 1fr) 24px;
     grid-template-areas:
       "title toggle"
       "id    toggle";
     align-items: start;
-    gap: 4px 10px;
-    padding: 12px 14px;
+    gap: 2px 10px;
+    padding: 9px 12px;
   }
+  .admin-row { margin-bottom: 5px; }
+  .admin-row-id { font-size: 11px; }
   .admin-row-title { grid-area: title; }
   .admin-row-id { grid-area: id; }
   .admin-row-meta { display: none; }
