@@ -925,7 +925,13 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   text-decoration: none;
   border-bottom: 1px solid currentColor;
 }
-.work-hero h1 { max-width: 22ch; color: var(--moss-deep); font-size: clamp(32px, 4.4vw, 58px); }
+/* balance shares the words evenly between however many lines a title
+   takes, instead of filling the first and leaving whatever is left on
+   its own. "شیئرز کی شرعی اسکریننگ پر تحفظات" was breaking on a phone
+   with تحفظات alone on the second line, which reads as a mistake rather
+   than a heading. Where it is not understood the title simply wraps as
+   it did. */
+.work-hero h1 { max-width: 22ch; color: var(--moss-deep); font-size: clamp(32px, 4.4vw, 58px); text-wrap: balance; }
 /* max-width: 22ch above is measured in Aslam's own digit width, which
    is much narrower than Newsreader's or Amiri's — the same 22ch comes
    out to 264px in Aslam against 308px in Noto Nastaliq Urdu, so a
@@ -1044,6 +1050,18 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .post-body.arabic > .arabic {
   font-size: inherit;
   line-height: inherit;
+}
+/* And the other script, which had the opposite fault. A verse quoted
+   inside an Urdu piece was taking `.arabic`'s site-wide clamp: 26.9px at
+   a wide window against the body's 21, a third larger, and growing with
+   the window while the body around it stayed put — so the two never held
+   the same proportion twice. Naskh does read smaller than Nastaliq at
+   the same size and keeps a little more for it, but a fixed little,
+   measured against the body rather than the viewport. */
+.post-body.urdu > .arabic,
+.post-body.arabic > .urdu {
+  font-size: 23px;
+  line-height: 1.9;
 }
 /* Straight edges on both sides, not just the one the text starts from
    — a ragged left edge on a narrow, right-hung column is what made it
