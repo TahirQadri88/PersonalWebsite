@@ -507,9 +507,59 @@
     var state = blockState(block);
     state[field] = field !== 'language' && state[field] === value ? (field === 'kind' ? 'p' : '') : value;
     var next = makeBlock(state, block.innerHTML);
+    /* A Script press settles the language for good. Any other button
+       leaves the guess standing, since making a line a Quote says
+       nothing about which language it is in. */
+    if (field !== 'language' && guessed.has(block)) guessed.add(next);
     block.parentNode.replaceChild(next, block);
     canvas.focus();
     putCaret(next, offset);
+  }
+
+  /* Which blocks hold a script they were handed rather than one anybody
+     chose. A set rather than an attribute on the element: this is the
+     state of an edit in progress, not part of the piece, and an
+     attribute would have ridden along into the box's HTML — where the
+     test that compares what was written with what is read back would
+     see a difference that is not in either file. */
+  var guessed = new WeakSet();
+
+  /* A block made by Enter carries the script of the line above it, and
+     that is a guess. Both Urdu pieces here end in an English citation,
+     so the line after one starts marked English and set left to right —
+     and Urdu typed into it came out in DM Sans with the space bar
+     appearing to walk the caret backwards, because a space typed at the
+     end of right-to-left words inside a left-to-right block belongs on
+     the other side of them. Nothing on screen said why: an empty block
+     shows no sign of the language it is holding.
+
+     So while the script is still a guess, the words decide it — the
+     first Urdu letter turns the line round, mid-sentence, with the caret
+     kept where it was. Pressing a Script button settles the matter and
+     this stops interfering. A block read in from a file is never a
+     guess: what it was marked as was meant. */
+  function adoptScript(canvas, prefer) {
+    var block = caretBlock(canvas);
+    if (!block || !guessed.has(block)) return false;
+    var state = blockState(block);
+    var found = scriptOf(block.textContent, prefer);
+    /* Only ever into Urdu or Arabic, never into English. An English term
+       inside an Urdu sentence — AAOIFI, a book title, a web address — is
+       a term, not a change of language, and turning the line round at the
+       first Latin letter and back again at the next Urdu one would make
+       the direction flicker while someone is still typing the sentence.
+       Writing a line that really is English is a decision, and there is a
+       button for it. */
+    if (found !== 'ur' && found !== 'ar') return false;
+    if (found === state.language) return false;
+    var offset = caretOffset(block);
+    state.language = found;
+    var next = makeBlock(state, block.innerHTML);
+    guessed.add(next);
+    block.parentNode.replaceChild(next, block);
+    canvas.focus();
+    putCaret(next, offset);
+    return true;
   }
 
   /* Enter. Left to the browser this copies the element it was pressed in,
@@ -538,6 +588,10 @@
       language: state.language,
       align: state.align
     }, null);
+    /* Whatever script this block has, it came from the line above rather
+       than from anyone deciding. Saying so is what lets the first words
+       typed here change it. */
+    guessed.add(next);
     next.textContent = '';
     next.appendChild(moved);
     fillEmpty(next);
@@ -631,18 +685,35 @@
      its letters belong to, so an Urdu sentence with one English term in
      it stays Urdu. */
   var ARABIC_SCRIPT = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
-  var URDU_LETTERS = /[\u0679\u067E\u0686\u0688\u0691\u0698\u06AF\u06BA\u06BE\u06C1\u06C2\u06C3\u06D2\u06D3]/;
 
-  function scriptOf(text) {
+  /* The two alphabets overlap almost entirely, so telling them apart is
+     done on the letters where they differ — and the decisive pair is the
+     commonest letters in both. Urdu writes ی and ک where Arabic writes
+     ي and ك; they look nearly the same and are different characters.
+     Leaving those two out was enough to call "ایک دو تین" Arabic and set
+     three ordinary Urdu words in Amiri.
+
+     Counted rather than tested for, since a piece of Urdu quoting Arabic
+     has some of both and should come out as whichever it mostly is. */
+  var URDU_LETTERS = /[\u0679\u067E\u0686\u0688\u0691\u0698\u06A9\u06AF\u06BA\u06BE\u06C1\u06C2\u06C3\u06CC\u06D2\u06D3]/g;
+  var ARABIC_LETTERS = /[\u0623\u0625\u0629\u0643\u064A]/g;
+
+  function scriptOf(text, prefer) {
     var body = String(text || '');
     var rtl = (body.match(ARABIC_SCRIPT) || []).length;
     var latin = (body.match(/[A-Za-z]/g) || []).length;
     if (!rtl && !latin) return '';
-    if (rtl >= latin) return URDU_LETTERS.test(body) ? 'ur' : 'ar';
-    return 'en';
+    if (rtl < latin) return 'en';
+    var urdu = (body.match(URDU_LETTERS) || []).length;
+    var arabic = (body.match(ARABIC_LETTERS) || []).length;
+    if (urdu > arabic) return 'ur';
+    if (arabic > urdu) return 'ar';
+    /* Neither said anything — a line of ا, د, و and the like belongs to
+       both. The piece's own language is the best answer available. */
+    return prefer === 'ar' ? 'ar' : 'ur';
   }
 
-  function pastePlain(canvas, text) {
+  function pastePlain(canvas, text, prefer) {
     var chunks = String(text || '')
       .split(/\n\s*\n/)
       .map(parseWhatsAppChunk)
@@ -681,13 +752,13 @@
        correctly without anyone pressing a button; a line with no letters
        either way — a row of numbers, a rule — keeps the script of the
        block it replaced. */
-    var first = makeBlock({ kind: chunks[0].kind, language: scriptOf(chunks[0].text) || state.language, align: state.align }, null);
+    var first = makeBlock({ kind: chunks[0].kind, language: scriptOf(chunks[0].text, prefer) || state.language, align: state.align }, null);
     first.textContent = chunks[0].text;
     block.parentNode.replaceChild(first, block);
 
     var after = first;
     chunks.slice(1).forEach(function (chunk) {
-      var next = makeBlock({ kind: chunk.kind, language: scriptOf(chunk.text) || state.language, align: state.align }, null);
+      var next = makeBlock({ kind: chunk.kind, language: scriptOf(chunk.text, prefer) || state.language, align: state.align }, null);
       next.textContent = chunk.text;
       after.parentNode.insertBefore(next, after.nextSibling);
       after = next;
@@ -825,7 +896,10 @@
       });
     }
 
-    canvas.addEventListener('input', changed);
+    canvas.addEventListener('input', function () {
+      if (adoptScript(canvas, record.language)) refresh();
+      changed();
+    });
     canvas.addEventListener('keyup', refresh);
     canvas.addEventListener('mouseup', refresh);
     canvas.addEventListener('focus', refresh);
@@ -851,7 +925,7 @@
       event.preventDefault();
       var data = event.clipboardData || window.clipboardData;
       var text = data ? data.getData('text/plain') : '';
-      pastePlain(canvas, text);
+      pastePlain(canvas, text, record.language);
       changed();
       refresh();
       if (onPaste && text) onPaste(text);

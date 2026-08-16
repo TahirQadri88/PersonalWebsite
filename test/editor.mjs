@@ -154,20 +154,20 @@ async function openEditor(page) {
    rather than trusting whatever the last Enter happened to leave behind
    — Enter carries the script of the line above onto the new one, so
    "the end of the piece" is not a known starting state. */
-async function caretInto(page, within) {
-  const found = await page.evaluate((sel) => {
+async function caretInto(page, within, atEnd) {
+  const found = await page.evaluate(([sel, end]) => {
     const canvas = document.querySelector('.admin-row[open] .writing-canvas');
     const block = canvas.querySelector(sel);
     if (!block) return false;
     const range = document.createRange();
     range.selectNodeContents(block);
-    range.collapse(true);
+    range.collapse(!end);
     const selection = window.getSelection();
     selection.removeAllRanges();
     selection.addRange(range);
     canvas.focus();
     return true;
-  }, within);
+  }, [within, !!atEnd]);
   if (!found) throw new Error('no line matching ' + within);
   await page.waitForTimeout(60);
 }
@@ -384,6 +384,71 @@ await pasteInto(page, ' (screening criteria)');
 const spliced = await page.evaluate(CARET);
 t('an English term pasted into an Urdu sentence leaves the line Urdu',
   spliced.cls.split(' ').includes('urdu') && spliced.dir === 'rtl', JSON.stringify(spliced));
+
+console.log('\nwhat script is being typed');
+
+/* The other half of the same fault, and the one actually complained
+   about twice: typing, not pasting. Enter carries the script of the line
+   above onto the new block, both Urdu pieces here end in an English
+   citation, and so the line after one began marked English and set left
+   to right. Urdu typed into it stayed left to right — DM Sans, and a
+   space at the end of right-to-left words belonging on the other side of
+   them, which is the space bar appearing to go backwards. */
+
+/* Enter at the end of a real English line in the piece, which is how the
+   block gets its English marking in life — pressing the English button
+   would be the author deciding, and a decision is meant to stick. */
+async function typeAfterEnglishLine(page, text) {
+  await caretInto(page, 'p.latin', true);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(80);
+  /* Spaces between the words but not after the last: the space bar is
+     the whole point of this section, and a trailing one is held as
+     &nbsp; while editing and trimmed when the piece is written, which
+     the round trip further down would then report as a difference this
+     test had made. */
+  const words = text.split(' ');
+  for (let i = 0; i < words.length; i += 1) {
+    if (i) await page.keyboard.press('Space');
+    await page.keyboard.type(words[i]);
+    await page.waitForTimeout(50);
+  }
+}
+
+await typeAfterEnglishLine(page, 'ایک دو تین');
+let typed = await page.evaluate(CARET);
+t('Urdu typed under an English line turns the line round',
+  typed.cls.split(' ').includes('urdu') && typed.dir === 'rtl', JSON.stringify(typed));
+t('  …in Urdu, not Arabic — ی and ک are what tell them apart',
+  /Mehr/.test(typed.font), typed.font);
+
+await typeAfterEnglishLine(page, 'إنَّ مِنَ البَيَانِ لَسِحْرًا');
+typed = await page.evaluate(CARET);
+t('an Arabic sentence typed the same way comes out Arabic',
+  typed.cls.split(' ').includes('arabic') && typed.dir === 'rtl', JSON.stringify(typed));
+
+/* And it must stop the moment the author says otherwise. */
+await newBlock(page, 'x');
+await kindButton(row, 'اردو').click();
+await page.keyboard.press('Backspace');
+await page.keyboard.type('Alsup');
+await page.waitForTimeout(120);
+typed = await page.evaluate(CARET);
+t('a script chosen by hand is not overruled by what is typed next',
+  typed.cls.split(' ').includes('urdu'), JSON.stringify(typed));
+
+/* A line already in the piece was marked deliberately when it was
+   written, so editing it must not move it either. */
+/* At the end, and with no leading space: a space typed at the very start
+   of a block is held as &nbsp; while it is being edited and trimmed when
+   the piece is written out, so the round trip below would part over a
+   character this test put there rather than anything the editor did. */
+await caretInto(page, 'p.latin', true);
+await page.keyboard.type('اور');
+await page.waitForTimeout(120);
+typed = await page.evaluate(CARET);
+t('a line read in from the piece keeps the script it was saved with',
+  typed.cls.split(' ').includes('latin'), JSON.stringify(typed));
 
 console.log('\nwriting it out and reading it back');
 
