@@ -1114,8 +1114,15 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   line-height: 1.6;
   color: var(--muted);
 }
-.post-body.urdu .footnote { font-size: 17px; line-height: 1.9; }
-.post-body.arabic .footnote { font-size: 17px; }
+/* Guarded the same way the headings are, and for the same reason. A
+   citation line marked English inside an Urdu piece matched this and
+   came out at 17px — larger than the 15px an ordinary English line in
+   the same piece gets, so a footnote, which is the quieter register,
+   was published louder than the prose it was a note on. The size here
+   belongs to the piece's own script; a block in another keeps its own,
+   and only the colour and the rule above the first one are shared. */
+.post-body.urdu .footnote:not(.latin):not(.arabic) { font-size: 17px; line-height: 1.9; }
+.post-body.arabic .footnote:not(.latin):not(.urdu) { font-size: 17px; }
 .post-body > :not(.footnote) + .footnote {
   margin-top: 1.6em;
   padding-top: 1.1em;
