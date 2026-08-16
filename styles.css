@@ -1142,6 +1142,30 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .post-body .arabic,
 .post-body .urdu { display: block; }
 
+/* Words picked out inside a line. Steps in em, not pixels: the same
+   "one size larger" has to hold whether the line around it is Nastaliq
+   at 21px, Naskh at 23 or English at 15, and a number of pixels can only
+   be right for one of the three. Underline clears the descenders, which
+   Nastaliq has a great many of and which a default underline runs
+   straight through. */
+.post-body .text-small { font-size: 0.85em; }
+.post-body .text-large { font-size: 1.2em; }
+.post-body u,
+.writing-canvas u {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: from-font;
+}
+/* Nastaliq has no bold cut of its own, so asking for one gets a
+   synthesised smear. The heading face is a real bold Naskh and is what
+   the site already uses when Urdu has to stand out. */
+.post-body.urdu > :not(.latin):not(.arabic) b,
+.writing-canvas.urdu > :not(.latin):not(.arabic) b {
+  font-family: var(--font-urdu-heading);
+  word-spacing: var(--space-urdu-heading);
+  font-weight: 400;
+}
+
 /* An English line inside an Urdu piece — the original title of a source
    quoted under its Urdu one. Nastaliq has no Latin to draw, and the right
    alignment belongs to the Urdu around it, not to this line. Smaller,

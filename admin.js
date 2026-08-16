@@ -320,11 +320,13 @@
      hold, which is why opening a post and publishing it untouched still
      gives back the same bytes.
 
-     There is deliberately no Bold. The format has no way to write it, so
-     the button would set something on screen that the file would drop
-     without saying so. What looks bold in a piece here is a heading, and
-     there is a button for that — pressing Ctrl+B says so rather than
-     doing nothing. */
+     There was deliberately no Bold for a long time, for a good reason:
+     the format had nowhere to keep it, so the button would have set
+     something on screen that the file dropped without saying so. What
+     the format grew was somewhere to keep it — see "Marks inside a
+     line" below — and the four buttons in the Emphasis group act on the
+     words picked out rather than on the block. Ctrl+B, I and U do the
+     same thing now instead of explaining why they cannot. */
 
   var TOOL_GROUPS = [
     { field: 'kind', label: 'Style', items: [
@@ -345,6 +347,20 @@
       { value: 'ur', text: 'اردو', title: 'Set this block in Urdu — Nastaleeq', cls: 'urdu' },
       { value: 'ar', text: 'عربی', title: 'Set this block in Arabic — Naskh', cls: 'arabic' },
       { value: 'en', text: 'English', title: 'Set this block in English' }
+    ] },
+    /* These four act on the words picked out, not on the whole line, so
+       they are a different kind of button from the three groups around
+       them — `inline: true` is what tells the toolbar to leave the block
+       alone and work on the selection. Size is two steps rather than a
+       number of pixels: a word set larger stays in proportion whether the
+       line is Nastaliq, Naskh or English, which a chosen pixel size
+       cannot be in all three at once. */
+    { field: 'mark', label: 'Emphasis', inline: true, items: [
+      { value: 'b', text: 'B', title: 'Bold the words picked out', cls: 'is-bold' },
+      { value: 'i', text: 'I', title: 'Italicise the words picked out', cls: 'is-italic' },
+      { value: 'u', text: 'U', title: 'Underline the words picked out', cls: 'is-underline' },
+      { value: 's', text: 'a', title: 'Set the words picked out a step smaller', cls: 'is-smaller' },
+      { value: 'l', text: 'A', title: 'Set the words picked out a step larger', cls: 'is-bigger' }
     ] },
     { field: 'align', label: 'Align', items: [
       { value: 'r', icon: 'r', title: 'Align this block to the right', cls: 'is-align' },
@@ -872,11 +888,12 @@
            the selection to the button, and there is no block to act on. */
         button.addEventListener('mousedown', function (event) {
           event.preventDefault();
-          setBlockField(canvas, group.field, item.value);
+          if (group.inline) markSelection(canvas, item.value);
+          else setBlockField(canvas, group.field, item.value);
           changed();
           refresh();
         });
-        buttons.push({ button: button, field: group.field, value: item.value });
+        buttons.push({ button: button, field: group.field, value: item.value, inline: !!group.inline });
         row.appendChild(button);
       });
       box.appendChild(row);
@@ -891,8 +908,11 @@
 
     function refresh() {
       var state = blockState(caretBlock(canvas));
+      var marks = marksAtCaret(canvas);
       buttons.forEach(function (entry) {
-        entry.button.setAttribute('aria-pressed', state[entry.field] === entry.value ? 'true' : 'false');
+        var on = entry.inline ? marks.indexOf(entry.value) !== -1
+                              : state[entry.field] === entry.value;
+        entry.button.setAttribute('aria-pressed', on ? 'true' : 'false');
       });
     }
 
@@ -913,11 +933,12 @@
         }
         return;
       }
-      /* The one thing the format cannot record. Saying so beats a button
-         that appears to work until the file is written. */
+      /* These used to say the format could not record them. It can now. */
       if ((event.ctrlKey || event.metaKey) && /^[biu]$/i.test(event.key)) {
         event.preventDefault();
-        note.textContent = 'There is no bold or italic in a post here — a line that stands out is a Heading or a Sub-heading, and a passage set apart is a Quote or a Footnote.';
+        markSelection(canvas, event.key.toLowerCase());
+        changed();
+        refresh();
       }
     });
 
@@ -961,6 +982,168 @@
     return !!(entry.record.page || (entry.category && entry.category.id === POSTS_CATEGORY));
   }
 
+  /* ---- Applying a mark to what is picked out -------------------------
+
+     execCommand is the old way and is deprecated, and it is still the
+     only thing that will put a tag around a selection that starts in one
+     element and ends in another without a great deal of code to get
+     wrong. styleWithCSS off, so it writes <b> rather than a span with a
+     style attribute — the file keeps tags, not inline CSS, and a policy
+     that forbids inline styles later will not silently strip the marks.
+
+     The two sizes have no command of their own, so they are wrapped by
+     hand. Pressing the same size again takes it off, which is the only
+     way back to the line's own size. */
+  function markSelection(canvas, code) {
+    var selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return;
+    if (!canvas.contains(selection.getRangeAt(0).commonAncestorContainer)) return;
+    canvas.focus();
+
+    if (code === 'b' || code === 'i' || code === 'u') {
+      try { document.execCommand('styleWithCSS', false, false); } catch (error) { /* older browsers */ }
+      document.execCommand({ b: 'bold', i: 'italic', u: 'underline' }[code]);
+      return;
+    }
+
+    var className = code === 's' ? 'text-small' : 'text-large';
+    var inside = enclosing(canvas, className);
+    if (inside) { unwrap(inside); return; }
+    if (selection.isCollapsed) return;
+    var range = selection.getRangeAt(0);
+    var span = document.createElement('span');
+    span.className = className;
+    try {
+      span.appendChild(range.extractContents());
+      range.insertNode(span);
+    } catch (error) { return; }
+    var after = document.createRange();
+    after.selectNodeContents(span);
+    selection.removeAllRanges();
+    selection.addRange(after);
+  }
+
+  /* The nearest span of this kind around the caret, if the caret is in
+     one — so pressing the same size again knows what to undo. */
+  function enclosing(canvas, className) {
+    var selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return null;
+    var node = selection.getRangeAt(0).commonAncestorContainer;
+    while (node && node !== canvas) {
+      if (node.nodeType === 1 && node.classList.contains(className)) return node;
+      node = node.parentNode;
+    }
+    return null;
+  }
+
+  function unwrap(node) {
+    var parent = node.parentNode;
+    while (node.firstChild) parent.insertBefore(node.firstChild, node);
+    parent.removeChild(node);
+  }
+
+  /* Which marks the caret is sitting inside, so the buttons can show it. */
+  function marksAtCaret(canvas) {
+    var selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return [];
+    var node = selection.getRangeAt(0).commonAncestorContainer;
+    var found = [];
+    while (node && node !== canvas) {
+      if (node.nodeType === 1) {
+        var code = inlineCode(node);
+        if (code && found.indexOf(code) === -1) found.push(code);
+      }
+      node = node.parentNode;
+    }
+    return found;
+  }
+
+  /* ---- Marks inside a line ------------------------------------------
+
+     Until now a block was plain text: a whole line was a heading or a
+     quotation or nothing, and nothing smaller could be said. Bold,
+     italic, underline and a size for a few words inside a sentence need
+     somewhere to live.
+
+     They live in the page itself — a post's own HTML file is the store,
+     and <b>, <i>, <u> and a span are what it holds. Between reading that
+     file and writing it again the text passes through `bodies`, which is
+     memory and never a file, so the marks can be carried there by two
+     characters that no keyboard produces: \u0002 opens a run and names
+     it with one letter, \u0003 closes it. Nothing has to be escaped,
+     because nothing anyone can type collides with them.
+
+     Sizes are steps rather than numbers — one below the line's own size
+     and one above, in ems, so a word set larger stays in proportion
+     whether the line around it is Nastaliq at 21px or English at 15. A
+     number of pixels chosen by hand would be right in one script and
+     wrong in the other two. */
+  var OPEN = '\u0002';
+  var CLOSE = '\u0003';
+  var INLINE = {
+    b: { open: '<b>', close: '</b>' },
+    i: { open: '<i>', close: '</i>' },
+    u: { open: '<u>', close: '</u>' },
+    s: { open: '<span class="text-small">', close: '</span>' },
+    l: { open: '<span class="text-large">', close: '</span>' }
+  };
+
+  function inlineCode(el) {
+    var tag = el.tagName;
+    if (tag === 'B' || tag === 'STRONG') return 'b';
+    if (tag === 'I' || tag === 'EM') return 'i';
+    if (tag === 'U') return 'u';
+    if (el.classList.contains('text-small')) return 's';
+    if (el.classList.contains('text-large')) return 'l';
+    return '';
+  }
+
+  /* The words of a block with its marks kept — the inside of an element
+     rather than its textContent, which is what used to be taken and is
+     what threw the marks away. */
+  function inlineToText(node) {
+    var out = '';
+    Array.prototype.forEach.call(node.childNodes, function (child) {
+      if (child.nodeType === 3) { out += child.textContent; return; }
+      if (child.nodeType !== 1) return;
+      var code = inlineCode(child);
+      out += code ? OPEN + code + inlineToText(child) + CLOSE : inlineToText(child);
+    });
+    return out;
+  }
+
+  /* And back, escaping everything that is not a mark. A stack, so a
+     phrase can be bold and larger at once; anything left open at the end
+     of a line is closed rather than allowed to run on. */
+  function inlineToHtml(text) {
+    var body = String(text || '');
+    var out = '';
+    var plain = '';
+    var stack = [];
+    for (var i = 0; i < body.length; i += 1) {
+      var ch = body.charAt(i);
+      if (ch === OPEN) {
+        out += site.escapeHtml(plain); plain = '';
+        var mark = INLINE[body.charAt(i + 1)];
+        if (mark) { out += mark.open; stack.push(mark.close); }
+        i += 1;
+      } else if (ch === CLOSE) {
+        out += site.escapeHtml(plain); plain = '';
+        if (stack.length) out += stack.pop();
+      } else {
+        plain += ch;
+      }
+    }
+    out += site.escapeHtml(plain);
+    while (stack.length) out += stack.pop();
+    return out;
+  }
+
+  /* The same words with every mark taken out, for the search index. */
+  function withoutMarks(text) {
+    return String(text || '').replace(new RegExp(OPEN + '.', 'g'), '').split(CLOSE).join('');
+  }
+
   var SCRIPT_MARK = { arabic: '[ar] ', latin: '[en] ', urdu: '[ur] ' };
 
   /* The page back into the plain text the box shows. */
@@ -969,7 +1152,7 @@
   function htmlToBody(article) {
     var blocks = [];
     Array.prototype.forEach.call(article.children, function (node) {
-      var text = node.textContent.trim().replace(/\s+/g, ' ');
+      var text = inlineToText(node).trim().replace(/\s+/g, ' ');
       if (!text) return;
       var mark = '';
       ['arabic', 'latin', 'urdu'].forEach(function (name) {
@@ -1030,7 +1213,7 @@
   function plainTextFromBody(text) {
     return String(text || '')
       .split(/\n\s*\n/)
-      .map(function (raw) { return readBlock(raw).text; })
+      .map(function (raw) { return withoutMarks(readBlock(raw).text); })
       .filter(Boolean)
       .join(' ');
   }
@@ -1059,7 +1242,7 @@
         if (b.kind === 'footnote') classes.push('footnote');
         if (classes.length) attrs = ' class="' + classes.join(' ') + '"' + attrs;
         var tag = BLOCK_TAG[b.kind] || 'p';
-        return pad + '<' + tag + attrs + '>' + site.escapeHtml(b.text.replace(/\s+/g, ' ')) + '</' + tag + '>';
+        return pad + '<' + tag + attrs + '>' + inlineToHtml(b.text.replace(/\s+/g, ' ')) + '</' + tag + '>';
       })
       .join('\n');
   }

@@ -71,6 +71,19 @@ is ever slow or unreachable. See `.record-title` in common.js — that's the
 class that carries the heading font, on every title the site renders,
 wherever it's shown.
 
+**A line can be marked inside, not only as a whole.** Bold, italic,
+underline and two size steps apply to the words picked out. They are kept
+in the page itself — `<b>`, `<i>`, `<u>`, `span.text-small`,
+`span.text-large` — since a post's own HTML file is the store. Between
+reading that file and writing it again the text passes through `bodies`,
+which is memory and never a file, so the marks travel there as two
+characters no keyboard produces (`\u0002` opens and names a run,
+`\u0003` closes it) and nothing needs escaping. The sizes are steps in
+`em`, never pixels: "one larger" has to hold whether the line is Nastaliq
+at 21px, Naskh at 23 or English at 15. Bold inside Urdu is drawn in
+`--font-urdu-heading`, because Nastaliq has no bold cut and asking for one
+gets a synthesised smear.
+
 **A post is a page, not a download.** Entries in the `posts` category carry
 `page` and `date` instead of `files`, and their words live in the HTML file, not
 in `content.js`. `admin.html` writes that file; editing one needs the editor

@@ -450,6 +450,72 @@ typed = await page.evaluate(CARET);
 t('a line read in from the piece keeps the script it was saved with',
   typed.cls.split(' ').includes('latin'), JSON.stringify(typed));
 
+console.log('\nmarks inside a line');
+
+/* Until now a whole line could be a heading or a quotation and nothing
+   smaller could be said, because a block was plain text with nowhere to
+   put a mark on three words in the middle of it. */
+
+/* Pick out characters from..to inside the last block, the way a hand
+   would drag across them. */
+async function pickOut(page, from, to) {
+  await page.evaluate(([a, b]) => {
+    const canvas = document.querySelector('.admin-row[open] .writing-canvas');
+    const block = canvas.lastElementChild;
+    const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, null);
+    const node = walker.nextNode();
+    const range = document.createRange();
+    range.setStart(node, a);
+    range.setEnd(node, Math.min(b, node.length));
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    canvas.focus();
+  }, [from, to]);
+  await page.waitForTimeout(60);
+}
+
+for (const [button, tag, label] of [['B', 'B', 'bold'], ['I', 'I', 'italic'], ['U', 'U', 'underline']]) {
+  await newBlock(page, 'one two three');
+  await pickOut(page, 4, 7);
+  await kindButton(row, button).click();
+  await page.waitForTimeout(120);
+  const html = await page.evaluate(() =>
+    document.querySelector('.admin-row[open] .writing-canvas').lastElementChild.innerHTML);
+  t(label + ' marks only the words picked out',
+    new RegExp('one <' + tag.toLowerCase() + '>two</' + tag.toLowerCase() + '> three', 'i').test(html), html);
+}
+
+for (const [button, cls, label] of [['a', 'text-small', 'a step smaller'], ['A', 'text-large', 'a step larger']]) {
+  await newBlock(page, 'one two three');
+  await pickOut(page, 4, 7);
+  await kindButton(row, button).click();
+  await page.waitForTimeout(120);
+  let html = await page.evaluate(() =>
+    document.querySelector('.admin-row[open] .writing-canvas').lastElementChild.innerHTML);
+  t(label + ' wraps the words picked out', html.indexOf('class="' + cls + '"') !== -1, html);
+  await kindButton(row, button).click();
+  await page.waitForTimeout(120);
+  html = await page.evaluate(() =>
+    document.querySelector('.admin-row[open] .writing-canvas').lastElementChild.innerHTML);
+  t('  …and pressing it again takes it off', html.indexOf(cls) === -1, html);
+}
+
+/* Bold inside Urdu, since Nastaliq has no bold of its own and the page
+   answers with the heading face instead of a synthesised smear. */
+await newBlock(page, 'ایک دو تین');
+await pickOut(page, 4, 6);
+await kindButton(row, 'B').click();
+await page.waitForTimeout(120);
+t('bold works inside an Urdu line too', await page.evaluate(() =>
+  /<b>/i.test(document.querySelector('.admin-row[open] .writing-canvas').lastElementChild.innerHTML)));
+
+/* And the marks have to reach the published page, not just the box. */
+await newBlock(page, 'published emphasis here');
+await pickOut(page, 10, 18);
+await kindButton(row, 'B').click();
+await page.waitForTimeout(150);
+
 console.log('\nwriting it out and reading it back');
 
 /* The strongest thing here. Everything above is built out of the block
@@ -474,6 +540,8 @@ const written = await page.evaluate((post) => {
   return mine ? mine.querySelector('textarea').value : null;
 }, POST);
 t('the piece is among the files a publish would write', typeof written === 'string' && written.length > 0);
+t('  …with the marks inside its lines, not only in the box',
+  /<b>emphasis<\/b>/.test(written || ''), (written || '').slice(0, 0) + 'no <b>emphasis</b> in the written page');
 
 /* Every file the same publish would send, against what the Worker will
    take. This is the check that was missing when the library grew past

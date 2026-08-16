@@ -455,6 +455,12 @@
 .writing-tool.is-footnote { font-size: 12px; color: var(--muted); }
 /* Lines standing for where the words will sit, which needs no translating
    and no reading. */
+/* The emphasis buttons show what they do, the way the style ones do. */
+.writing-tool.is-bold { font-weight: 800; }
+.writing-tool.is-italic { font-style: italic; font-family: var(--font-display); }
+.writing-tool.is-underline { text-decoration: underline; text-underline-offset: 2px; }
+.writing-tool.is-smaller { font-size: 11px; }
+.writing-tool.is-bigger { font-size: 16px; }
 .writing-tool.is-align {
   display: inline-flex;
   align-items: center;
