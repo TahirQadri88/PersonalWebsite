@@ -80,14 +80,16 @@ which is memory and never a file, so the marks travel there as two
 characters no keyboard produces (`\u0002` opens and names a run,
 `\u0003` closes it) and nothing needs escaping. The sizes are steps in
 `em`, never pixels: "one larger" has to hold whether the line is Nastaliq
-at 21px, Naskh at 23 or English at 15. Bold inside Urdu is Noto Nastaliq
-Urdu at 700 (`--font-urdu-bold`) — Mehr has exactly one weight, its
-upstream package ships one file and it is not variable, so there is no
-bold of its own to use, and asking for one gets a synthesised smear.
-Noto's 700 is a real Nastaliq bold, so a bold word stays the same hand
-pressed harder rather than changing style into Naskh. Only post pages
-request that weight, since only a post can hold a bold word and the file
-is not small.
+at 21px, Naskh at 23 or English at 15. Bold inside Urdu is Mehr with the
+weight the browser synthesises: Mehr has exactly one weight, its upstream
+package ships one file and it is not variable, so there is no bold of its
+own. Noto Nastaliq Urdu's real 700 was tried and measured against it —
+45% wider and 40% taller at the same size, because Noto's letterforms run
+larger at the same declared size, which is the same reason the body size
+here was tuned up for Mehr. A bold word came out heavier *and* bigger,
+which breaks the line instead of emphasising part of it. The synthesised
+one measures 0% wider. Less contrast, and right: emphasis inside a
+sentence must not resize the sentence.
 
 **A post is a page, not a download.** Entries in the `posts` category carry
 `page` and `date` instead of `files`, and their words live in the HTML file, not
