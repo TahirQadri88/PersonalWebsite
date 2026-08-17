@@ -169,6 +169,88 @@
     return Number(parts[3]) + ' ' + month + ' ' + parts[1];
   }
 
+  /* What a record is, in one line: how many files and in what format, the
+     languages they are in, and the date if there is one. Nothing here is a
+     new field — it is all read off what content.js already holds, so no
+     existing entry has to be edited for a row to start saying it.
+
+     Set in Latin whatever the piece is written in. This line is 12px,
+     uppercase and tracked, which is a Latin device; Nastaliq at that size
+     and with that tracking cannot be read, and giving it the leading it
+     needs would make the line twice the height of the title above it. */
+  var LANGUAGE_NAMES = { ur: 'Urdu', ar: 'Arabic', en: 'English' };
+
+  /* The label says so on every file here — "Urdu PDF", "English PDF",
+     "Arabic PDF" — so read it from there first. A label written in
+     Arabic script and nothing else names an Urdu document. Failing both,
+     the record's own language, which is never worse than a guess. */
+  function fileLanguage(file, fallback) {
+    if (file.language) return file.language;
+    var label = String(file.label || '');
+    if (/urdu/i.test(label)) return 'ur';
+    if (/arabic/i.test(label)) return 'ar';
+    if (/english/i.test(label)) return 'en';
+    if (isArabicScript(label)) return 'ur';
+    return fallback || 'en';
+  }
+
+  function fileFormat(file) {
+    /* A Google Drive link has no extension to read. It is still a document
+       — it just cannot say which kind, so it says the honest thing. */
+    var match = String(file.url || '').split('?')[0].match(/\.([a-z0-9]+)$/i);
+    if (!match) return 'Link';
+    var format = match[1].toUpperCase();
+    return format === 'JPEG' ? 'JPG' : format;
+  }
+
+  function recordMeta(record) {
+    var files = record.files || [];
+    /* A work still waiting for its document says "Not published here yet"
+       already. A second line naming a language it cannot yet be read in
+       would be worse than silence. */
+    if (!record.page && !files.length) return [];
+
+    var parts = [];
+    if (record.page) {
+      parts.push('Reads here');
+    } else {
+      var formats = [];
+      files.forEach(function (file) {
+        var format = fileFormat(file);
+        if (formats.indexOf(format) === -1) formats.push(format);
+      });
+      parts.push(
+        files.length === 1
+          ? formats[0]
+          : files.length + ' ' + (formats.length === 1 ? formats[0] + 's' : 'files')
+      );
+    }
+
+    var languages = [];
+    (files.length ? files : [{}]).forEach(function (file) {
+      var name = LANGUAGE_NAMES[fileLanguage(file, record.language)];
+      if (name && languages.indexOf(name) === -1) languages.push(name);
+    });
+    parts = parts.concat(languages);
+
+    var date = formatDate(record.date);
+    if (date) parts.push(date);
+    return parts;
+  }
+
+  /* Always ltr, whatever the record is: the parts are Latin words, and a
+     right-to-left container would reverse their order and put the date
+     first. */
+  function metaMarkup(record, className) {
+    var parts = recordMeta(record);
+    if (!parts.length) return '';
+    return (
+      '<span class="' + (className || 'record-meta') + '" dir="ltr">' +
+      parts.map(escapeHtml).join('<span aria-hidden="true"> · </span>') +
+      '</span>'
+    );
+  }
+
   var IMAGE_FILE = /\.(jpe?g|png|gif|webp|avif|svg)$/i;
 
   function isImage(url) {
@@ -712,6 +794,8 @@
     ownPage: ownPage,
     isOffsite: isOffsite,
     formatDate: formatDate,
+    recordMeta: recordMeta,
+    metaMarkup: metaMarkup,
     isImage: isImage,
     imageGallery: imageGallery,
     proseMarkup: proseMarkup,

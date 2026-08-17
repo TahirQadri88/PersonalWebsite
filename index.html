@@ -67,7 +67,10 @@
       <section class="intro" id="about">
         <img class="intro-mark" src="files/images/logo-circle-180.png" srcset="files/images/logo-circle-180.png 180w, files/images/logo-circle-512.png 512w, files/images/logo-circle-1024.png 1024w" sizes="60px" alt="Calligraphic seal reading Abu al-Layth Muhammad Tahir al-Qadri" width="180" height="180" />
         <div class="intro-body">
-          <p class="section-label urdu" lang="ur" dir="rtl">تعارفِ مصنّف</p>
+          <!-- align-left because the heading under it reads leftwards. Without
+               it `.urdu` sets the block right and the label lands at the far
+               edge of a 780px column, across from the name it introduces. -->
+          <p class="section-label urdu align-left" lang="ur" dir="rtl">تعارفِ مصنّف</p>
           <h2>Abul Laith Muhammad Tahir Qadri An-Naeemi</h2>
           <p>
             Teacher of dars-e-niẓāmī at Jamia tun Noor, Karachi since 2012, teaching Ṣiḥāḥ Sitta in
@@ -78,7 +81,7 @@
           <details class="bio" id="bio">
             <summary>
               <span>
-                <span class="section-label urdu" lang="ur" dir="rtl">تعارفِ مُصنّف</span>
+                <span class="section-label urdu align-left" lang="ur" dir="rtl">تعارفِ مُصنّف</span>
                 <strong>Read the full introduction</strong>
               </span>
               <span class="toggle" aria-hidden="true">+</span>
@@ -196,7 +199,7 @@
       </section>
 
       <section class="rulings" id="rulings">
-        <p class="section-label urdu" lang="ur" dir="rtl">فتاویٰ</p>
+        <p class="section-label urdu align-left" lang="ur" dir="rtl">فتاویٰ</p>
         <h2>Islamic rulings</h2>
         <p class="section-note-light">Answers issued on questions put to Darul Ifta An Noor.</p>
         <div class="ruling-grid" id="rulings-library"></div>

@@ -2,9 +2,11 @@
   "name": "editor-tests",
   "version": "1.0.0",
   "private": true,
-  "description": "Not part of the website — drives a browser over admin.html. See README.md.",
+  "description": "Not part of the website — drives a browser over admin.html and the homepage. See README.md.",
   "scripts": {
-    "test": "node editor.mjs"
+    "test": "node editor.mjs && node homepage.mjs",
+    "test:editor": "node editor.mjs",
+    "test:homepage": "node homepage.mjs"
   },
   "devDependencies": {
     "playwright": "^1.56.1"

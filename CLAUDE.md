@@ -35,7 +35,9 @@ work.js        the work.html fallback above — nothing else uses it
 admin.html     form editor — publishes to GitHub, or hands you the files
 admin.css admin.js   its styles and logic, loaded by nothing else
 worker/        the editor's backend — Cloudflare Worker, deployed separately
-test/          drives a browser over admin.html — run it after touching the editor
+test/          drives a browser over admin.html and over the homepage —
+                 editor.mjs after touching the editor, homepage.mjs after
+                 touching script.js, common.js or the library's CSS
 posts/         one HTML file per post — the writing is the page, not a download
 works/         one HTML file per work and fatwa — written by admin.html, same as posts/
 styles.css     all design, in 13 numbered sections
@@ -131,6 +133,29 @@ since every sheet appends one; a real failure (not the reader cancelling)
 falls back to copying it instead of doing nothing. Printing is section 13 of
 `styles.css` and needs no script.
 
+**A row says what it would open, and nothing new was added to say it.**
+The line under a title in the library — `PDF · Urdu`, `6 PDFs · Urdu`,
+`Reads here · English · 4 August 2026` — is `site.recordMeta` in
+`common.js`, derived entirely from what an entry already holds: `files[]`
+gives the count and the format, the file's own label gives its language
+("Urdu PDF", "English PDF"), `page` says it reads here, `date` gives the
+date. No entry needs editing for its row to start saying this, and a work
+still waiting for its document says nothing rather than naming a language
+it cannot yet be read in. The language named is the **file's**, not the
+title's: an Urdu-titled article whose only file is an English PDF says
+English, because the line describes what opening it would get you. It is
+set in Latin whatever the piece is, since it is 12px, uppercase and
+tracked — Nastaliq at that size cannot be read.
+
+**A label written by hand into `index.html` needs `align-left` too.**
+`.urdu` sets `text-align: right`, and a section label inherits it, so above
+an English heading the label lands at the far edge of its block. `work.js`
+and `admin.js` add `align-left` for the pages they generate. The labels
+typed into `index.html` do not get it for free — three of them went years
+without it, up to 1180px from the words they named. `test/homepage.mjs`
+measures every Urdu label on the page now, so a fourth cannot happen
+quietly.
+
 **Colour contrast.** `--gold-on-light` and `--gold-on-dark` are two different
 values for a reason. Do not collapse them into one.
 
@@ -140,6 +165,15 @@ values for a reason. Do not collapse them into one.
 - Check Urdu at mobile width (~380px) after any layout change — that is where
   Nastaliq breaks first.
 - Keep commits small and in plain language; the author reads the history.
+
+**Touching `script.js`, `common.js` or the library's CSS means running
+`node test/homepage.mjs`.** It measures where things landed on the rendered
+page, because the four faults it guards against were all geometry — a grid
+whose column count orphaned a card, a label sent to the far edge of its
+block by a rule written for something else, a row with its title on one
+side and the label naming it on the other, a category named twice at
+opposite ends of its head. Not one of them changed a string or would fail
+a linter, and looking at the source could not see any of them.
 
 **Touching `admin.js` means running `node test/editor.mjs`.** It types into
 the writing box, presses the toolbar, exports a post and reads it back, and

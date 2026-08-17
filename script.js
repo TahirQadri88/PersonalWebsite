@@ -94,16 +94,28 @@
        record that is waiting for a document says so. */
     var published = (work.files && work.files.length) || work.page;
     var status = published ? '' : '<p class="availability-note">Not published here yet.</p>';
-    var date = site.formatDate(work.date);
+    /* Everything about a row now travels on the one axis its own script
+       starts from. The kind label used to be pinned to the left edge in a
+       column of its own while an Urdu title sat flush right 600px away, and
+       an English title in the same list aligned left instead — so the row
+       read as two things at opposite edges, and which edge changed row to
+       row. Only the toggle stays put, so the column of + still lines up. */
+    var reads = site.direction(work.language) === 'rtl' ? 'reads-rtl' : 'reads-ltr';
     return (
       '<details class="work' + (published ? '' : ' work-pending') + '"' + searchAttr(work.id) + '>' +
       '<summary>' +
-      (work.kind ? '<span class="work-kind" lang="ur" dir="rtl">' + site.escapeHtml(work.kind) + '</span>' : '<span class="work-kind"></span>') +
+      '<span class="work-head ' + reads + '" dir="' + site.direction(work.language) + '">' +
       site.titleMarkup(work) +
+      '<span class="work-line">' +
+      (work.kind ? '<span class="work-kind" lang="ur" dir="rtl">' + site.escapeHtml(work.kind) + '</span>' : '') +
+      site.metaMarkup(work) +
+      '</span>' +
+      '</span>' +
       '<span class="toggle" aria-hidden="true">+</span>' +
       '</summary>' +
-      '<div class="work-detail">' +
-      (date ? '<p class="work-date">' + site.escapeHtml(date) + '</p>' : '') +
+      '<div class="work-detail ' + reads + '">' +
+      /* The date used to be repeated here. It is on the row itself now,
+         where it can be read without opening anything. */
       prose(work) +
       status +
       '<div class="work-actions">' +
@@ -136,12 +148,21 @@
         return (category.works || []).length > 0;
       })
       .map(function (category) {
+        /* The two names are the same name twice. Set one under the other on
+           the same edge — they were at opposite ends of a 1130px head, which
+           stopped them reading as a pair. align-left for the same reason the
+           labels in index.html carry it: `.urdu` would otherwise send the
+           block right, away from the English heading above it. */
+        var count = (category.works || []).length;
         return (
           '<section class="work-category" id="' + site.escapeHtml(category.id) + '">' +
           '<header class="work-category-head">' +
+          '<div class="work-category-names">' +
           '<h3>' + site.escapeHtml(category.title) + '</h3>' +
-          (category.titleUr ? '<p class="category-urdu urdu" lang="ur" dir="rtl">' + site.escapeHtml(category.titleUr) + '</p>' : '') +
+          (category.titleUr ? '<p class="category-urdu urdu align-left" lang="ur" dir="rtl">' + site.escapeHtml(category.titleUr) + '</p>' : '') +
           (category.blurb ? site.proseMarkup(category.blurb, 'category-blurb') : '') +
+          '</div>' +
+          '<span class="work-category-count">' + count + (count === 1 ? ' work' : ' works') + '</span>' +
           '</header>' +
           (category.works || []).map(workMarkup).join('') +
           '</section>'
@@ -173,9 +194,18 @@
       .map(function (ruling) {
         return (
           '<a class="ruling" href="work.html?work=' + encodeURIComponent(ruling.id) + '"' + searchAttr(ruling.id) + '>' +
+          /* div, not span: these hold an h3 and paragraphs, which a span
+             may not carry. The card is an <a>, whose content model is
+             whatever surrounds it — flow content here — so a div inside
+             one is right where a span would not be. */
+          '<div class="ruling-body">' +
           site.titleMarkup(ruling, 'h3') +
           prose(ruling) +
+          '</div>' +
+          '<div class="ruling-foot">' +
+          site.metaMarkup(ruling) +
           '<span class="ruling-open">Read →</span>' +
+          '</div>' +
           '</a>'
         );
       })

@@ -1,19 +1,29 @@
-# Testing the editor
+# Tests
 
 This folder is **not part of the website**, the same way `worker/` is not.
 The site stays plain static files that open from the file system with no
-build step. This is a test that drives a real browser over `admin.html`.
+build step. These are tests that drive a real browser over it.
 
 ```
 npm install          # once, in this folder — fetches Playwright
-node editor.mjs      # from anywhere in the repository
+node editor.mjs      # the editor          — from anywhere in the repository
+node homepage.mjs    # the library         — likewise
+npm test             # both
 ```
+
+Neither writes anything to the repository, so a run that dies half way
+leaves nothing behind, and neither needs the network: both turn Google's
+font CDN away and serve the repository from a local port of their own —
+`4321` for the editor, `4322` for the homepage.
+
+---
+
+# editor.mjs
 
 It serves the repository over `http://127.0.0.1:4321` from memory, with
 `admin.js` altered in exactly two ways: the Firebase key is blanked and the
 passphrase hash is one this file knows, so the gate opens without a real
-account. Nothing is written to the repository, so a run that dies half way
-leaves nothing behind.
+account.
 
 ## Why it exists
 
@@ -74,3 +84,57 @@ which block kind or which mark was dropped.
 
 A test that cannot fail is worth nothing, so the three bugs above were put
 back one at a time to confirm each is caught before this was committed.
+
+---
+
+# homepage.mjs
+
+The same idea one floor down: it asks the browser where things on
+`index.html` actually landed.
+
+## Why it exists
+
+Four faults were found in the library by measuring the rendered page, and
+every one of them was invisible in the source:
+
+- the fatawa grid resolved to four columns with five fatawa in it, so one
+  card sat alone on a second row and set that row half again as tall as the
+  one above;
+- three Urdu section labels inherited `text-align: right` from `.urdu` and
+  landed at the far edge of a block whose English heading started at the
+  other — up to 1180px away from the words they named;
+- every library row pinned its kind label to the left edge while setting the
+  title flush right, leaving roughly 600px of nothing between them, and
+  mirrored itself whenever an English title turned up in the same list;
+- a category's two names, which are one name in two scripts, were set at
+  opposite ends of a 1130px head.
+
+None would fail a linter. None changed a single string. They were all
+geometry, which is why this test measures rather than reads.
+
+## What it covers
+
+- **The fatawa grid** — three columns, no card alone on a row, cards level
+  within a row, and no description long enough to swell one.
+- **A row reads on one axis** — title, kind label and metadata all start
+  from the side the record's own script starts from, whichever that is,
+  and nothing sits across the row from the title.
+- **A row says what it would open** — how many files and in what format,
+  the language of the files rather than of the title, and the date where
+  there is one. A record still waiting for its document claims nothing.
+- **Labels stay beside what they name** — every Urdu label on the page,
+  section labels and category names alike.
+- **A category is named once** — both names on one edge, and the count
+  matching the rows actually under it.
+- **The search still works** — finds, marks the word inside the title,
+  hides what does not match, says so when nothing does, and restores.
+- **Opening a row** — the detail block follows its title to the right on a
+  right-to-left record, keeps its links and its share button, and only one
+  work stays open at a time.
+- **Nothing pushes the page sideways**, at nine widths from 1920 to 380.
+
+## When it fails
+
+It prints the boxes it measured. A row whose title and kind label parted
+company shows both edges, so it is usually clear at a glance which side
+each went to.
