@@ -329,7 +329,7 @@
      same thing now instead of explaining why they cannot. */
 
   var TOOL_GROUPS = [
-    { field: 'kind', label: 'Style', items: [
+    { field: 'kind', label: 'Style', menu: true, items: [
       { value: 'p', text: 'Text', title: 'Ordinary paragraph' },
       /* "Heading" and "Sub-heading" rather than "Heading 1" and
          "Heading 2". Numbered, nothing said that the first has to come
@@ -343,7 +343,7 @@
       { value: 'blockquote', text: 'Quote', title: 'A quotation, set apart', cls: 'is-quote' },
       { value: 'footnote', text: 'Footnote', title: 'A citation or footnote, set apart from the body', cls: 'is-footnote' }
     ] },
-    { field: 'language', label: 'Script', items: [
+    { field: 'language', label: 'Script', menu: true, items: [
       { value: 'ur', text: 'اردو', title: 'Set this block in Urdu — Nastaleeq', cls: 'urdu' },
       { value: 'ar', text: 'عربی', title: 'Set this block in Arabic — Naskh', cls: 'arabic' },
       { value: 'en', text: 'English', title: 'Set this block in English' }
@@ -358,9 +358,16 @@
     { field: 'mark', label: 'Emphasis', inline: true, items: [
       { value: 'b', text: 'B', title: 'Bold the words picked out', cls: 'is-bold' },
       { value: 'i', text: 'I', title: 'Italicise the words picked out', cls: 'is-italic' },
-      { value: 'u', text: 'U', title: 'Underline the words picked out', cls: 'is-underline' },
-      { value: 's', text: 'a', title: 'Set the words picked out a step smaller', cls: 'is-smaller' },
-      { value: 'l', text: 'A', title: 'Set the words picked out a step larger', cls: 'is-bigger' }
+      { value: 'u', text: 'U', title: 'Underline the words picked out', cls: 'is-underline' }
+    ] },
+    /* Size gets a menu rather than two buttons, because a menu can show
+       what the line already is and offer the way back to it. Two toggles
+       could say "smaller" and "larger" but never "neither", which is the
+       state most words are in. */
+    { field: 'mark', label: 'Size', inline: true, menu: true, items: [
+      { value: '', text: 'Normal size', title: 'The size the line is set in' },
+      { value: 's', text: 'One step smaller', title: 'Set the words picked out a step smaller', cls: 'is-smaller' },
+      { value: 'l', text: 'One step larger', title: 'Set the words picked out a step larger', cls: 'is-bigger' }
     ] },
     { field: 'align', label: 'Align', items: [
       { value: 'r', icon: 'r', title: 'Align this block to the right', cls: 'is-align' },
@@ -516,12 +523,16 @@
      silently drop the block back to the piece's own base language
      instead of setting the one just clicked, which reads as the wrong
      line suddenly changing font. A click on Script always sets. */
-  function setBlockField(canvas, field, value) {
+  function setBlockField(canvas, field, value, exact) {
     var block = caretBlock(canvas) || canvas.firstElementChild;
     if (!block) return;
     var offset = caretOffset(block);
     var state = blockState(block);
-    state[field] = field !== 'language' && state[field] === value ? (field === 'kind' ? 'p' : '') : value;
+    /* A menu says what it wants and means it. A button toggles, because
+       pressing the one already on is how you take it off again. */
+    state[field] = !exact && field !== 'language' && state[field] === value
+      ? (field === 'kind' ? 'p' : '')
+      : value;
     var next = makeBlock(state, block.innerHTML);
     /* A Script press settles the language for good. Any other button
        leaves the guess standing, since making a line a Quote says
@@ -862,6 +873,7 @@
     var wrap = el('div', 'writing');
     var bar = el('div', 'writing-tools');
     var buttons = [];
+    var menus = [];
 
     var canvas = el('div', 'writing-canvas post-body');
     canvas.contentEditable = 'true';
@@ -875,6 +887,37 @@
       var name = el('span', 'writing-group-label');
       name.textContent = group.label;
       box.appendChild(name);
+
+      /* A menu, where the choice is one of several and the current one is
+         worth reading back — the block's style, its script, the size of
+         the words picked out. A native select rather than a drawn one: it
+         opens as the phone's own picker, takes the keyboard for free, and
+         there is no popup here to get wrong. Buttons stay buttons where
+         the answer is on or off and wanted in one press. */
+      if (group.menu) {
+        var menu = el('select', 'writing-menu' + (group.inline ? ' is-inline' : ''));
+        menu.setAttribute('aria-label', group.label);
+        group.items.forEach(function (item) {
+          var choice = document.createElement('option');
+          choice.value = item.value;
+          choice.textContent = item.text;
+          choice.title = item.title;
+          if (item.cls) choice.className = item.cls;
+          menu.appendChild(choice);
+        });
+        menu.addEventListener('change', function () {
+          if (group.inline) markSelection(canvas, menu.value, true);
+          else setBlockField(canvas, group.field, menu.value, true);
+          changed();
+          refresh();
+        });
+        menus.push({ menu: menu, field: group.field, inline: !!group.inline,
+                     values: group.items.map(function (item) { return item.value; }) });
+        box.appendChild(menu);
+        bar.appendChild(box);
+        return;
+      }
+
       var row = el('div', 'writing-group-buttons');
       group.items.forEach(function (item) {
         var button = el('button', 'writing-tool' + (item.cls ? ' ' + item.cls : ''));
@@ -913,6 +956,14 @@
         var on = entry.inline ? marks.indexOf(entry.value) !== -1
                               : state[entry.field] === entry.value;
         entry.button.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      /* Each menu shows what the caret is actually sitting in, so it can
+         be read as well as used. */
+      menus.forEach(function (entry) {
+        var now = entry.inline
+          ? (marks.indexOf('s') !== -1 ? 's' : marks.indexOf('l') !== -1 ? 'l' : '')
+          : state[entry.field];
+        entry.menu.value = entry.values.indexOf(now) === -1 ? entry.values[0] : now;
       });
     }
 
@@ -994,12 +1045,19 @@
      The two sizes have no command of their own, so they are wrapped by
      hand. Pressing the same size again takes it off, which is the only
      way back to the line's own size. */
-  function markSelection(canvas, code) {
+  function markSelection(canvas, code, exact) {
     var selection = window.getSelection();
     if (!selection || !selection.rangeCount) return;
     if (!canvas.contains(selection.getRangeAt(0).commonAncestorContainer)) return;
     canvas.focus();
 
+    /* "Normal size" — take off whichever step is on, and leave the words
+       at whatever the line itself is set in. */
+    if (exact && !code) {
+      var off = enclosing(canvas, 'text-small') || enclosing(canvas, 'text-large');
+      if (off) unwrap(off);
+      return;
+    }
     if (code === 'b' || code === 'i' || code === 'u') {
       try { document.execCommand('styleWithCSS', false, false); } catch (error) { /* older browsers */ }
       document.execCommand({ b: 'bold', i: 'italic', u: 'underline' }[code]);
@@ -1008,7 +1066,11 @@
 
     var className = code === 's' ? 'text-small' : 'text-large';
     var inside = enclosing(canvas, className);
-    if (inside) { unwrap(inside); return; }
+    if (inside) { if (exact) return; unwrap(inside); return; }
+    /* Picking one step while the other is on swaps them, rather than
+       wrapping a smaller span inside a larger one. */
+    var other = enclosing(canvas, code === 's' ? 'text-large' : 'text-small');
+    if (other) unwrap(other);
     if (selection.isCollapsed) return;
     var range = selection.getRangeAt(0);
     var span = document.createElement('span');

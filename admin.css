@@ -427,6 +427,7 @@
 }
 .writing-tool {
   min-width: 38px;
+  min-height: 38px;
   padding: 6px 12px;
   border: 1px solid var(--line);
   border-radius: 4px;
@@ -455,6 +456,46 @@
 .writing-tool.is-footnote { font-size: 12px; color: var(--muted); }
 /* Lines standing for where the words will sit, which needs no translating
    and no reading. */
+/* A menu where the answer is one of several, a button where it is on or
+   off. The menus carry the same look as the buttons beside them so the
+   row reads as one control panel rather than a form dropped next to a
+   toolbar. */
+.writing-menu {
+  /* The browser's own arrow, not a drawn one. A data-URI chevron was
+     tried and silently failed to parse — the menus rendered with a blank
+     gap where it should have been — and the native control is worth more
+     than the gain: it opens as the phone's own picker, keeps the keyboard
+     behaviour, and cannot be got wrong. */
+  max-width: 172px;
+  /* Taller than the words need, because one of these menus shows اردو or
+     عربی and the closed control draws those through a fallback face whose
+     line box is taller than DM Sans's. At 34px the descenders were cut
+     off. The buttons beside it match the height so the group labels stay
+     on one line. */
+  height: 38px;
+  padding: 0 6px 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--card);
+  color: var(--moss-deep);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.writing-menu:hover { border-color: var(--gold-rule); background-color: #f4eddc; }
+.writing-menu:focus-visible { outline: 2px solid var(--gold-rule); outline-offset: 1px; }
+/* Each choice set in the face it produces, so the list is a specimen
+   sheet rather than five words that all look the same. Desktop browsers
+   honour this; a phone opens its own picker and ignores it, which is why
+   the words say what they are as well. */
+.writing-menu option.urdu { font-family: var(--font-urdu); }
+.writing-menu option.arabic { font-family: var(--font-arabic); }
+.writing-menu option.is-heading { font-family: var(--font-display); }
+.writing-menu option.is-quote { font-style: italic; }
+.writing-menu option.is-smaller { font-size: 12px; }
+.writing-menu option.is-bigger { font-size: 15px; }
+
 /* The emphasis buttons show what they do, the way the style ones do. */
 .writing-tool.is-bold { font-weight: 800; }
 .writing-tool.is-italic { font-style: italic; font-family: var(--font-display); }
@@ -534,6 +575,7 @@
     padding: 7px 8px;
   }
   .writing-group-buttons { flex-wrap: nowrap; }
+  .writing-menu { max-width: 132px; height: 36px; padding: 0 4px 0 6px; font-size: 12px; }
   .writing-tools::-webkit-scrollbar { height: 0; }
   .writing-tools { scrollbar-width: none; }
   .writing-group-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
@@ -548,7 +590,7 @@
      screen before any swiping: the two groups reached for constantly
      while writing in more than one language. Align is four small marks
      at the far end, wanted rarely and worth a swipe. */
-  .writing-tool { min-width: 0; padding: 6px 7px; font-size: 12px; }
+  .writing-tool { min-width: 0; min-height: 36px; padding: 6px 7px; font-size: 12px; }
   .writing-tool.urdu { font-size: 13px; padding: 4px 8px 7px; }
   .writing-tool.arabic { font-size: 14px; padding: 4px 8px; }
   .writing-tool.is-heading { font-size: 12.5px; }

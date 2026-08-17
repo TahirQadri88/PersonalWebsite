@@ -111,9 +111,27 @@ const POST = 'kitabein-mashin-ki-khurak';
    drawing for the alignments — so the alignments are found by the label
    read out to a screen reader, which is the only text they have. */
 /* Anchored, not a substring: "Heading" is inside "Sub-heading", so a
-   loose match would find two buttons and act on whichever came first. */
-const kindButton = (row, word) =>
-  row.locator('.writing-tool', { hasText: new RegExp('^\\s*' + word + '\\s*$') });
+   loose match would find two of them and act on whichever came first. */
+const exactly = (word) => new RegExp('^\\s*' + word + '\\s*$');
+
+/* The toolbar is a mixture: a menu where the answer is one of several
+   and worth reading back, a button where it is on or off. A test should
+   say what it wants set, not which kind of control happens to set it —
+   so this finds either and uses it the right way. */
+async function use(page, row, word) {
+  const button = row.locator('.writing-tool', { hasText: exactly(word) });
+  if (await button.count()) { await button.click(); await page.waitForTimeout(110); return; }
+  const menu = row.locator('.writing-menu').filter({ has: page.locator('option', { hasText: exactly(word) }) }).first();
+  if (!(await menu.count())) throw new Error('no control named ' + word);
+  await menu.selectOption({ label: word });
+  await page.waitForTimeout(110);
+}
+
+/* What a menu is showing, for the tests that read a control back. */
+async function showing(page, row, label) {
+  const menu = row.locator(`.writing-menu[aria-label="${label}"]`);
+  return menu.evaluate((el) => el.options[el.selectedIndex].textContent.trim());
+}
 const alignButton = (row, which) => row.locator(`.writing-tool[aria-label="${which}"]`);
 
 /* Every row has a writing box; only the open one is on screen, so each
@@ -211,18 +229,17 @@ console.log('\nthe Style buttons');
 for (const [word, tag, cls] of [['Heading', 'H2', ''], ['Sub-heading', 'H3', ''],
                                 ['Quote', 'BLOCKQUOTE', ''], ['Footnote', 'P', 'footnote']]) {
   await newBlock(page, 'a line');
-  await kindButton(row, word).click();
+  await use(page, row, word);
   const at = await page.evaluate(CARET);
   t(`${word} makes a ${tag.toLowerCase()}${cls ? '.' + cls : ''}`,
     at.tag === tag && (!cls || at.cls.split(' ').includes(cls)), JSON.stringify(at));
-  t(`  …and the ${word} button shows it is on`,
-    await kindButton(row, word).getAttribute('aria-pressed') === 'true');
+  t(`  …and the Style menu says so`, await showing(page, row, 'Style') === word);
 }
 
 await newBlock(page, 'a line');
-await kindButton(row, 'Heading').click();
-await kindButton(row, 'Heading').click();
-t('pressing a Style twice puts it back to ordinary text',
+await use(page, row, 'Heading');
+await use(page, row, 'Text');
+t('choosing Text puts a heading back to ordinary text',
   (await page.evaluate(CARET)).tag === 'P');
 
 console.log('\nthe Script buttons');
@@ -233,15 +250,15 @@ console.log('\nthe Script buttons');
    it off: taking it off drops the block silently to the language of the
    whole piece, which is read as the wrong line changing font by itself. */
 await newBlock(page, 'ایک سطر');
-await kindButton(row, 'اردو').click();
+await use(page, row, 'اردو');
 const urduOnce = await page.evaluate(CARET);
-await kindButton(row, 'اردو').click();
+await use(page, row, 'اردو');
 const urduTwice = await page.evaluate(CARET);
 t('Urdu once marks the block Urdu', urduOnce.cls.includes('urdu'), JSON.stringify(urduOnce));
-t('Urdu twice leaves it Urdu — a Script press sets, never clears',
+t('Urdu twice leaves it Urdu — choosing a script sets, never clears',
   urduTwice.cls.includes('urdu') && urduTwice.dir === 'rtl', JSON.stringify(urduTwice));
 
-await kindButton(row, 'عربی').click();
+await use(page, row, 'عربی');
 const swapped = await page.evaluate(CARET);
 t('another Script swaps it rather than adding to it',
   swapped.cls.includes('arabic') && !swapped.cls.includes('urdu'), JSON.stringify(swapped));
@@ -265,9 +282,9 @@ console.log('\na block’s own script beats the piece’s');
 /* A line of the piece itself, carrying no script of its own — so what
    draws it is the piece's language and nothing else. */
 await caretInto(page, 'p:not([class])');
-await kindButton(row, 'Heading').click();
+await use(page, row, 'Heading');
 const urduHeading = await page.evaluate(CARET);
-await kindButton(row, 'English').click();
+await use(page, row, 'English');
 const latinHeading = await page.evaluate(CARET);
 t('an unmarked heading in an Urdu piece is drawn in the Urdu heading face',
   /Aslam/.test(urduHeading.font), urduHeading.font);
@@ -278,8 +295,8 @@ console.log('\nEnter');
 
 for (const [word, carries] of [['Heading', 'P'], ['Quote', 'BLOCKQUOTE'], ['Footnote', 'P']]) {
   await newBlock(page, 'first');
-  await kindButton(row, word).click();
-  await kindButton(row, 'عربی').click();
+  await use(page, row, word);
+  await use(page, row, 'عربی');
   await page.keyboard.press('Enter');
   await page.keyboard.type('second');
   await page.waitForTimeout(80);
@@ -294,8 +311,8 @@ for (const [word, carries] of [['Heading', 'P'], ['Quote', 'BLOCKQUOTE'], ['Foot
 console.log('\nkind, script and alignment are three separate things');
 
 await newBlock(page, 'a verse');
-await kindButton(row, 'Quote').click();
-await kindButton(row, 'عربی').click();
+await use(page, row, 'Quote');
+await use(page, row, 'عربی');
 await alignButton(row, 'Centre this block').click();
 const three = await page.evaluate(CARET);
 t('a quotation can be Arabic and centred at once',
@@ -346,7 +363,7 @@ async function pasteInto(page, text) {
 /* An empty block that has been handed English by the line above it. */
 async function emptyEnglishBlock(page) {
   await newBlock(page, 'x');
-  await kindButton(row, 'English').click();
+  await use(page, row, 'English');
   await page.keyboard.press('Backspace');
   await page.waitForTimeout(60);
 }
@@ -379,7 +396,7 @@ t('an article that changes script part way marks each block for itself',
 
 /* And the other half of it: a block with words of its own keeps them. */
 await newBlock(page, 'ایک جملہ');
-await kindButton(row, 'اردو').click();
+await use(page, row, 'اردو');
 await pasteInto(page, ' (screening criteria)');
 const spliced = await page.evaluate(CARET);
 t('an English term pasted into an Urdu sentence leaves the line Urdu',
@@ -429,7 +446,7 @@ t('an Arabic sentence typed the same way comes out Arabic',
 
 /* And it must stop the moment the author says otherwise. */
 await newBlock(page, 'x');
-await kindButton(row, 'اردو').click();
+await use(page, row, 'اردو');
 await page.keyboard.press('Backspace');
 await page.keyboard.type('Alsup');
 await page.waitForTimeout(120);
@@ -478,7 +495,7 @@ async function pickOut(page, from, to) {
 for (const [button, tag, label] of [['B', 'B', 'bold'], ['I', 'I', 'italic'], ['U', 'U', 'underline']]) {
   await newBlock(page, 'one two three');
   await pickOut(page, 4, 7);
-  await kindButton(row, button).click();
+  await use(page, row, button);
   await page.waitForTimeout(120);
   const html = await page.evaluate(() =>
     document.querySelector('.admin-row[open] .writing-canvas').lastElementChild.innerHTML);
@@ -486,26 +503,27 @@ for (const [button, tag, label] of [['B', 'B', 'bold'], ['I', 'I', 'italic'], ['
     new RegExp('one <' + tag.toLowerCase() + '>two</' + tag.toLowerCase() + '> three', 'i').test(html), html);
 }
 
-for (const [button, cls, label] of [['a', 'text-small', 'a step smaller'], ['A', 'text-large', 'a step larger']]) {
+for (const [button, cls, label] of [['One step smaller', 'text-small', 'a step smaller'],
+                                    ['One step larger', 'text-large', 'a step larger']]) {
   await newBlock(page, 'one two three');
   await pickOut(page, 4, 7);
-  await kindButton(row, button).click();
+  await use(page, row, button);
   await page.waitForTimeout(120);
   let html = await page.evaluate(() =>
     document.querySelector('.admin-row[open] .writing-canvas').lastElementChild.innerHTML);
   t(label + ' wraps the words picked out', html.indexOf('class="' + cls + '"') !== -1, html);
-  await kindButton(row, button).click();
+  await use(page, row, 'Normal size');
   await page.waitForTimeout(120);
   html = await page.evaluate(() =>
     document.querySelector('.admin-row[open] .writing-canvas').lastElementChild.innerHTML);
-  t('  …and pressing it again takes it off', html.indexOf(cls) === -1, html);
+  t('  …and Normal size takes it off again', html.indexOf(cls) === -1, html);
 }
 
 /* Bold inside Urdu, since Nastaliq has no bold of its own and the page
    answers with the heading face instead of a synthesised smear. */
 await newBlock(page, 'ایک دو تین');
 await pickOut(page, 4, 6);
-await kindButton(row, 'B').click();
+await use(page, row, 'B');
 await page.waitForTimeout(120);
 t('bold works inside an Urdu line too', await page.evaluate(() =>
   /<b>/i.test(document.querySelector('.admin-row[open] .writing-canvas').lastElementChild.innerHTML)));
@@ -513,7 +531,7 @@ t('bold works inside an Urdu line too', await page.evaluate(() =>
 /* And the marks have to reach the published page, not just the box. */
 await newBlock(page, 'published emphasis here');
 await pickOut(page, 10, 18);
-await kindButton(row, 'B').click();
+await use(page, row, 'B');
 await page.waitForTimeout(150);
 
 console.log('\nwriting it out and reading it back');
