@@ -48,6 +48,10 @@
      guessed: 0.22em brings its space to about a quarter of an em, which
      is what the other faces here already draw. */
   --font-urdu-heading: "Aslam", "Noto Nastaliq Urdu", serif;
+  /* The one Nastaliq here that has a bold of its own. Only post pages ask
+     for the 700 weight, since only a post can carry a bold word inside a
+     line and the file is not small. */
+  --font-urdu-bold: "Noto Nastaliq Urdu", serif;
   --space-urdu-heading: 0.22em;
   --font-arabic: "Amiri", "Noto Naskh Arabic", serif;
 
@@ -1159,11 +1163,22 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 /* Nastaliq has no bold cut of its own, so asking for one gets a
    synthesised smear. The heading face is a real bold Naskh and is what
    the site already uses when Urdu has to stand out. */
+/* Mehr has no bold, and that is the font rather than an oversight: its
+   file carries one weight, the package upstream ships one file, and it is
+   not a variable font, so there is no axis to turn up. Nastaliq faces
+   rarely have a bold — the cascading baseline and the ligatures make a
+   second weight a separate piece of drawing, not a thicker pass over the
+   first.
+
+   Noto Nastaliq Urdu does have one, drawn at 700, and it is already the
+   family Mehr falls back to. So bold Urdu is heavier Nastaliq now rather
+   than a change of style into Naskh: the same hand, pressed harder. The
+   alternative, asking Mehr for a weight it has not got, gets a
+   synthesised smear that is barely darker and blurs the dots. */
 .post-body.urdu > :not(.latin):not(.arabic) b,
 .writing-canvas.urdu > :not(.latin):not(.arabic) b {
-  font-family: var(--font-urdu-heading);
-  word-spacing: var(--space-urdu-heading);
-  font-weight: 400;
+  font-family: var(--font-urdu-bold);
+  font-weight: 700;
 }
 
 /* An English line inside an Urdu piece — the original title of a source

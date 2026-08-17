@@ -80,9 +80,14 @@ which is memory and never a file, so the marks travel there as two
 characters no keyboard produces (`\u0002` opens and names a run,
 `\u0003` closes it) and nothing needs escaping. The sizes are steps in
 `em`, never pixels: "one larger" has to hold whether the line is Nastaliq
-at 21px, Naskh at 23 or English at 15. Bold inside Urdu is drawn in
-`--font-urdu-heading`, because Nastaliq has no bold cut and asking for one
-gets a synthesised smear.
+at 21px, Naskh at 23 or English at 15. Bold inside Urdu is Noto Nastaliq
+Urdu at 700 (`--font-urdu-bold`) — Mehr has exactly one weight, its
+upstream package ships one file and it is not variable, so there is no
+bold of its own to use, and asking for one gets a synthesised smear.
+Noto's 700 is a real Nastaliq bold, so a bold word stays the same hand
+pressed harder rather than changing style into Naskh. Only post pages
+request that weight, since only a post can hold a bold word and the file
+is not small.
 
 **A post is a page, not a download.** Entries in the `posts` category carry
 `page` and `date` instead of `files`, and their words live in the HTML file, not
