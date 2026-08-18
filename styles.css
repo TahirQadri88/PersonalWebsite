@@ -56,7 +56,13 @@
      edge; only the words stop here, so lines stay readable on a large
      monitor instead of running to 90-odd characters. */
   --shell: 1180px;
-  --block: clamp(56px, 8vw, 118px);
+  /* The band between one section and the next. At 8vw/118 a desktop gap
+     came to 236-283px — 15 to 18 body lines — against 30px between the
+     category cards inside the library. Nine to one is what made the page
+     read as separate slabs rather than one document; three to five is the
+     usual range. 6.5vw/96 brings 1440 to about 12-15 lines and leaves the
+     phone alone, where 6.5vw is 25px and this floor already wins. */
+  --block: clamp(56px, 6.5vw, 96px);
 }
 
 /* 2 ── Base ───────────────────────────────────────────────── */
@@ -366,6 +372,31 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   stroke-width: 1.4;
 }
 
+/* An icon drawing itself on as its card arrives.
+
+   The dash lives here, on a class common.js adds — never in .icon itself.
+   That is the whole safety of it: without JavaScript, without an
+   IntersectionObserver, or for a reader who has asked for less motion, no
+   element ever carries this rule and every icon is simply drawn. Nothing
+   is hidden waiting to be revealed.
+
+   stroke-dasharray and stroke-dashoffset are inherited, which is the only
+   reason they reach the paths inside <use> — the clone sits in a shadow
+   tree no outside selector can name, and inheritance is the same door
+   currentColor already comes through. pathLength="1" on every path (see
+   iconSprite in common.js) is what lets one dash figure suit them all.
+
+   0.7s against the 0.18s the rest of the page uses: this is a line being
+   drawn, not a state changing, and it has further to go. */
+@keyframes icon-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+.icon-draw {
+  stroke-dasharray: 1;
+  animation: icon-draw 0.7s ease-out var(--draw-delay, 0ms) both;
+}
+
 /* The search box. 15px input, so the mark is set against that rather
    than against the label's own size. */
 .search-icon {
@@ -528,6 +559,17 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   transition: background 0.18s ease, border-color 0.18s ease;
 }
 .category-nav a:hover { background: var(--paper-warm); border-color: #d5c29e; color: var(--moss-deep); }
+/* The section you are in, marked as you scroll. Deliberately the hover
+   state made permanent, with the gold rule under it: the strip already
+   had this vocabulary, so being in a section looks like being about to
+   choose it rather than like a new kind of thing. */
+.category-nav a[aria-current] {
+  background: var(--paper-warm);
+  border-color: #d5c29e;
+  color: var(--moss-deep);
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--gold-rule);
+}
 
 /* 5 ── Hero ───────────────────────────────────────────────── */
 

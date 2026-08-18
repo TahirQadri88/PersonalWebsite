@@ -12,6 +12,7 @@
   var rulingsGrid = document.getElementById('rulings-library');
   var searchInput = document.getElementById('work-search');
   var searchCount = document.getElementById('search-count');
+  var startSpy = null;
 
   /* ---- Category navigation ---- */
 
@@ -54,7 +55,102 @@
       nav.addEventListener('scroll', refreshEnds, { passive: true });
       window.addEventListener('resize', refreshEnds);
       refreshEnds();
+
+      /* Which section you are actually in. The strip has listed all seven
+         since it was written and never said which one you were reading;
+         on a page this long that is the one thing it could usefully do.
+
+         aria-current rather than a class of our own: it is what the
+         attribute means, a reader using a screen reader gets told, and
+         the styling hook comes free with it.
+
+         Held rather than called: six of the seven sections it watches are
+         written by the loop further down, so starting it here would find
+         only the fatawa — which is exactly what it did. */
+      startSpy = function () { markPlace(nav, refreshEnds); };
     }
+  }
+
+  /* Marked from the section that is nearest the top of what you can see,
+     not merely the one that is visible — several are, on a wide screen. */
+  function markPlace(nav, refreshEnds) {
+    if (!window.IntersectionObserver) return;
+    var links = {};
+    Array.prototype.forEach.call(nav.querySelectorAll('a[href^="#"]'), function (link) {
+      links[link.getAttribute('href').slice(1)] = link;
+    });
+
+    var watched = [];
+    var current = null;
+
+    /* The header is 72px and this strip about 55 — the same 128 that
+       `scroll-padding-top` already reserves, plus a little, so a section
+       counts as reached once its heading has cleared the chrome. */
+    var LINE = 150;
+
+    var settle = function () {
+      /* Read the page rather than remember it. The observer says when to
+         look; where things are is a question only the current geometry
+         can answer, and a stored top goes stale the moment you scroll.
+         An earlier version sorted stored tops and picked the smallest,
+         which is a section long since scrolled past — it marked the first
+         category whatever you were actually reading. */
+      var next = null;
+      for (var i = 0; i < watched.length; i += 1) {
+        if (watched[i].getBoundingClientRect().top <= LINE) next = watched[i].id;
+      }
+      /* Nothing has reached the line yet — you are above the first
+         section, so nothing is marked rather than the wrong thing. */
+      if (next === current) return;
+      current = next;
+      Object.keys(links).forEach(function (id) {
+        if (id === current) links[id].setAttribute('aria-current', 'true');
+        else links[id].removeAttribute('aria-current');
+      });
+      if (!current || !links[current]) return;
+
+      /* Bring the marked pill into the strip — and only the strip.
+         scrollIntoView was the obvious call and it is the wrong one: it
+         scrolls every scrollable ancestor, the document included, so the
+         rail kept dragging the page back to whatever it had just marked
+         and the reader could not scroll past the first category. This
+         moves the one element that should move. */
+      var pill = links[current];
+      var left = pill.offsetLeft;
+      var right = left + pill.offsetWidth;
+      var view = nav.scrollLeft;
+      var edge = view + nav.clientWidth;
+      /* Room for the fade and arrow the strip draws over its own ends. */
+      var margin = 48;
+      var to = null;
+      if (left - margin < view) to = Math.max(0, left - margin);
+      else if (right + margin > edge) to = right + margin - nav.clientWidth;
+      if (to === null) return;
+
+      var quiet = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      nav.scrollTo({ left: to, behavior: quiet ? 'auto' : 'smooth' });
+      if (refreshEnds) refreshEnds();
+    };
+
+    /* 128px is what `scroll-padding-top` already reserves for the sticky
+       header and this strip — one number for the same thing, rather than
+       a second one that could drift from it. */
+    var watcher = new IntersectionObserver(settle, { threshold: [0, 0.02, 0.5, 1] });
+
+    Array.prototype.forEach.call(
+      document.querySelectorAll('.work-category[id], #rulings'),
+      function (section) {
+        if (!links[section.id]) return;
+        watched.push(section);
+        watcher.observe(section);
+      }
+    );
+    /* A section taller than the window fires nothing while you scroll
+       through the middle of it, so the observer alone leaves the mark
+       stuck. The scroll listener is the one that keeps it honest; the
+       observer is what starts it and what catches a resize reflow. */
+    window.addEventListener('scroll', settle, { passive: true });
+    settle();
   }
 
   /* ---- The library ---- */
@@ -174,6 +270,12 @@
       })
       .join('');
   }
+
+  /* Both watchers need the categories to exist, and the loop above is
+     what writes them — so both start here rather than where they are
+     defined. */
+  site.drawIconsOnEntry();
+  if (startSpy) startSpy();
 
   /* One listener for the whole library rather than one per row: the list
      is rebuilt whenever a category is chosen, and handlers attached to

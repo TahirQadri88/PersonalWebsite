@@ -421,6 +421,172 @@ try {
     t(`the calligraphy is ${callig}KB, under 40`, callig < 40, String(callig));
   }
 
+  /* ---- the rhythm between sections ---- */
+  group('the page breathes without falling apart');
+  {
+    /* Which of a section's elements are actually ink. A <summary> renders
+       whether its <details> is open or not, so a closed row's title
+       counts — but the summary of a details nested inside a closed one
+       does not. Getting this wrong is what made the first two attempts at
+       this measurement report gaps of -1508px. */
+    const gapsAt = async (width) => {
+      const { context, page } = await open(width);
+      const out = await page.evaluate(() => {
+        const shown = (el) => {
+          if (!el.offsetParent && getComputedStyle(el).position !== 'fixed') return false;
+          let viaSummary = false;
+          for (let n = el; n; n = n.parentElement) {
+            if (n.tagName === 'SUMMARY') viaSummary = true;
+            else if (n.tagName === 'DETAILS') {
+              if (!n.open && !viaSummary) return false;
+              viaSummary = false;
+            }
+          }
+          return true;
+        };
+        const band = (sec) => {
+          const leaves = [...sec.querySelectorAll('*')].filter((k) =>
+            k.children.length === 0 && k.textContent.trim() && shown(k));
+          if (!leaves.length) return null;
+          const bx = leaves.map((k) => k.getBoundingClientRect());
+          return { top: Math.min(...bx.map((b) => b.top)) + scrollY,
+                   bottom: Math.max(...bx.map((b) => b.bottom)) + scrollY };
+        };
+        const secs = [...document.querySelectorAll('main > section')];
+        const gaps = [];
+        for (let i = 0; i < secs.length - 1; i++) {
+          const a = band(secs[i]), z = band(secs[i + 1]);
+          if (a && z) gaps.push(Math.round(z.top - a.bottom));
+        }
+        return { gaps, block: getComputedStyle(document.querySelector('.library')).paddingTop };
+      });
+      await context.close();
+      return out;
+    };
+
+    const wide = await gapsAt(1440);
+    const phone = await gapsAt(390);
+    t('--block resolves to at most 96px on a desktop',
+      parseFloat(wide.block) <= 96, wide.block);
+    t('…and still to the 56px floor on a phone',
+      Math.round(parseFloat(phone.block)) === 56, phone.block);
+    /* 250px is about 15 body lines. Above that the sections stop reading
+       as one document and start reading as separate slabs. */
+    t('no gap between sections runs past 250px at 1440',
+      wide.gaps.every((g) => g < 250), JSON.stringify(wide.gaps));
+    t('and none has collapsed below 120px either',
+      wide.gaps.every((g) => g > 120), JSON.stringify(wide.gaps));
+  }
+
+  /* ---- the icons drawing themselves ----
+
+     The one thing that must hold however this is reached: an icon ends up
+     drawn. The dash that hides a stroke is added by script, so no script,
+     no observer or a reader who asked for less motion must all leave the
+     drawing whole. These three cases are the entire safety argument. */
+  group('an icon always ends up drawn');
+  {
+    const readIcons = () => {
+      const all = [...document.querySelectorAll('.category-icon')];
+      return {
+        count: all.length,
+        drawClass: all.filter((s) => s.classList.contains('icon-draw')).length,
+        whole: all.filter((s) => {
+          const cs = getComputedStyle(s);
+          return cs.strokeDasharray === 'none' || parseFloat(cs.strokeDashoffset) === 0;
+        }).length
+      };
+    };
+    const readerScroll = async (page) => {
+      await page.evaluate(async () => {
+        const end = document.body.scrollHeight;
+        for (let y = 0; y < end; y += 400) {
+          window.scrollTo({ top: y, behavior: 'instant' });
+          await new Promise((r) => setTimeout(r, 55));
+        }
+      });
+      await page.waitForTimeout(1500);
+    };
+
+    {
+      const { context, page } = await open(1440);
+      await readerScroll(page);
+      const r = await page.evaluate(readIcons);
+      t('scrolling the page draws every one of them',
+        r.count > 0 && r.drawClass === r.count && r.whole === r.count, JSON.stringify(r));
+      await context.close();
+    }
+    {
+      const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
+      await context.route('https://fonts.g**', (r) => r.abort());
+      const page = await context.newPage();
+      await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'networkidle' });
+      await readerScroll(page);
+      const r = await page.evaluate(readIcons);
+      t('a reader who asked for less motion gets them drawn, unanimated',
+        r.count > 0 && r.drawClass === 0 && r.whole === r.count, JSON.stringify(r));
+      await context.close();
+    }
+    {
+      const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, javaScriptEnabled: false });
+      await context.route('https://fonts.g**', (r) => r.abort());
+      const page = await context.newPage();
+      await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'networkidle' });
+      /* Nothing renders without script here, so the check is that the dash
+         lives only on a class no markup carries — never on .icon itself. */
+      const css = await readFile(join(ROOT, 'styles.css'), 'utf8');
+      const iconRule = /\.icon\s*\{[^}]*\}/.exec(css)[0];
+      t('without script, nothing is hiding: the dash is on .icon-draw alone',
+        !/stroke-dash/.test(iconRule) && /\.icon-draw\s*\{[^}]*stroke-dasharray/.test(css),
+        iconRule.replace(/\s+/g, ' '));
+      await context.close();
+    }
+  }
+
+  /* ---- the rail marking your place ---- */
+  group('the rail says where you are');
+  {
+    const { context, page } = await open(1440);
+    const marks = [];
+    for (const id of ['charts', 'posts', 'rulings']) {
+      await page.evaluate((id) => {
+        const s = document.getElementById(id);
+        window.scrollTo({ top: s.getBoundingClientRect().top + scrollY - 140, behavior: 'instant' });
+      }, id);
+      await page.waitForTimeout(400);
+      marks.push(await page.evaluate(() => {
+        const on = [...document.querySelectorAll('.category-nav a[aria-current]')];
+        return { n: on.length, href: on.map((a) => a.getAttribute('href')).join(',') };
+      }));
+    }
+    t('exactly one link is marked at a time',
+      marks.every((m) => m.n === 1), JSON.stringify(marks));
+    t('and it is the section actually being read',
+      marks[0].href === '#charts' && marks[1].href === '#posts' && marks[2].href === '#rulings',
+      JSON.stringify(marks));
+
+    /* The obvious call here is scrollIntoView, and it is wrong: it scrolls
+       every scrollable ancestor including the document, so the rail drags
+       the page back to whatever it just marked and the reader cannot get
+       past the first category. */
+    const drift = await page.evaluate(async () => {
+      /* Land somewhere the mark has to change, then watch the page for
+         half a second without touching it. Anything that moves is the
+         rail moving it. */
+      const s = document.getElementById('ilmi-mawad');
+      window.scrollTo({ top: s.getBoundingClientRect().top + scrollY - 140, behavior: 'instant' });
+      const start = scrollY;
+      let worst = 0;
+      for (let i = 0; i < 25; i++) {
+        await new Promise((r) => setTimeout(r, 20));
+        worst = Math.max(worst, Math.abs(scrollY - start));
+      }
+      return worst;
+    });
+    t('marking a section never scrolls the page itself', drift < 4, 'drifted ' + drift + 'px');
+    await context.close();
+  }
+
   /* ---- widths ---- */
   group('nothing pushes the page sideways');
   for (const width of [1920, 1440, 1280, 1024, 900, 768, 620, 420, 380]) {

@@ -346,7 +346,11 @@
   function iconSprite() {
     return Object.keys(ICONS).map(function (name) {
       return '<symbol id="i-' + name + '" viewBox="0 0 24 24">' +
-        ICONS[name].map(function (d) { return '<path d="' + d + '"/>'; }).join('') +
+        /* pathLength="1" normalises every stroke to one unit, whatever it
+           actually measures. That is what lets one dash pattern draw any
+           of these on — see .icon-draw in styles.css — without measuring a
+           single path at runtime. */
+        ICONS[name].map(function (d) { return '<path pathLength="1" d="' + d + '"/>'; }).join('') +
         '</symbol>';
     }).join('');
   }
@@ -362,6 +366,45 @@
     host.style.display = 'none';
     host.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg">' + iconSprite() + '</svg>';
     document.body.insertBefore(host, document.body.firstChild);
+  }
+
+  /* Draws each icon on as it arrives, and only then.
+
+     Everything about this is arranged so that not running costs nothing.
+     The dash that hides a stroke is applied by a class added here, so the
+     default state — no JavaScript, no IntersectionObserver, a reader who
+     asked for less motion — is the icon already drawn, exactly as it is
+     without this function. Nothing on the page starts invisible waiting
+     for a script to reveal it; that is the difference between animating a
+     decoration and animating content.
+
+     `stroke-dasharray` and `stroke-dashoffset` are inherited properties,
+     which is the only reason this reaches inside <use> at all: the clone
+     lives in a shadow tree that outside CSS cannot select, and inheritance
+     is the same door `currentColor` already comes through. */
+  function drawIconsOnEntry(root) {
+    if (!window.IntersectionObserver) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var targets = (root || document).querySelectorAll('.category-icon');
+    if (!targets.length) return;
+
+    var seen = 0;
+    var watcher = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        /* A short stagger so seven of them read as one movement rather
+           than seven. Capped: past a handful the last would be waiting
+           long enough to look broken. */
+        entry.target.style.setProperty('--draw-delay', Math.min(seen, 5) * 90 + 'ms');
+        entry.target.classList.add('icon-draw');
+        seen += 1;
+        /* Once. An icon that redraws every time it scrolls back into view
+           stops being an arrival and becomes a fidget. */
+        watcher.unobserve(entry.target);
+      });
+    }, { rootMargin: '0px 0px -12% 0px', threshold: 0.5 });
+
+    Array.prototype.forEach.call(targets, function (node) { watcher.observe(node); });
   }
 
   /* Always decorative: every icon here sits beside a word that already
@@ -1002,6 +1045,7 @@
     isArabicScript: isArabicScript,
     icon: icon,
     categoryIcon: categoryIcon,
+    drawIconsOnEntry: drawIconsOnEntry,
     recordKind: recordKind,
     kindMarkup: kindMarkup,
     recordMeta: recordMeta,

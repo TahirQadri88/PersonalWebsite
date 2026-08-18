@@ -222,6 +222,29 @@ before the icons still carries the old `↗`/`↓` characters in its own HTML,
 and will until the editor writes that page again. The rule stays in
 `styles.css` for exactly that reason.
 
+**Motion is allowed on a decoration, never on content.** Two things move
+as you scroll, and both are built so that not moving costs nothing. The
+category icons draw themselves on — `pathLength="1"` on every path in
+`iconSprite` normalises each stroke, so one dash figure suits them all,
+and `stroke-dasharray`/`stroke-dashoffset` being *inherited* is the only
+reason they reach inside `<use>`'s shadow tree at all. Crucially the dash
+lives on `.icon-draw`, a class `drawIconsOnEntry` adds — never on `.icon`
+— so no JavaScript, no `IntersectionObserver`, or `prefers-reduced-motion`
+all leave the icon simply drawn. Nothing on this site may start invisible
+waiting for a script to reveal it. `test/homepage.mjs` checks all three
+cases, because that is the whole argument.
+
+**The rail marks the section you are in, and moves only itself.**
+`markPlace` in `script.js` sets `aria-current` on the matching pill —
+the attribute, not a class of our own, so a screen reader is told too.
+It reads live geometry on every scroll rather than remembering tops from
+the observer: a stored top goes stale immediately, and sorting them
+picked a section long scrolled past. It also must not use
+`scrollIntoView` to bring the pill into the strip — that scrolls every
+scrollable ancestor, the document included, so the rail dragged the page
+back to whatever it had just marked and a reader could not get past the
+first category. It scrolls `nav` itself. Both faults are guarded.
+
 **Weight is a design decision, and the test measures it.** The homepage was
 961KB: a decorative 518KB PNG inside the collapsed bio, and two fonts
 shipped as TTF. It is ~320KB now — the fonts are woff2 (58% smaller,
@@ -231,6 +254,16 @@ measured), and the calligraphy is written at 840px and 64 colours, which is
 creep back. The full-resolution `*-source.*` files are **kept**: nothing
 serves them, they cost a visitor nothing, and after the downsample above
 they are the only originals left.
+
+**Space between sections is a ratio, not a number.** `--block` sets the
+vertical padding on the four full-bleed sections and nothing else reads
+it. It was `clamp(56px, 8vw, 118px)`, which gave 236–283px between
+sections at 1440 — 15 to 18 body lines — against 30px between the
+category cards inside the library. Nine to one is what made the page read
+as separate slabs; three to five is the usual range. `6.5vw`/`96px` brings
+a desktop to 209–240px and leaves a phone untouched, where the 56px floor
+already wins. Judge any change to it against the 30px card gap, not on
+its own.
 
 **Colour contrast.** `--gold-on-light` and `--gold-on-dark` are two different
 values for a reason. Do not collapse them into one.
