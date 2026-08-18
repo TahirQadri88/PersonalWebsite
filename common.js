@@ -212,7 +212,7 @@
 
     var parts = [];
     if (record.page) {
-      parts.push('Reads here');
+      parts.push('Read here');
     } else {
       var formats = [];
       files.forEach(function (file) {

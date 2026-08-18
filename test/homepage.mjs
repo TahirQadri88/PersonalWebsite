@@ -159,7 +159,7 @@ try {
       meta.filter((m) => m.pending).every((m) => !m.text.trim()),
       JSON.stringify(meta.filter((m) => m.pending && m.text.trim()).map((m) => m.id)));
     t('a piece that reads on the site says so, and gives its date',
-      meta.some((m) => /Reads here/.test(m.text) && /\d{4}/.test(m.text)),
+      meta.some((m) => /Read here/.test(m.text) && /\d{4}/.test(m.text)),
       JSON.stringify(meta.map((m) => m.text)));
     t('a record with several files counts them',
       meta.some((m) => /^\d+ PDFs/.test(m.text.trim())),
@@ -268,6 +268,45 @@ try {
     await page.waitForTimeout(250);
     t('only one work stays open at a time',
       (await page.evaluate(() => document.querySelectorAll('.work[open]').length)) === 1);
+    await context.close();
+  }
+
+  /* ---- room for the script's own overhang ----
+
+     Mehr draws up to 4.75px past the right edge of the box that lays it
+     out — measured at 19px by scanning rendered pixels, on a line
+     beginning with ک, where the overhang is worst. A right-aligned block
+     set flush against the card therefore put the stroke through the
+     card's own edge. Asking for 5px of clearance is asking for exactly
+     that measurement back, so the guard means something rather than
+     restating whatever the stylesheet currently says. */
+  group('nastaliq has room for its own overhang');
+  for (const width of [1440, 390]) {
+    const { context, page } = await open(width);
+    const tight = await page.evaluate(() => {
+      const out = [];
+      document.querySelectorAll('.work').forEach((work) => { work.open = true; });
+      document.querySelectorAll('.work-detail p.urdu, .work-detail p.arabic').forEach((p) => {
+        const card = p.closest('.work-category');
+        const style = getComputedStyle(card);
+        const edge = card.getBoundingClientRect().right - parseFloat(style.paddingRight);
+        /* The line boxes, not the element box. Padding is what moves the
+           text, and it moves it inside a border box that has not shifted —
+           so measuring the element would report the same number either
+           way, which is exactly the mistake this line exists to avoid. */
+        const range = document.createRange();
+        range.selectNodeContents(p);
+        const rects = [...range.getClientRects()];
+        if (!rects.length) return;
+        const clear = edge - Math.max(...rects.map((r) => r.right));
+        if (clear < 5) {
+          out.push({ id: p.closest('.work').getAttribute('data-id'), clear: +clear.toFixed(2) });
+        }
+      });
+      return { tight: out, total: document.querySelectorAll('.work-detail p.urdu, .work-detail p.arabic').length };
+    });
+    t('at ' + width + 'px, every right-aligned line clears the card edge',
+      tight.tight.length === 0 && tight.total > 0, JSON.stringify(tight));
     await context.close();
   }
 

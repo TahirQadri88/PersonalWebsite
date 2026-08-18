@@ -807,6 +807,18 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   line-height: 2.05;
   text-align: right;
 }
+
+/* Mehr draws up to 4.75px past the right edge of the box that lays it
+   out — measured at 19px, on a line beginning with ک, which is where the
+   overhang is worst. Set flush against the card, as a right-aligned block
+   is, the stroke crossed the card's own edge. This is that overhang and a
+   little air on top, so the script has a margin rather than merely
+   clearing the border. The English paragraph beside it needs none: Latin
+   here is left-aligned, and its ragged right edge never reaches the side.
+   Elsewhere the container's own padding already absorbs it — a fatwa card
+   has 24px, a work's page has the gutter. Only this block sits flush. */
+.work-detail p.urdu,
+.work-detail p.arabic { padding-right: 8px; }
 .work-page-description.urdu {
   font-size: 21px;
   line-height: 2.05;
