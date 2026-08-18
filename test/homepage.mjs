@@ -164,6 +164,36 @@ try {
     t('a record with several files counts them',
       meta.some((m) => /^\d+ PDFs/.test(m.text.trim())),
       JSON.stringify(meta.map((m) => m.text)));
+    /* An English piece is labelled in English. The kinds are catalogued
+       in Urdu, so an English essay wore مضمون on its row, its page and
+       its share card until site.recordKind translated it. */
+    const kinds = await page.evaluate(() =>
+      [...document.querySelectorAll('.work')].map((work) => {
+        const label = work.querySelector('.work-kind');
+        const record = window.site.findRecord(work.getAttribute('data-id'));
+        return label ? {
+          id: record.id,
+          language: record.language,
+          text: label.textContent.trim(),
+          latin: label.classList.contains('latin'),
+          font: getComputedStyle(label).fontFamily,
+          size: Math.round(parseFloat(getComputedStyle(label).fontSize))
+        } : null;
+      }).filter(Boolean));
+    const arabicScript = /[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/;
+    t('a left-to-right record is labelled in a script it reads',
+      kinds.filter((k) => k.language === 'en').every((k) => k.latin && !arabicScript.test(k.text)),
+      JSON.stringify(kinds.filter((k) => k.language === 'en')));
+    t('a right-to-left record keeps its own word',
+      kinds.filter((k) => k.language !== 'en').every((k) => !k.latin && arabicScript.test(k.text)),
+      JSON.stringify(kinds.filter((k) => k.language !== 'en' && k.latin)));
+    /* The rule that sets an English title in the display serif used to
+       reach the kind beside it and set "Essay" at 19px next to a 12px
+       metadata line. It is scoped to .record-title now. */
+    t('an english kind is not dressed as a title',
+      kinds.filter((k) => k.latin).every((k) => k.size <= 14 && !/Newsreader/.test(k.font)),
+      JSON.stringify(kinds.filter((k) => k.latin)));
+
     t('the language named is the file’s, not the title’s',
       /* An Urdu-titled article whose only file is an English PDF must say
          English. This is the whole point of the line — it describes what

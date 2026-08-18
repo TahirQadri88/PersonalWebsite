@@ -756,8 +756,15 @@ details[open] > summary .toggle { transform: rotate(45deg); }
    plain paragraph size next to a work-kind label and an Urdu neighbour
    nearly twice its size. Same move the fatawa grid already made —
    `.ruling h3` — a size and the site's own display face for every title
-   here, English included. */
-.work summary .latin {
+   here, English included.
+
+   `.record-title.latin`, not `.latin`: written for the title, this used
+   to catch anything Latin inside the summary, and once an English record
+   started carrying an English kind it set "Essay" in 19px Newsreader
+   beside a 12px metadata line. The same trap as the language-scoped
+   rules further down — a rule named after a script catching something
+   else written in it. */
+.work summary .record-title.latin {
   font-family: var(--font-display);
   font-size: 19px;
   font-weight: 600;
@@ -777,6 +784,20 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   color: var(--gold-on-light);
   text-align: right;
   direction: rtl;
+}
+/* An English record carries an English kind — "Essay", not مضمون — and it
+   must not take the Nastaliq the rule above sets. Given the metadata
+   line's own proportions rather than the Urdu label's, so the second line
+   of a left-to-right row reads as one thing: ESSAY · READ HERE · ENGLISH. */
+.work-kind.latin {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.7;
+  direction: ltr;
+  text-align: left;
 }
 
 /* The 134px indent used to line the detail up under the old title column.

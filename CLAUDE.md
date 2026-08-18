@@ -176,6 +176,21 @@ every browser the editor gets opened in. The title size is **chosen by
 measuring**, not from a character count — a count says nothing across
 three scripts.
 
+**A kind is shown in the language the record reads in.** Every `kind` in
+`content.js` is written in Urdu, because Urdu is what the library is
+catalogued in — so an English essay wore `مضمون` on its row, on its page,
+on its share card, and the caption dropped the label rather than
+translate it. `site.recordKind` turns it round through `KIND_IN_ENGLISH`
+in `common.js`, a small closed table rather than a second field on every
+entry; an unmapped kind falls through as itself, which is the right way
+to fail. It carries the fatwa default (`فتویٰ` / `Fatwa`) too, so the
+row, the page and the card cannot disagree about what an untitled ruling
+is called — they each used to keep their own copy of that fallback and
+one of them was missing it. `site.kindMarkup` writes the element, and
+picks the font, `lang`, `dir` and the `urdu`/`latin` class off the script
+the word actually came out in. Translations are renderings, not the
+author's own English: change them in that one table.
+
 **A description shown to a reader follows the piece, not the site.**
 `og:description` in `buildPost` and `buildWork`, and `shareCaption` in
 `common.js`, all take `descriptionUr` first for an Urdu or Arabic record

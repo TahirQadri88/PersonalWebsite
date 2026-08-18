@@ -1405,12 +1405,11 @@
          rightwards — same reasoning as buildWork's own back-link. */
       '        <a class="back-link" href="../index.html#' + e(categoryId) + '"><span aria-hidden="true">' +
         (rtl ? '→' : '←') + '</span> ' + e(categoryTitle) + '</a>',
-      /* Same as work.js: the label is Urdu whatever the post is, so on an
-         English one it moves to the margin the page is read from rather
-         than sitting across the column from the title it names. */
+      /* Same as work.js. site.kindMarkup gives the kind in the language
+         the post reads in, and the script it comes out in decides the
+         font, the direction and whether align-left is needed at all. */
       record.kind
-        ? '        <p class="section-label urdu' + (rtl ? '' : ' align-left') + '" lang="ur" dir="rtl">' +
-          e(record.kind) + '</p>'
+        ? '        ' + site.kindMarkup(record, 'section-label' + (rtl ? '' : ' align-left'), 'p')
         : null,
       /* record-title, not just the script class — matches site.titleMarkup,
          which builds every other title on the site and is what lets an
@@ -1649,7 +1648,7 @@
     /* The kind, in Nastaliq. It used to be handed to DM Sans, which holds
        no Arabic at all, so the browser drew it in whatever it happened to
        substitute — the same fault the arrows on the site once had. */
-    var eyebrow = record.kind || categoryTitle || 'Scholarly Works and Research';
+    var eyebrow = site.recordKind(record) || categoryTitle || 'Scholarly Works and Research';
     ctx.fillStyle = '#e8c882';
     ctx.font = cardLabelFont(eyebrow, 34);
     ctx.fillText(eyebrow, x, 140);
@@ -1816,7 +1815,9 @@
     var isRuling = !entry.category;
     var categoryTitle = entry.category ? entry.category.title : 'Islamic rulings';
     var categoryId = entry.category ? entry.category.id : 'rulings';
-    var kind = record.kind || (isRuling ? 'فتویٰ' : undefined);
+    /* site.recordKind carries the fatwa default now, and gives it in the
+       language the record reads in — an English ruling said فتویٰ. */
+    var kind = site.recordKind(record);
 
     var path = 'works/' + record.id + '.html';
     var url = base + path;
@@ -1925,7 +1926,7 @@
       '        <a class="back-link" href="' + e(backHref) + '"><span aria-hidden="true">' +
         (rtl ? '→' : '←') + '</span> ' + e(categoryTitle) + '</a>',
       kind
-        ? '        <p class="section-label urdu' + (rtl ? '' : ' align-left') + '" lang="ur" dir="rtl">' + e(kind) + '</p>'
+        ? '        ' + site.kindMarkup(record, 'section-label' + (rtl ? '' : ' align-left'), 'p')
         : null,
       '        ' + site.titleMarkup(record, 'h1'),
       /* Same reasoning as buildPost: formatDate's month name is always

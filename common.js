@@ -178,6 +178,66 @@
      uppercase and tracked, which is a Latin device; Nastaliq at that size
      and with that tracking cannot be read, and giving it the leading it
      needs would make the line twice the height of the title above it. */
+  /* Every `kind` in content.js is written in Urdu, because Urdu is the
+     language the library is catalogued in. A piece that reads left to
+     right needs the same word in English: an English essay was labelled
+     مضمون on its own row, on its page and on its share card, and the
+     caption dropped the label altogether rather than translate it.
+
+     A table here rather than a second field on every entry — the kinds
+     are a small closed set the author reuses, so this is written once
+     instead of twenty-three times, and no entry in content.js changes.
+     A kind with no line here falls through as itself, which is the right
+     way to fail: the Urdu word is better than no word at all.
+
+     These are renderings, not the author's own English. Change them
+     here and every place that shows a kind follows. */
+  var KIND_IN_ENGLISH = {
+    'رسالہ': 'Booklet',
+    'تحقیقی رسالہ': 'Research booklet',
+    'فتویٰ': 'Fatwa',
+    'ترجمہ و تخریج': 'Translation & takhrīj',
+    'چارٹس': 'Charts',
+    'پریزینٹیشن': 'Presentation',
+    'معلوماتی پمفلٹ': 'Information pamphlet',
+    'رسالہ و پریزینٹیشن': 'Booklet & presentation',
+    'تلخیص': 'Summary',
+    'مضمون': 'Essay'
+  };
+
+  /* The kind a record should show, in the language the record reads in.
+     The fatwa default lives here too, so the row, the page and the card
+     cannot disagree about what an untitled ruling is called — they each
+     used to carry their own copy of that fallback, and one of them
+     didn't have it. */
+  function recordKind(record) {
+    if (!record) return '';
+    var kind = record.kind;
+    if (!kind && (content.rulings || []).some(function (ruling) { return ruling.id === record.id; })) {
+      kind = 'فتویٰ';
+    }
+    if (!kind) return '';
+    return direction(record.language) === 'rtl' ? kind : (KIND_IN_ENGLISH[kind] || kind);
+  }
+
+  /* The kind as an element, in whichever script it came out in — the
+     three places that show one (the library row, a record's own page,
+     the page work.js falls back to) each wrote this markup themselves,
+     and each had to remember that the Urdu word needs `lang`, `dir` and
+     a font the Latin one must not take. */
+  function kindMarkup(record, className, tag) {
+    var kind = recordKind(record);
+    if (!kind) return '';
+    var element = tag || 'span';
+    var rtl = isArabicScript(kind);
+    return (
+      '<' + element + ' class="' + (className || 'work-kind') + ' ' + (rtl ? 'urdu' : 'latin') + '"' +
+      ' lang="' + (rtl ? 'ur' : 'en') + '" dir="' + (rtl ? 'rtl' : 'ltr') + '">' +
+      escapeHtml(kind) +
+      '</' + element + '>'
+    );
+  }
+
   var LANGUAGE_NAMES = { ur: 'Urdu', ar: 'Arabic', en: 'English' };
 
   /* The label says so on every file here — "Urdu PDF", "English PDF",
@@ -621,7 +681,11 @@
       : (content.site && content.site.name);
 
     var lines = [];
-    if (record.kind && rtl) lines.push(record.kind);
+    /* The kind, in the caption's own language. It used to be pushed only
+       for a right-to-left piece, so an English essay's caption opened on
+       its title with nothing to say what it was. */
+    var kind = recordKind(record);
+    if (kind) lines.push(kind);
     lines.push('*' + String(record.title || '').replace(/\*/g, '') + '*');
     if (who) lines.push((rtl ? 'از ' : 'by ') + who);
     if (intro) lines.push('', intro);
@@ -794,6 +858,9 @@
     ownPage: ownPage,
     isOffsite: isOffsite,
     formatDate: formatDate,
+    isArabicScript: isArabicScript,
+    recordKind: recordKind,
+    kindMarkup: kindMarkup,
     recordMeta: recordMeta,
     metaMarkup: metaMarkup,
     isImage: isImage,

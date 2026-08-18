@@ -107,7 +107,7 @@
       '<span class="work-head ' + reads + '" dir="' + site.direction(work.language) + '">' +
       site.titleMarkup(work) +
       '<span class="work-line">' +
-      (work.kind ? '<span class="work-kind" lang="ur" dir="rtl">' + site.escapeHtml(work.kind) + '</span>' : '') +
+      site.kindMarkup(work) +
       site.metaMarkup(work) +
       '</span>' +
       '</span>' +

@@ -94,10 +94,10 @@
       '<span aria-hidden="true">' + (rtl ? '→' : '←') + '</span> ' +
       site.escapeHtml(record.category.title) +
       '</a>' +
-      (record.kind
-        ? '<p class="section-label urdu' + (rtl ? '' : ' align-left') + '" lang="ur" dir="rtl">' +
-          site.escapeHtml(record.kind) + '</p>'
-        : '') +
+      /* align-left only when the label is Urdu and the page is not:
+         `.urdu` would otherwise set it against the far margin. An English
+         kind on an English page needs nothing — it is already there. */
+      site.kindMarkup(record, 'section-label' + (rtl ? '' : ' align-left'), 'p') +
       site.titleMarkup(record, 'h1') +
       (site.formatDate(record.date) ? '<p class="work-date">' + site.escapeHtml(site.formatDate(record.date)) + '</p>' : '') +
       prose +
