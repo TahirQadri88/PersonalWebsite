@@ -2845,6 +2845,16 @@
      library, and it is better to hear that on load. */
   var WORKER_EXPECTS = '2026-08-12.3';
 
+  /* This editor's own version, bumped whenever admin.js changes in a way
+     a publish depends on. It exists because a tab left open goes on
+     running the code it loaded with, however long ago that was, and the
+     result is not an error — it is worse. The old code rebuilds every
+     page exactly as it already stands, the Worker finds nothing
+     differing, and the publish reports success while the edit sits in a
+     browser nobody reloads. That is not a hypothetical: an update to a
+     post was lost to it. */
+  var EDITOR_VERSION = '2026-08-18.1';
+
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */
   var WRITES = ['content.js', 'sitemap.xml', 'posts/a.html', 'works/a.html', 'files/cards/a.jpg'];
@@ -2868,19 +2878,62 @@
     return '';
   }
 
-  function sayWorkerIsOld(what) {
+  /* Two things check on load whether this page can publish what it thinks
+     it can — the Worker's version and the editor's own — and both say so
+     in the same box. Each adds a line rather than replacing what is
+     there: they are independent faults, a tab old enough to matter can be
+     pointed at a Worker old enough to matter, and writing textContent
+     meant whichever answer came back second was the only one seen. */
+  function warnOnLoad(text) {
     var box = document.getElementById('worker-status');
     if (!box) return;
+    var line = document.createElement('span');
+    line.className = 'admin-status-line';
+    line.textContent = text;
+    box.appendChild(line);
     box.hidden = false;
+  }
+
+  function sayWorkerIsOld(what) {
     /* Refused outright, not half done: the Worker checks every file
        before it writes any of them, so a publish it will not accept
        leaves the repository exactly as it was. Worth saying — the
        question on reading this is whether something is now half
        published. */
-    box.textContent = what +
+    warnOnLoad(what +
       ' Publishing will be refused, and nothing committed, until it is brought up to date:' +
       ' in Cloudflare open the Worker → Edit code, replace all of it with' +
-      ' worker/src/index.js from the repository, and Deploy.';
+      ' worker/src/index.js from the repository, and Deploy.');
+  }
+
+  /* Is this tab running the editor the site is currently serving?
+
+     Asks for admin.js again, past the cache, and reads the version out of
+     the text rather than trusting a header — a tab that has been open for
+     hours has the old file in memory, not in any cache a header governs.
+     Behind the Worker this resolves the same way, since it proxies every
+     path through to the public site.
+
+     Silent when it cannot tell. A check that fails must never block a
+     publish or claim something is wrong: opened from the file system
+     there is nothing to fetch, and that is not a fault. */
+  function checkEditor() {
+    fetch('admin.js', { cache: 'no-store' })
+      .then(function (response) {
+        if (!response.ok) throw new Error('no admin.js');
+        return response.text();
+      })
+      .then(function (source) {
+        var match = /var EDITOR_VERSION = '([^']+)'/.exec(source);
+        if (!match || match[1] === EDITOR_VERSION) return;
+        warnOnLoad(
+          'This tab is running an older copy of the editor — version ' + EDITOR_VERSION +
+          ', where the site is now serving ' + match[1] + '. Reload before publishing.' +
+          ' An old tab rebuilds every page the way it used to be, which is what is' +
+          ' already published, so a publish from here can report success and commit' +
+          ' nothing at all.');
+      })
+      .catch(function () { /* cannot tell, so says nothing */ });
   }
 
   function checkWorker() {
@@ -3224,17 +3277,40 @@
       .then(function (commit) {
         publishing = false;
         busy(false);
+        /* Read before it is cleared, three lines down. Whether anything
+           was edited is the difference between the two readings of an
+           empty commit below. */
+        var hadEdits = dirty;
         dirty = false;
         dirtyNote.textContent = '';
         /* The Worker sends back what it actually wrote, which is not what
            it was handed: the whole library goes over, and only the files
            that differ from the branch are committed. Saying "3 files"
            after offering 46 is the truthful number, and the one that
-           makes it obvious when a change did not take. Nothing differing
-           at all is a real answer too, not a failure. */
+           makes it obvious when a change did not take. */
         var wrote = (commit.files || []).length;
         if (!commit.sha) {
-          say(commit.message || 'Nothing had changed, so nothing was published.', 'good');
+          /* Nothing differing is a fine answer to a publish you made
+             without changing anything. It is the opposite of fine when
+             you just edited something, and this used to say so in the
+             same green as a real publish — so an edit that never left the
+             browser read as an edit that went out. It happened: an update
+             to a post was published from a tab left open since before the
+             site last changed, that tab regenerated every page exactly as
+             it already stood, and the editor called it success. */
+          if (!hadEdits) {
+            say(commit.message || 'Nothing had changed, so nothing was published.', 'good');
+            return;
+          }
+          say('Your changes did not go out. The publish reached the repository, ' +
+            'but every file it sent was identical to what is already there — so ' +
+            'nothing was committed and the site is unchanged.', 'bad', [
+              'The usual cause is this tab: left open since before the site last ' +
+                'changed, it rebuilds every page the old way, and the old way is ' +
+                'what is already published. Reload the editor and try again.',
+              'If you were editing a post, open its row after reloading so its ' +
+                'writing is read back before you publish.'
+            ]);
           return;
         }
         say('Published ' + wrote + (wrote === 1 ? ' file' : ' files') +
@@ -3317,6 +3393,7 @@
     try { sessionStorage.setItem('editor-open', '1'); } catch (error) { /* private mode */ }
     render();
     checkWorker();
+    checkEditor();
   }
 
   var gateForm = document.getElementById('gate-form');

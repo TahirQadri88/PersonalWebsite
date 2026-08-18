@@ -21,9 +21,12 @@ font CDN away and serve the repository from a local port of their own —
 # editor.mjs
 
 It serves the repository over `http://127.0.0.1:4321` from memory, with
-`admin.js` altered in exactly two ways: the Firebase key is blanked and the
+`admin.js` altered in exactly three ways: the Firebase key is blanked and the
 passphrase hash is one this file knows, so the gate opens without a real
-account.
+account; and `BACKEND` is pointed at `/publish`, which the browser answers
+itself, so the publish path the Worker sits behind can be driven without a
+Worker. Nothing else is changed, so what is tested is the file that gets
+deployed.
 
 ## Why it exists
 
@@ -44,6 +47,14 @@ author mid-sentence, in a piece they were trying to write:
   own class;
 - a publish grew past the number of files the Worker would accept, when
   works' pages and link-preview cards were added and its ceiling was not.
+
+A fourth was found the same way, after these were written: an update to a
+post was published from a tab left open since before the site last changed.
+That tab rebuilt every page the way it used to be, which is exactly what was
+already committed, so the Worker found nothing differing and committed
+nothing — and the editor reported that in the same green it reports a real
+publish in. The one message that means *your edit did not go out* was
+coloured like the one that means *it did*.
 
 Each is a test here now. Adding `works/<id>.html` and `files/cards/<id>.jpg`
 to what a publish sends is what broke the last one, and the file that holds
@@ -69,8 +80,13 @@ against them, rather than trusting anyone to look up.
   has a name: opening a finished piece to fix a comma and finding the verse
   in the middle of it has quietly become a paragraph.
 - **A publish fits** what the Worker will accept, in file count and size.
+- **A publish that committed nothing** reads as calm when nothing was
+  edited and as a failure when something was — the fourth bug below.
+- **A tab older than the served editor** says so on load, without erasing
+  what the Worker check said in the same box, and says nothing at all when
+  it cannot tell.
 
-The last of those is why the box and the file must agree down to the order
+The round trip is why the box and the file must agree down to the order
 of the classes on an element. Nothing renders differently for it, but a
 comparison loose enough to ignore class order is loose enough to miss a
 block losing its script — so `makeBlock` writes them in the order
@@ -82,7 +98,7 @@ It names the test and, for the round trip, the exact character where the
 two versions part with the text either side. That is usually enough to see
 which block kind or which mark was dropped.
 
-A test that cannot fail is worth nothing, so the three bugs above were put
+A test that cannot fail is worth nothing, so the four bugs above were put
 back one at a time to confirm each is caught before this was committed.
 
 ---
