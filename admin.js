@@ -1318,6 +1318,14 @@
     var url = base + record.page;
     var author = (model.site && model.site.name) || '';
     var rtl = record.language === 'ur' || record.language === 'ar';
+    /* The sentence a crawler shows under the title, and the one WhatsApp
+       prints beside the card. It follows the piece the same way
+       site.shareCaption already does — an Urdu article had an English
+       line under its Urdu title, because this only ever read
+       record.description. */
+    var shared = rtl
+      ? record.descriptionUr || record.description
+      : record.description || record.descriptionUr;
     var scriptClass = record.language === 'ur' ? 'urdu' : record.language === 'ar' ? 'arabic' : 'latin';
     var pretty = site.formatDate(record.date);
     var categoryTitle = entry.category ? entry.category.title : 'Posts, Notes & Reflections';
@@ -1354,7 +1362,7 @@
       '',
       '    <meta property="og:type" content="article" />',
       '    <meta property="og:title" content="' + e(record.title) + '" />',
-      record.description ? '    <meta property="og:description" content="' + e(record.description) + '" />' : null,
+      shared ? '    <meta property="og:description" content="' + e(shared) + '" />' : null,
       '    <meta property="og:url" content="' + e(url) + '" />',
       /* Its own card, not the one generic image every page used to
          share — rendered alongside this file at publish time, same id. */
@@ -1467,9 +1475,67 @@
 
   var CARD_W = 1200, CARD_H = 630;
 
-  function cardFont(language, weight, px) {
-    var family = language === 'ur' ? 'Noto Nastaliq Urdu' : language === 'ar' ? 'Amiri' : 'Newsreader';
-    return weight + ' ' + px + 'px "' + family + '"';
+  /* The card is set in the site's own faces, not in whichever family
+     happened to be nearest. A record's title takes Aslam — the same bold
+     Naskh `.record-title.urdu` uses — and the kind label above it takes
+     Mehr, the same Nastaliq `.work-kind` uses. Before this the card drew
+     both in Noto Nastaliq Urdu, which is neither, so a card looked like
+     nothing on the page it linked to.
+
+     Aslam earns the title role twice over here. It is what the site
+     already uses, and it is Naskh: its counters stay open when a phone
+     shrinks this card to about a fifth of its size, where Nastaliq's
+     hairlines close up and the word turns into a smudge. */
+  function cardTitleFont(language, px) {
+    if (language === 'ur') return '400 ' + px + 'px "Aslam"';
+    if (language === 'ar') return '700 ' + px + 'px "Amiri"';
+    return '600 ' + px + 'px "Newsreader"';
+  }
+
+  /* The kind label, and the byline under it. Arabic script whatever the
+     record's own language is — `مضمون` sits above an English title as
+     readily as an Urdu one — so this reads the text, not the record. */
+  /* Its own copy without the /g — ARABIC_SCRIPT above carries the flag,
+     and a global regex remembers where it stopped, so .test() on one
+     answers differently every other call. */
+  var CARD_ARABIC = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/;
+
+  function cardLabelFont(text, px) {
+    return CARD_ARABIC.test(String(text || ''))
+      ? '500 ' + px + 'px "Mehr"'
+      : '700 ' + px + 'px "DM Sans"';
+  }
+
+  /* Aslam draws a space one pixel wide — the trap styles.css names as
+     --space-urdu-heading. A canvas has no stylesheet to inherit that
+     from, and `ctx.wordSpacing` is not in every browser the editor gets
+     opened in, so the words are placed one at a time instead. Letters
+     never join across a space in either script, so nothing is reshaped
+     by drawing them separately.
+
+     Returns the width, so the wrap below can measure a line the same way
+     it will later be drawn rather than trusting the two to agree. */
+  function spacedWidth(ctx, text, gap) {
+    /* No gap asked for means the face has a usable space of its own —
+       Newsreader, Amiri, DM Sans all do. Measure the line whole, or the
+       word-by-word path below would drop the space rather than widen it,
+       and an English title came out as TheBooksThatAren'tComingBack. */
+    if (!gap) return ctx.measureText(text).width;
+    var words = String(text || '').split(' ').filter(Boolean);
+    var total = 0;
+    words.forEach(function (word) { total += ctx.measureText(word).width; });
+    return total + gap * Math.max(0, words.length - 1);
+  }
+
+  function fillSpaced(ctx, text, x, y, gap, rtl) {
+    if (!gap) { ctx.fillText(text, x, y); return; }
+    var words = String(text || '').split(' ').filter(Boolean);
+    var cursor = x;
+    words.forEach(function (word) {
+      ctx.fillText(word, cursor, y);
+      var step = ctx.measureText(word).width + gap;
+      cursor += rtl ? -step : step;
+    });
   }
 
   /* admin.html already loads all four families for the editor's own
@@ -1480,27 +1546,47 @@
      recovering from the same race never lets a reader see. */
   function ensureCardFonts() {
     return Promise.all([
-      document.fonts.load('600 60px "Newsreader"'),
-      document.fonts.load('500 60px "Newsreader"'),
-      document.fonts.load('500 60px "Noto Nastaliq Urdu"'),
-      document.fonts.load('700 60px "Amiri"'),
-      document.fonts.load('700 15px "DM Sans"'),
-      document.fonts.load('500 26px "DM Sans"'),
-      document.fonts.load('400 20px "DM Sans"')
+      document.fonts.load('600 100px "Newsreader"'),
+      /* Aslam and Mehr are self-hosted, declared by the @font-face rules
+         in styles.css, which admin.html loads — so naming them here is
+         enough wherever the editor is opened. The Worker proxies every
+         path through to the public site, so files/fonts/ resolves from
+         admin.tahirqadri.com.pk as readily as from the site itself. */
+      document.fonts.load('400 100px "Aslam"'),
+      document.fonts.load('500 34px "Mehr"'),
+      document.fonts.load('700 100px "Amiri"'),
+      document.fonts.load('400 34px "Amiri"'),
+      document.fonts.load('700 25px "DM Sans"'),
+      document.fonts.load('700 34px "DM Sans"')
     ]).then(function () { return document.fonts.ready; });
+  }
+
+  /* The author's seal, the mark the rest of the site already carries. A
+     shape survives being shrunk to a thumbnail where four pixels of type
+     does not, which is the whole reason it is on the card.
+
+     Resolves to null rather than rejecting: a card without the seal is a
+     card, and a publish must not fail over a decoration. */
+  function loadSeal() {
+    return new Promise(function (resolve) {
+      var image = new Image();
+      image.onload = function () { resolve(image); };
+      image.onerror = function () { resolve(null); };
+      image.src = 'files/images/logo-circle-512.png';
+    });
   }
 
   /* Greedy wrap, word by word. A space still separates words in Urdu
      and Arabic even though the letters within one join right to left,
      so this needs no script-specific case — only the side the finished
      lines are drawn from does. */
-  function wrapLines(ctx, text, maxWidth, maxLines) {
+  function wrapLines(ctx, text, maxWidth, maxLines, gap) {
     var words = String(text || '').split(/\s+/).filter(Boolean);
     var lines = [];
     var line = '';
     words.forEach(function (word) {
       var next = line ? line + ' ' + word : word;
-      if (line && ctx.measureText(next).width > maxWidth) {
+      if (line && spacedWidth(ctx, next, gap) > maxWidth) {
         lines.push(line);
         line = word;
       } else {
@@ -1515,10 +1601,20 @@
     return lines;
   }
 
-  function drawCard(ctx, record, categoryTitle) {
+  /* Everything on this card is sized for the one place it is actually
+     looked at. WhatsApp draws a preview at the width of the bubble —
+     about 265px on a phone, so roughly a fifth of the 1200 drawn here.
+     At the sizes this used to use, the title landed at 13.7px against
+     the 19px floor the site's own CSS keeps for Urdu, and the kind
+     label at 2.9px, the byline at 6 and the address at 4.4 — three
+     lines of type that could not be read at all, over a card that was
+     four fifths empty with a 236px hole through the middle of it.
+     Measured off the shipped JPG, not guessed at. */
+  function drawCard(ctx, record, categoryTitle, seal) {
     var rtl = record.language === 'ur' || record.language === 'ar';
-    var margin = 90;
+    var margin = 84;
     var x = rtl ? CARD_W - margin : margin;
+    var away = rtl ? margin : CARD_W - margin;
 
     var gradient = ctx.createLinearGradient(0, 0, CARD_W, CARD_H);
     gradient.addColorStop(0, '#102f27');
@@ -1527,68 +1623,142 @@
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, CARD_W, CARD_H);
 
-    /* The same faint ring the site's own hero draws in the corner —
-       the one visual mark tying a shared card back to the page it
-       came from before a reader has read a word of it. Mirrored for a
-       right-to-left card, since that is the side the eyebrow and title
-       are about to anchor to, and the ring sat on top of them otherwise. */
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(rtl ? CARD_W - 1050 : 1050, 190, 150, 0, Math.PI * 2);
-    ctx.stroke();
+    /* The seal, low and on the side the words do not use. It replaces the
+       faint ring this drew before, which at thumbnail size was not a ring
+       — it was a smudge in the gradient. */
+    if (seal) {
+      var sealSize = 178;
+      ctx.save();
+      ctx.globalAlpha = 0.11;
+      ctx.drawImage(seal, rtl ? margin - 24 : CARD_W - margin - sealSize + 24,
+        CARD_H - 268, sealSize, sealSize);
+      ctx.restore();
+    }
 
     ctx.direction = rtl ? 'rtl' : 'ltr';
     ctx.textAlign = rtl ? 'right' : 'left';
     ctx.textBaseline = 'alphabetic';
 
     ctx.strokeStyle = '#b8863a';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(x, 118);
-    ctx.lineTo(rtl ? x - 44 : x + 44, 118);
+    ctx.moveTo(x, 84);
+    ctx.lineTo(rtl ? x - 58 : x + 58, 84);
     ctx.stroke();
 
+    /* The kind, in Nastaliq. It used to be handed to DM Sans, which holds
+       no Arabic at all, so the browser drew it in whatever it happened to
+       substitute — the same fault the arrows on the site once had. */
+    var eyebrow = record.kind || categoryTitle || 'Scholarly Works and Research';
     ctx.fillStyle = '#e8c882';
-    ctx.font = '700 15px "DM Sans"';
-    var eyebrow = (record.kind || categoryTitle || 'Scholarly Works and Research').toUpperCase();
-    ctx.fillText(eyebrow, x, 156);
+    ctx.font = cardLabelFont(eyebrow, 34);
+    ctx.fillText(eyebrow, x, 140);
 
-    var titlePx = record.title.length > 60 ? 44 : record.title.length > 34 ? 52 : 60;
+    /* Take the largest size the title actually fits at, rather than
+       guessing from how many characters it has — a character count says
+       nothing useful across three scripts, and it was picking a size that
+       then had to be ellipsized or that ran up into the eyebrow. Measure
+       at each step down and stop at the first that fits the band in three
+       lines or fewer. */
+    var TOP = 206, BOTTOM = 462;
+    var maxWidth = CARD_W - margin * 2 - 120;
+    var sizes = [106, 92, 80, 70, 62];
+    var titlePx, titleGap, lines, lead, i;
+    for (i = 0; i < sizes.length; i += 1) {
+      titlePx = sizes[i];
+      titleGap = record.language === 'ur' ? titlePx * 0.22 : 0;
+      ctx.font = cardTitleFont(record.language, titlePx);
+      lines = wrapLines(ctx, record.title, maxWidth, 99, titleGap);
+      lead = titlePx * (record.language === 'ur' ? 1.28 : 1.16);
+      if (lines.length <= 3 && (lines.length - 1) * lead + titlePx <= BOTTOM - TOP) break;
+    }
+    /* Nothing fitted even at the smallest step: take that step and let
+       wrapLines cut it, which is the one case an ellipsis is right. */
+    if (i === sizes.length) {
+      titlePx = sizes[sizes.length - 1];
+      titleGap = record.language === 'ur' ? titlePx * 0.22 : 0;
+      ctx.font = cardTitleFont(record.language, titlePx);
+      lines = wrapLines(ctx, record.title, maxWidth, 3, titleGap);
+      lead = titlePx * (record.language === 'ur' ? 1.28 : 1.16);
+    }
+
     ctx.fillStyle = '#faf8f2';
-    ctx.font = cardFont(record.language, record.language === 'ur' ? '500' : '600', titlePx);
-    var lines = wrapLines(ctx, record.title, CARD_W - margin * 2 - 110, 3);
-    var lineHeight = titlePx * (record.language === 'ur' ? 1.35 : 1.18);
-    var startY = 250;
-    lines.forEach(function (line, i) { ctx.fillText(line, x, startY + i * lineHeight); });
+    /* Centred in the band between the eyebrow and the footer rule, so a
+       one-line title no longer leaves a third of the card empty under it
+       and the block sits where the eye lands rather than up in a corner. */
+    var middle = (TOP + BOTTOM) / 2;
+    var startY = middle - ((lines.length - 1) * lead) / 2 + titlePx * 0.3;
+    lines.forEach(function (line, n) {
+      fillSpaced(ctx, line, x, startY + n * lead, titleGap, rtl);
+    });
 
-    var footerY = 520;
+    ctx.strokeStyle = 'rgba(232, 200, 130, 0.26)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(margin, CARD_H - 112);
+    ctx.lineTo(CARD_W - margin, CARD_H - 112);
+    ctx.stroke();
+
+    /* One line, not two, and each half on its own edge. Two stacked lines
+       of small type came out as one grey band at the size this is seen. */
     var byline = rtl
       ? (model.site && model.site.nameUr) || (model.site && model.site.name) || ''
       : (model.site && model.site.name) || '';
     ctx.fillStyle = '#faf8f2';
-    ctx.font = rtl ? cardFont(record.language, '500', 26) : '500 26px "DM Sans"';
-    ctx.fillText(byline, x, footerY);
+    /* Aslam for the name in Arabic script, whichever script the record
+       itself is in — it is Naskh, and at the size a phone shrinks this to
+       Naskh still has its counters where Nastaliq has closed up. The
+       label face is right for the one word above the title; it is not
+       right for a whole name along the foot. */
+    if (CARD_ARABIC.test(byline)) {
+      ctx.font = cardTitleFont('ur', 36);
+      fillSpaced(ctx, byline, x, CARD_H - 52, 36 * 0.22, rtl);
+    } else {
+      ctx.font = '700 34px "DM Sans"';
+      ctx.fillText(byline, x, CARD_H - 52);
+    }
 
-    ctx.fillStyle = 'rgba(250, 248, 242, 0.65)';
-    ctx.font = '400 20px "DM Sans"';
-    ctx.fillText('Scholarly Works and Research · tahirqadri.com.pk', x, footerY + 34);
+    ctx.save();
+    ctx.direction = 'ltr';
+    ctx.textAlign = rtl ? 'left' : 'right';
+    ctx.fillStyle = 'rgba(250, 248, 242, 0.62)';
+    ctx.font = '700 25px "DM Sans"';
+    ctx.fillText('tahirqadri.com.pk', away, CARD_H - 56);
+    ctx.restore();
   }
 
   /* base64 text, not raw bytes — the same shape every other file in the
      commit already has, so both publish paths (a token straight to
      GitHub, or the Worker behind admin.tahirqadri.com.pk) send this one
      JSON-serializable thing rather than two different ones. */
+  function cardBlob(record, categoryTitle, seal) {
+    var canvas = document.createElement('canvas');
+    canvas.width = CARD_W;
+    canvas.height = CARD_H;
+    drawCard(canvas.getContext('2d'), record, categoryTitle, seal);
+    /* JPEG, not PNG — the card is a gradient and a few lines of type,
+       nothing PNG's lossless compression suits, and the difference is
+       an order of magnitude smaller for a picture nobody zooms into. */
+    return new Promise(function (resolve, reject) {
+      /* Throws rather than returns when the canvas has drawn a picture it
+         may not read back, which is what happens to the seal when the
+         editor is opened from the file system instead of over http. */
+      try {
+        canvas.toBlob(function (blob) { blob ? resolve(blob) : reject(new Error('no blob')); },
+          'image/jpeg', 0.88);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
   function renderCardBase64(record, categoryTitle) {
-    return ensureCardFonts().then(function () {
-      var canvas = document.createElement('canvas');
-      canvas.width = CARD_W;
-      canvas.height = CARD_H;
-      drawCard(canvas.getContext('2d'), record, categoryTitle);
-      /* JPEG, not PNG — the card is a gradient and a few lines of type,
-         nothing PNG's lossless compression suits, and the difference is
-         an order of magnitude smaller for a picture nobody zooms into. */
-      return new Promise(function (resolve) { canvas.toBlob(resolve, 'image/jpeg', 0.88); });
+    return Promise.all([ensureCardFonts(), loadSeal()]).then(function (ready) {
+      return cardBlob(record, categoryTitle, ready[1]).catch(function () {
+        /* A card without the seal is still a card. A publish that fails
+           over a decoration is not. */
+        return cardBlob(record, categoryTitle, null);
+      });
     }).then(function (blob) {
       return blob.arrayBuffer();
     }).then(function (buffer) {
@@ -1651,6 +1821,14 @@
     var path = 'works/' + record.id + '.html';
     var url = base + path;
     var rtl = record.language === 'ur' || record.language === 'ar';
+    /* The sentence a crawler shows under the title, and the one WhatsApp
+       prints beside the card. It follows the piece the same way
+       site.shareCaption already does — an Urdu article had an English
+       line under its Urdu title, because this only ever read
+       record.description. */
+    var shared = rtl
+      ? record.descriptionUr || record.description
+      : record.description || record.descriptionUr;
     var scriptClass = record.language === 'ur' ? 'urdu' : record.language === 'ar' ? 'arabic' : 'latin';
     var pretty = site.formatDate(record.date);
     var backHref = isRuling ? '../index.html#rulings' : '../index.html#' + categoryId;
@@ -1717,7 +1895,7 @@
       '',
       '    <meta property="og:type" content="article" />',
       '    <meta property="og:title" content="' + e(record.title) + '" />',
-      record.description ? '    <meta property="og:description" content="' + e(record.description) + '" />' : null,
+      shared ? '    <meta property="og:description" content="' + e(shared) + '" />' : null,
       '    <meta property="og:url" content="' + e(url) + '" />',
       '    <meta property="og:image" content="' + e(base + 'files/cards/' + record.id + '.jpg') + '" />',
       '    <meta name="twitter:card" content="summary_large_image" />',

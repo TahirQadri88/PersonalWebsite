@@ -156,6 +156,33 @@ without it, up to 1180px from the words they named. `test/homepage.mjs`
 measures every Urdu label on the page now, so a fourth cannot happen
 quietly.
 
+**A share card is sized for a thumbnail, not for the 1200×630 it is drawn
+at.** WhatsApp renders the preview at the width of the bubble — about
+265px on a phone, so roughly **0.22×**. Every size in `drawCard` has to be
+divided by five before you judge it. The card once set its title at 62px,
+which arrives as 13.7px against the 19px floor the site keeps for Urdu
+everywhere else, and its kind label at 13px, which arrives as 2.9px.
+The card is set in the site's own faces: a title in **Aslam**
+(`cardTitleFont`), the same face `.record-title.urdu` uses and a Naskh,
+whose counters survive the shrink where Nastaliq's hairlines close up; the
+kind label in **Mehr** (`cardLabelFont`), the same Nastaliq `.work-kind`
+uses. Both are self-hosted, so `ensureCardFonts` names them and the Worker
+— which proxies every path through to the public site — serves them.
+Two traps: DM Sans holds no Arabic at all, so a kind label handed to it is
+drawn by whatever the system substitutes; and Aslam's one-pixel space
+needs `--space-urdu-heading` put back, which on a canvas means placing the
+words one at a time (`fillSpaced`), since `ctx.wordSpacing` is not in
+every browser the editor gets opened in. The title size is **chosen by
+measuring**, not from a character count — a count says nothing across
+three scripts.
+
+**A description shown to a reader follows the piece, not the site.**
+`og:description` in `buildPost` and `buildWork`, and `shareCaption` in
+`common.js`, all take `descriptionUr` first for an Urdu or Arabic record
+and `description` first otherwise. An Urdu article carried an English
+sentence under its Urdu title for months because the meta tags read
+`record.description` and nothing else.
+
 **Colour contrast.** `--gold-on-light` and `--gold-on-dark` are two different
 values for a reason. Do not collapse them into one.
 
