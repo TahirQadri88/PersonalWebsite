@@ -65,8 +65,15 @@ async function patchedAdminJs() {
   const hash = createHash('sha256').update(PASS).digest('hex');
   const out = source
     .replace(/var PASS_HASH = '[a-f0-9]*';/, `var PASS_HASH = '${hash}';`)
-    .replace(/apiKey: '[^']*',/, "apiKey: '',");
-  if (!out.includes(`var PASS_HASH = '${hash}';`) || !out.includes("apiKey: '',")) {
+    .replace(/apiKey: '[^']*',/, "apiKey: '',")
+    /* The third stand-in. BACKEND is only set over https on an admin.*
+       host, which a test server is not, and without it the publish path
+       goes straight to GitHub instead of the Worker — so the answer the
+       Worker gives when nothing differs is unreachable, and that answer
+       is exactly what the tests below are about. */
+    .replace(/var BACKEND = [^;]+;/, "var BACKEND = '/publish';");
+  if (!out.includes(`var PASS_HASH = '${hash}';`) || !out.includes("apiKey: '',") ||
+      !out.includes("var BACKEND = '/publish';")) {
     throw new Error('could not stand in for the gate — admin.js has changed shape');
   }
   return out;
@@ -609,6 +616,123 @@ function firstDifference(a, b) {
   return 'they part at character ' + i + ':\n      was:  …' + a.slice(Math.max(0, i - 60), i + 90) +
          '\n      now:  …' + b.slice(Math.max(0, i - 60), i + 90);
 }
+
+/* ---- a publish that changed nothing ----------------------------------
+
+   The Worker is handed the whole library every time and commits only the
+   files that differ, so "nothing differed" is a real answer. It is a fine
+   answer to a publish made without editing anything, and a bad one to a
+   publish made straight after an edit — there it means the edit never
+   left the browser. Both used to read as success, in the same green.
+
+   Not hypothetical. An update to a post was published from a tab left
+   open since before the site last changed; that tab rebuilt every page
+   the old way, which is exactly what was already committed, so nothing
+   differed and the editor said so approvingly. The author had no way to
+   know the change had not gone out. */
+
+/* The Worker answers here instead of Cloudflare. One route, and what it
+   replies with is a variable, so registering it does not stack. */
+let workerReply = { files: [] };
+await page.route('**/publish', (route) => route.fulfill({
+  status: 200, contentType: 'application/json', body: JSON.stringify(workerReply)
+}));
+
+async function publishAndRead(page) {
+  await page.evaluate(() => {
+    const box = document.getElementById('publish-status');
+    box.textContent = '';
+    box.className = 'admin-status';
+  });
+  await page.click('#publish');
+  /* Drawing every card takes a while, and until it is done the box only
+     says what it is doing. Wait for a sentence that is an outcome. */
+  await page.waitForFunction(() => {
+    const box = document.getElementById('publish-status');
+    return box && /did not go out|Nothing had changed|Published |Nothing was published|Fix these first/.test(box.textContent);
+  }, null, { timeout: 90000 });
+  return page.evaluate(() => {
+    const box = document.getElementById('publish-status');
+    return { text: box.textContent,
+             bad: box.classList.contains('is-bad'),
+             good: box.classList.contains('is-good') };
+  });
+}
+
+console.log('\na publish that committed nothing');
+
+/* Every post's words are read back from its own page as the rows are
+   built. Publishing before they arrive is refused, with a sentence
+   saying so — which is right, and not what these two are about. */
+await page.waitForFunction(
+  () => !/Loading the current text/.test(document.body.textContent), null, { timeout: 20000 });
+
+const calm = await publishAndRead(page);
+t('with nothing edited, a publish that committed nothing says so calmly',
+  calm.good && !calm.bad && /Nothing had changed/.test(calm.text), JSON.stringify(calm));
+
+await newBlock(page, 'a line that will not go out');
+const lost = await publishAndRead(page);
+t('  …after an edit, the same answer is a failure, not a success',
+  lost.bad && !lost.good, JSON.stringify(lost));
+t('  …and it says plainly that the changes did not go out',
+  /did not go out/.test(lost.text), lost.text);
+t('  …and names the tab, which is what it usually is',
+  /[Rr]eload/.test(lost.text), lost.text);
+
+/* ---- a tab older than the editor the site is serving ------------------
+
+   The same failure, caught before the publish rather than after it. The
+   page asks for admin.js again on load and reads the version out of the
+   text; here the answer carries a version this tab is not running, which
+   is what a tab left open across a deploy would get.
+
+   Routed on the fetch only. The same URL loads the editor itself, and
+   answering that with a stub would leave nothing to test. */
+console.log('\na tab older than the site');
+
+await page.route('**/admin.js', (route, request) => {
+  if (request.resourceType() !== 'fetch') return route.fallback();
+  route.fulfill({ status: 200, contentType: 'text/javascript',
+    body: "var EDITOR_VERSION = 'a-later-one';" });
+});
+await page.reload({ waitUntil: 'domcontentloaded' });
+await page.waitForSelector('.admin-row');
+const staleBox = await page.evaluate(() => new Promise((done) => {
+  const box = document.getElementById('worker-status');
+  const started = Date.now();
+  const look = () => {
+    if (!box.hidden && /older copy of the editor/.test(box.textContent)) return done(box.textContent);
+    if (Date.now() - started > 5000) return done(box.hidden ? '(nothing shown)' : box.textContent);
+    setTimeout(look, 50);
+  };
+  look();
+}));
+t('a tab older than the served editor is told so, and told to reload',
+  /older copy of the editor/.test(staleBox) && /Reload/.test(staleBox), staleBox);
+
+/* Both checks write into that one box, and both can be true at once —
+   this tab is also talking to a /version that is not a Worker. Neither
+   may erase the other. */
+t('  …without erasing what the Worker check had already said',
+  /Worker deployed at/.test(staleBox), staleBox);
+
+/* And when it cannot tell, it says nothing at all. A version check that
+   fails must never stand in front of a publish. */
+await page.unroute('**/admin.js');
+await page.route('**/admin.js', (route, request) => {
+  if (request.resourceType() !== 'fetch') return route.fallback();
+  route.fulfill({ status: 500, contentType: 'text/plain', body: 'no' });
+});
+await page.reload({ waitUntil: 'domcontentloaded' });
+await page.waitForSelector('.admin-row');
+await page.waitForTimeout(2000);
+const quietBox = await page.evaluate(() => {
+  const box = document.getElementById('worker-status');
+  return box.hidden ? '' : box.textContent;
+});
+t('  …and stays quiet when it cannot tell which version the site serves',
+  !/older copy of the editor/.test(quietBox), quietBox);
 
 t('nothing threw along the way', jsErrors.length === 0, jsErrors.join(' | '));
 

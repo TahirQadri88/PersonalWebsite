@@ -302,6 +302,26 @@ on; the editor asks `/version` on load and says plainly when the two have
 parted. Then say clearly, in the reply, that the Worker still needs
 deploying — pasting the file into Cloudflare → Edit code → Deploy.
 
+**The editor is deployed by pushing it, and an open tab is not.** A tab
+left open across a deploy keeps running the `admin.js` it loaded, and an
+old editor rebuilds every page the way it used to be — which is exactly
+what is already committed. The Worker is handed the whole library on
+every publish and commits only what differs, so it finds nothing, commits
+nothing, and answers with no sha. That answer used to be shown in green,
+so an edit that never left the browser read as an edit that went out; it
+happened, to a post, and the author had no way to know. Two things guard
+it now. `dirty` is read before it is cleared, so *nothing committed* is
+calm when nothing was edited and a plain failure when something was.
+And `EDITOR_VERSION` beside `WORKER_EXPECTS` is checked on load the same
+way — `admin.js` fetched again past the cache, the constant read out of
+the text — so the tab is told it is old *before* a publish rather than
+after. Bump `EDITOR_VERSION` whenever `admin.js` changes in a way a
+publish depends on. Both notices land in `#worker-status`, and both
+append rather than write, since a tab can be old *and* pointed at an old
+Worker and neither may erase the other. A check that cannot run says
+nothing at all — opened from the file system there is nothing to fetch,
+and that is not a fault.
+
 **Adding a work by hand means editing sitemap.xml too, and its page is missing
 until admin.html writes it.** `sitemap.xml` is the one file outside
 `content.js` that names a work, one `<url>` per id — the homepage list is
