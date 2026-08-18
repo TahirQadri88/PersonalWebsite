@@ -103,13 +103,16 @@
      rather than a Save that quietly does something else. */
   var OFFSITE = /^[a-z][a-z0-9+.-]*:/i;
 
-  /* Neither Nastaliq nor Naskh contains an arrow, so inside a link whose
-     label is Urdu the browser went looking elsewhere for one — and on an
-     iPhone it found Apple Color Emoji and drew a blue tile. The arrow is
-     given the UI font, which has the glyph, and U+FE0E after it asks for
-     the written shape rather than the emoji one. */
-  var GLYPH_OPEN = '<span class="glyph" aria-hidden="true">\u2197\uFE0E</span>';
-  var GLYPH_SAVE = '<span class="glyph" aria-hidden="true">\u2193\uFE0E</span>';
+  /* Drawn, not typed. These were an arrow and a down-arrow borrowed from
+     the UI font, with U+FE0E after each to ask for the written shape —
+     because neither Nastaliq nor Naskh contains an arrow, so inside an
+     Urdu-labelled link the browser went hunting and on an iPhone found
+     Apple Color Emoji and drew a blue tile. A drawing has no such
+     problem: it is the same mark in every face and every script, and it
+     matches the rest of the set instead of borrowing a character's
+     weight. Called where they are used, not stored in a var — ICONS is
+     declared further down, and a var read at load time would be reading
+     it before it exists. */
 
   function fileLinks(record, className) {
     if (!record.files || !record.files.length) return '';
@@ -125,13 +128,13 @@
           '<a class="' + (className || 'document-link') + (rtl ? ' ' + scriptClass(language) : '') + '"' +
           (rtl ? ' lang="' + language + '" dir="rtl"' : '') +
           ' href="' + url + '" target="_blank" rel="noopener">' +
-          escapeHtml(label) + ' ' + GLYPH_OPEN + '</a>';
+          escapeHtml(label) + ' ' + icon('open', 'icon-inline') + '</a>';
         if (OFFSITE.test(String(file.url || ''))) return '<span class="file-item">' + open + '</span>';
         return (
           '<span class="file-item">' + open +
           '<a class="file-download" href="' + url + '" download' +
           ' aria-label="Download ' + escapeHtml(label) + '">' +
-          'Download ' + GLYPH_SAVE + '</a>' +
+          'Download ' + icon('download', 'icon-inline') + '</a>' +
           '</span>'
         );
       })
@@ -236,6 +239,144 @@
       escapeHtml(kind) +
       '</' + element + '>'
     );
+  }
+
+  /* ---- The icon set -------------------------------------------------
+
+     Line drawings, one grid: 24x24, no fill, stroke in currentColor at
+     1.5, round caps and joins. Stroke-only and currentColor together mean
+     one drawing serves everywhere — gold on a category head, moss inside
+     a link, cream on the dark fatawa panel — with no second copy per
+     surface and no colour to keep in step with the tokens.
+
+     Inline, as one hidden sprite of <symbol>s written into the page once,
+     and then ~55 bytes wherever an icon is used. That is the whole cost:
+     no request, no icon font, no build step, and `<use href="#id">` is
+     same-document so index.html still opens straight off the disk. An
+     icon font would be twenty to forty kilobytes and a request; eleven
+     .svg files would be eleven requests; both are dependencies the site
+     does not take.
+
+     Same shape as `alignIcon` in admin.js, which already draws the
+     editor's own toolbar this way. */
+  var ICONS = {
+    /* An open book — رسائل و تالیفات */
+    booklet: [
+      'M12 7v12',
+      'M12 7c-1.6-1.4-3.8-2.1-6.5-2.1H3v12h2.5c2.7 0 4.9.7 6.5 2.1',
+      'M12 7c1.6-1.4 3.8-2.1 6.5-2.1H21v12h-2.5c-2.7 0-4.9.7-6.5 2.1'
+    ],
+    /* A bound volume with a bookmark in it — تحقیق، تخریج و ترجمہ */
+    manuscript: [
+      'M5.5 3.5h13A1.5 1.5 0 0 1 20 5v14a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19V5a1.5 1.5 0 0 1 1.5-1.5z',
+      'M7.5 3.5v17',
+      'M12.5 3.5v7l2.2-1.7 2.2 1.7v-7'
+    ],
+    /* A folded pamphlet, three panels — نقشہ جات و معلوماتی پمفلٹس */
+    chart: [
+      'M9 4.5 3.5 6.5v13L9 17.5z',
+      'M9 4.5l6 2v13l-6-2z',
+      'M15 6.5l5.5-2v13l-5.5 2z'
+    ],
+    /* Books on a shelf, one leaning — آسان علمی مواد */
+    books: [
+      'M4 8h3.5v11.5H4z',
+      'M8.5 5.5H12v14H8.5z',
+      'M13.6 8.3l3.3-.9 3.1 11.3-3.3.9z',
+      'M3 20.5h18'
+    ],
+    /* A qalam — مضامین و خیالات */
+    pen: [
+      'M4 20.2l1.2-3.7L16.4 5.3a1.7 1.7 0 0 1 2.4 0l.5.5a1.7 1.7 0 0 1 0 2.4L8.1 19.4z',
+      'M14.9 6.8l2.9 2.9'
+    ],
+    /* A reply with words in it — مضامین و جوابات */
+    response: [
+      'M4.5 4.5h15A1.5 1.5 0 0 1 21 6v8.5a1.5 1.5 0 0 1-1.5 1.5H10.5L6 20v-4H4.5A1.5 1.5 0 0 1 3 14.5V6a1.5 1.5 0 0 1 1.5-1.5z',
+      'M6.5 9h11',
+      'M6.5 12h7'
+    ],
+    /* A seal with its ribbons — فتاویٰ */
+    seal: [
+      'M12 3.5a5.8 5.8 0 1 1 0 11.6 5.8 5.8 0 0 1 0-11.6z',
+      'M9.4 9.3l1.8 1.8 3.4-3.4',
+      'M8.7 14.8L7 20.5l5-2.2 5 2.2-1.7-5.7'
+    ],
+    search: [
+      'M10.8 4.5a6.3 6.3 0 1 1 0 12.6 6.3 6.3 0 0 1 0-12.6z',
+      'M15.4 15.4l4.6 4.6'
+    ],
+    /* An arrow leaving its frame */
+    open: [
+      'M13.5 4.5h6v6',
+      'M19.5 4.5L11 13',
+      'M17 13.5v5A1.5 1.5 0 0 1 15.5 20h-10A1.5 1.5 0 0 1 4 18.5v-10A1.5 1.5 0 0 1 5.5 7h5'
+    ],
+    /* An arrow into a tray */
+    download: [
+      'M12 3.5v11',
+      'M7.6 10.1L12 14.5l4.4-4.4',
+      'M4 16.5v2.5A1.5 1.5 0 0 0 5.5 20.5h13a1.5 1.5 0 0 0 1.5-1.5v-2.5'
+    ],
+    /* A page with a folded corner */
+    document: [
+      'M6.5 3.5h7l5 5v11a1.5 1.5 0 0 1-1.5 1.5h-10.5A1.5 1.5 0 0 1 5 19.5V5a1.5 1.5 0 0 1 1.5-1.5z',
+      'M13.5 3.5v5h5',
+      'M8.5 13.5h7',
+      'M8.5 16.5h4.5'
+    ]
+  };
+
+  /* Which drawing belongs to which category, by id. A closed table rather
+     than a field on every category, the same way KIND_IN_ENGLISH is —
+     content.js does not change, and a category with no line here simply
+     shows no icon rather than a wrong one. */
+  var CATEGORY_ICON = {
+    talifat: 'booklet',
+    tahqeeq: 'manuscript',
+    charts: 'chart',
+    'ilmi-mawad': 'books',
+    posts: 'pen',
+    maqalat: 'response',
+    rulings: 'seal'
+  };
+
+  var SPRITE_ID = 'icon-sprite';
+
+  function iconSprite() {
+    return Object.keys(ICONS).map(function (name) {
+      return '<symbol id="i-' + name + '" viewBox="0 0 24 24">' +
+        ICONS[name].map(function (d) { return '<path d="' + d + '"/>'; }).join('') +
+        '</symbol>';
+    }).join('');
+  }
+
+  /* Written in once, before anything asks for an icon. Hidden with
+     `aria-hidden` as well as `display:none`, since a <symbol> that is
+     never <use>d still carries text nodes to some readers. */
+  function injectSprite() {
+    if (!document.body || document.getElementById(SPRITE_ID)) return;
+    var host = document.createElement('div');
+    host.id = SPRITE_ID;
+    host.setAttribute('aria-hidden', 'true');
+    host.style.display = 'none';
+    host.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg">' + iconSprite() + '</svg>';
+    document.body.insertBefore(host, document.body.firstChild);
+  }
+
+  /* Always decorative: every icon here sits beside a word that already
+     says the same thing, so it is hidden from a reader who is listening
+     rather than looking, and taken out of the tab order. */
+  function icon(name, className) {
+    if (!name || !ICONS[name]) return '';
+    return (
+      '<svg class="icon' + (className ? ' ' + className : '') + '"' +
+      ' aria-hidden="true" focusable="false"><use href="#i-' + name + '"/></svg>'
+    );
+  }
+
+  function categoryIcon(category, className) {
+    return icon(CATEGORY_ICON[category && category.id], className);
   }
 
   var LANGUAGE_NAMES = { ur: 'Urdu', ar: 'Arabic', en: 'English' };
@@ -859,6 +1000,8 @@
     isOffsite: isOffsite,
     formatDate: formatDate,
     isArabicScript: isArabicScript,
+    icon: icon,
+    categoryIcon: categoryIcon,
     recordKind: recordKind,
     kindMarkup: kindMarkup,
     recordMeta: recordMeta,
@@ -917,6 +1060,17 @@
       }
     }
   }
+
+  /* The icon sprite, before anything that might reference it. */
+  injectSprite();
+
+  /* Any mark written by hand into a page — the search box, the link to the
+     introduction — asks for its drawing with `data-icon` rather than
+     carrying the SVG inline, so the markup stays readable and the set
+     stays in one place. */
+  Array.prototype.forEach.call(document.querySelectorAll('[data-icon]'), function (slot) {
+    slot.innerHTML = icon(slot.getAttribute('data-icon'), slot.getAttribute('data-icon-class') || '');
+  });
 
   /* Footer year and the mailto link, on every page that has them. */
   var year = document.getElementById('year');

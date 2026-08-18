@@ -111,7 +111,12 @@ img { max-width: 100%; }
    of Nasrullah Mehr — CC BY-SA 4.0, credited in the footer. */
 @font-face {
   font-family: "Mehr";
-  src: url("files/fonts/mehr-nastaliq-web.ttf") format("truetype");
+  /* woff2 first, the ttf behind it. The same outlines either way — woff2 is
+     the same font under a compression the browser undoes itself, and it is
+     58% of the size: 129.7KB became 54.7KB, measured, not estimated. The ttf
+     stays as the fallback so nothing breaks anywhere woff2 is not served. */
+  src: url("files/fonts/mehr-nastaliq-web.woff2") format("woff2"),
+       url("files/fonts/mehr-nastaliq-web.ttf") format("truetype");
   font-weight: 400;
   font-display: swap;
 }
@@ -122,7 +127,9 @@ img { max-width: 100%; }
    files/fonts/Aslam-NOTICE.txt. */
 @font-face {
   font-family: "Aslam";
-  src: url("files/fonts/Aslam.ttf") format("truetype");
+  /* 123.8KB as ttf, 51.8KB as woff2. Same reasoning as Mehr above. */
+  src: url("files/fonts/Aslam.woff2") format("woff2"),
+       url("files/fonts/Aslam.ttf") format("truetype");
   font-weight: 400;
   font-display: swap;
 }
@@ -322,6 +329,61 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   font-size: 14px;
   font-style: italic;
 }
+
+/* Icons — one drawing each, 24x24, stroke only. currentColor is what
+   carries them: gold on a category head, moss inside a link, cream on the
+   dark fatawa panel, all from the one symbol. Sized in em so an icon
+   follows whatever it sits beside rather than needing a size per place. */
+.icon {
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+
+/* Beside a word, on the word's own baseline. Nastaliq and Naskh sit
+   differently in their line box from Latin, so this is nudged rather than
+   aligned to a baseline none of the three share. */
+.icon-inline {
+  width: 1.05em;
+  height: 1.05em;
+  vertical-align: -0.16em;
+  margin-inline-start: 0.15em;
+}
+
+/* On a category heading. Smaller than the cap height on purpose — it is a
+   mark for finding the card again, not a second heading. */
+.category-icon {
+  width: 0.82em;
+  height: 0.82em;
+  margin-inline-end: 0.42em;
+  vertical-align: -0.04em;
+  color: var(--gold-rule);
+  stroke-width: 1.4;
+}
+
+/* The search box. 15px input, so the mark is set against that rather
+   than against the label's own size. */
+.search-icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--gold-on-light);
+  font-size: 19px;
+}
+
+/* A slot filled in by common.js rather than carrying the SVG inline. It
+   has to be inline-flex or the empty span collapses before the drawing
+   arrives and the heading shifts sideways when it lands. */
+.category-icon-slot { display: inline-flex; }
+
+/* On the fatawa panel the gold has to be the on-dark one. This is the
+   reason --gold-on-light and --gold-on-dark are two tokens, and an icon
+   is no more exempt from it than a word is. */
+.rulings .category-icon { color: var(--gold-on-dark); }
 
 /* 4 ── Header & category nav ──────────────────────────────── */
 
@@ -867,7 +929,13 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 /* An arrow is not in any of the Arabic faces, so the browser fetches it
    from wherever it can — on an iPhone that meant Apple Color Emoji and a
    blue tile beside the Urdu. Naming the UI font keeps every arrow on the
-   page the same shape. */
+   page the same shape.
+
+   Kept although nothing rendered today writes a .glyph any more: the
+   file links are drawn icons now, but every work and post page committed
+   before that change still carries the old characters in its own HTML,
+   and will until the editor writes it again. Delete this and those pages
+   lose their arrows to whatever the system substitutes. */
 .glyph { font-family: var(--font-ui); font-weight: 400; }
 
 /* Six charts, each with a link that reads it and a link that saves it.

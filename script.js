@@ -158,7 +158,11 @@
           '<section class="work-category" id="' + site.escapeHtml(category.id) + '">' +
           '<header class="work-category-head">' +
           '<div class="work-category-names">' +
-          '<h3>' + site.escapeHtml(category.title) + '</h3>' +
+          /* A drawing beside the name: seven cards carry the whole
+             library and were told apart by nothing but their headings,
+             so a reader scrolling had no landmark to aim at. */
+          '<h3>' + site.categoryIcon(category, 'category-icon') +
+          site.escapeHtml(category.title) + '</h3>' +
           (category.titleUr ? '<p class="category-urdu urdu align-left" lang="ur" dir="rtl">' + site.escapeHtml(category.titleUr) + '</p>' : '') +
           (category.blurb ? site.proseMarkup(category.blurb, 'category-blurb') : '') +
           '</div>' +

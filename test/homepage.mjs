@@ -15,7 +15,7 @@
    is something a reader would notice if it broke again. */
 
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, extname, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -338,6 +338,87 @@ try {
     t('at ' + width + 'px, every right-aligned line clears the card edge',
       tight.tight.length === 0 && tight.total > 0, JSON.stringify(tight));
     await context.close();
+  }
+
+  /* ---- the icons ----
+
+     Drawn marks rather than borrowed characters. Every one is decorative:
+     it sits beside a word that already says the same thing, so it must
+     stay out of the accessible name entirely. */
+  group('the icons');
+  {
+    const { context, page } = await open(1440);
+    const icons = await page.evaluate(() => {
+      const sprites = document.querySelectorAll('#icon-sprite');
+      const all = [...document.querySelectorAll('svg.icon')];
+      const heads = [...document.querySelectorAll('.work-category-head')]
+        .map((h) => h.querySelectorAll('svg.icon').length);
+      return {
+        sprites: sprites.length,
+        symbols: sprites.length ? sprites[0].querySelectorAll('symbol').length : 0,
+        total: all.length,
+        hidden: all.filter((s) => s.getAttribute('aria-hidden') === 'true').length,
+        focusable: all.filter((s) => s.getAttribute('focusable') === 'false').length,
+        resolved: all.filter((s) => {
+          const id = (s.querySelector('use') || {}).getAttribute
+            ? s.querySelector('use').getAttribute('href') : null;
+          return id && document.querySelector(id);
+        }).length,
+        heads,
+        search: document.querySelectorAll('.search-box svg.icon').length,
+        fatawa: document.querySelectorAll('.rulings h2 svg.icon').length,
+        /* Stroke, not fill, and taking its colour from the text around it —
+           that is what lets one drawing serve the cream and the green. */
+        strokes: all.filter((s) => {
+          const cs = getComputedStyle(s);
+          return cs.fill === 'none' && cs.stroke !== 'none';
+        }).length
+      };
+    });
+    t('the sprite is written in exactly once', icons.sprites === 1, JSON.stringify(icons));
+    t('it holds every drawing in the set', icons.symbols === 11, String(icons.symbols));
+    t('there are icons on the page', icons.total > 10, String(icons.total));
+    t('every <use> resolves to a symbol that exists',
+      icons.resolved === icons.total, JSON.stringify(icons));
+    t('every icon is hidden from a reader who is listening',
+      icons.hidden === icons.total && icons.focusable === icons.total, JSON.stringify(icons));
+    t('every icon is stroked in currentColor, not filled',
+      icons.strokes === icons.total, JSON.stringify(icons));
+    t('every category head carries exactly one',
+      icons.heads.length > 0 && icons.heads.every((n) => n === 1), JSON.stringify(icons.heads));
+    t('the search box and the fatawa heading have theirs',
+      icons.search === 1 && icons.fatawa === 1, JSON.stringify(icons));
+
+    /* An icon must add nothing to what a link is called. "Download ↓" was
+       a character inside the text; a drawing must not become one. */
+    const names = await page.evaluate(() =>
+      [...document.querySelectorAll('.work-category-head, .search-box, .rulings h2')]
+        .map((el) => el.textContent.replace(/\s+/g, ' ').trim())
+        .filter((text) => /[<>]|svg|use href/i.test(text)));
+    t('no icon leaks into the text beside it', names.length === 0, JSON.stringify(names));
+    await context.close();
+  }
+
+  /* ---- what the page weighs ----
+
+     Read off the filesystem, not the browser: this is the check that would
+     have caught a 518KB decorative PNG and two fonts shipped as TTF. */
+  group('the page is not carrying dead weight');
+  {
+    const weigh = async (path) => Math.round((await stat(join(ROOT, path))).size / 1024);
+    const mehr = await weigh('files/fonts/mehr-nastaliq-web.woff2');
+    const aslam = await weigh('files/fonts/Aslam.woff2');
+    const callig = await weigh('files/images/name-calligraphy.png');
+    const css = await readFile(join(ROOT, 'styles.css'), 'utf8');
+    t('both self-hosted fonts are served as woff2 first',
+      /mehr-nastaliq-web\.woff2"\) format\("woff2"\)/.test(css) &&
+      /Aslam\.woff2"\) format\("woff2"\)/.test(css));
+    t('…with the ttf still behind them as a fallback',
+      /mehr-nastaliq-web\.ttf"\) format\("truetype"\)/.test(css) &&
+      /Aslam\.ttf"\) format\("truetype"\)/.test(css));
+    t(`Mehr is ${mehr}KB, under 70`, mehr < 70, String(mehr));
+    t(`Aslam is ${aslam}KB, under 70`, aslam < 70, String(aslam));
+    t(`the calligraphy is ${callig}KB, under 40`, callig < 40, String(callig));
   }
 
   /* ---- widths ---- */

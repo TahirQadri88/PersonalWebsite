@@ -46,6 +46,7 @@ files/images/   the seal used as favicon and header mark, and the calligraphed n
 files/cards/    one link-preview picture per post/work/fatwa, drawn by admin.js
 files/fonts/    Mehr Nastaliq Web (CC BY-SA, credited in the footer) and Aslam
                   (no open license found — used anyway; see its NOTICE.txt).
+                  Each ships as .woff2 with the .ttf behind it as a fallback.
                   Neither is on Google's CDN, so each gets its own @font-face
                   in styles.css instead of a <link> in every page's <head>.
 ```
@@ -197,6 +198,39 @@ author's own English: change them in that one table.
 and `description` first otherwise. An Urdu article carried an English
 sentence under its Urdu title for months because the meta tags read
 `record.description` and nothing else.
+
+**Icons are drawings, and they live in one sprite.** `ICONS` in
+`common.js` holds eleven line drawings on a 24×24 grid — no fill, stroke in
+`currentColor` at 1.5, round caps. `injectSprite` writes them into the page
+once as hidden `<symbol>`s and `site.icon(name)` emits ~55 bytes of `<use>`
+wherever one is wanted, so the whole set costs about 1.3KB and **no extra
+request**. Do not reach for an icon font or a `.svg` per icon: both are
+requests, and both are dependencies this site does not take.
+`currentColor` is what makes one drawing serve the cream and the dark
+fatawa panel alike — which is also why `.rulings .category-icon` has to
+name `--gold-on-dark`. A category gets its drawing from `CATEGORY_ICON`,
+keyed on the category's `id`, the same closed-table pattern as
+`KIND_IN_ENGLISH`; a mark written by hand into `index.html` asks for one
+with `data-icon`. Every icon is decorative — it sits beside a word that
+already says the same thing — so all of them carry `aria-hidden`.
+`→` and `+` are deliberately still characters: `+` is rotated into `×` by
+CSS, and `→` reads as punctuation inside a sentence.
+
+**A published page keeps the marks it was written with.** Nothing rendered
+today writes a `.glyph` any more, but every work and post page committed
+before the icons still carries the old `↗`/`↓` characters in its own HTML,
+and will until the editor writes that page again. The rule stays in
+`styles.css` for exactly that reason.
+
+**Weight is a design decision, and the test measures it.** The homepage was
+961KB: a decorative 518KB PNG inside the collapsed bio, and two fonts
+shipped as TTF. It is ~320KB now — the fonts are woff2 (58% smaller,
+measured), and the calligraphy is written at 840px and 64 colours, which is
+17.6KB against 517.8KB and costs a mean shift of 0.55/255 on flat ink.
+`test/homepage.mjs` reads all three off the filesystem, so none of them can
+creep back. The full-resolution `*-source.*` files are **kept**: nothing
+serves them, they cost a visitor nothing, and after the downsample above
+they are the only originals left.
 
 **Colour contrast.** `--gold-on-light` and `--gold-on-dark` are two different
 values for a reason. Do not collapse them into one.
