@@ -541,6 +541,113 @@ await pickOut(page, 10, 18);
 await use(page, row, 'B');
 await page.waitForTimeout(150);
 
+/* ---- the Site & About panel -----------------------------------------
+
+   The homepage's words are in content.js now, and this is the form that
+   edits them. What matters is the whole way through: a word typed into a
+   field reaches the generated content.js, and from there the generated
+   index.html — three files and two generators between the keystroke and
+   the page. Checking only that the field accepts text would prove none
+   of it. */
+console.log('\nthe Site & About panel');
+
+const panel = page.locator('.admin-group').first();
+t('the panel is above the library',
+  (await panel.locator('h2').textContent()).startsWith('Site & About'),
+  await panel.locator('h2').textContent());
+
+const blocks = await page.locator('.admin-row-plain .admin-row-title').allTextContents();
+for (const name of ['The site itself', 'Header links', 'The hero', 'The author',
+                    'Contact', 'Footer', 'Categories']) {
+  t(`  …with a row for ${name}`, blocks.includes(name), blocks.join(' | '));
+}
+
+/* A filter is a search for a record. Leaving the site's own words on top
+   of the results would be answering a different question. */
+await page.fill('#filter', 'saa-ki');
+await page.waitForTimeout(120);
+t('  …and it steps out of the way when the library is filtered',
+  await page.locator('.admin-row-plain').count() === 0);
+t('  …without the filter claiming nothing matched',
+  await page.locator('.empty-state').count() === 0);
+await page.fill('#filter', 'zzzznothing');
+await page.waitForTimeout(120);
+t('  …and a filter that really matches nothing still says so',
+  await page.locator('.empty-state').count() === 1);
+await page.fill('#filter', '');
+await page.waitForTimeout(150);
+
+/* Typing into the author's introduction, and following it out. */
+const AUTHOR_BLOCK = '.admin-row-plain:has(.admin-row-title:text-is("The author"))';
+await page.locator(AUTHOR_BLOCK + ' > summary').click();
+await page.waitForTimeout(150);
+const headingBox = page.locator(AUTHOR_BLOCK + ' .admin-field:has(label:text-is("Heading")) input');
+const headingWas = await headingBox.inputValue();
+await headingBox.fill('Abul Laith Muhammad Tahir Qadri An-Naeemi, teacher');
+await page.waitForTimeout(120);
+
+/* The Urdu fields are in Nastaleeq and read right to left while they are
+   being typed, not only once published. */
+const labelBox = page.locator(AUTHOR_BLOCK + ' .admin-field:has(label:text-is("Label")) input');
+const script = await labelBox.evaluate((el) => ({
+  dir: el.getAttribute('dir'), cls: el.className, font: getComputedStyle(el).fontFamily
+}));
+t('  …an Urdu field is right to left and in Nastaleeq as it is typed',
+  script.dir === 'rtl' && /urdu/.test(script.cls), JSON.stringify(script));
+
+await page.locator(AUTHOR_BLOCK + ' .admin-files button:text("+ Add a paragraph")').first().click();
+await page.waitForTimeout(120);
+const added = page.locator(AUTHOR_BLOCK + ' .admin-file.is-single textarea').last();
+await added.fill('ایک نیا پیراگراف جو صفحے پر آنا چاہیے۔');
+await page.waitForTimeout(150);
+t('  …a paragraph added to the introduction is in Nastaleeq too',
+  /urdu/.test(await added.getAttribute('class') || ''), await added.getAttribute('class'));
+
+/* And out the other end. */
+await page.click('#export');
+await page.waitForSelector('#out-pages section', { timeout: 30000 });
+await page.waitForTimeout(800);
+const reached = await page.evaluate(() => {
+  const sections = Array.from(document.querySelectorAll('#out-pages section'));
+  const home = sections.find((s) => s.querySelector('h3').textContent.trim() === 'index.html');
+  return { content: document.getElementById('out-content').value,
+           home: home ? home.querySelector('textarea').value : '' };
+});
+t('  …an edit reaches the generated content.js',
+  reached.content.includes('Abul Laith Muhammad Tahir Qadri An-Naeemi, teacher'));
+t('  …and the generated index.html',
+  reached.home.includes('Abul Laith Muhammad Tahir Qadri An-Naeemi, teacher'));
+t('  …a new paragraph reaches both',
+  reached.content.includes('ایک نیا پیراگراف') && reached.home.includes('ایک نیا پیراگراف'));
+t('  …and it lands inside the introduction, not loose on the page',
+  /<div class="bio-prose[^>]*>[\s\S]*?ایک نیا پیراگراف[\s\S]*?<\/div>/.test(reached.home));
+/* content.js is loaded by every visitor. A field that can put an
+   apostrophe or a quote into it must not be able to break it. */
+t('  …and the generated content.js still parses after all of that',
+  (() => { try { const c = {}; new Function('window', reached.content).call(c, c);
+    return !!(c.siteContent && c.siteContent.about); } catch { return false; } })());
+
+/* The dialog is modal — nothing behind it can be clicked while it is
+   open, and the restoring below is all behind it. */
+await page.evaluate(() => document.getElementById('export-dialog').close());
+
+/* Put back what this section typed. Everything below writes the same
+   files out again and compares them with what is committed, and a
+   heading left edited here would read as the generator disagreeing with
+   the repository when it is only this test still holding a pen. */
+await headingBox.fill(headingWas);
+await page.locator(AUTHOR_BLOCK + ' .admin-file.is-single:has(textarea) .admin-danger').last().click();
+await page.waitForTimeout(150);
+await page.locator(AUTHOR_BLOCK + ' > summary').click();
+await page.waitForTimeout(120);
+
+/* Filtering rebuilt the library three times just now, and a rebuild
+   closes every row that is not in view — the post the tests below write
+   into among them. Open it again before carrying on. */
+await row.locator('summary').click();
+await row.locator('.writing-canvas').waitFor();
+await page.waitForTimeout(400);
+
 console.log('\nwriting it out and reading it back');
 
 /* The strongest thing here. Everything above is built out of the block

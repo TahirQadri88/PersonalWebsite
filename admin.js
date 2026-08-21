@@ -192,6 +192,10 @@
       var button = el('button', 'chip' + (item.cls ? ' ' + item.cls : ''));
       button.type = 'button';
       button.textContent = item.text;
+      /* A chip that names a drawing shows it. Eleven names in a row say
+         nothing about which is a book and which is a pen, and the whole
+         point of choosing one is what it looks like. */
+      if (item.icon) button.insertAdjacentHTML('afterbegin', site.icon(item.icon, 'icon-inline'));
       button.setAttribute('aria-pressed', 'false');
       button.addEventListener('click', function () {
         var next = clearable && button.getAttribute('aria-pressed') === 'true' ? '' : item.value;
@@ -2595,6 +2599,441 @@
     }
   }
 
+  /* ---- Site & About ---------------------------------------------------
+
+     Everything on the homepage that is not a record: the site's name and
+     address, the header links, the hero, the author's introduction and
+     the whole of the bio behind it, the contact lines, the footer credit,
+     and each category's own name, blurb and drawing.
+
+     All of it was typed into index.html and content.js by hand until now
+     — the introduction included, which is the piece anyone would want to
+     change and the one thing no form could reach. It is one panel above
+     the library, built from the same three helpers a record's row is
+     built from, so there is nothing new about how it behaves and a phone
+     gets the same one-column stack it already gets everywhere here. */
+
+  /* Which of these were open. render() runs again on every reorder, and
+     a panel that shut itself each time would be unusable to reorder
+     anything with. */
+  var openBlocks = {};
+
+  function block(title, note) {
+    var row = el('details', 'admin-row admin-row-plain');
+    row.open = !!openBlocks[title];
+    row.addEventListener('toggle', function () { openBlocks[title] = row.open; });
+    var summary = document.createElement('summary');
+    summary.appendChild(el('span', 'admin-row-title', title));
+    summary.appendChild(el('span', 'admin-row-meta', note || ''));
+    var toggle = el('span', 'toggle', '+');
+    toggle.setAttribute('aria-hidden', 'true');
+    summary.appendChild(toggle);
+    row.appendChild(summary);
+    row.fields = el('div', 'admin-fields');
+    row.appendChild(row.fields);
+    return row;
+  }
+
+  /* A labelled box bound to one key of one object — which is what nearly
+     every field in this panel is. The script follows what is typed, the
+     same way a record's title does, so an Urdu line is in Nastaleeq and
+     reading right to left while it is being written and not only after. */
+  function bound(fields, object, key, label, hint, big) {
+    var wrap = field(label, hint);
+    var control = big
+      ? textArea(object[key], function (value) { object[key] = value; })
+      : textInput(object[key], function (value) { object[key] = value; });
+    var follow = function () { applyScript(control, scriptOf(control.value, 'ur') || 'en'); };
+    follow();
+    control.addEventListener('input', follow);
+    wrap.appendChild(wrap.own(control));
+    fields.appendChild(wrap);
+    return wrap;
+  }
+
+  /* A box of rows that can be added to and removed from. The Files field
+     has worked this way since the editor was written; this is that
+     pattern lifted out, so the introduction's paragraphs, its facts, a
+     panel's items and the header's links all behave like it rather than
+     each growing a shape of its own. */
+  function repeatable(fields, label, hint, list, addLabel, drawRow, blank, onChange) {
+    var wrap = field(label, hint);
+    var box = el('div', 'admin-files');
+    wrap.appendChild(wrap.group(box));
+    fields.appendChild(wrap);
+
+    function draw() {
+      box.textContent = '';
+      list.forEach(function (item, index) {
+        var line = el('div', 'admin-file');
+        var single = drawRow(line, item, index);
+        if (single) line.classList.add('is-single');
+        var remove = el('button', 'text-link admin-danger', 'Remove');
+        remove.type = 'button';
+        remove.addEventListener('click', function () {
+          list.splice(index, 1);
+          draw();
+          markDirty();
+          if (onChange) onChange();
+        });
+        line.appendChild(remove);
+        box.appendChild(line);
+      });
+      var add = el('button', 'text-link', addLabel);
+      add.type = 'button';
+      add.addEventListener('click', function () {
+        list.push(blank());
+        draw();
+        markDirty();
+        if (onChange) onChange();
+      });
+      box.appendChild(add);
+    }
+    draw();
+    return draw;
+  }
+
+  /* One line inside a repeatable row, bound the same way `bound` binds a
+     field — without the label, since the box above it carries that. */
+  function lineInput(object, key, placeholder, aria) {
+    var input = textInput(object[key], function (value) { object[key] = value; });
+    input.placeholder = placeholder || '';
+    input.setAttribute('aria-label', aria || placeholder || '');
+    var follow = function () { applyScript(input, scriptOf(input.value, 'ur') || 'en'); };
+    follow();
+    input.addEventListener('input', follow);
+    return input;
+  }
+
+  function siteBlock() {
+    var row = block('The site itself', 'name, email, address');
+    var site_ = model.site;
+    bound(row.fields, site_, 'name', 'Name', 'as it is written in English — the footer and every page’s byline read this');
+    bound(row.fields, site_, 'nameUr', 'Name in Urdu');
+    bound(row.fields, site_, 'email', 'Email', 'the address the Contact button opens');
+    bound(row.fields, site_, 'baseUrl', 'Address',
+      'the site’s own domain. Changing it here is not enough on its own — robots.txt, sitemap.xml, the CNAME file and the sharing tags in index.html all name it too');
+    return row;
+  }
+
+  function navBlock() {
+    var row = block('Header links', 'the four across the top');
+    repeatable(row.fields, 'Links',
+      'the text, then where it goes — #about, #library, #rulings, #contact, or a page',
+      model.nav, '+ Add a link',
+      function (line, link) {
+        line.appendChild(lineInput(link, 'text', 'Author', 'What this link says'));
+        line.appendChild(lineInput(link, 'href', '#about', 'Where this link goes'));
+        var echo = el('label', 'admin-check');
+        var box = document.createElement('input');
+        box.type = 'checkbox';
+        box.checked = !!link.echo;
+        box.addEventListener('change', function () {
+          link.echo = box.checked || undefined;
+          markDirty();
+        });
+        echo.appendChild(box);
+        echo.appendChild(document.createTextNode(' Echoed in the category strip'));
+        line.appendChild(echo);
+      },
+      function () { return { text: '', href: '#' }; });
+    return row;
+  }
+
+  function heroBlock() {
+    var row = block('The hero', 'the first screen');
+    var hero = model.hero;
+    bound(row.fields, hero, 'eyebrow', 'Above the headline');
+    bound(row.fields, hero, 'headline', 'Headline', 'the plain half, up to the words set in italic');
+    bound(row.fields, hero, 'headlineEm', 'Headline, in italic', 'the tail of the same sentence, set in the display italic and gold');
+    bound(row.fields, hero, 'copy', 'The paragraph under it', null, true);
+    bound(row.fields, hero, 'urdu', 'The Urdu line under that');
+    bound(row.fields, hero, 'cta', 'The button');
+    return row;
+  }
+
+  function aboutBlock() {
+    var row = block('The author', 'the introduction, and the whole of the bio behind it');
+    var about = model.about;
+    if (!about.bio) about.bio = {};
+    var bio = about.bio;
+
+    bound(row.fields, about, 'label', 'Label', 'the small line above the name');
+    bound(row.fields, about, 'heading', 'Heading');
+    bound(row.fields, about, 'summary', 'The paragraph everyone sees',
+      'what is on the page before anything is opened', true);
+
+    row.fields.appendChild(el('p', 'hint', 'Everything below is behind “' +
+      (bio.openLabel || 'Read the full introduction') + '”.'));
+
+    bound(row.fields, bio, 'openLabel', 'What the fold says');
+    bound(row.fields, bio, 'openLabelUr', 'The label above it');
+    bound(row.fields, bio, 'nameUr', 'The name, in Urdu');
+    bound(row.fields, bio, 'byline', 'Who wrote the introduction', 'the “از قلم” line');
+
+    if (!bio.prose) bio.prose = [];
+    proseList(row.fields, bio);
+
+    if (!bio.facts) bio.facts = [];
+    repeatable(row.fields, 'The facts panel', 'نام, کنیت, مرشدِ گرامی, تدریس — the pair of columns',
+      bio.facts, '+ Add a fact',
+      function (line, fact) {
+        line.appendChild(lineInput(fact, 'term', 'نام', 'What this fact is called'));
+        line.appendChild(lineInput(fact, 'value', '', 'The fact itself'));
+      },
+      function () { return { term: '', value: '' }; });
+
+    if (!bio.panels) bio.panels = [];
+    panelsList(row.fields, bio);
+
+    if (!bio.pdf) bio.pdf = {};
+    bound(row.fields, bio.pdf, 'label', 'The link at the end');
+    bound(row.fields, bio.pdf, 'url', 'and what it opens', 'a path under files/, or an address');
+    return row;
+  }
+
+  /* Paragraphs are long, so each gets a box it can grow in rather than
+     the one-line input the shorter lists use. */
+  function proseList(fields, bio) {
+    var wrap = field('The introduction itself', 'one box per paragraph');
+    var box = el('div', 'admin-files');
+    wrap.appendChild(wrap.group(box));
+    fields.appendChild(wrap);
+
+    function draw() {
+      box.textContent = '';
+      bio.prose.forEach(function (text, index) {
+        var line = el('div', 'admin-file is-single');
+        var area = textArea(text, function (value) { bio.prose[index] = value; });
+        area.setAttribute('aria-label', 'Paragraph ' + (index + 1));
+        var follow = function () { applyScript(area, scriptOf(area.value, 'ur') || 'en'); };
+        follow();
+        area.addEventListener('input', follow);
+        var remove = el('button', 'text-link admin-danger', 'Remove');
+        remove.type = 'button';
+        remove.addEventListener('click', function () {
+          bio.prose.splice(index, 1);
+          draw();
+          markDirty();
+        });
+        line.appendChild(area);
+        line.appendChild(remove);
+        box.appendChild(line);
+      });
+      var add = el('button', 'text-link', '+ Add a paragraph');
+      add.type = 'button';
+      add.addEventListener('click', function () {
+        bio.prose.push('');
+        draw();
+        markDirty();
+      });
+      box.appendChild(add);
+    }
+    draw();
+  }
+
+  var PANEL_KINDS = [
+    { value: 'ol', text: 'Numbered' },
+    { value: 'ul', text: 'Bulleted' },
+    { value: 'prose', text: 'Paragraphs' }
+  ];
+
+  /* A panel holds a heading and a list, and each list is its own
+     repeatable box — so this is a repeatable of repeatables, and the only
+     part of the panel that needed more than one line to build. */
+  function panelsList(fields, bio) {
+    var wrap = field('The panels', 'each opens on the page — تعلیمی سفر, اجازات and the rest');
+    var box = el('div', 'admin-files');
+    box.classList.add('admin-panels');
+    wrap.appendChild(wrap.group(box));
+    fields.appendChild(wrap);
+
+    function draw() {
+      box.textContent = '';
+      bio.panels.forEach(function (panel, index) {
+        var card = el('div', 'admin-panel');
+        var head = el('div', 'admin-file');
+        head.appendChild(lineInput(panel, 'title', '', 'What this panel is called'));
+        head.appendChild(chipGroup(PANEL_KINDS, panel.kind || 'ul', function (value) {
+          panel.kind = value;
+          markDirty();
+        }));
+        var remove = el('button', 'text-link admin-danger', 'Remove');
+        remove.type = 'button';
+        remove.addEventListener('click', function () {
+          bio.panels.splice(index, 1);
+          draw();
+          markDirty();
+        });
+        head.appendChild(remove);
+        card.appendChild(head);
+
+        if (!panel.items) panel.items = [];
+        var items = el('div', 'admin-files');
+        card.appendChild(items);
+        drawItems(items, panel);
+        box.appendChild(card);
+      });
+      var add = el('button', 'text-link', '+ Add a panel');
+      add.type = 'button';
+      add.addEventListener('click', function () {
+        bio.panels.push({ title: '', kind: 'ul', items: [] });
+        draw();
+        markDirty();
+      });
+      box.appendChild(add);
+    }
+
+    function drawItems(items, panel) {
+      items.textContent = '';
+      panel.items.forEach(function (text, index) {
+        var line = el('div', 'admin-file is-single');
+        var input = textInput(text, function (value) { panel.items[index] = value; });
+        input.setAttribute('aria-label', 'Item ' + (index + 1) + ' of ' + (panel.title || 'this panel'));
+        var follow = function () { applyScript(input, scriptOf(input.value, 'ur') || 'en'); };
+        follow();
+        input.addEventListener('input', follow);
+        var remove = el('button', 'text-link admin-danger', 'Remove');
+        remove.type = 'button';
+        remove.addEventListener('click', function () {
+          panel.items.splice(index, 1);
+          drawItems(items, panel);
+          markDirty();
+        });
+        line.appendChild(input);
+        line.appendChild(remove);
+        items.appendChild(line);
+      });
+      var add = el('button', 'text-link', '+ Add an item');
+      add.type = 'button';
+      add.addEventListener('click', function () {
+        panel.items.push('');
+        drawItems(items, panel);
+        markDirty();
+      });
+      items.appendChild(add);
+    }
+
+    draw();
+  }
+
+  function contactBlock() {
+    var row = block('Contact', 'the last section on the page');
+    bound(row.fields, model.contact, 'label', 'Label');
+    bound(row.fields, model.contact, 'heading', 'Heading');
+    bound(row.fields, model.contact, 'copy', 'The paragraph', null, true);
+    bound(row.fields, model.contact, 'button', 'The button');
+    return row;
+  }
+
+  function footerBlock() {
+    var row = block('Footer', 'the credit line');
+    bound(row.fields, model.footer, 'credit', 'Credit',
+      'the font Urdu is set in is licensed CC BY-SA, and the licence asks to be named');
+    return row;
+  }
+
+  /* The categories themselves — their names, their blurbs, the drawing
+     beside each heading, and the order they are read in. A record can be
+     moved between them already; until now the category it was moved into
+     could not be renamed. */
+  function categoriesBlock() {
+    var row = block('Categories', (model.categories || []).length + ' in the library');
+    var wrap = field('Each category', 'the works inside them are edited below, in the library itself');
+    var box = el('div', 'admin-files');
+    box.classList.add('admin-panels');
+    wrap.appendChild(wrap.group(box));
+    row.fields.appendChild(wrap);
+
+    var icons = site.iconNames().map(function (name) { return { value: name, text: name, icon: name }; });
+
+    function draw() {
+      box.textContent = '';
+      (model.categories || []).forEach(function (category, index) {
+        var card = el('div', 'admin-panel');
+        var fields = el('div', 'admin-fields');
+        card.appendChild(fields);
+
+        bound(fields, category, 'title', 'Name');
+        bound(fields, category, 'titleUr', 'Name in Urdu');
+        bound(fields, category, 'blurb', 'Blurb', 'the line under the name', true);
+
+        var iconField = field('Drawing', 'the mark beside the heading');
+        iconField.appendChild(iconField.group(chipGroup(icons, category.icon || site.categoryIconName(category), function (value) {
+          category.icon = value;
+          markDirty();
+          render();
+        })));
+        fields.appendChild(iconField);
+
+        var tools = el('div', 'admin-row-tools');
+        var up = el('button', 'text-link', '↑ Move up');
+        up.type = 'button';
+        up.addEventListener('click', function () {
+          if (index === 0) return;
+          model.categories.splice(index - 1, 0, model.categories.splice(index, 1)[0]);
+          markDirty();
+          render();
+        });
+        var down = el('button', 'text-link', '↓ Move down');
+        down.type = 'button';
+        down.addEventListener('click', function () {
+          if (index >= model.categories.length - 1) return;
+          model.categories.splice(index + 1, 0, model.categories.splice(index, 1)[0]);
+          markDirty();
+          render();
+        });
+        /* A category with works in it is not deleted, it is emptied
+           first. Deleting it here would take every work with it and
+           every link anyone holds to one of them. */
+        var remove = el('button', 'text-link admin-danger', 'Delete this category');
+        remove.type = 'button';
+        remove.addEventListener('click', function () {
+          var count = (category.works || []).length;
+          if (count) {
+            window.alert('“' + (category.title || category.id) + '” still holds ' + count +
+              (count === 1 ? ' work' : ' works') +
+              '.\n\nMove them to another category first — each row has a Category field — ' +
+              'or delete them one at a time. Deleting the category here would take them with it, ' +
+              'and every link already shared to one of them.');
+            return;
+          }
+          if (!window.confirm('Delete the empty category “' + (category.title || category.id) + '”?')) return;
+          model.categories.splice(index, 1);
+          markDirty();
+          render();
+        });
+        tools.appendChild(up);
+        tools.appendChild(down);
+        tools.appendChild(remove);
+        fields.appendChild(tools);
+        box.appendChild(card);
+      });
+
+      var add = el('button', 'text-link', '+ Add a category');
+      add.type = 'button';
+      add.addEventListener('click', function () {
+        model.categories.push({ id: freshId('category'), title: 'New category', works: [] });
+        markDirty();
+        render();
+      });
+      box.appendChild(add);
+    }
+    draw();
+    return row;
+  }
+
+  function buildSitePanel() {
+    var group = el('section', 'admin-group');
+    var heading = el('h2', null, 'Site & About');
+    heading.appendChild(el('span', 'admin-count', 'the homepage, and the categories'));
+    group.appendChild(heading);
+    [siteBlock(), navBlock(), heroBlock(), aboutBlock(),
+     contactBlock(), footerBlock(), categoriesBlock()]
+      .forEach(function (row) { group.appendChild(row); });
+    return group;
+  }
+
   /* ---- Drawing everything ---- */
 
   function matchesFilter(entry, needle) {
@@ -2615,11 +3054,21 @@
     var needle = site.fold(filterInput.value);
     var openIds = {};
     editor.querySelectorAll('.admin-row[open]').forEach(function (row) {
-      openIds[row.querySelector('.admin-row-id').textContent] = true;
+      /* The Site & About rows are .admin-row too and have no id — they
+         are not records. They remember whether they were open for
+         themselves, in openBlocks. */
+      var id = row.querySelector('.admin-row-id');
+      if (id) openIds[id.textContent] = true;
     });
 
     editor.textContent = '';
 
+    /* Above the library, and only when the whole library is showing. A
+       filter is a search for a record; leaving the site's own words at
+       the top of the results would be answering a different question. */
+    if (!needle) editor.appendChild(buildSitePanel());
+
+    var shown = 0;
     (model.categories || []).forEach(function (category) {
       var entries = allRecords().filter(function (entry) {
         return entry.category === category && matchesFilter(entry, needle);
@@ -2635,6 +3084,7 @@
         group.appendChild(row);
       });
       editor.appendChild(group);
+      shown += 1;
     });
 
     var rulings = allRecords().filter(function (entry) {
@@ -2651,9 +3101,13 @@
         group.appendChild(row);
       });
       editor.appendChild(group);
+      shown += 1;
     }
 
-    if (!editor.children.length) {
+    /* Counted, not measured off the page: the Site & About panel is an
+       .admin-group too, so asking whether anything was drawn would always
+       answer yes and a filter matching nothing would say nothing. */
+    if (!shown) {
       editor.appendChild(el('p', 'empty-state', 'Nothing matches that filter.'));
     }
   }
@@ -2941,6 +3395,7 @@
           '      id: ' + str(category.id) + ',\n' +
           '      title: ' + str(category.title) + ',\n' +
           (category.titleUr ? '      titleUr: ' + str(category.titleUr) + ',\n' : '') +
+          (category.icon ? '      icon: ' + str(category.icon) + ',\n' : '') +
           (category.blurb ? '      blurb: ' + str(category.blurb) + ',\n' : '') +
           '      works: [\n';
         var works = (category.works || [])

@@ -418,8 +418,23 @@
     );
   }
 
+  /* A category's drawing. CATEGORY_ICON is the table that has always
+     named one per id; `icon` on the category itself overrules it, so a
+     category made in the editor can be given a drawing without anyone
+     editing this file. The table stays because the six that were here
+     first should not each have to carry a field saying what they have
+     always been. */
+  function categoryIconName(category) {
+    return (category && category.icon) || CATEGORY_ICON[category && category.id] || '';
+  }
+
   function categoryIcon(category, className) {
-    return icon(CATEGORY_ICON[category && category.id], className);
+    return icon(categoryIconName(category), className);
+  }
+
+  /* Every drawing there is, for the editor to offer. */
+  function iconNames() {
+    return Object.keys(ICONS);
   }
 
   var LANGUAGE_NAMES = { ur: 'Urdu', ar: 'Arabic', en: 'English' };
@@ -1045,6 +1060,8 @@
     isArabicScript: isArabicScript,
     icon: icon,
     categoryIcon: categoryIcon,
+    categoryIconName: categoryIconName,
+    iconNames: iconNames,
     drawIconsOnEntry: drawIconsOnEntry,
     recordKind: recordKind,
     kindMarkup: kindMarkup,
