@@ -543,6 +543,138 @@ try {
     }
   }
 
+  /* ---- recently added and updated ----
+
+     The strip is written into index.html at publish time rather than
+     drawn by script, which is the whole reason the homepage's words moved
+     into content.js. So the strongest thing here is the last case: with
+     JavaScript turned off the cards are still on the page and still
+     readable. Nothing else on this page can say that. */
+  group('recently added and updated');
+  {
+    const { context, page } = await open(1440);
+    const strip = await page.evaluate(() => {
+      const cards = [...document.querySelectorAll('.recent-card')];
+      const stamp = (card) => {
+        const meta = card.querySelector('.record-meta');
+        return meta ? meta.textContent : '';
+      };
+      return {
+        cards: cards.length,
+        titled: cards.filter((c) => (c.querySelector('.record-title') || {}).textContent).length,
+        linked: cards.filter((c) => c.getAttribute('href')).length,
+        kinds: cards.filter((c) => c.querySelector('.work-kind')).length,
+        marks: cards.filter((c) => c.querySelector('svg use')).length,
+        dates: cards.map(stamp),
+        /* Every card reads on the one axis its own script starts from,
+           the same rule the library rows follow. */
+        axes: cards.map((c) => {
+          const body = c.querySelector('.recent-card-body');
+          const title = c.querySelector('.record-title');
+          const rtl = body.getAttribute('dir') === 'rtl';
+          const b = body.getBoundingClientRect(), tl = title.getBoundingClientRect();
+          return rtl ? Math.abs(b.right - tl.right) < 2 : Math.abs(b.left - tl.left) < 2;
+        })
+      };
+    });
+    t('the strip lists what changed most recently', strip.cards > 0, JSON.stringify(strip));
+    t('  …every card has a title, a link, a kind and a drawing',
+      strip.titled === strip.cards && strip.linked === strip.cards &&
+      strip.kinds === strip.cards && strip.marks === strip.cards, JSON.stringify(strip));
+    t('  …and says when, on every one of them',
+      strip.dates.every((d) => /\d{4}/.test(d)), JSON.stringify(strip.dates));
+    t('  …each reading from the side its own script starts from',
+      strip.axes.every(Boolean), JSON.stringify(strip.axes));
+
+    /* Newest first. Read off the page rather than out of content.js —
+       the order a reader gets is the thing being checked. */
+    const order = await page.evaluate(() => {
+      const ids = [...document.querySelectorAll('.recent-card')].map((c) => c.getAttribute('href'));
+      const by = {};
+      const walk = (list, category) => list.forEach((r) => {
+        by[r.page || ('works/' + r.id + '.html')] = r.updated || r.date || '';
+      });
+      (window.siteContent.categories || []).forEach((c) => walk(c.works || [], c));
+      walk(window.siteContent.rulings || []);
+      return ids.map((href) => by[href] || '');
+    });
+    t('  …newest first', order.every((d, i) => i === 0 || order[i - 1] >= d), JSON.stringify(order));
+
+    /* The rail's ends, the same contract the category strip uses. */
+    const ends = await page.evaluate(() => {
+      const bar = document.getElementById('recent-rail');
+      const track = document.getElementById('recent-track');
+      const before = bar.getAttribute('data-more-before');
+      const after = bar.getAttribute('data-more-after');
+      track.scrollLeft = track.scrollWidth;
+      return new Promise((done) => setTimeout(() => done({
+        before, after,
+        thenBefore: bar.getAttribute('data-more-before'),
+        thenAfter: bar.getAttribute('data-more-after'),
+        scrolls: track.scrollWidth > track.clientWidth
+      }), 200));
+    });
+    t('  …the rail says which way there is more, and changes its mind when you scroll',
+      !ends.scrolls || (ends.before === 'false' && ends.thenBefore === 'true' && ends.thenAfter === 'false'),
+      JSON.stringify(ends));
+
+    /* Scrolling the rail must move the rail and not the page. That fault
+       has already shipped once here, on the category strip. */
+    const held = await page.evaluate(() => {
+      window.scrollTo({ top: 400, behavior: 'instant' });
+      const was = window.scrollY;
+      document.getElementById('recent-forward').click();
+      return new Promise((done) => setTimeout(() => done({ was, now: window.scrollY }), 600));
+    });
+    t('  …and the arrow scrolls the rail, not the page', held.was === held.now, JSON.stringify(held));
+    await context.close();
+  }
+
+  /* The three cases the cards' arrival has to survive, the same three the
+     icons above are held to. */
+  {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
+    await context.route('https://fonts.g**', (r) => r.abort());
+    const page = await context.newPage();
+    await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'networkidle' });
+    await page.locator('#recent').scrollIntoViewIfNeeded();
+    await page.waitForTimeout(900);
+    const r = await page.evaluate(() => {
+      const cards = [...document.querySelectorAll('.recent-card')];
+      return { count: cards.length,
+               risen: cards.filter((c) => c.classList.contains('card-rise')).length,
+               solid: cards.filter((c) => getComputedStyle(c).opacity === '1').length };
+    });
+    t('a reader who asked for less motion gets the cards, unanimated',
+      r.count > 0 && r.risen === 0 && r.solid === r.count, JSON.stringify(r));
+    await context.close();
+  }
+  {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, javaScriptEnabled: false });
+    await context.route('https://fonts.g**', (r) => r.abort());
+    const page = await context.newPage();
+    await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'networkidle' });
+    const r = await page.evaluate(() => {
+      const cards = [...document.querySelectorAll('.recent-card')];
+      return { count: cards.length,
+               solid: cards.filter((c) => {
+                 const cs = getComputedStyle(c);
+                 const box = c.getBoundingClientRect();
+                 return cs.opacity === '1' && cs.visibility === 'visible' && box.width > 40;
+               }).length,
+               titles: cards.map((c) => (c.querySelector('.record-title') || {}).textContent || '') };
+    });
+    /* This is the argument for the whole splice. The library below is
+       drawn by script and is simply not here without one; the strip is in
+       the file, so it is. */
+    t('with JavaScript off the cards are still on the page, and readable',
+      r.count > 0 && r.solid === r.count, JSON.stringify(r).slice(0, 240));
+    t('  …with their titles in them', r.titles.every((x) => x.length > 0), JSON.stringify(r.titles));
+    t('  …while the library below needs script and has none',
+      (await page.locator('.work-category').count()) === 0);
+    await context.close();
+  }
+
   /* ---- the rail marking your place ---- */
   group('the rail says where you are');
   {

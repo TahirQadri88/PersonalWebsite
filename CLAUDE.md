@@ -145,6 +145,44 @@ published through the editor. Relative file paths inside a work page climb
 back out with `../`, since the page now lives one folder down; an offsite
 link (Google Drive) is left alone. See `site.isOffsite`.
 
+**A record carries the day it was last edited, and the editor stamps
+it.** `updated` is written by `touch(record)` in `admin.js`, from a
+listener delegated on the row — so a field added later cannot be
+forgotten — and it is what the *Recently added and updated* strip is
+ordered by, newest first, `updated || date`. Not stamped at publish
+time: a publish rewrites every page in the library whether or not
+anything about it changed, which is deliberate, so stamping there would
+mark all twenty-three as new every time and the strip would say nothing.
+Moving a record up the page or into another category does **not** stamp
+it — that changes where it is read, not what it says.
+
+The date is `today()`, built from local date parts. `toISOString()` is
+UTC and Karachi is five hours ahead of it, so a post written before five
+in the morning was stamped with yesterday. `site.formatDate` has never
+had that fault — it parses `"2026-08-04"` with a regex and never builds
+a `Date` — and `recordMeta` falls back to `updated` when a record has no
+`date` of its own, so the row, the card and the page all say the same
+thing from one function.
+
+**The recently-added strip is in the file, not drawn by a script.** It is
+generated into `index.html` by `indexRecent` at publish time like every
+other marked region, which is why `test/homepage.mjs` can turn
+JavaScript off and still find the cards with their titles in them —
+where the library below it renders nothing at all. Every part of a card
+comes from the helper the library row uses for the same part —
+`titleMarkup`, `kindMarkup`, `metaMarkup`, `categoryIcon` — so a card
+cannot end up saying something different from the row it mirrors.
+
+`rail()` in `script.js` is the category strip's own scrolling behaviour,
+extracted and used twice. It scrolls the *track*, never
+`scrollIntoView` — same reason as the rail that marks your place.
+
+The cards rise as they arrive, and `card-rise` carries both the movement
+**and** the state it moves from. Putting `opacity: 0` on `.recent-card`
+itself was tried and the tests caught it: no JavaScript, no
+`IntersectionObserver`, or `prefers-reduced-motion` must each leave the
+cards exactly where they already are. Same argument as the icons.
+
 **Missing files are a normal state.** A work with no `files` array renders as
 "Not published here yet". Do not delete such entries or invent placeholder URLs.
 
@@ -287,7 +325,7 @@ serves them, they cost a visitor nothing, and after the downsample above
 they are the only originals left.
 
 **Space between sections is a ratio, not a number.** `--block` sets the
-vertical padding on the four full-bleed sections and nothing else reads
+vertical padding on the five full-bleed sections and nothing else reads
 it. It was `clamp(56px, 8vw, 118px)`, which gave 236–283px between
 sections at 1440 — 15 to 18 body lines — against 30px between the
 category cards inside the library. Nine to one is what made the page read

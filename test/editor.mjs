@@ -231,6 +231,41 @@ page.on('dialog', async (d) => {
 
 let row = await openEditor(page);
 
+/* ---- the generator agrees with the repository -----------------------
+
+   content.js and index.html are both written by this editor, and both are
+   committed. If what it writes today differs from what is in the branch,
+   every publish carries files nobody edited — and worse, the reverse is
+   invisible: a generator quietly drifting from the committed page is only
+   found when someone reads a diff.
+
+   So this runs first, before any test below has typed a character. Once
+   they have, "unchanged" is no longer the question. */
+console.log('\nwhat the editor writes, against what is committed');
+{
+  await page.click('#export');
+  await page.waitForSelector('#out-pages section', { timeout: 30000 });
+  await page.waitForTimeout(800);
+  const made = await page.evaluate(() => {
+    const home = [...document.querySelectorAll('#out-pages section')]
+      .find((x) => x.querySelector('h3').textContent.trim() === 'index.html');
+    return { content: document.getElementById('out-content').value,
+             home: home ? home.querySelector('textarea').value : null };
+  });
+  const onDisk = {
+    content: await readFile(join(ROOT, 'content.js'), 'utf8'),
+    home: await readFile(join(ROOT, 'index.html'), 'utf8')
+  };
+  t('the content.js it writes is the content.js in the branch',
+    made.content === onDisk.content,
+    made.content === onDisk.content ? '' : firstDifference(onDisk.content, made.content));
+  t('the index.html it writes is the index.html in the branch',
+    made.home === onDisk.home,
+    made.home === onDisk.home ? '' : firstDifference(onDisk.home, made.home || ''));
+  await page.evaluate(() => document.getElementById('export-dialog').close());
+  await page.waitForTimeout(150);
+}
+
 console.log('\nthe Style buttons');
 
 for (const [word, tag, cls] of [['Heading', 'H2', ''], ['Sub-heading', 'H3', ''],
@@ -623,6 +658,25 @@ t('  …and it lands inside the introduction, not loose on the page',
   /<div class="bio-prose[^>]*>[\s\S]*?ایک نیا پیراگراف[\s\S]*?<\/div>/.test(reached.home));
 /* content.js is loaded by every visitor. A field that can put an
    apostrophe or a quote into it must not be able to break it. */
+/* Editing a record stamps the day it was edited on it, which is what the
+   strip on the homepage is ordered by. Stamped here rather than at
+   publish time: a publish rewrites every page in the library whether or
+   not anything about it changed, so stamping there would mark the whole
+   library as new every time and the strip would say nothing. */
+{
+  const now = new Date();
+  const stamp = now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+  t('  …and the record typed into earlier carries the day it was edited',
+    reached.content.includes('updated: "' + stamp + '"'), stamp);
+  /* In the author's own day, not UTC's. Karachi is five hours ahead, so
+     a post written before five in the morning used to be stamped
+     yesterday. */
+  t('  …in the day where the editor is, not UTC\u2019s',
+    !reached.content.includes('updated: "' + new Date(Date.now() - 864e5).toISOString().slice(0, 10) + '"') ||
+    stamp === new Date(Date.now() - 864e5).toISOString().slice(0, 10), stamp);
+}
+
 t('  …and the generated content.js still parses after all of that',
   (() => { try { const c = {}; new Function('window', reached.content).call(c, c);
     return !!(c.siteContent && c.siteContent.about); } catch { return false; } })());
@@ -731,10 +785,6 @@ const home = await page.evaluate(() => {
   return mine ? mine.querySelector('textarea').value : null;
 });
 t('index.html is among the files a publish would write', typeof home === 'string' && home.length > 0);
-
-const shipped = await readFile(join(ROOT, 'index.html'), 'utf8');
-t('  …and it is what is already committed, so a publish with nothing edited commits nothing',
-  home === shipped, home === shipped ? '' : firstDifference(shipped, home || ''));
 
 for (const region of ['nav', 'hero', 'about', 'recent', 'contact', 'footer']) {
   t(`  …the ${region} region survives being written`,

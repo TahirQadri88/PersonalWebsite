@@ -99,6 +99,30 @@
     dirtyNote.textContent = 'Unsaved changes';
   }
 
+  /* Today, where the person editing is — not in UTC. toISOString() gives
+     UTC, and Karachi is five hours ahead of it, so a post written between
+     midnight and five in the morning was stamped with yesterday. */
+  function today() {
+    var now = new Date();
+    return now.getFullYear() + '-' +
+      String(now.getMonth() + 1).padStart(2, '0') + '-' +
+      String(now.getDate()).padStart(2, '0');
+  }
+
+  /* A record that was just changed is a record that was just updated, and
+     the strip on the homepage reads that.
+
+     Stamped as it is edited rather than at publish time. A publish
+     rewrites every page in the library whether or not anything about it
+     changed — that is deliberate, and it is why there is never a "does
+     this still match" question to answer by hand — so stamping there
+     would mark all twenty-three as new, every time, and the strip would
+     say nothing at all. */
+  function touch(record) {
+    if (!record || !record.id) return;
+    record.updated = today();
+  }
+
   /* ---- Small builders ---- */
 
   function el(tag, className, text) {
@@ -2203,10 +2227,84 @@
     ]);
   }
 
-  /* Filled in with the recently added strip. Until then the markers sit
-     in the page with nothing between them, which is what an empty region
-     looks like and costs a reader nothing. */
-  function indexRecent() { return ''; }
+  /* ---- Recently added and updated -----------------------------------
+
+     Eight cards, newest first, on a rail that scrolls. The date they are
+     ordered by is `updated` where a record has one and `date` where it
+     does not — `updated` is stamped as a record is edited, not at publish
+     time, because a publish rewrites every page in the library whether or
+     not anything about it changed.
+
+     Every part of a card comes from the helper the library row uses for
+     the same part — titleMarkup, kindMarkup, metaMarkup, categoryIcon —
+     so a card cannot end up saying something different from the row it
+     mirrors. That has already happened once on this site, when the kind
+     and its English rendering each kept their own copy of a default. */
+  var RECENT_MAX = 8;
+
+  /* Fatawa are not in a category, and their drawing is looked up by one.
+     The stand-in is what CATEGORY_ICON has always keyed the seal on. */
+  var RULINGS_CATEGORY = { id: 'rulings' };
+
+  function recentEntries() {
+    return allRecords()
+      .filter(function (entry) { return entry.record.updated || entry.record.date; })
+      .sort(function (a, b) {
+        var x = a.record.updated || a.record.date;
+        var y = b.record.updated || b.record.date;
+        /* ISO dates sort as text, which is the whole reason for the
+           format — no Date object, so no timezone to shift a day by. */
+        return x < y ? 1 : x > y ? -1 : 0;
+      })
+      .slice(0, RECENT_MAX);
+  }
+
+  function indexRecent(indent) {
+    var e = site.escapeHtml;
+    var entries = recentEntries();
+    /* Nothing dated yet is not an empty section with a heading over it —
+       it is no section. */
+    if (!entries.length) return '';
+    var i = indent;
+
+    var cards = entries.map(function (entry) {
+      var record = entry.record;
+      var dir = site.direction(record.language);
+      return [
+        pad(i + 6) + '<a class="recent-card" href="' + e(site.recordHref(record)) + '">',
+        pad(i + 8) + site.categoryIcon(entry.category || RULINGS_CATEGORY, 'category-icon recent-mark'),
+        pad(i + 8) + '<span class="recent-card-body ' +
+          (dir === 'rtl' ? 'reads-rtl' : 'reads-ltr') + '" dir="' + dir + '">',
+        pad(i + 10) + site.titleMarkup(record),
+        pad(i + 10) + '<span class="work-line">' + site.kindMarkup(record) +
+          site.metaMarkup(record) + '</span>',
+        pad(i + 8) + '</span>',
+        pad(i + 6) + '</a>'
+      ].join('\n');
+    }).join('\n');
+
+    return [
+      pad(i) + '<section class="recent" id="recent" aria-labelledby="recent-heading">',
+      pad(i + 2) + '<div class="section-heading">',
+      pad(i + 4) + '<div>',
+      pad(i + 6) + '<p class="section-label">Lately</p>',
+      pad(i + 6) + '<h2 id="recent-heading">Recently added and updated</h2>',
+      pad(i + 4) + '</div>',
+      pad(i + 4) + '<p class="section-note">The most recent additions and revisions.</p>',
+      pad(i + 2) + '</div>',
+      '',
+      pad(i + 2) + '<div class="recent-rail" id="recent-rail">',
+      pad(i + 4) + '<button class="category-arrow category-arrow-start" type="button" ' +
+        'id="recent-back" aria-label="Scroll back" tabindex="-1">‹</button>',
+      pad(i + 4) + '<div class="recent-track" id="recent-track">',
+      cards,
+      pad(i + 4) + '</div>',
+      pad(i + 4) + '<button class="category-arrow category-arrow-end" type="button" ' +
+        'id="recent-forward" aria-label="Scroll forward" tabindex="-1">›</button>',
+      pad(i + 2) + '</div>',
+      pad(i) + '</section>'
+    ].join('\n');
+  }
 
   var INDEX_BUILDER = {
     nav: indexNav, hero: indexHero, about: indexAbout,
@@ -2260,6 +2358,25 @@
     var fields = row.querySelector('.admin-fields');
 
     if (!originalIds[record.id]) row.classList.add('is-new');
+
+    /* Anything typed or pressed anywhere in this row is a change to this
+       record. Delegated here rather than repeated at the twenty places a
+       field is built: input and change bubble, and a listener on the row
+       cannot be forgotten by whoever adds the twenty-first.
+
+       Not the row's own tools, though. Moving a record up the page or
+       into another category changes where it is read, not what it says,
+       and the strip is about what was written. */
+    var stamp = function (event) {
+      if (event.target.closest && event.target.closest('.admin-row-tools')) return;
+      touch(record);
+    };
+    row.addEventListener('input', stamp);
+    row.addEventListener('change', stamp);
+    row.addEventListener('click', function (event) {
+      if (!event.target.closest || !event.target.closest('button')) return;
+      stamp(event);
+    });
 
     function refreshSummary() {
       idCell.textContent = record.id || '(no id)';
@@ -3159,7 +3276,7 @@
       id: id,
       title: '',
       language: 'ur',
-      date: new Date().toISOString().slice(0, 10),
+      date: today(),
       page: 'posts/' + id + '.html'
     });
     bodies[id] = '';
@@ -3357,6 +3474,7 @@
     var lines = [pad + 'id: ' + str(record.id), pad + 'title: ' + str(record.title), pad + 'language: ' + str(record.language)];
     if (record.kind) lines.push(pad + 'kind: ' + str(record.kind));
     if (record.date) lines.push(pad + 'date: ' + str(record.date));
+    if (record.updated) lines.push(pad + 'updated: ' + str(record.updated));
     if (record.description) lines.push(pad + 'description: ' + str(record.description));
     if (record.descriptionUr) lines.push(pad + 'descriptionUr: ' + str(record.descriptionUr));
     if (record.tags && record.tags.length) {

@@ -1,8 +1,8 @@
 /* ============================================================
    Scholarly Works and Research — stylesheet
    Sections: 1 tokens · 2 base · 3 typography · 4 header & nav
-   5 hero · 6 author · 7 library · 8 fatawa · 9 contact
-   10 footer · 11 work page · 12 responsive · 13 print
+   5 hero · 6 author · 6a recently added · 7 library · 8 fatawa
+   9 contact · 10 footer · 11 work page · 12 responsive · 13 print
    ============================================================ */
 
 /* 1 ── Tokens ─────────────────────────────────────────────── */
@@ -720,6 +720,110 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .bio-panels details > div { margin: 0; padding: 0 22px 20px 0; color: #3d4b45; }
 .bio-panels li { margin: 0 0 10px; }
 .bio-source { margin: 26px 0 0; }
+
+/* 6a ── Recently added ─────────────────────────────────────── */
+
+/* A rail rather than a grid. Eight cards in a row on a desktop would be
+   a second library above the library; scrolled sideways they are a
+   shelf, which is what "what changed lately" wants to be — glanced at,
+   not studied. The bar's own vocabulary is the category strip's, fade
+   and arrow at whichever end still has something, because the page
+   already teaches that once at the top. */
+.recent {
+  padding: var(--block) 0 var(--block) var(--gutter);
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+  overflow: hidden;
+}
+.recent .section-heading { padding-right: var(--gutter); }
+
+.recent-rail { position: relative; margin-top: 26px; }
+.recent-rail::before,
+.recent-rail::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 64px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  z-index: 1;
+}
+.recent-rail::before {
+  left: 0;
+  background: linear-gradient(to right, var(--paper) 40%, rgba(255, 253, 248, 0));
+}
+.recent-rail::after {
+  right: 0;
+  background: linear-gradient(to left, var(--paper) 40%, rgba(255, 253, 248, 0));
+}
+.recent-rail[data-more-before="true"]::before,
+.recent-rail[data-more-after="true"]::after { opacity: 1; }
+.recent-rail[data-more-before="true"] .category-arrow-start,
+.recent-rail[data-more-after="true"] .category-arrow-end { display: grid; }
+
+.recent-track {
+  display: flex;
+  gap: 16px;
+  /* The right-hand gutter as padding rather than margin, so the last
+     card can be scrolled fully clear of the fade. */
+  padding: 4px var(--gutter) 4px 0;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+.recent-track::-webkit-scrollbar { display: none; }
+
+.recent-card {
+  flex: none;
+  scroll-snap-align: start;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 14px;
+  /* Wide enough for a long Urdu title to take two lines rather than
+     five, narrow enough that a second card is always showing — which is
+     what says the rail scrolls before any arrow does. */
+  width: min(320px, 78vw);
+  padding: 20px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+.recent-card:hover {
+  border-color: #d5c29e;
+  box-shadow: 0 6px 20px rgba(26, 46, 39, 0.07);
+  transform: translateY(-2px);
+}
+.recent-card:focus-visible { outline: 2px solid var(--gold-rule); outline-offset: 3px; }
+.recent-mark { margin-top: 2px; color: var(--gold-on-light); }
+
+.recent-card-body { display: grid; gap: 8px; min-width: 0; }
+/* The same rule the library rows follow: everything on a card travels on
+   the one axis the record's own script starts from. */
+.recent-card-body.reads-rtl { text-align: right; }
+.recent-card-body.reads-ltr { text-align: left; }
+.recent-card-body .record-title { font-size: 19px; line-height: 1.35; }
+.recent-card-body .record-title.urdu { font-size: 21px; line-height: 1.9; }
+.recent-card-body .record-title.arabic { font-size: 21px; line-height: 1.7; }
+
+/* Arriving as you reach them. The class carries the movement and the
+   state it moves from, both — so a card with no JavaScript, no observer
+   or a reader who asked for less motion is simply where it already is,
+   and never starts invisible waiting to be shown. */
+@keyframes card-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.card-rise { animation: card-rise 0.5s ease-out var(--rise-delay, 0ms) both; }
+
+@media (max-width: 720px) {
+  .recent-card { padding: 16px; }
+}
 
 /* 7 ── Library ────────────────────────────────────────────── */
 

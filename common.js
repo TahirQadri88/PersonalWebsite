@@ -407,6 +407,37 @@
     Array.prototype.forEach.call(targets, function (node) { watcher.observe(node); });
   }
 
+  /* Cards arriving as you reach them — the same argument as the icons
+     above, and built the same way round.
+
+     The class this adds is what carries the movement *and* the state it
+     moves from. Nothing on the page starts shifted or faded waiting to be
+     revealed, so no JavaScript, no IntersectionObserver, or a reader who
+     asked for less motion all leave the cards simply where they are.
+     That is the difference between animating a decoration and hiding
+     content behind a script. */
+  function revealOnEntry(selector, root) {
+    if (!window.IntersectionObserver) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var targets = (root || document).querySelectorAll(selector);
+    if (!targets.length) return;
+
+    var seen = 0;
+    var watcher = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        /* Capped, for the same reason the icons' stagger is: past a
+           handful the last one waits long enough to look broken. */
+        entry.target.style.setProperty('--rise-delay', Math.min(seen, 5) * 70 + 'ms');
+        entry.target.classList.add('card-rise');
+        seen += 1;
+        watcher.unobserve(entry.target);
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.2 });
+
+    Array.prototype.forEach.call(targets, function (node) { watcher.observe(node); });
+  }
+
   /* Always decorative: every icon here sits beside a word that already
      says the same thing, so it is hidden from a reader who is listening
      rather than looking, and taken out of the tab order. */
@@ -492,7 +523,13 @@
     });
     parts = parts.concat(languages);
 
-    var date = formatDate(record.date);
+    /* The date it carries, or the day it last changed if it carries none.
+       A work added before there was a date field on the form has no
+       `date` and will not gain one until someone types it; `updated` is
+       stamped by the editor the moment anything about it is edited, and
+       is the truer answer to "when was this last touched" anyway. One
+       function, so the row, the card and the page cannot disagree. */
+    var date = formatDate(record.date) || formatDate(record.updated);
     if (date) parts.push(date);
     return parts;
   }
@@ -1063,6 +1100,7 @@
     categoryIconName: categoryIconName,
     iconNames: iconNames,
     drawIconsOnEntry: drawIconsOnEntry,
+    revealOnEntry: revealOnEntry,
     recordKind: recordKind,
     kindMarkup: kindMarkup,
     recordMeta: recordMeta,
