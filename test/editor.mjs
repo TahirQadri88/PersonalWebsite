@@ -884,8 +884,17 @@ t('  …lists what is new', /What.s new in version/.test(appOut.page || ''));
 t('  …calls itself a SoftwareApplication, not an article',
   /"@type":"SoftwareApplication"/.test(appOut.page || '') &&
   !/BlogPosting/.test(appOut.page || ''));
-t('  …and its description follows the app, both scripts',
-  /class="urdu"/.test(appOut.page || '') && /zak/.test(appOut.page || ''));
+t('  …and its description is there in both scripts',
+  /<p[^>]*\burdu\b[^>]*>[^<]*[\u0600-\u06FF]/.test(appOut.page || '') &&
+  /zak/.test(appOut.page || ''));
+/* An Urdu line inside a left-reading column: `.urdu` sets text-align
+   right, so without align-left it sits at the far edge of its own box —
+   which on this page is the middle of the screen, away from the English
+   line it belongs under. The trap CLAUDE.md names, in a fourth place. */
+t('  …with the Urdu aligned to the column, not to the far edge of its box',
+  /class="app-tagline align-left urdu"/.test(appOut.page || '') &&
+  /<p class="align-left urdu"/.test(appOut.page || ''),
+  (appOut.page || '').split('\n').filter((l) => /tagline|align-left/.test(l)).join(' | '));
 /* An app is not a piece of writing, so its page carries no Print — the
    same reason a work's page does not. */
 t('  …and nothing on it claims to be printable',

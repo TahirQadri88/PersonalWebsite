@@ -230,9 +230,18 @@
       prose(work) +
       status +
       '<div class="work-actions">' +
-      '<a class="text-link" href="' + site.escapeHtml(site.recordHref(work)) + '">' +
-      (work.page ? 'Read →' : 'Open details →') +
-      '</a>' +
+      /* An app is opened, and the point of its row is to open it — so the
+         first thing on the row goes straight to the app, and the page
+         about it comes second. Everything else here reaches its own page
+         first because its own page is where the document is. */
+      (work.app && work.app.url
+        ? '<a class="text-link" href="' + site.escapeHtml(work.app.url) + '"' +
+          (site.isOffsite(work.app.url) ? ' target="_blank" rel="noopener"' : '') +
+          '>Open the app ' + site.icon('open', 'icon-inline') + '</a>' +
+          '<a class="text-link" href="' + site.escapeHtml(site.recordHref(work)) + '">About this app →</a>'
+        : '<a class="text-link" href="' + site.escapeHtml(site.recordHref(work)) + '">' +
+          (work.page ? 'Read →' : 'Open details →') +
+          '</a>') +
       /* Sharing from the list, without opening the piece first. Someone
          who knows the library is usually looking for the one thing a
          student asked about, and making them open it to find the button
@@ -290,15 +299,86 @@
      what writes them — so both start here rather than where they are
      defined. */
   site.drawIconsOnEntry();
-  site.revealOnEntry('.recent-card');
   if (startSpy) startSpy();
 
-  /* The strip of recently changed things. Its cards are written into
-     index.html at publish time, not by this file — a crawler and a reader
-     with no JavaScript both get them — so all there is to do here is the
-     scrolling. */
-  rail(document.getElementById('recent-rail'), document.getElementById('recent-track'),
-       document.getElementById('recent-back'), document.getElementById('recent-forward'));
+  /* ---- The strip of recently changed things ----
+
+     Its cards are written into index.html at publish time, not by this
+     file, so a crawler and a reader with no JavaScript both get them.
+     What happens here is only how they move.
+
+     Two behaviours, and the quiet one is the default. Left alone the
+     strip is a rail you scroll, with the arrows and the fades the
+     category strip already taught. Where motion is allowed and there is
+     more than fits, it becomes a ticker instead: the set of cards is
+     cloned once and the pair drifts leftwards for ever.
+
+     The clones are made here and never written into the page. That
+     matters — the cards are in index.html so that a reader without
+     JavaScript gets them, and baking the duplicates in would give that
+     reader, and a crawler, every card twice. Made here, they exist only
+     where they are actually moving.
+
+     Each clone is hidden from assistive technology and taken out of the
+     tab order, so a screen reader and the keyboard meet each card once
+     however many copies are on screen. */
+  var recentRail = document.getElementById('recent-rail');
+  var recentTrack = document.getElementById('recent-track');
+
+  if (!startTicker(recentRail, recentTrack)) {
+    rail(recentRail, recentTrack,
+         document.getElementById('recent-back'), document.getElementById('recent-forward'));
+    /* The cards rise as you reach them — but only when they are standing
+       still. Under the ticker they are already arriving, and two
+       movements at once is neither. */
+    site.revealOnEntry('.recent-card');
+  }
+
+  /* True when the ticker took over. It declines, leaving the rail as it
+     is, when a reader has asked for less motion, when there are no cards,
+     or when they all fit — there is nothing to drift past. */
+  function startTicker(bar, track) {
+    if (!bar || !track) return false;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+
+    var cards = Array.prototype.slice.call(track.children);
+    if (!cards.length) return false;
+    if (track.scrollWidth <= track.clientWidth + 1) return false;
+
+    var ticker = document.createElement('div');
+    ticker.className = 'recent-ticker';
+    cards.forEach(function (card) { ticker.appendChild(card); });
+
+    /* Exactly once. The pair is translated by half its own width, so one
+       copy is what makes the seam land where the first card began —
+       three copies, or one and a half, would not. */
+    var twin = ticker.cloneNode(true);
+    Array.prototype.forEach.call(twin.children, function (card) {
+      card.setAttribute('aria-hidden', 'true');
+      card.setAttribute('tabindex', '-1');
+    });
+    while (twin.firstChild) ticker.appendChild(twin.firstChild);
+
+    track.appendChild(ticker);
+
+    /* A constant speed rather than a constant duration: four cards and
+       twenty should drift past at the same pace, which means the time
+       has to come from the width. */
+    var PIXELS_PER_SECOND = 42;
+    var half = ticker.scrollWidth / 2;
+    if (!half) return false;
+    ticker.style.setProperty('--drift-seconds', Math.round(half / PIXELS_PER_SECOND) + 's');
+
+    /* The arrows and the manual scroll go together with it: a drag and an
+       animation cannot share one track, and an arrow that scrolls a track
+       whose contents are being translated underneath does nothing useful.
+       Hovering or tabbing into it pauses the drift instead — which is
+       also what is owed to anything that moves by itself. */
+    bar.setAttribute('data-ticker', 'on');
+    bar.removeAttribute('data-more-before');
+    bar.removeAttribute('data-more-after');
+    return true;
+  }
 
   /* One listener for the whole library rather than one per row: the list
      is rebuilt whenever a category is chosen, and handlers attached to

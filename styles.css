@@ -53,6 +53,14 @@
   --font-arabic: "Amiri", "Noto Naskh Arabic", serif;
 
   --gutter: clamp(20px, 8vw, 152px);
+  /* --block is what a full-bleed section takes above and below itself.
+     The recently-updated strip is a band *between* two sections, not a
+     section: at --block its own 93.6px stacked against the introduction's
+     93.6px and put 187px of nothing between the last line of the
+     introduction and the first card. Judge this one against --block, not
+     on its own — it should read as a shelf on the way past, not as
+     another slab. Nothing else reads it. */
+  --block-tight: clamp(34px, 3.6vw, 54px);
   /* Widest the reading column ever gets. Backgrounds still run edge to
      edge; only the words stop here, so lines stay readable on a large
      monitor instead of running to 90-odd characters. */
@@ -731,14 +739,27 @@ details[open] > summary .toggle { transform: rotate(45deg); }
    and arrow at whichever end still has something, because the page
    already teaches that once at the top. */
 .recent {
-  padding: var(--block) 0 var(--block) var(--gutter);
+  padding: var(--block-tight) 0 var(--block-tight) var(--gutter);
   background: var(--paper);
   border-top: 1px solid var(--line);
   overflow: hidden;
 }
-.recent .section-heading { padding-right: var(--gutter); }
+/* Its own heading, smaller than a section's. `Recently added and
+   updated` was set at 48px, the same size as `Scholarly works and
+   research` below it — which made a shelf on the way past look like a
+   peer of the library it sits above. The rule is the same one --block
+   follows: judge it against what is around it, not on its own. */
+.recent .section-heading {
+  padding-right: var(--gutter);
+  align-items: baseline;
+  padding-bottom: 14px;
+  margin-bottom: 0;
+}
+.recent .section-heading h2 { font-size: clamp(22px, 2.2vw, 30px); }
+.recent .section-label { margin-bottom: 6px; }
+.recent .section-note { font-size: 13px; }
 
-.recent-rail { position: relative; margin-top: 26px; }
+.recent-rail { position: relative; margin-top: 18px; }
 .recent-rail::before,
 .recent-rail::after {
   content: "";
@@ -763,6 +784,12 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .recent-rail[data-more-after="true"]::after { opacity: 1; }
 .recent-rail[data-more-before="true"] .category-arrow-start,
 .recent-rail[data-more-after="true"] .category-arrow-end { display: grid; }
+/* Under the ticker both fades stay on: cards arrive under one and leave
+   under the other, and a card cut off at a hard edge reads as a mistake
+   where the same card fading out reads as a shelf still moving. The
+   arrows do not — see below. */
+.recent-rail[data-ticker="on"]::before,
+.recent-rail[data-ticker="on"]::after { opacity: 1; }
 
 .recent-track {
   display: flex;
@@ -777,17 +804,52 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 }
 .recent-track::-webkit-scrollbar { display: none; }
 
+/* ---- The ticker ----
+
+   The cards drift leftwards for ever. script.js clones the set once and
+   puts both copies in here; translating by half this element's own width
+   lands the second copy exactly where the first began, so the loop has no
+   seam to see.
+
+   The gap between cards is a margin and not the track's `gap` on purpose.
+   With a flex gap the pair measures 2N cards and 2N−1 gaps, and half of
+   that is half a gap short of a whole set — a small jump every time round.
+   A margin on each card makes it 2N × (card + gap), and half is exact.
+
+   Nothing here starts hidden or displaced: no JavaScript means no
+   .recent-ticker at all, and the cards sit in the track as they already
+   do. Same argument as the icons and the card-rise. */
+.recent-ticker {
+  display: flex;
+  width: max-content;
+  animation: recent-drift var(--drift-seconds, 30s) linear infinite;
+}
+.recent-ticker .recent-card { margin-right: 16px; }
+@keyframes recent-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+/* Paused while a reader is looking at it closely or has tabbed into it.
+   Owed to anything that moves by itself for more than a few seconds, and
+   the only way to read a card that is drifting away from you. */
+.recent-rail[data-ticker="on"]:hover .recent-ticker,
+.recent-rail[data-ticker="on"]:focus-within .recent-ticker { animation-play-state: paused; }
+
+/* A drag and an animation cannot share one track. */
+.recent-rail[data-ticker="on"] .recent-track { overflow: hidden; }
+.recent-rail[data-ticker="on"] .recent-track { padding-right: 0; }
+
 .recent-card {
   flex: none;
   scroll-snap-align: start;
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 12px;
   /* Wide enough for a long Urdu title to take two lines rather than
      five, narrow enough that a second card is always showing — which is
      what says the rail scrolls before any arrow does. */
-  width: min(320px, 78vw);
-  padding: 20px;
+  width: min(268px, 74vw);
+  padding: 15px 16px;
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 3px;
@@ -806,20 +868,28 @@ details[open] > summary .toggle { transform: rotate(45deg); }
    and one sitting off the right-hand end of a rail would never come into
    view to be drawn. The cards have an arrival of their own. */
 .recent-mark {
-  width: 24px;
-  height: 24px;
-  margin-top: 2px;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
   color: var(--gold-on-light);
 }
 
-.recent-card-body { display: grid; gap: 8px; min-width: 0; }
+.recent-card-body { display: grid; gap: 6px; min-width: 0; }
 /* The same rule the library rows follow: everything on a card travels on
    the one axis the record's own script starts from. */
 .recent-card-body.reads-rtl { text-align: right; }
 .recent-card-body.reads-ltr { text-align: left; }
-.recent-card-body .record-title { font-size: 19px; line-height: 1.35; }
-.recent-card-body .record-title.urdu { font-size: 21px; line-height: 1.9; }
-.recent-card-body .record-title.arabic { font-size: 21px; line-height: 1.7; }
+.recent-card-body .record-title { font-size: 16.5px; line-height: 1.3; }
+/* 19px is the floor the site keeps for Nastaliq everywhere; the leading
+   comes down instead, which a two-line title can afford and a paragraph
+   could not. */
+.recent-card-body .record-title.urdu { font-size: 19px; line-height: 1.75; }
+.recent-card-body .record-title.arabic { font-size: 19px; line-height: 1.6; }
+/* One line, and it stays one line: the card is 268px and the kind sits
+   beside the date rather than above it. */
+.recent-card-body .work-line { gap: 2px 8px; margin-top: 2px; }
+.recent-card-body .work-kind { font-size: 13px; line-height: 1.7; }
+.recent-card-body .record-meta { font-size: 11px; letter-spacing: 0.05em; }
 
 /* Arriving as you reach them. The class carries the movement and the
    state it moves from, both — so a card with no JavaScript, no observer
@@ -832,7 +902,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .card-rise { animation: card-rise 0.5s ease-out var(--rise-delay, 0ms) both; }
 
 @media (max-width: 720px) {
-  .recent-card { padding: 16px; }
+  .recent-card { padding: 13px 14px; }
 }
 
 /* 7 ── Library ────────────────────────────────────────────── */
@@ -1602,33 +1672,44 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 /* 11c ── An app's page ─────────────────────────────────────── */
 
 /* An app is opened, not read and not downloaded, so its page is built
-   round the one button that opens it rather than round a column of
-   prose. Everything above that button is what you need to decide to
-   press it; everything below is for the reader who wants more first. */
+   round the one button that opens it. Everything above that button is
+   what you need in order to press it; everything below is for the reader
+   who wants to know more first.
+
+   Spaced by rank, not evenly. The title, the two lines under it and the
+   button are one thing and sit close; the facts, what is new and the
+   prose are separate things and stand further off. Set at one distance
+   throughout — which is what this was — the button read as the start of
+   the next section rather than the end of the first. */
 .app-tagline {
   max-width: 46ch;
-  margin: 14px 0 0;
+  margin: 12px 0 0;
   color: #4c5651;
-  font-size: 18px;
+  font-size: 19px;
+  line-height: 1.5;
 }
-/* .app-tagline sets 18px and is declared after .urdu, so it wins — and
-   18px is below the 19px floor the rest of the site keeps for Nastaliq.
-   Its own size back, and its own leading with it: at 18px with Latin
-   leading the descenders of one line met the next. */
+/* .app-tagline sets a size and is declared after .urdu, so it wins — and
+   19px is the floor the rest of the site keeps for Nastaliq, not a
+   comfortable size for it. Its own back, and its own leading with it. */
 .app-tagline.urdu,
 .app-tagline.arabic {
   max-width: 40ch;
+  margin-top: 2px;
   color: #45534d;
   font-size: clamp(20px, 2vw, 24px);
-  line-height: 2;
-  margin-top: 10px;
+  line-height: 1.95;
 }
-.app-tagline + .app-tagline { margin-top: 4px; }
 
-.app-open { margin: 28px 0 0; }
-.app-open .button { font-size: 16px; padding: 14px 26px; }
-.app-open .icon-inline { margin-left: 8px; }
-.work-hero[dir="rtl"] .app-open .icon-inline { margin: 0 0 0 8px; }
+.app-open { margin: 24px 0 0; }
+.app-open .button {
+  font-family: var(--font-ui);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  padding: 15px 28px;
+}
+.app-open .icon-inline { margin-left: 9px; }
+.work-hero[dir="rtl"] .app-open .icon-inline { margin: 0 9px 0 0; }
 
 /* The facts, as a row of pairs rather than a sentence: version, the
    platforms, when it went up, who built it. The same two-column card the
@@ -1636,36 +1717,91 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    short list of labelled things and not two. */
 .app-facts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
   gap: 1px;
-  margin: 34px 0 0;
+  margin: 44px 0 0;
   background: var(--line);
   border: 1px solid var(--line);
 }
-.app-facts div { padding: 14px 18px; background: var(--card); }
+.app-facts div { padding: 15px 18px; background: var(--card); }
 .app-facts dt {
   margin: 0;
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--gold-on-light);
 }
-.app-facts dd { margin: 6px 0 0; color: #2f3d38; font-size: 15px; }
+/* The value is the answer and should read as one: the UI face at a real
+   weight against its own label, not the body face at the same weight as
+   the paragraph below it. */
+.app-facts dd {
+  margin: 7px 0 0;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: #2b3a34;
+}
 
-.app-new { margin: 38px 0 0; }
-.app-new h2 { font-size: clamp(21px, 2.2vw, 27px); margin-bottom: 12px; }
-.app-new ul { margin: 0; padding-inline-start: 22px; color: #3d4b45; }
-.app-new li { margin: 0 0 8px; }
-/* A line of the list written in Urdu keeps its own script and leading
-   without turning the list round: the marker follows the list's own
-   direction, which is the page's. */
+/* Both headings below the lead are subordinate to the app's name, so
+   they are set well under it rather than at section size. */
+.app-heading {
+  font-family: var(--font-display);
+  font-size: clamp(20px, 2vw, 25px);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin: 0 0 14px;
+}
+
+.app-new { margin: 40px 0 0; }
+.app-new ul { margin: 0; padding: 0; list-style: none; }
+/* A rule between them rather than a bullet beside them. Three lines of
+   what changed read as a short list of facts, and the gold mark is the
+   one the rest of the site uses for a small label. */
+.app-new li {
+  position: relative;
+  margin: 0;
+  padding: 11px 0 11px 22px;
+  color: #3d4b45;
+  font-size: 16px;
+  line-height: 1.55;
+  border-bottom: 1px solid var(--line);
+}
+.app-new li:first-child { border-top: 1px solid var(--line); }
+.app-new li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 1.15em;
+  width: 8px;
+  height: 1.5px;
+  background: var(--gold-rule);
+}
 .app-new li.urdu,
-.app-new li.arabic { margin-bottom: 2px; }
+.app-new li.arabic {
+  font-size: clamp(19px, 1.9vw, 22px);
+  line-height: 1.95;
+  padding: 8px 22px 8px 0;
+  text-align: right;
+}
+.app-new li.urdu::before,
+.app-new li.arabic::before { left: auto; right: 2px; }
 
-.app-about { margin: 34px 0 0; }
-.app-about p { margin: 0 0 16px; color: #45534d; }
+.app-about { margin: 40px 0 0; }
+.app-about p { margin: 0 0 14px; color: #45534d; max-width: 62ch; }
+/* 62ch of Nastaliq at 20-27px is most of a desktop; the measure a reader
+   can follow is far shorter in this script than in Latin, and the line
+   was running the full column. */
+.app-about p.urdu,
+.app-about p.arabic { max-width: 44ch; margin-bottom: 4px; }
+.app-about p:last-child { margin-bottom: 0; }
+
+@media (max-width: 620px) {
+  .app-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app-open .button { width: 100%; justify-content: center; }
+}
 
 /* 11b ── The reading column ───────────────────────────────── */
 

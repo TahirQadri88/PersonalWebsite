@@ -505,6 +505,22 @@
     return format === 'JPEG' ? 'JPG' : format;
   }
 
+  /* When a record last said something new: the date it carries, or the
+     day it was last edited if it carries none. A work added before there
+     was a date field has no `date` and will not gain one until someone
+     types it; `updated` is stamped by the editor the moment anything
+     about it changes, and is the truer answer to "when was this touched"
+     anyway.
+
+     Its own function because two places want it and only one of them
+     wants the rest of the meta line: a card in the recently-updated strip
+     says kind and date and nothing else, since the format and the
+     language are what the library row below it is for. One answer to
+     "when", so the row, the card and the page cannot disagree. */
+  function recordWhen(record) {
+    return formatDate(record.date) || formatDate(record.updated);
+  }
+
   function recordMeta(record) {
     var files = record.files || [];
     /* A work still waiting for its document says "Not published here yet"
@@ -513,6 +529,16 @@
     if (!record.page && !files.length) return [];
 
     var parts = [];
+    /* An app is opened, not read and not downloaded, so neither of the
+       other two answers fits it — and it has no single language to name
+       either: this one has two, and saying "English" because the title
+       happens to be in English describes nothing a reader would get. */
+    if (record.app) {
+      parts.push('Opens in a browser');
+      var when = recordWhen(record);
+      if (when) parts.push(when);
+      return parts;
+    }
     if (record.page) {
       parts.push('Read here');
     } else {
@@ -535,13 +561,7 @@
     });
     parts = parts.concat(languages);
 
-    /* The date it carries, or the day it last changed if it carries none.
-       A work added before there was a date field on the form has no
-       `date` and will not gain one until someone types it; `updated` is
-       stamped by the editor the moment anything about it is edited, and
-       is the truer answer to "when was this last touched" anyway. One
-       function, so the row, the card and the page cannot disagree. */
-    var date = formatDate(record.date) || formatDate(record.updated);
+    var date = recordWhen(record);
     if (date) parts.push(date);
     return parts;
   }
@@ -1120,6 +1140,7 @@
     recordKind: recordKind,
     kindMarkup: kindMarkup,
     recordMeta: recordMeta,
+    recordWhen: recordWhen,
     metaMarkup: metaMarkup,
     isImage: isImage,
     imageGallery: imageGallery,

@@ -165,6 +165,34 @@ a `Date` — and `recordMeta` falls back to `updated` when a record has no
 `date` of its own, so the row, the card and the page all say the same
 thing from one function.
 
+**A shelf on the way past, not a screen.** The strip went up at 575px —
+64% of a 900px viewport, against an author introduction of 591px — and
+pushed the library, which is the point of the site, to y=2021. It is
+368px now, 41%, with the library at 1814. Most of that was one thing: a
+card's meta line was **114px**, taller than its own title, because
+`Read here · Urdu · 8 August 2026` wrapped to three lines in a 280px
+card. A card says kind and date and nothing else — `site.recordWhen`,
+which `recordMeta` also calls, so "when" still has one answer. Format and
+language are the library row's job, one section down. Its heading is
+sized well under a section's too: at 48px it looked like a peer of the
+library it sits above. `test/homepage.mjs` holds all of it to numbers so
+it cannot creep back.
+
+**The cards drift, and the clones are made in the browser.** `startTicker`
+in `script.js` clones the set once into `.recent-ticker` and translates
+the pair by −50%; with a `margin-right` on each card rather than a flex
+`gap`, half the pair's width is exactly one set and the loop has no seam
+(a flex gap leaves it half a gap short, which jumps every time round).
+The clones are **never written into `index.html`** — the cards are in the
+file so that a reader without JavaScript gets them, and baking the
+duplicates in would give that reader, and a crawler, every card twice.
+Each clone carries `aria-hidden` and `tabindex="-1"`, so a screen reader
+and the keyboard meet each card once. Hover and focus-within pause it,
+which is owed to anything that moves by itself. No JavaScript, reduced
+motion, or nothing overflowing: no clones, no animation, and the strip
+stays the scrollable rail with arrows that it is otherwise — the same
+three cases as the icons.
+
 **The recently-added strip is in the file, not drawn by a script.** It is
 generated into `index.html` by `indexRecent` at publish time like every
 other marked region, which is why `test/homepage.mjs` can turn
@@ -183,6 +211,13 @@ The cards rise as they arrive, and `card-rise` carries both the movement
 itself was tried and the tests caught it: no JavaScript, no
 `IntersectionObserver`, or `prefers-reduced-motion` must each leave the
 cards exactly where they already are. Same argument as the icons.
+
+**An app is opened, so its row opens it.** `recordMeta` answers "Opens in
+a browser" for a record with an `app` block and names no language — this
+one has two, and calling it English because the title is in English
+describes nothing a reader would get. `workMarkup` puts **Open the app**
+first, straight to `record.app.url` and offsite, with **About this app**
+beside it: the request was for a direct link *as well*, not instead.
 
 **An app is a record with an `app` block, and its page is built from
 fields.** `apps/<id>.html`, written by `buildApp` and regenerated in full
@@ -348,8 +383,12 @@ serves them, they cost a visitor nothing, and after the downsample above
 they are the only originals left.
 
 **Space between sections is a ratio, not a number.** `--block` sets the
-vertical padding on the five full-bleed sections and nothing else reads
-it. It was `clamp(56px, 8vw, 118px)`, which gave 236–283px between
+vertical padding on the four full-bleed sections; `--block-tight`
+(`clamp(34px, 3.6vw, 54px)`) is its companion and is read by the
+recently-updated strip alone. That strip is a band *between* two
+sections, not a section: at `--block` its own 93.6px stacked against the
+introduction's 93.6px and put 187px of nothing between the last line of
+the introduction and the first card. Nothing else reads either one. It was `clamp(56px, 8vw, 118px)`, which gave 236–283px between
 sections at 1440 — 15 to 18 body lines — against 30px between the
 category cards inside the library. Nine to one is what made the page read
 as separate slabs; three to five is the usual range. `6.5vw`/`96px` brings
