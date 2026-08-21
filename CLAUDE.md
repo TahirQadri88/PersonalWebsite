@@ -40,6 +40,7 @@ test/          drives a browser over admin.html and over the homepage —
                  touching script.js, common.js or the library's CSS
 posts/         one HTML file per post — the writing is the page, not a download
 works/         one HTML file per work and fatwa — written by admin.html, same as posts/
+apps/          one HTML file per app — built from fields, not written
 styles.css     all design, in 13 numbered sections
 404.html robots.txt sitemap.xml share-card.png CNAME
 files/images/   the seal used as favicon and header mark, and the calligraphed name
@@ -182,6 +183,28 @@ The cards rise as they arrive, and `card-rise` carries both the movement
 itself was tried and the tests caught it: no JavaScript, no
 `IntersectionObserver`, or `prefers-reduced-motion` must each leave the
 cards exactly where they already are. Same argument as the icons.
+
+**An app is a record with an `app` block, and its page is built from
+fields.** `apps/<id>.html`, written by `buildApp` and regenerated in full
+on every publish the way a work's page is — there is no writing to read
+back, so nothing to lose. `isApp` is what tells it from a post, and it is
+checked first everywhere `isPost` is: an app has a `page` too, and
+without that order it would be handed the writing box, blocked by
+`problems()` for having no writing in it, and given a `BlogPosting` in
+its structured data. It is a `SoftwareApplication`, because it is
+something you open rather than something you read.
+
+Everything else reaches it untold — the sitemap line, the share card, the
+category pill, the search — because they all walk the library and an app
+is in it. Two things did need telling: **Print** is mounted on
+`record.page && !record.app` (an app page prints a stub with a button
+that does nothing on paper, the same argument a work's page makes), and
+the Worker's `WRITABLE` needs `apps/…`, which is a hand deploy.
+
+The `app` icon is the twelfth drawing. A card's mark in the recently-added
+strip deliberately does **not** carry `.category-icon`: those draw
+themselves on as you reach them, and a mark sitting off the right-hand
+end of a rail would never come into view to be drawn.
 
 **Missing files are a normal state.** A work with no `files` array renders as
 "Not published here yet". Do not delete such entries or invent placeholder URLs.
@@ -428,6 +451,10 @@ the editor.
   GitHub token itself, so no device ever does. Opened any other way the editor
   falls back to asking for a token, and `Files…` works everywhere.
   `worker/README.md` has the one-time setup.
+- The `apps` category holds one app, the Zakat calculator, at
+  `apps/zakat-calculator.html`. Adding another is a form: **+ Add an app**
+  in the editor, then the address, the version, the platforms and what is
+  new. No screenshot on the page yet — the author has one.
 - The `posts` category holds three pieces now. Two of them are the same essay
   in English and Urdu — separate entries with separate ids, not one entry with
   two files, because each is a page to be read rather than a download to be

@@ -376,7 +376,15 @@ try {
       };
     });
     t('the sprite is written in exactly once', icons.sprites === 1, JSON.stringify(icons));
-    t('it holds every drawing in the set', icons.symbols === 11, String(icons.symbols));
+    /* Counted out of common.js rather than written down here. A number in
+       this file goes stale the moment a drawing is added, and what is
+       being checked is that the sprite holds them all — not that there
+       are eleven of them. */
+    const drawings = (/var ICONS = \{([\s\S]*?)\n  \};/.exec(
+      await readFile(join(ROOT, 'common.js'), 'utf8')) || [, ''])[1]
+      .split('\n').filter((l) => /^    [a-z]+: \[/.test(l)).length;
+    t(`it holds every drawing in the set — ${drawings} of them`,
+      drawings > 0 && icons.symbols === drawings, `${icons.symbols} in the sprite, ${drawings} in ICONS`);
     t('there are icons on the page', icons.total > 10, String(icons.total));
     t('every <use> resolves to a symbol that exists',
       icons.resolved === icons.total, JSON.stringify(icons));
@@ -606,13 +614,15 @@ try {
       const track = document.getElementById('recent-track');
       const before = bar.getAttribute('data-more-before');
       const after = bar.getAttribute('data-more-after');
+      /* The track scrolls smoothly, so setting scrollLeft starts an
+         animation rather than finishing one. Wait for it to arrive. */
       track.scrollLeft = track.scrollWidth;
       return new Promise((done) => setTimeout(() => done({
         before, after,
         thenBefore: bar.getAttribute('data-more-before'),
         thenAfter: bar.getAttribute('data-more-after'),
         scrolls: track.scrollWidth > track.clientWidth
-      }), 200));
+      }), 900));
     });
     t('  …the rail says which way there is more, and changes its mind when you scroll',
       !ends.scrolls || (ends.before === 'false' && ends.thenBefore === 'true' && ends.thenAfter === 'false'),

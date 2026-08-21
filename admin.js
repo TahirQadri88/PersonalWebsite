@@ -1094,6 +1094,10 @@
   }
 
   function isPost(entry) {
+    /* An app has a page of its own too, and is not a post: its page is
+       built from fields, so there is no writing to read back and nothing
+       to lose by regenerating it. */
+    if (entry.record.app) return false;
     return !!(entry.record.page || (entry.category && entry.category.id === POSTS_CATEGORY));
   }
 
@@ -1524,6 +1528,201 @@
       ''
     ]
       .filter(function (line) { return line !== null; })
+      .join('\n');
+  }
+
+  /* ---- An app's own page ----------------------------------------------
+
+     An app is a record with an `app` block on it, and it gets a page of
+     its own the way a post does — `page` names the file, and everything
+     that already walks the library reaches it without being told: the
+     sitemap line, the share card, the category pill, the search.
+
+     It does not get the writing box, though, and that is the whole
+     reason for a shape of its own. An app page is a link, a version, a
+     list of what is new and the platforms it runs on. Written as prose
+     it would be an essay about an app; written as fields it is an app
+     page, and the next one is a form to fill in rather than a page to
+     compose. */
+  function isApp(entry) {
+    return !!(entry && entry.record && entry.record.app);
+  }
+
+  function buildApp(record, entry) {
+    var e = site.escapeHtml;
+    var app = record.app || {};
+    var base = String((model.site && model.site.baseUrl) || '').replace(/\/+$/, '') + '/';
+    var url = base + record.page;
+    var author = (model.site && model.site.name) || '';
+    var rtl = record.language === 'ur' || record.language === 'ar';
+    var scriptClass = record.language === 'ur' ? 'urdu' : record.language === 'ar' ? 'arabic' : 'latin';
+    /* Same rule as buildPost and shareCaption: the sentence shown to a
+       reader follows the piece, not the site. */
+    var shared = rtl
+      ? record.descriptionUr || record.description
+      : record.description || record.descriptionUr;
+    var categoryTitle = entry.category ? entry.category.title : 'Apps';
+    var categoryId = entry.category ? entry.category.id : 'apps';
+    var pretty = site.formatDate(record.date);
+
+    /* SoftwareApplication rather than BlogPosting: it is not an article,
+       and saying so is what lets a search engine show it as a thing you
+       can open rather than something to read. */
+    var jsonLd = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: record.title,
+      inLanguage: record.language || 'en',
+      description: record.description || undefined,
+      applicationCategory: 'UtilitiesApplication',
+      operatingSystem: (app.platforms || []).join(', ') || undefined,
+      softwareVersion: app.version || undefined,
+      datePublished: record.date || undefined,
+      url: app.url || url,
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'PKR' },
+      author: {
+        '@type': 'Person',
+        name: author,
+        alternateName: (model.site && model.site.nameUr) || undefined,
+        url: base
+      }
+    });
+
+    /* A line of the app's own copy, in whichever script it was written
+       in — the same question langAttrs asks of a homepage line. */
+    function line(text, className, tag) {
+      if (!text) return null;
+      var element = tag || 'p';
+      var script = scriptOf(String(text), 'ur');
+      var cls = [className, script === 'ur' ? 'urdu' : script === 'ar' ? 'arabic' : '']
+        .filter(Boolean).join(' ');
+      return '<' + element + (cls ? ' class="' + cls + '"' : '') +
+        langAttrs(text) + '>' + e(text) + '</' + element + '>';
+    }
+
+    var whatsNew = (app.whatsNew || []).filter(Boolean);
+    var platforms = (app.platforms || []).filter(Boolean);
+
+    return [
+      '<!doctype html>',
+      '<html lang="' + e(record.language || 'en') + '">',
+      '  <head>',
+      '    <meta charset="UTF-8" />',
+      '    <meta name="viewport" content="width=device-width, initial-scale=1.0" />',
+      '    <title>' + e(record.title) + ' — ' + e(author) + '</title>',
+      record.description ? '    <meta name="description" content="' + e(record.description) + '" />' : null,
+      '    <meta name="author" content="' + e(author) + '" />',
+      '    <link rel="canonical" href="' + e(url) + '" />',
+      '',
+      '    <meta property="og:type" content="website" />',
+      '    <meta property="og:title" content="' + e(record.title) + '" />',
+      shared ? '    <meta property="og:description" content="' + e(shared) + '" />' : null,
+      '    <meta property="og:url" content="' + e(url) + '" />',
+      '    <meta property="og:image" content="' + e(base + 'files/cards/' + record.id + '.jpg') + '" />',
+      '    <meta name="twitter:card" content="summary_large_image" />',
+      '',
+      '    <link rel="icon" type="image/png" sizes="32x32" href="../files/images/logo-circle-32.png" />',
+      '    <link rel="apple-touch-icon" href="../files/images/logo-circle-180.png" />',
+      '    <link rel="preconnect" href="https://fonts.googleapis.com" />',
+      '    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />',
+      '    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" rel="stylesheet" />',
+      '    <link rel="stylesheet" href="../styles.css" />',
+      '    <script type="application/ld+json">' + jsonLd + '</scr' + 'ipt>',
+      '  </head>',
+      '',
+      '  <body class="work-page">',
+      '    <header class="site-header">',
+      '      <a class="brand" href="../index.html"><img class="brand-mark" src="../files/images/logo-circle-180.png" alt="" width="180" height="180" /> Scholarly Works and Research</a>',
+      '      <nav class="header-nav" aria-label="Sections">',
+      '        <a href="../index.html#about">Author</a>',
+      '        <a class="nav-echo" href="../index.html#library">Library</a>',
+      '        <a class="nav-echo" href="../index.html#rulings">Fatawa</a>',
+      '        <a href="../index.html#contact">Contact</a>',
+      '      </nav>',
+      '    </header>',
+      '',
+      '    <main class="work-page-main">',
+      '      <article class="work-hero app-page"' + (rtl ? ' dir="rtl"' : '') + '>',
+      '        <a class="back-link" href="../index.html#' + e(categoryId) + '"><span aria-hidden="true">' +
+        (rtl ? '→' : '←') + '</span> ' + e(categoryTitle) + '</a>',
+      record.kind
+        ? '        ' + site.kindMarkup(record, 'section-label' + (rtl ? '' : ' align-left'), 'p')
+        : null,
+      '        <h1 class="record-title ' + scriptClass + '" lang="' + e(record.language || 'en') +
+        '" dir="' + (rtl ? 'rtl' : 'ltr') + '">' + e(record.title) + '</h1>',
+      app.tagline ? '        ' + line(app.tagline, 'app-tagline') : null,
+      app.taglineUr ? '        ' + line(app.taglineUr, 'app-tagline') : null,
+      '',
+      /* The one thing this page is for. An app is opened, not
+         downloaded, so it is a button and not a file row — and it is
+         somewhere else, so it opens in its own tab and says so with the
+         same drawing every offsite link on this site uses. */
+      app.url
+        ? '        <p class="app-open"><a class="button button-dark" href="' + e(app.url) + '"' +
+          (site.isOffsite(app.url) ? ' target="_blank" rel="noopener"' : '') + '>Open the app ' +
+          site.icon('open', 'icon-inline') + '</a></p>'
+        : '        <p class="availability-note">Not published here yet.</p>',
+      '',
+      (app.version || platforms.length)
+        ? [
+            '        <dl class="app-facts">',
+            app.version
+              ? '          <div><dt>Version</dt><dd>' + e(app.version) + '</dd></div>'
+              : null,
+            platforms.length
+              ? '          <div><dt>Runs on</dt><dd>' + e(platforms.join(' · ')) + '</dd></div>'
+              : null,
+            pretty ? '          <div><dt>Published</dt><dd>' + e(pretty) + '</dd></div>' : null,
+            '          <div><dt>Built by</dt><dd>' + e(author) + '</dd></div>',
+            '        </dl>'
+          ].filter(function (x) { return x !== null; }).join('\n')
+        : null,
+      '',
+      whatsNew.length
+        ? [
+            '        <section class="app-new">',
+            '          <h2>What’s new' + (app.version ? ' in version ' + e(app.version) : '') + '</h2>',
+            '          <ul>',
+            whatsNew.map(function (item) {
+              return '            ' + line(item, '', 'li');
+            }).join('\n'),
+            '          </ul>',
+            '        </section>'
+          ].join('\n')
+        : null,
+      '',
+      /* The descriptions, under the app rather than over it: a reader
+         came here to open the thing, and the prose is what they read if
+         they want to know more first. Both, the record's own language
+         leading, through the same helper the library uses. */
+      (record.description || record.descriptionUr)
+        ? '        <div class="app-about">\n' +
+          (rtl
+            ? [record.descriptionUr, record.description]
+            : [record.description, record.descriptionUr])
+            .filter(Boolean)
+            .map(function (text) { return '          ' + site.proseMarkup(text, '', record.language); })
+            .join('\n') +
+          '\n        </div>'
+        : null,
+      '',
+      (record.tags || []).length ? '        ' + site.tagMarkup(record) : null,
+      '        <p class="post-foot"><a class="text-link" href="../index.html#' + e(categoryId) + '">← All apps</a></p>',
+      '      </article>',
+      '    </main>',
+      '',
+      '    <footer>',
+      '      <span>© <span id="year"></span> ' + e(author) + '</span>',
+      '      <a href="../index.html">All works</a>',
+      '    </footer>',
+      '',
+      '    <script src="../content.js"></scr' + 'ipt>',
+      '    <script src="../common.js"></scr' + 'ipt>',
+      '  </body>',
+      '</html>',
+      ''
+    ]
+      .filter(function (part) { return part !== null; })
       .join('\n');
   }
 
@@ -2272,7 +2471,7 @@
       var dir = site.direction(record.language);
       return [
         pad(i + 6) + '<a class="recent-card" href="' + e(site.recordHref(record)) + '">',
-        pad(i + 8) + site.categoryIcon(entry.category || RULINGS_CATEGORY, 'category-icon recent-mark'),
+        pad(i + 8) + site.categoryIcon(entry.category || RULINGS_CATEGORY, 'recent-mark'),
         pad(i + 8) + '<span class="recent-card-body ' +
           (dir === 'rtl' ? 'reads-rtl' : 'reads-ltr') + '" dir="' + dir + '">',
         pad(i + 10) + site.titleMarkup(record),
@@ -2522,6 +2721,71 @@
     dateInput.type = 'date';
     dateField.appendChild(dateField.own(dateInput));
     fields.appendChild(dateField);
+
+    /* An app is neither a page of writing nor a record of a file: it is a
+       link, a version, a list of what is new and the platforms it runs
+       on. Written as prose it would be an essay about an app; as fields
+       it is an app page, and the next one is a form to fill in. */
+    if (isApp(entry)) {
+      var app = record.app;
+
+      var appPageField = field('Page', 'the file this app’s page lives in');
+      var appPageInput = textInput(record.page, function (value) {
+        record.page = value.trim() || undefined;
+      });
+      appPageInput.placeholder = 'apps/name-of-app.html';
+      appPageField.appendChild(appPageField.own(appPageInput));
+      fields.appendChild(appPageField);
+
+      var appField = field('The app', 'where it opens, and which version this is');
+      var urlInput = textInput(app.url, function (value) { app.url = value.trim(); });
+      urlInput.placeholder = 'https://…';
+      urlInput.setAttribute('aria-label', 'Where the app opens');
+      appField.appendChild(appField.own(urlInput));
+      fields.appendChild(appField);
+
+      var versionField = field('Version');
+      var versionInput = textInput(app.version, function (value) {
+        app.version = value.trim() || undefined;
+      });
+      versionInput.placeholder = '2';
+      versionField.appendChild(versionField.own(versionInput));
+      fields.appendChild(versionField);
+
+      bound(fields, app, 'tagline', 'The line under the title');
+      bound(fields, app, 'taglineUr', 'The same line in Urdu');
+
+      if (!app.platforms) app.platforms = [];
+      repeatable(fields, 'Runs on', 'one per platform — Apple, Android, Windows',
+        app.platforms, '+ Add a platform',
+        function (line, item, index) {
+          var input = textInput(app.platforms[index], function (value) {
+            app.platforms[index] = value;
+          });
+          input.setAttribute('aria-label', 'Platform ' + (index + 1));
+          line.appendChild(input);
+          return true;
+        },
+        function () { return ''; });
+
+      if (!app.whatsNew) app.whatsNew = [];
+      repeatable(fields, 'What’s new', 'one per line, in whichever script it is written in',
+        app.whatsNew, '+ Add a line',
+        function (line, item, index) {
+          var input = textInput(app.whatsNew[index], function (value) {
+            app.whatsNew[index] = value;
+          });
+          input.setAttribute('aria-label', 'What is new, line ' + (index + 1));
+          var follow = function () { applyScript(input, scriptOf(input.value, 'ur') || 'en'); };
+          follow();
+          input.addEventListener('input', follow);
+          line.appendChild(input);
+          return true;
+        },
+        function () { return ''; });
+
+      return finish();
+    }
 
     /* A post is a page of writing. Everything else is a record of a file.
        The row shows one or the other, never both. */
@@ -3264,6 +3528,32 @@
     revealRow(newId);
   });
 
+  var APPS_CATEGORY = 'apps';
+
+  document.getElementById('add-app').addEventListener('click', function () {
+    var category = (model.categories || []).filter(function (c) { return c.id === APPS_CATEGORY; })[0];
+    if (!category) {
+      window.alert('There is no “' + APPS_CATEGORY + '” category to put it in.\n\n' +
+        'Add one in Site & About → Categories first, with the id “' + APPS_CATEGORY + '”.');
+      return;
+    }
+    var id = freshId('new-app');
+    if (!category.works) category.works = [];
+    category.works.unshift({
+      id: id,
+      title: '',
+      language: 'en',
+      kind: 'ایپ',
+      date: today(),
+      page: 'apps/' + id + '.html',
+      app: { url: '', version: '', platforms: [], whatsNew: [] }
+    });
+    filterInput.value = '';
+    markDirty();
+    render();
+    revealRow(id);
+  });
+
   document.getElementById('add-post').addEventListener('click', function () {
     var category = (model.categories || []).filter(function (c) { return c.id === POSTS_CATEGORY; })[0];
     if (!category) {
@@ -3325,6 +3615,14 @@
       if (category && category.id === POSTS_CATEGORY && !record.page) {
         found.push(where + ': a post needs a page, e.g. posts/' + (record.id || 'slug') + '.html');
       }
+      if (record.app) {
+        if (!record.page) {
+          found.push(where + ': an app needs a page, e.g. apps/' + (record.id || 'slug') + '.html');
+        }
+        /* Without an address the page has nothing to open, which is the
+           one thing an app page is for. */
+        if (!record.app.url) found.push(where + ': needs the address the app opens at.');
+      }
 
       /* A post is its writing. Publishing the entry without it puts a
          link to nothing on the homepage and hands the sitemap a 404 —
@@ -3334,7 +3632,10 @@
 
          Empty counts as missing. There is no such thing as a post with
          no words in it. */
-      if (record.page) {
+      /* An app has a page too, and no writing at all: its page is built
+         from the fields beside this one and regenerated whole on every
+         publish, so there is nothing to read back and nothing to lose. */
+      if (record.page && !record.app) {
         var body = bodies[record.id];
         if (body === undefined) {
           found.push(where + ': its writing is not loaded, so publishing would link to a page that does not exist — open its row first.');
@@ -3481,6 +3782,7 @@
       lines.push(pad + 'tags: [' + record.tags.map(str).join(', ') + ']');
     }
     if (record.page) lines.push(pad + 'page: ' + str(record.page));
+    if (record.app) lines.push(pad + 'app: ' + writeValue(record.app, indent));
     if (record.files && record.files.length) {
       lines.push(pad + writeFiles(record.files, indent));
     }
@@ -3684,7 +3986,11 @@
     }
 
     allRecords().forEach(function (entry) {
-      if (isPost(entry)) {
+      if (isApp(entry)) {
+        if (!entry.record.page) return;
+        writtenPosts += 1;
+        offerFile(entry.record.page, buildApp(entry.record, entry));
+      } else if (isPost(entry)) {
         if (!entry.record.page || bodies[entry.record.id] === undefined) return;
         writtenPosts += 1;
         offerFile(entry.record.page, buildPost(entry.record, entry));
@@ -3795,7 +4101,7 @@
      The paths catch one they changed and did not: whatever the version
      claims, a Worker that will not take a work page cannot publish this
      library, and it is better to hear that on load. */
-  var WORKER_EXPECTS = '2026-08-21.1';
+  var WORKER_EXPECTS = '2026-08-21.2';
 
   /* This editor's own version, bumped whenever admin.js changes in a way
      a publish depends on. It exists because a tab left open goes on
@@ -3805,11 +4111,12 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-08-21.1';
+  var EDITOR_VERSION = '2026-08-21.2';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */
-  var WRITES = ['content.js', 'sitemap.xml', 'index.html', 'posts/a.html', 'works/a.html', 'files/cards/a.jpg'];
+  var WRITES = ['content.js', 'sitemap.xml', 'index.html', 'posts/a.html', 'works/a.html',
+                'apps/a.html', 'files/cards/a.jpg'];
 
   function workerTrouble(report) {
     var patterns = [];
@@ -4116,7 +4423,12 @@
       if (home.text) out.push({ path: 'index.html', text: home.text });
     }
     allRecords().forEach(function (entry) {
-      if (isPost(entry)) {
+      if (isApp(entry)) {
+        /* Regenerated in full every publish, like a work's own page:
+           nothing about an app lives anywhere but content.js, so there is
+           no "has the writing changed" question to answer for it. */
+        if (entry.record.page) out.push({ path: entry.record.page, text: buildApp(entry.record, entry) });
+      } else if (isPost(entry)) {
         if (!entry.record.page || bodies[entry.record.id] === undefined) return;
         out.push({ path: entry.record.page, text: buildPost(entry.record, entry) });
       } else {

@@ -121,7 +121,13 @@ t('writing admin.js refused', r.status===400, JSON.stringify(r));
 r = await post([{path:'content.js',text:GOOD},{path:'index.html',text:'<!doctype html><title>x</title>'}], JWT);
 t('index.html is a file the editor may write', r.status===200, JSON.stringify(r).slice(0,200));
 
-for (const path of ['404.html', 'about/index.html', '../index.html', 'index.htm']) {
+/* An app's own page, built from fields and regenerated whole on every
+   publish the way a work's page is. */
+r = await post([{path:'content.js',text:GOOD},{path:'apps/zakat-calculator.html',text:'<!doctype html><title>x</title>'}], JWT);
+t('an app page is a file the editor may write', r.status===200, JSON.stringify(r).slice(0,200));
+
+for (const path of ['404.html', 'about/index.html', '../index.html', 'index.htm',
+                    'apps/../evil.html', 'apps/deep/one.html', 'apps/one.htm']) {
   r = await post([{path,text:'x'}], JWT);
   t(`  …but ${path} is not`, r.status===400 && /not a file the editor may write/.test(r.body.message), JSON.stringify(r));
 }
@@ -256,7 +262,7 @@ const ver = await worker.fetch(new Request('https://admin.tahirqadri.com.pk/vers
 const verBody = await ver.json();
 t('GET /version answers without signing in', ver.status===200, JSON.stringify(verBody));
 t('  …with a version', typeof verBody.version==='string' && verBody.version.length>0);
-t('  …and every path the editor publishes', ['content.js','sitemap.xml','index.html','posts/a.html','works/a.html','files/cards/a.jpg']
+t('  …and every path the editor publishes', ['content.js','sitemap.xml','index.html','posts/a.html','works/a.html','apps/a.html','files/cards/a.jpg']
   .every(p => verBody.writable.some(src => new RegExp(src).test(p))), JSON.stringify(verBody.writable));
 t('  …and the limits it enforces', verBody.maxFiles===1000 && verBody.maxFileBytes===512*1024, JSON.stringify(verBody));
 t('  …and is not cached', /no-store/.test(ver.headers.get('cache-control')||''));

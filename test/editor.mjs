@@ -697,10 +697,13 @@ await page.waitForTimeout(120);
 
 /* Filtering rebuilt the library three times just now, and a rebuild
    closes every row that is not in view — the post the tests below write
-   into among them. Open it again before carrying on. */
-await row.locator('summary').click();
+   into among them. Open it again before carrying on, and only if it is
+   shut: a row is a <details>, and clicking an open one closes it. */
+if (!(await row.evaluate((el) => el.open))) {
+  await row.locator('summary').click();
+  await page.waitForTimeout(400);
+}
 await row.locator('.writing-canvas').waitFor();
-await page.waitForTimeout(400);
 
 console.log('\nwriting it out and reading it back');
 
@@ -824,6 +827,78 @@ function firstDifference(a, b) {
   while (i < a.length && i < b.length && a[i] === b[i]) i++;
   return 'they part at character ' + i + ':\n      was:  …' + a.slice(Math.max(0, i - 60), i + 90) +
          '\n      now:  …' + b.slice(Math.max(0, i - 60), i + 90);
+}
+
+/* ---- an app ----------------------------------------------------------
+
+   An app is a record with an `app` block on it. It gets a page of its own
+   the way a post does, so everything that already walks the library
+   reaches it untold — the sitemap line, the share card, the category
+   pill, the search — but its page is built from fields rather than
+   written, because an app page is a link, a version and a list of what is
+   new. Written as prose it would be an essay about an app. */
+console.log('\nan app');
+
+const APP = 'zakat-calculator';
+{
+  const appRow = page.locator('.admin-row').filter({ hasText: APP }).first();
+  await appRow.locator('summary').click();
+  await page.waitForTimeout(250);
+  t('an app row has no writing box — there is no writing in an app',
+    await appRow.locator('.writing-canvas').count() === 0);
+  t('  …it has the address the app opens at instead',
+    await appRow.locator('input[placeholder="https://…"]').count() === 1);
+  t('  …a version, the platforms and what is new',
+    await appRow.locator('.admin-field:has(label:text-is("Version"))').count() === 1 &&
+    await appRow.locator('.admin-field:has(label:text-is("Runs on"))').count() === 1 &&
+    (await appRow.locator('.admin-field label').allTextContents()).some((x) => /What.s new/.test(x)));
+  await appRow.locator('summary').click();
+  await page.waitForTimeout(150);
+}
+
+await page.click('#export');
+await page.waitForSelector('#out-pages section', { timeout: 30000 });
+await page.waitForTimeout(900);
+const appOut = await page.evaluate((id) => {
+  const sections = [...document.querySelectorAll('#out-pages section')];
+  const mine = sections.find((s) => s.querySelector('h3').textContent.trim() === 'apps/' + id + '.html');
+  return { page: mine ? mine.querySelector('textarea').value : null,
+           paths: sections.map((s) => s.querySelector('h3').textContent.trim()),
+           sitemap: document.getElementById('out-sitemap').value };
+}, APP);
+
+t('a publish writes the app its own page under apps/',
+  typeof appOut.page === 'string' && appOut.page.length > 0, appOut.paths.join(', '));
+t('  …and not a post page as well', !appOut.paths.includes('posts/' + APP + '.html'));
+t('  …nor a works page', !appOut.paths.includes('works/' + APP + '.html'));
+t('  …the sitemap names it', appOut.sitemap.includes('apps/' + APP + '.html'));
+t('  …its own share card is drawn for it',
+  appOut.paths.includes('files/cards/' + APP + '.jpg'), appOut.paths.join(', '));
+
+t('  …the page opens the app, away from here',
+  /<a class="button button-dark" href="https:\/\/[^"]+"[^>]*target="_blank"[^>]*rel="noopener"/.test(appOut.page || ''),
+  (appOut.page || '').slice(0, 0) + 'no offsite open button');
+t('  …says which version, and what runs it',
+  /<dt>Version<\/dt>/.test(appOut.page || '') && /Apple/.test(appOut.page || ''));
+t('  …lists what is new', /What.s new in version/.test(appOut.page || ''));
+t('  …calls itself a SoftwareApplication, not an article',
+  /"@type":"SoftwareApplication"/.test(appOut.page || '') &&
+  !/BlogPosting/.test(appOut.page || ''));
+t('  …and its description follows the app, both scripts',
+  /class="urdu"/.test(appOut.page || '') && /zak/.test(appOut.page || ''));
+/* An app is not a piece of writing, so its page carries no Print — the
+   same reason a work's page does not. */
+t('  …and nothing on it claims to be printable',
+  !/id="post-body"/.test(appOut.page || ''));
+
+await page.evaluate(() => document.getElementById('export-dialog').close());
+await page.waitForTimeout(150);
+/* Open only if it is not already — a row is a <details>, and clicking
+   the summary of an open one shuts it. */
+if (!(await row.evaluate((el) => el.open))) {
+  await row.locator('summary').click();
+  await row.locator('.writing-canvas').waitFor();
+  await page.waitForTimeout(300);
 }
 
 /* ---- a publish that changed nothing ----------------------------------

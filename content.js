@@ -335,6 +335,38 @@ window.siteContent = {
     },
 
     {
+      id: "apps",
+      title: "Apps",
+      titleUr: "ایپس",
+      blurb: "Tools built to make a calculation or a lookup easier — free, and they run in a browser.",
+      works: [
+        {
+          id: "zakat-calculator",
+          title: "Zakat Calculator",
+          language: "en",
+          kind: "ایپ",
+          date: "2026-08-21",
+          description: "A simple, comprehensive calculator for working out zakāt on most businesses and on a salaried income — in Urdu and English, with live silver rates for the niṣāb.",
+          descriptionUr: "زکوٰۃ کا حساب لگانے کے لیے ایک آسان اور جامع ایپ — عام کاروبار اور تنخواہ دار افراد دونوں کے لیے۔ اردو اور انگریزی دونوں زبانوں میں، اور نصاب کے لیے چاندی کے تازہ نرخ خود لے لیتی ہے۔",
+          tags: ["زکوٰۃ", "حساب", "نصاب"],
+          page: "apps/zakat-calculator.html",
+          app: {
+            url: "https://zakathisab.web.app/",
+            version: "2",
+            tagline: "Simple, easy and comprehensive — for most businesses and for salaried individuals.",
+            taglineUr: "آسان، سہل اور جامع — اکثر کاروباروں اور تنخواہ دار حضرات کے لیے۔",
+            platforms: ["Apple", "Android", "Windows"],
+            whatsNew: [
+              "Two languages — Urdu and English",
+              "Live silver rates, so the niṣāb is today’s and not last year’s",
+              "A clearer interface throughout"
+            ]
+          }
+        }
+      ]
+    },
+
+    {
       id: "posts",
       title: "Posts, Notes & Reflections",
       titleUr: "مضامین و خیالات",

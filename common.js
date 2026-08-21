@@ -205,7 +205,8 @@
     'معلوماتی پمفلٹ': 'Information pamphlet',
     'رسالہ و پریزینٹیشن': 'Booklet & presentation',
     'تلخیص': 'Summary',
-    'مضمون': 'Essay'
+    'مضمون': 'Essay',
+    'ایپ': 'App'
   };
 
   /* The kind a record should show, in the language the record reads in.
@@ -290,6 +291,16 @@
       'M4 20.2l1.2-3.7L16.4 5.3a1.7 1.7 0 0 1 2.4 0l.5.5a1.7 1.7 0 0 1 0 2.4L8.1 19.4z',
       'M14.9 6.8l2.9 2.9'
     ],
+    /* A handset with a row of keys on it — ایپس. Not a magnifying glass
+       or a cog: what these are is something you open on a phone, and the
+       keys say a calculation without needing a calculator's own grid,
+       which at 24px closes up into a smudge. */
+    app: [
+      'M7.5 2.8h9A1.7 1.7 0 0 1 18.2 4.5v15A1.7 1.7 0 0 1 16.5 21.2h-9A1.7 1.7 0 0 1 5.8 19.5v-15A1.7 1.7 0 0 1 7.5 2.8z',
+      'M8.8 7.2h6.4',
+      'M9.2 11.4h.1M12 11.4h.1M14.8 11.4h.1',
+      'M9.2 15.2h.1M12 15.2h.1M14.8 15.2h.1'
+    ],
     /* A reply with words in it — مضامین و جوابات */
     response: [
       'M4.5 4.5h15A1.5 1.5 0 0 1 21 6v8.5a1.5 1.5 0 0 1-1.5 1.5H10.5L6 20v-4H4.5A1.5 1.5 0 0 1 3 14.5V6a1.5 1.5 0 0 1 1.5-1.5z',
@@ -337,6 +348,7 @@
     charts: 'chart',
     'ilmi-mawad': 'books',
     posts: 'pen',
+    apps: 'app',
     maqalat: 'response',
     rulings: 'seal'
   };
@@ -1029,7 +1041,11 @@
   function pageTools(record, url) {
     var box = document.createElement('div');
     box.className = 'page-tools';
-    var printable = !!record.page;
+    /* An app has a page of its own too, and it is not writing. Printing
+       it prints a stub with a button that does nothing on paper — the
+       same argument as a work's page, which is why `record.page` alone
+       stopped being the whole test once apps arrived. */
+    var printable = !!record.page && !record.app;
 
     /* No arrows on these two. The glyphs elsewhere on the site say two
        specific things — ↗ opens something away from here, ↓ puts a file
