@@ -1650,13 +1650,21 @@
         : null,
       '        <h1 class="record-title ' + scriptClass + '" lang="' + e(record.language || 'en') +
         '" dir="' + (rtl ? 'rtl' : 'ltr') + '">' + e(record.title) + '</h1>',
+      /* The title, the words under it and the button are one block. They
+         were three things at 34px apart, so the button read as the start
+         of the next thing rather than the end of this one — and it is
+         the only thing on the page that matters. */
       app.tagline ? '        ' + line(app.tagline, 'app-tagline') : null,
-      app.taglineUr ? '        ' + line(app.taglineUr, 'app-tagline') : null,
-      '',
-      /* The one thing this page is for. An app is opened, not
-         downloaded, so it is a button and not a file row — and it is
-         somewhere else, so it opens in its own tab and says so with the
-         same drawing every offsite link on this site uses. */
+      /* align-left on an LTR page, for the reason written into CLAUDE.md:
+         `.urdu` sets text-align right, so an Urdu line inside a
+         left-reading column sits at the far edge of its own box —
+         which here is mid-page, away from the English line above it. */
+      app.taglineUr
+        ? '        ' + line(app.taglineUr, 'app-tagline' + (rtl ? '' : ' align-left'))
+        : null,
+      /* An app is opened, not downloaded, so it is a button and not a
+         file row — and it is somewhere else, so it opens in its own tab
+         and says so with the drawing every offsite link here uses. */
       app.url
         ? '        <p class="app-open"><a class="button button-dark" href="' + e(app.url) + '"' +
           (site.isOffsite(app.url) ? ' target="_blank" rel="noopener"' : '') + '>Open the app ' +
@@ -1681,7 +1689,8 @@
       whatsNew.length
         ? [
             '        <section class="app-new">',
-            '          <h2>What’s new' + (app.version ? ' in version ' + e(app.version) : '') + '</h2>',
+            '          <h2 class="app-heading">What’s new' +
+              (app.version ? ' in version ' + e(app.version) : '') + '</h2>',
             '          <ul>',
             whatsNew.map(function (item) {
               return '            ' + line(item, '', 'li');
@@ -1701,7 +1710,9 @@
             ? [record.descriptionUr, record.description]
             : [record.description, record.descriptionUr])
             .filter(Boolean)
-            .map(function (text) { return '          ' + site.proseMarkup(text, '', record.language); })
+            .map(function (text) {
+              return '          ' + site.proseMarkup(text, rtl ? '' : 'align-left', record.language);
+            })
             .join('\n') +
           '\n        </div>'
         : null,
@@ -2475,8 +2486,15 @@
         pad(i + 8) + '<span class="recent-card-body ' +
           (dir === 'rtl' ? 'reads-rtl' : 'reads-ltr') + '" dir="' + dir + '">',
         pad(i + 10) + site.titleMarkup(record),
+        /* Kind and date, on one line, and nothing else. The full meta
+           line — format, language, date — wrapped to three lines in a
+           280px card and was 114px of a 245px card, taller than the
+           title above it. What a card is for is what changed and when;
+           what it is made of is the row's job, one section down. */
         pad(i + 10) + '<span class="work-line">' + site.kindMarkup(record) +
-          site.metaMarkup(record) + '</span>',
+          (site.recordWhen(record)
+            ? '<span class="record-meta" dir="ltr">' + e(site.recordWhen(record)) + '</span>'
+            : '') + '</span>',
         pad(i + 8) + '</span>',
         pad(i + 6) + '</a>'
       ].join('\n');

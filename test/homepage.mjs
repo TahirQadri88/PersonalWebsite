@@ -553,29 +553,56 @@ try {
 
   /* ---- recently added and updated ----
 
-     The strip is written into index.html at publish time rather than
+     The cards are written into index.html at publish time rather than
      drawn by script, which is the whole reason the homepage's words moved
-     into content.js. So the strongest thing here is the last case: with
+     into content.js. So the strongest case here is the last one: with
      JavaScript turned off the cards are still on the page and still
-     readable. Nothing else on this page can say that. */
+     readable, where the library below renders nothing at all.
+
+     How they move is the other half. Left alone the strip is a rail you
+     scroll; where motion is allowed and there is more than fits, script
+     clones the set once and the pair drifts. The clones are made in the
+     browser and never written into the file — a reader without script,
+     and a crawler, must get each card once. */
   group('recently added and updated');
   {
     const { context, page } = await open(1440);
+
+    /* A shelf on the way past, not a screen to scroll through. It was
+       575px — 64% of a 900px viewport, against an author introduction of
+       591px — and it pushed the library, which is the point of the site,
+       down to y=2021. A number here so it cannot creep back, the same
+       way the page's weight has one. */
+    const size = await page.evaluate(() => {
+      const r = document.querySelector('.recent').getBoundingClientRect();
+      const card = document.querySelector('.recent-card').getBoundingClientRect();
+      const lib = document.querySelector('.library').getBoundingClientRect();
+      return { section: Math.round(r.height), card: Math.round(card.height),
+               share: r.height / window.innerHeight,
+               libraryTop: Math.round(lib.top + window.scrollY) };
+    });
+    t(`the strip is ${size.section}px, and stays under 400`, size.section < 400, JSON.stringify(size));
+    t(`  …under half the screen — ${Math.round(size.share * 100)}%`, size.share < 0.5, JSON.stringify(size));
+    t(`  …a card is ${size.card}px, and stays under 190`, size.card < 190, JSON.stringify(size));
+    t(`  …and the library starts by ${size.libraryTop}px, within 1900`,
+      size.libraryTop < 1900, JSON.stringify(size));
+
     const strip = await page.evaluate(() => {
-      const cards = [...document.querySelectorAll('.recent-card')];
-      const stamp = (card) => {
-        const meta = card.querySelector('.record-meta');
-        return meta ? meta.textContent : '';
-      };
+      /* The real cards only. The clones repeat them by design. */
+      const cards = [...document.querySelectorAll('.recent-card')].filter((c) => !c.hasAttribute('aria-hidden'));
       return {
         cards: cards.length,
         titled: cards.filter((c) => (c.querySelector('.record-title') || {}).textContent).length,
         linked: cards.filter((c) => c.getAttribute('href')).length,
         kinds: cards.filter((c) => c.querySelector('.work-kind')).length,
         marks: cards.filter((c) => c.querySelector('svg use')).length,
-        dates: cards.map(stamp),
-        /* Every card reads on the one axis its own script starts from,
-           the same rule the library rows follow. */
+        dates: cards.map((c) => (c.querySelector('.record-meta') || {}).textContent || ''),
+        /* One line, not three: a card says what changed and when, and
+           leaves the format and the language to the row below. */
+        metaLines: cards.map((c) => {
+          const m = c.querySelector('.record-meta');
+          return m ? Math.round(m.getBoundingClientRect().height) : 0;
+        }),
         axes: cards.map((c) => {
           const body = c.querySelector('.recent-card-body');
           const title = c.querySelector('.record-title');
@@ -591,57 +618,74 @@ try {
       strip.kinds === strip.cards && strip.marks === strip.cards, JSON.stringify(strip));
     t('  …and says when, on every one of them',
       strip.dates.every((d) => /\d{4}/.test(d)), JSON.stringify(strip.dates));
+    t('  …on one line, not three', strip.metaLines.every((h) => h > 0 && h < 30),
+      JSON.stringify(strip.metaLines));
     t('  …each reading from the side its own script starts from',
       strip.axes.every(Boolean), JSON.stringify(strip.axes));
 
-    /* Newest first. Read off the page rather than out of content.js —
-       the order a reader gets is the thing being checked. */
     const order = await page.evaluate(() => {
-      const ids = [...document.querySelectorAll('.recent-card')].map((c) => c.getAttribute('href'));
+      const ids = [...document.querySelectorAll('.recent-card')]
+        .filter((c) => !c.hasAttribute('aria-hidden'))
+        .map((c) => c.getAttribute('href'));
       const by = {};
-      const walk = (list, category) => list.forEach((r) => {
+      const walk = (list) => list.forEach((r) => {
         by[r.page || ('works/' + r.id + '.html')] = r.updated || r.date || '';
       });
-      (window.siteContent.categories || []).forEach((c) => walk(c.works || [], c));
+      (window.siteContent.categories || []).forEach((c) => walk(c.works || []));
       walk(window.siteContent.rulings || []);
       return ids.map((href) => by[href] || '');
     });
     t('  …newest first', order.every((d, i) => i === 0 || order[i - 1] >= d), JSON.stringify(order));
 
-    /* The rail's ends, the same contract the category strip uses. */
-    const ends = await page.evaluate(() => {
+    /* The ticker. The set is cloned once and both copies drift; half the
+       pair's own width is exactly one set, so the loop has no seam. */
+    const drift = await page.evaluate(() => {
       const bar = document.getElementById('recent-rail');
-      const track = document.getElementById('recent-track');
-      const before = bar.getAttribute('data-more-before');
-      const after = bar.getAttribute('data-more-after');
-      /* The track scrolls smoothly, so setting scrollLeft starts an
-         animation rather than finishing one. Wait for it to arrive. */
-      track.scrollLeft = track.scrollWidth;
+      const ticker = document.querySelector('.recent-ticker');
+      const cards = [...document.querySelectorAll('.recent-card')];
+      const at = () => {
+        const t = ticker && getComputedStyle(ticker).transform;
+        return t && t !== 'none' ? parseFloat(t.split(',')[4]) : null;
+      };
+      const first = at();
       return new Promise((done) => setTimeout(() => done({
-        before, after,
-        thenBefore: bar.getAttribute('data-more-before'),
-        thenAfter: bar.getAttribute('data-more-after'),
-        scrolls: track.scrollWidth > track.clientWidth
-      }), 900));
+        on: bar.getAttribute('data-ticker'),
+        real: cards.filter((c) => !c.hasAttribute('aria-hidden')).length,
+        clones: cards.filter((c) => c.hasAttribute('aria-hidden')).length,
+        focusable: cards.filter((c) => c.getAttribute('tabindex') !== '-1').length,
+        name: ticker && getComputedStyle(ticker).animationName,
+        moved: first !== null && at() !== first,
+        /* No arrows while it drifts: a drag and an animation cannot share
+           one track. */
+        arrows: [...document.querySelectorAll('.recent-rail .category-arrow')]
+          .filter((a) => getComputedStyle(a).display !== 'none').length
+      }), 1200));
     });
-    t('  …the rail says which way there is more, and changes its mind when you scroll',
-      !ends.scrolls || (ends.before === 'false' && ends.thenBefore === 'true' && ends.thenAfter === 'false'),
-      JSON.stringify(ends));
+    t('the cards drift on their own', drift.on === 'on' && drift.name === 'recent-drift' && drift.moved,
+      JSON.stringify(drift));
+    t('  …the set is cloned exactly once', drift.clones === drift.real, JSON.stringify(drift));
+    t('  …and every clone is hidden from a screen reader',
+      drift.clones > 0 && drift.focusable === drift.real, JSON.stringify(drift));
+    t('  …with no arrows to fight the animation', drift.arrows === 0, JSON.stringify(drift));
 
-    /* Scrolling the rail must move the rail and not the page. That fault
-       has already shipped once here, on the category strip. */
-    const held = await page.evaluate(() => {
-      window.scrollTo({ top: 400, behavior: 'instant' });
-      const was = window.scrollY;
-      document.getElementById('recent-forward').click();
-      return new Promise((done) => setTimeout(() => done({ was, now: window.scrollY }), 600));
+    /* Owed to anything that moves by itself: a way to stop it. */
+    const paused = await page.evaluate(() => {
+      const bar = document.getElementById('recent-rail');
+      const ticker = document.querySelector('.recent-ticker');
+      bar.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      const css = [...document.styleSheets].some(() => true);
+      return { css, rule: getComputedStyle(ticker).animationPlayState };
     });
-    t('  …and the arrow scrolls the rail, not the page', held.was === held.now, JSON.stringify(held));
+    const cssText = await readFile(join(ROOT, 'styles.css'), 'utf8');
+    t('  …and hovering or tabbing into it pauses it',
+      /\[data-ticker="on"\]:hover[\s\S]{0,120}animation-play-state:\s*paused/.test(cssText) &&
+      /:focus-within[\s\S]{0,120}animation-play-state:\s*paused/.test(cssText),
+      paused.rule);
     await context.close();
   }
 
-  /* The three cases the cards' arrival has to survive, the same three the
-     icons above are held to. */
+  /* Reduced motion: no clones, nothing animating, and the rail is the
+     scrollable one it has always been — arrows and all. */
   {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
     await context.route('https://fonts.g**', (r) => r.abort());
@@ -652,13 +696,35 @@ try {
     const r = await page.evaluate(() => {
       const cards = [...document.querySelectorAll('.recent-card')];
       return { count: cards.length,
+               clones: cards.filter((c) => c.hasAttribute('aria-hidden')).length,
+               ticker: !!document.querySelector('.recent-ticker'),
                risen: cards.filter((c) => c.classList.contains('card-rise')).length,
                solid: cards.filter((c) => getComputedStyle(c).opacity === '1').length };
     });
-    t('a reader who asked for less motion gets the cards, unanimated',
-      r.count > 0 && r.risen === 0 && r.solid === r.count, JSON.stringify(r));
+    t('a reader who asked for less motion gets the cards, unmoving',
+      r.count > 0 && !r.ticker && r.clones === 0 && r.risen === 0 && r.solid === r.count,
+      JSON.stringify(r));
+
+    /* And the rail still works by hand, which is the only way left to
+       reach the far end of it. */
+    const ends = await page.evaluate(() => {
+      const bar = document.getElementById('recent-rail');
+      const track = document.getElementById('recent-track');
+      const before = bar.getAttribute('data-more-before');
+      track.scrollLeft = track.scrollWidth;
+      return new Promise((done) => setTimeout(() => done({
+        before,
+        thenBefore: bar.getAttribute('data-more-before'),
+        thenAfter: bar.getAttribute('data-more-after'),
+        scrolls: track.scrollWidth > track.clientWidth
+      }), 900));
+    });
+    t('  …and can still scroll it by hand, ends and all',
+      !ends.scrolls || (ends.before === 'false' && ends.thenBefore === 'true' && ends.thenAfter === 'false'),
+      JSON.stringify(ends));
     await context.close();
   }
+
   {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, javaScriptEnabled: false });
     await context.route('https://fonts.g**', (r) => r.abort());
@@ -667,10 +733,10 @@ try {
     const r = await page.evaluate(() => {
       const cards = [...document.querySelectorAll('.recent-card')];
       return { count: cards.length,
+               clones: cards.filter((c) => c.hasAttribute('aria-hidden')).length,
                solid: cards.filter((c) => {
                  const cs = getComputedStyle(c);
-                 const box = c.getBoundingClientRect();
-                 return cs.opacity === '1' && cs.visibility === 'visible' && box.width > 40;
+                 return cs.opacity === '1' && cs.visibility === 'visible' && c.getBoundingClientRect().width > 40;
                }).length,
                titles: cards.map((c) => (c.querySelector('.record-title') || {}).textContent || '') };
     });
@@ -680,8 +746,56 @@ try {
     t('with JavaScript off the cards are still on the page, and readable',
       r.count > 0 && r.solid === r.count, JSON.stringify(r).slice(0, 240));
     t('  …with their titles in them', r.titles.every((x) => x.length > 0), JSON.stringify(r.titles));
+    /* The clones are made in the browser, so there are none here. Baked
+       into the page they would give this reader every card twice. */
+    t('  …exactly once each, with no clones baked into the file', r.clones === 0, JSON.stringify(r));
     t('  …while the library below needs script and has none',
       (await page.locator('.work-category').count()) === 0);
+    await context.close();
+  }
+
+  /* ---- an app's row ----
+
+     A row in the library is written for a document: it says what opening
+     it would get you, and its link goes to the record's own page, where
+     the document is. An app is not a document. Its row said "Read here"
+     and offered nothing but a page about the app — you could not reach
+     the app itself from the homepage at all. */
+  group("an app's row opens the app");
+  {
+    const { context, page } = await open(1440);
+    await page.evaluate(() => {
+      const d = document.querySelector('.work[data-id="zakat-calculator"]');
+      if (d) d.open = true;
+    });
+    await page.waitForTimeout(250);
+    const row = await page.evaluate(() => {
+      const d = document.querySelector('.work[data-id="zakat-calculator"]');
+      if (!d) return null;
+      const links = [...d.querySelectorAll('.work-actions a')];
+      return {
+        meta: (d.querySelector('.record-meta') || {}).textContent || '',
+        first: links[0] ? { text: links[0].textContent.trim(), href: links[0].getAttribute('href'),
+                            target: links[0].getAttribute('target'), rel: links[0].getAttribute('rel'),
+                            icon: !!links[0].querySelector('svg use') } : null,
+        second: links[1] ? { text: links[1].textContent.trim(), href: links[1].getAttribute('href') } : null,
+        count: links.length
+      };
+    });
+    t('the app has a row in the library', !!row, 'no row with that id');
+    t('  …whose first link goes straight to the app, in its own tab',
+      row && row.first && /^https?:\/\//.test(row.first.href) &&
+      row.first.target === '_blank' && /noopener/.test(row.first.rel || '') && row.first.icon,
+      JSON.stringify(row && row.first));
+    t('  …with the page about it beside, not instead',
+      row && row.second && /apps\/zakat-calculator\.html$/.test(row.second.href),
+      JSON.stringify(row && row.second));
+    /* "Read here" is what a post's row says. You do not read a
+       calculator, and it has no one language to name: this one has two. */
+    t('  …and the line under the title says it opens rather than reads',
+      row && /Opens in a browser/.test(row.meta) && !/Read here/.test(row.meta), row && row.meta);
+    t('  …and names no single language for an app that has two',
+      row && !/English|Urdu|Arabic/.test(row.meta), row && row.meta);
     await context.close();
   }
 
