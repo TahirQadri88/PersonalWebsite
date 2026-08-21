@@ -219,6 +219,18 @@ describes nothing a reader would get. `workMarkup` puts **Open the app**
 first, straight to `record.app.url` and offsite, with **About this app**
 beside it: the request was for a direct link *as well*, not instead.
 
+**An app's page carries who stands behind it.** `presentedBy`,
+`preparedBy` and `verifiedBy[]` on the `app` block become the
+پیشکش / تیار کردہ / تصدیق panel at the foot of the page. The تصدیق is the
+part that matters: a zakāt calculator two muftis have checked is a
+different thing from one nobody has, and a page that does not say which
+leaves a reader to guess. Fields, not a sentence somebody remembers to
+type. The labels are Urdu words so they are set in Urdu — `.bio-facts dt`
+had to learn the same thing, where نام and کنیت were being set in the
+Latin UI face at 12px with 0.08em of tracking, which pulls joined letters
+apart. Who built it is said once: the *Built by* cell in the facts row is
+written only when `preparedBy` is absent.
+
 **An app is a record with an `app` block, and its page is built from
 fields.** `apps/<id>.html`, written by `buildApp` and regenerated in full
 on every publish the way a work's page is — there is no writing to read

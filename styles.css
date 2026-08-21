@@ -1700,6 +1700,17 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   line-height: 1.95;
 }
 
+/* The app's own name in Urdu, under the one in English. .record-title
+   gives it Aslam — the heading face — and it needs its own size here:
+   the class's default is tuned for a library row, not for sitting under
+   a 48px h1. */
+.app-name-ur.record-title {
+  margin: 6px 0 0;
+  font-size: clamp(26px, 3vw, 38px);
+  line-height: 1.5;
+  color: var(--moss-deep);
+}
+
 .app-open { margin: 24px 0 0; }
 .app-open .button {
   font-family: var(--font-ui);
@@ -1710,6 +1721,16 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 }
 .app-open .icon-inline { margin-left: 9px; }
 .work-hero[dir="rtl"] .app-open .icon-inline { margin: 0 9px 0 0; }
+
+/* The sentence you read on the way to pressing the button. Smaller than
+   the tagline above it — it is an instruction, not a description. */
+.app-cta {
+  margin: 12px 0 0;
+  max-width: 42ch;
+  color: var(--gold-on-light);
+  font-size: clamp(17px, 1.7vw, 20px);
+  line-height: 1.9;
+}
 
 /* The facts, as a row of pairs rather than a sentence: version, the
    platforms, when it went up, who built it. The same two-column card the
@@ -1789,6 +1810,69 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .app-new li.urdu::before,
 .app-new li.arabic::before { left: auto; right: 2px; }
 
+/* پیشکش, تیار کردہ, تصدیق — who stands behind it. Labelled pairs, the
+   same idiom the author's own facts panel uses, and for the same reason
+   its labels had to stop being set in the Latin UI face: نام and پیشکش
+   are Urdu words, and 12px with 0.08em of tracking pulls joined letters
+   apart. */
+.app-credits {
+  display: grid;
+  gap: 1px;
+  margin: 44px 0 0;
+  background: var(--line);
+  border: 1px solid var(--line);
+  /* Two, not auto-fit. With auto-fit a third column opened at this width
+     and stood empty — and because the panel's own background is the rule
+     colour showing through 1px gaps, an empty cell is not nothing, it is
+     a grey box. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.app-credits > div { padding: 16px 20px; background: var(--card); }
+/* تصدیق carries two names and their titles, so it takes the full width
+   rather than a third of it. */
+.app-credits > .app-attest { grid-column: 1 / -1; }
+.app-credits dt {
+  margin: 0;
+  font-family: var(--font-urdu);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.9;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--gold-on-light);
+}
+.app-credits dd {
+  margin: 4px 0 0;
+  font-family: var(--font-urdu-heading);
+  word-spacing: var(--space-urdu-heading);
+  font-size: 18px;
+  line-height: 1.8;
+  color: #2b3a34;
+}
+.app-attest-name {
+  margin: 0;
+  font-family: var(--font-urdu-heading);
+  word-spacing: var(--space-urdu-heading);
+  font-size: 18px;
+  line-height: 1.8;
+  color: var(--moss-deep);
+}
+/* The title under a name is prose, not a heading, so it goes back to
+   Mehr — and it is long, so it gets a measure it can be read across. */
+/* The same size the author's own byline takes under his name — the one
+   other place on this site where a line of Urdu sits under a name and
+   says what they hold. 15px was below the floor the site keeps. */
+.app-attest-title {
+  margin: 3px 0 0;
+  max-width: 56ch;
+  font-family: var(--font-urdu);
+  word-spacing: normal;
+  font-size: clamp(15px, 1.4vw, 19px);
+  line-height: 2;
+  color: #4c5651;
+}
+.app-attest-title + .app-attest-name { margin-top: 16px; }
+
 .app-about { margin: 40px 0 0; }
 .app-about p { margin: 0 0 14px; color: #45534d; max-width: 62ch; }
 /* 62ch of Nastaliq at 20-27px is most of a desktop; the measure a reader
@@ -1800,6 +1884,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 
 @media (max-width: 620px) {
   .app-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app-credits { grid-template-columns: minmax(0, 1fr); }
   .app-open .button { width: 100%; justify-content: center; }
 }
 

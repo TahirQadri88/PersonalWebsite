@@ -1548,6 +1548,40 @@
     return !!(entry && entry.record && entry.record.app);
   }
 
+  /* Who stands behind the app: the body presenting it, the person who
+     built it, and — the one that matters most on a page about zakāt —
+     the muftis who checked it. A calculator nobody has attested is a
+     different thing from one two of them have, and the page should say
+     which it is rather than leave a reader to wonder.
+
+     All of it is Urdu, so the labels are set in Urdu too. `.bio-facts dt`
+     had to learn this already: نام and کنیت were being set in the Latin
+     UI face at 12px with 0.08em of tracking, which pulls joined letters
+     apart. Same shape, same fix. */
+  function appCredits(app, pad_) {
+    var e = site.escapeHtml;
+    var attested = (app.verifiedBy || []).filter(function (one) { return one && one.name; });
+    if (!app.presentedBy && !app.preparedBy && !attested.length) return null;
+
+    var rows = [];
+    if (app.presentedBy) {
+      rows.push(pad_ + '  <div><dt>پیشکش</dt><dd>' + e(app.presentedBy) + '</dd></div>');
+    }
+    if (app.preparedBy) {
+      rows.push(pad_ + '  <div><dt>تیار کردہ</dt><dd>' + e(app.preparedBy) + '</dd></div>');
+    }
+    if (attested.length) {
+      rows.push(pad_ + '  <div class="app-attest"><dt>تصدیق</dt><dd>' +
+        attested.map(function (one) {
+          return '<p class="app-attest-name">' + e(one.name) + '</p>' +
+            (one.title ? '<p class="app-attest-title">' + e(one.title) + '</p>' : '');
+        }).join('') +
+        '</dd></div>');
+    }
+    return [pad_ + '<dl class="app-credits urdu" lang="ur" dir="rtl">']
+      .concat(rows, [pad_ + '</dl>']).join('\n');
+  }
+
   function buildApp(record, entry) {
     var e = site.escapeHtml;
     var app = record.app || {};
@@ -1650,6 +1684,14 @@
         : null,
       '        <h1 class="record-title ' + scriptClass + '" lang="' + e(record.language || 'en') +
         '" dir="' + (rtl ? 'rtl' : 'ltr') + '">' + e(record.title) + '</h1>',
+      /* The app's own name in Urdu, under the one in English. Not a
+         translation of the title but the name it actually carries, so it
+         takes .record-title like every other title the site renders —
+         which is what gives it Aslam rather than the body Nastaliq. */
+      app.nameUr
+        ? '        <p class="app-name-ur record-title urdu' + (rtl ? '' : ' align-left') +
+          '" lang="ur" dir="rtl">' + e(app.nameUr) + '</p>'
+        : null,
       /* The title, the words under it and the button are one block. They
          were three things at 34px apart, so the button read as the start
          of the next thing rather than the end of this one — and it is
@@ -1670,6 +1712,12 @@
           (site.isOffsite(app.url) ? ' target="_blank" rel="noopener"' : '') + '>Open the app ' +
           site.icon('open', 'icon-inline') + '</a></p>'
         : '        <p class="availability-note">Not published here yet.</p>',
+      /* Under the button, not above it: it is the sentence you read on
+         the way to pressing it, and it has nothing to say to a reader
+         who has already decided. */
+      app.cta && app.url
+        ? '        ' + line(app.cta, 'app-cta' + (rtl ? '' : ' align-left'))
+        : null,
       '',
       (app.version || platforms.length)
         ? [
@@ -1681,7 +1729,12 @@
               ? '          <div><dt>Runs on</dt><dd>' + e(platforms.join(' · ')) + '</dd></div>'
               : null,
             pretty ? '          <div><dt>Published</dt><dd>' + e(pretty) + '</dd></div>' : null,
-            '          <div><dt>Built by</dt><dd>' + e(author) + '</dd></div>',
+            /* Who built it used to be a fourth cell here. It is تیار کردہ
+               in the credits below now, in the author's own name for
+               himself, and saying it twice on one page said it once too
+               often — so this cell is only for an app whose credits do
+               not carry it. */
+            app.preparedBy ? null : '          <div><dt>Built by</dt><dd>' + e(author) + '</dd></div>',
             '        </dl>'
           ].filter(function (x) { return x !== null; }).join('\n')
         : null,
@@ -1716,6 +1769,8 @@
             .join('\n') +
           '\n        </div>'
         : null,
+      '',
+      appCredits(app, pad(8)),
       '',
       (record.tags || []).length ? '        ' + site.tagMarkup(record) : null,
       '        <p class="post-foot"><a class="text-link" href="../index.html#' + e(categoryId) + '">← All apps</a></p>',
@@ -2770,8 +2825,10 @@
       versionField.appendChild(versionField.own(versionInput));
       fields.appendChild(versionField);
 
+      bound(fields, app, 'nameUr', 'The app’s name in Urdu');
       bound(fields, app, 'tagline', 'The line under the title');
       bound(fields, app, 'taglineUr', 'The same line in Urdu');
+      bound(fields, app, 'cta', 'The line under the button', 'what to do next — shown under Open the app');
 
       if (!app.platforms) app.platforms = [];
       repeatable(fields, 'Runs on', 'one per platform — Apple, Android, Windows',
@@ -2785,6 +2842,21 @@
           return true;
         },
         function () { return ''; });
+
+      bound(fields, app, 'presentedBy', 'Presented by', 'پیشکش — the body putting it out');
+      bound(fields, app, 'preparedBy', 'Prepared by', 'تیار کردہ — the person who built it');
+
+      /* تصدیق. Who checked it, and what they hold — on a page about
+         zakāt this is the part a reader most needs, so it is a field and
+         not a sentence somebody has to remember to type. */
+      if (!app.verifiedBy) app.verifiedBy = [];
+      repeatable(fields, 'Verified by', 'تصدیق — a name, then what they hold',
+        app.verifiedBy, '+ Add a name',
+        function (line, one) {
+          line.appendChild(lineInput(one, 'name', '', 'Name'));
+          line.appendChild(lineInput(one, 'title', '', 'What they hold'));
+        },
+        function () { return { name: '', title: '' }; });
 
       if (!app.whatsNew) app.whatsNew = [];
       repeatable(fields, 'What’s new', 'one per line, in whichever script it is written in',
