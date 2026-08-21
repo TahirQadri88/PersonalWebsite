@@ -346,15 +346,29 @@ window.siteContent = {
           language: "en",
           kind: "ایپ",
           date: "2026-08-21",
-          description: "A zakāt calculator for most businesses and for salaried individuals — in Urdu and English, with live silver rates for the niṣāb. It runs in the browser, on any device, with nothing to install.",
-          descriptionUr: "عام کاروبار اور تنخواہ دار حضرات دونوں کے لیے زکوٰۃ کا حساب — اردو اور انگریزی دونوں زبانوں میں، اور نصاب کے لیے چاندی کے تازہ نرخ خود لے لیتی ہے۔ براؤزر میں چلتی ہے، کسی بھی ڈیوائس پر — کچھ انسٹال کرنے کی ضرورت نہیں۔",
+          description: "A zakāt calculator for people in business and for those on a salary — in Urdu and English, with live silver rates for the niṣāb. It runs in the browser, on any device, with nothing to install.",
+          descriptionUr: "کاروباری اور تنخواہ دار افراد کے لیے زکوٰۃ کا آسان حساب بنانے والی ایپلی کیشن — اردو اور انگریزی دونوں زبانوں میں، اور نصاب کے لیے چاندی کے تازہ نرخ خود لے لیتی ہے۔ براؤزر میں چلتی ہے، کسی بھی ڈیوائس پر — کچھ انسٹال کرنے کی ضرورت نہیں۔",
           tags: ["زکوٰۃ", "حساب", "نصاب"],
           page: "apps/zakat-calculator.html",
           app: {
             url: "https://zakathisab.web.app/",
             version: "2",
-            tagline: "Simple, easy and comprehensive.",
-            taglineUr: "آسان، سہل اور جامع۔",
+            nameUr: "زکوٰۃ کیلکولیٹر",
+            cta: "ابھی وزٹ کریں اور اپنی زکوٰۃ کا درست حساب حاصل کریں۔",
+            presentedBy: "جمعیتِ اشاعتِ اہلِ سنت (پاکستان) کراچی",
+            preparedBy: "ابواللیث محمد طاہر قادری",
+            verifiedBy: [
+              {
+                name: "الدکتور المفتی محمد عطاء الله النعیمی",
+                title: "شیخ الحدیث جامعۃ النور و شیخ الحدیث دارالعلوم مصلح الدین، و رئیس دارُ الإفتاء النور، جمیعۃ اشاعۃ اہل السنّۃ (باکستان) کراتشی"
+              },
+              {
+                name: "والمفتی محمد جنید العطاری النعیمی",
+                title: "دارُ الإفتاء النور، جمعیت اشاعت اہلسنت (پاکستان) کراچی"
+              }
+            ],
+            tagline: "A simple zakāt calculation for people in business and for those on a salary.",
+            taglineUr: "کاروباری اور تنخواہ دار افراد کے لیے زکوٰۃ کا آسان حساب بنانے والی ایپلی کیشن",
             platforms: ["Apple", "Android", "Windows"],
             whatsNew: [
               "Two languages — Urdu and English",

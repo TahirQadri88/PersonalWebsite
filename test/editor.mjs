@@ -900,6 +900,27 @@ t('  …with the Urdu aligned to the column, not to the far edge of its box',
 t('  …and nothing on it claims to be printable',
   !/id="post-body"/.test(appOut.page || ''));
 
+/* Who stands behind it. On a page about zakāt the تصدیق is the part a
+   reader most needs — a calculator two muftis have checked is a
+   different thing from one nobody has — so it is fields on the record
+   rather than a sentence somebody has to remember to type. */
+t('  …it says who presents it, who prepared it and who verified it',
+  /<dt>پیشکش<\/dt>/.test(appOut.page || '') &&
+  /<dt>تیار کردہ<\/dt>/.test(appOut.page || '') &&
+  /<dt>تصدیق<\/dt>/.test(appOut.page || ''));
+t('  …each verifier with a name and what they hold',
+  ((appOut.page || '').match(/app-attest-name/g) || []).length >= 2 &&
+  ((appOut.page || '').match(/app-attest-title/g) || []).length >= 2);
+/* Urdu labels set in Urdu. `.bio-facts dt` had to learn this already:
+   نام and کنیت were being set in the Latin UI face at 12px with 0.08em
+   of tracking, which pulls joined letters apart. */
+t('  …with the whole panel marked as Urdu, so it is set in Urdu',
+  /<dl class="app-credits urdu" lang="ur" dir="rtl">/.test(appOut.page || ''));
+/* Said once. It was a "Built by" cell in the facts row as well until
+   تیار کردہ arrived, which said it twice on one page. */
+t('  …and does not also repeat who built it in the facts row',
+  !/<dt>Built by<\/dt>/.test(appOut.page || ''));
+
 await page.evaluate(() => document.getElementById('export-dialog').close());
 await page.waitForTimeout(150);
 /* Open only if it is not already — a row is a <details>, and clicking
