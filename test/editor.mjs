@@ -603,6 +603,58 @@ t(`a publish sends ${publish.count} files, and the Worker takes ${maxFiles}`,
 t(`the largest file is ${Math.round(publish.biggest.bytes / 1024)}KB, and the Worker takes ${Math.round(maxBytes / 1024)}KB`,
   publish.biggest.bytes <= maxBytes, publish.biggest.path);
 
+/* ---- the homepage --------------------------------------------------
+
+   The author's introduction, the hero, the contact lines and the footer
+   all live in content.js now, and index.html carries a rendering of them
+   between markers the editor writes into. That is the awkward way round
+   — drawing them with a script at load would have been three lines — and
+   it is the right way round: the introduction is the most-read prose
+   about the author on the site, and a crawler, a WhatsApp preview and a
+   reader with JavaScript off never run a script.
+
+   So what these check is that the awkward part works: the words go in,
+   the marked region comes out holding them, and everything outside the
+   markers is left exactly as it was. */
+console.log('\nthe homepage');
+
+const home = await page.evaluate(() => {
+  const sections = Array.from(document.querySelectorAll('#out-pages section'));
+  const mine = sections.find((s) => s.querySelector('h3').textContent.trim() === 'index.html');
+  return mine ? mine.querySelector('textarea').value : null;
+});
+t('index.html is among the files a publish would write', typeof home === 'string' && home.length > 0);
+
+const shipped = await readFile(join(ROOT, 'index.html'), 'utf8');
+t('  …and it is what is already committed, so a publish with nothing edited commits nothing',
+  home === shipped, home === shipped ? '' : firstDifference(shipped, home || ''));
+
+for (const region of ['nav', 'hero', 'about', 'recent', 'contact', 'footer']) {
+  t(`  …the ${region} region survives being written`,
+    (home || '').includes(`<!-- editor:${region} -->`) &&
+    (home || '').includes(`<!-- /editor:${region} -->`));
+}
+
+/* The words themselves, out of content.js and into the page — the whole
+   point of the exercise. */
+const words = await page.evaluate(() => {
+  const c = window.siteContent;
+  return { label: c.about.label, byline: c.about.bio.byline,
+           fact: c.about.bio.facts[0].value, panel: c.about.bio.panels[0].title,
+           item: c.about.bio.panels[0].items[0], urdu: c.hero.urdu,
+           contact: c.contact.heading, credit: c.footer.credit };
+});
+for (const [name, text] of Object.entries(words)) {
+  t(`  …the ${name} from content.js is in the page`, (home || '').includes(text), text);
+}
+
+/* Nothing outside a marker moved. The <head>, the category bar, the
+   library and the fatawa panel are hand-written and stay that way. */
+for (const untouched of ['<meta property="og:image"', 'id="category-bar"',
+                         'id="work-library"', 'id="rulings-library"', '<script src="content.js">']) {
+  t(`  …and ${untouched.slice(0, 28)}… is left alone`, (home || '').includes(untouched));
+}
+
 /* Serve back what was just written, and open it again. */
 overlay.set(`posts/${POST}.html`, written);
 row = await openEditor(page);
@@ -733,6 +785,39 @@ const quietBox = await page.evaluate(() => {
 });
 t('  …and stays quiet when it cannot tell which version the site serves',
   !/older copy of the editor/.test(quietBox), quietBox);
+
+
+/* ---- a homepage the editor cannot splice ----------------------------
+
+   index.html is the front door of the site. Writing some of its regions
+   and not others would leave it half generated, so a missing marker
+   writes nothing at all and stops the publish with a sentence naming it.
+
+   Routed on the fetch only, the same way the version check above is: the
+   page under test is admin.html, and index.html reaches it only through
+   the one fetch the editor makes for it. */
+console.log('\na homepage the editor cannot splice');
+
+await page.unroute('**/admin.js');
+await page.route('**/index.html', async (route, request) => {
+  if (request.resourceType() !== 'fetch') return route.fallback();
+  const real = await readFile(join(ROOT, 'index.html'), 'utf8');
+  route.fulfill({ status: 200, contentType: 'text/html',
+    body: real.replace('<!-- editor:about -->', '') });
+});
+await page.reload({ waitUntil: 'domcontentloaded' });
+await page.waitForSelector('.admin-row');
+await page.waitForFunction(
+  () => !/Loading the current text/.test(document.body.textContent), null, { timeout: 20000 });
+await page.click('#publish');
+await page.waitForFunction(() => /\S/.test(document.getElementById('publish-status').textContent),
+  null, { timeout: 15000 });
+const broke = await page.evaluate(() => document.getElementById('publish-status').textContent);
+t('a homepage missing a marker stops the publish rather than half writing it',
+  /marker/.test(broke) && /about/.test(broke), broke);
+t('  …and names the marker, so it can be put back', /editor:about/.test(broke), broke);
+t('  …and nothing was sent — it did not report a publish',
+  !/Published /.test(broke), broke);
 
 t('nothing threw along the way', jsErrors.length === 0, jsErrors.join(' | '));
 

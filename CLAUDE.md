@@ -94,6 +94,37 @@ which breaks the line instead of emphasising part of it. The synthesised
 one measures 0% wider. Less contrast, and right: emphasis inside a
 sentence must not resize the sentence.
 
+**The homepage's words live in `content.js`, and `index.html` is a
+rendering of them.** The hero, the author's introduction and the whole
+collapsible bio, the header links, the contact lines and the footer
+credit are `hero`, `about`, `nav`, `contact` and `footer` in `content.js`.
+`index.html` carries them between marker comments — `<!-- editor:about -->`
+and its closing half — and a publish replaces what is between each pair
+and touches nothing else in the file. Editing between the markers by hand
+is editing a generated file: the next publish overwrites it.
+
+Drawing them with a script at load would have been three lines and is the
+wrong answer. The introduction is the most-read prose about the author on
+the site, and a crawler, a WhatsApp preview and a reader with JavaScript
+off never run one — the library can afford to be JS-rendered because
+`sitemap.xml` and every work's own page carry it; the introduction has no
+such second copy.
+
+`buildIndex` in `admin.js` does the splice, and it is all-or-nothing: a
+missing marker writes **no** region and stops the publish with a sentence
+naming it. `index.html` is the front door; a half-generated one is worse
+than an unchanged one. The editor reads the committed page back over
+http, the same way it reads a post's writing back, so this needs the
+editor opened over http and not from the file system.
+
+None of these strings says which script it is in. `langAttrs` asks
+`scriptOf` — the same function the writing box asks of a typed line — and
+writes `lang` and `dir` out itself. It never writes a **class**: `.urdu`
+carries a font size and `text-align: right` along with the font, and the
+hero's Urdu line has a size of its own and no alignment of its own, so
+the class would send it to the far edge of its column. Which classes an
+element wears is written out element by element in the builders.
+
 **A post is a page, not a download.** Entries in the `posts` category carry
 `page` and `date` instead of `files`, and their words live in the HTML file, not
 in `content.js`. `admin.html` writes that file; editing one needs the editor
@@ -321,6 +352,13 @@ append rather than write, since a tab can be old *and* pointed at an old
 Worker and neither may erase the other. A check that cannot run says
 nothing at all — opened from the file system there is nothing to fetch,
 and that is not a fault.
+
+**A change to the Worker's writable list is a change to what the editor
+may touch.** `WRITABLE` in `worker/src/index.js` is the only thing between
+"the editor may update the author's introduction" and "the editor may
+replace any page it likes". `index.html` is on it; `404.html`,
+`about/index.html` and `index.htm` are not, and `worker/test.mjs` checks
+each of those is still refused.
 
 **Adding a work by hand means editing sitemap.xml too, and its page is missing
 until admin.html writes it.** `sitemap.xml` is the one file outside

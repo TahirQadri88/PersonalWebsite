@@ -113,6 +113,19 @@ t('path traversal refused', r.status===400 && /not a file the editor may write/.
 r = await post([{path:'admin.js',text:'x'}], JWT);
 t('writing admin.js refused', r.status===400, JSON.stringify(r));
 
+/* The homepage. The editor commits the page that is already there with
+   its own blocks written back into it, so this one is writable — and
+   nothing beside it is. index.html is the whole front door of the site;
+   the list is the only thing standing between "the editor may update the
+   author's introduction" and "the editor may replace any page it likes". */
+r = await post([{path:'content.js',text:GOOD},{path:'index.html',text:'<!doctype html><title>x</title>'}], JWT);
+t('index.html is a file the editor may write', r.status===200, JSON.stringify(r).slice(0,200));
+
+for (const path of ['404.html', 'about/index.html', '../index.html', 'index.htm']) {
+  r = await post([{path,text:'x'}], JWT);
+  t(`  …but ${path} is not`, r.status===400 && /not a file the editor may write/.test(r.body.message), JSON.stringify(r));
+}
+
 r = await post([{path:'content.js',text:'window.siteContent = { rulings: [] };'}], JWT);
 t('content.js with no categories is refused', r.status===400 && /categories/.test(r.body.message), JSON.stringify(r));
 
@@ -243,7 +256,7 @@ const ver = await worker.fetch(new Request('https://admin.tahirqadri.com.pk/vers
 const verBody = await ver.json();
 t('GET /version answers without signing in', ver.status===200, JSON.stringify(verBody));
 t('  …with a version', typeof verBody.version==='string' && verBody.version.length>0);
-t('  …and every path the editor publishes', ['content.js','sitemap.xml','posts/a.html','works/a.html','files/cards/a.jpg']
+t('  …and every path the editor publishes', ['content.js','sitemap.xml','index.html','posts/a.html','works/a.html','files/cards/a.jpg']
   .every(p => verBody.writable.some(src => new RegExp(src).test(p))), JSON.stringify(verBody.writable));
 t('  …and the limits it enforces', verBody.maxFiles===1000 && verBody.maxFileBytes===512*1024, JSON.stringify(verBody));
 t('  …and is not cached', /no-store/.test(ver.headers.get('cache-control')||''));

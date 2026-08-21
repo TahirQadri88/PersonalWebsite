@@ -49,6 +49,14 @@
      reading from. */
   var model = JSON.parse(JSON.stringify({
     site: source.site || {},
+    /* The homepage's own words. They are edited here and written back
+       into index.html on publish — see buildIndex — so they belong in
+       the model beside the records, not in the page. */
+    nav: source.nav || [],
+    hero: source.hero || {},
+    about: source.about || {},
+    contact: source.contact || {},
+    footer: source.footer || {},
     categories: source.categories || [],
     rulings: source.rulings || []
   }));
@@ -302,6 +310,34 @@
 
   var POSTS_CATEGORY = 'posts';
   var bodies = {};
+
+  /* The homepage as it currently stands, read back so a publish can write
+     its own blocks into it and leave every other line exactly as it is.
+     The same reason a post's writing is read back before it is edited:
+     the file is the store, and the editor may only rewrite the parts it
+     owns.
+
+     Over file:// there is nothing to fetch. That is not a fault of the
+     page, but it does mean the homepage cannot be published from there,
+     and problems() says so rather than letting an edit to the author's
+     introduction quietly go nowhere. */
+  var indexHtml = null;
+  var indexTrouble = '';
+
+  function loadIndex() {
+    return fetch('index.html', { cache: 'no-store' })
+      .then(function (response) {
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        return response.text();
+      })
+      .then(function (html) { indexHtml = html; indexTrouble = ''; })
+      .catch(function () {
+        indexHtml = null;
+        indexTrouble = 'index.html could not be read, so nothing on the homepage — the ' +
+          'introduction, the hero, the contact lines — can be published from here. ' +
+          'Open this editor over http rather than from a file.';
+      });
+  }
 
   /* ---- The writing box ------------------------------------------------
 
@@ -1957,6 +1993,256 @@
       .join('\n');
   }
 
+  /* ---- The homepage ---------------------------------------------------
+
+     index.html is a page a person wrote, and the editor owns only parts
+     of it. Each part sits between a pair of markers — `editor:about` and
+     `/editor:about` — and a publish replaces what is between them and
+     touches nothing else in the file.
+
+     That is what lets the author's introduction be edited in a form and
+     still arrive as real HTML. Drawing it with a script instead would
+     have been less work and would have cost the thing that matters: a
+     crawler, a WhatsApp preview and a reader with JavaScript off would
+     all have found the introduction missing, and it is the most-read
+     prose about the author on the site.
+
+     A missing marker writes nothing and stops the publish with a
+     sentence saying which one. index.html is the front door; a half
+     spliced one is worse than an unchanged one. */
+
+  var INDEX_REGIONS = ['nav', 'hero', 'about', 'recent', 'contact', 'footer'];
+
+  /* The script a line of the homepage is written in. scriptOf is the same
+     function the writing box asks of a typed line, so a heading here and
+     a heading in a post cannot disagree about what counts as Urdu.
+
+     It answers with lang and dir only, never a class. `.urdu` carries a
+     font size and `text-align: right` along with the font, and the hero's
+     Urdu line has a size of its own and no alignment of its own — the
+     class would send it to the far edge of its column. Which classes an
+     element wears is written out below, element by element, the same ones
+     the page already wears. */
+  function langAttrs(text) {
+    var script = scriptOf(String(text || ''), 'ur');
+    if (script === 'ur') return ' lang="ur" dir="rtl"';
+    if (script === 'ar') return ' lang="ar" dir="rtl"';
+    return '';
+  }
+
+  function pad(indent) { return new Array(indent + 1).join(' '); }
+
+  /* Drops the empty ones, so a block left blank in the form leaves no
+     element behind rather than an empty one to wonder about. */
+  function stack(indent, parts) {
+    var p = pad(indent);
+    return parts
+      .filter(function (part) { return part !== null && part !== undefined && part !== ''; })
+      .map(function (part) { return p + part; })
+      .join('\n');
+  }
+
+  function indexNav(indent) {
+    var e = site.escapeHtml;
+    return stack(indent, (model.nav || []).map(function (link) {
+      return '<a' + (link.echo ? ' class="nav-echo"' : '') + ' href="' + e(link.href) + '">' +
+        e(link.text) + '</a>';
+    }));
+  }
+
+  function indexHero(indent) {
+    var e = site.escapeHtml;
+    var hero = model.hero || {};
+    return stack(indent, [
+      hero.eyebrow ? '<p class="eyebrow"' + langAttrs(hero.eyebrow) + '>' + e(hero.eyebrow) + '</p>' : '',
+      '<h1>' + e(hero.headline || '') +
+        (hero.headlineEm ? '<em>' + e(hero.headlineEm) + '</em>' : '') + '</h1>',
+      hero.copy ? '<p class="hero-copy"' + langAttrs(hero.copy) + '>' + e(hero.copy) + '</p>' : '',
+      hero.urdu ? '<p class="hero-urdu"' + langAttrs(hero.urdu) + '>' + e(hero.urdu) + '</p>' : '',
+      hero.cta ? '<a class="button" href="#library">' + e(hero.cta) +
+        ' <span aria-hidden="true">→</span></a>' : ''
+    ]);
+  }
+
+  /* The seal and the calligraphed name are the two pictures inside the
+     introduction. They are not words and there is nothing to edit about
+     them, so they are written out as they stand. */
+  var INTRO_MARK =
+    '<img class="intro-mark" src="files/images/logo-circle-180.png" ' +
+    'srcset="files/images/logo-circle-180.png 180w, files/images/logo-circle-512.png 512w, ' +
+    'files/images/logo-circle-1024.png 1024w" sizes="60px" ' +
+    'alt="Calligraphic seal reading Abu al-Layth Muhammad Tahir al-Qadri" width="180" height="180" />';
+  var BIO_CALLIGRAPHY =
+    '<img class="bio-calligraphy" src="files/images/name-calligraphy.png" alt="" ' +
+    'width="840" height="219" loading="lazy" />';
+
+  function indexAbout(indent) {
+    var e = site.escapeHtml;
+    var about = model.about || {};
+    var bio = about.bio || {};
+    var i = indent;
+
+    /* align-left on both labels, for the reason written into CLAUDE.md:
+       `.urdu` sets text-align right, a label inherits it, and above an
+       English heading it lands at the far edge of the block. Three of
+       these went years without it. */
+    var head = stack(i + 2, [
+      about.label
+        ? '<!-- align-left because the heading under it reads leftwards. Without\n' +
+          pad(i + 2) + '     it `.urdu` sets the block right and the label lands at the far\n' +
+          pad(i + 2) + '     edge of a 780px column, across from the name it introduces. -->'
+        : '',
+      about.label ? '<p class="section-label urdu align-left"' + langAttrs(about.label) + '>' +
+        e(about.label) + '</p>' : '',
+      '<h2>' + e(about.heading || '') + '</h2>',
+      about.summary ? '<p' + langAttrs(about.summary) + '>' + e(about.summary) + '</p>' : ''
+    ]);
+
+    var facts = (bio.facts || []).map(function (fact) {
+      return pad(i + 8) + '<div><dt>' + e(fact.term) + '</dt><dd>' + e(fact.value) + '</dd></div>';
+    }).join('\n');
+
+    var panels = (bio.panels || []).map(function (panel) {
+      var tag = panel.kind === 'ol' ? 'ol' : panel.kind === 'ul' ? 'ul' : 'div';
+      var items = (panel.items || []).map(function (item) {
+        return pad(i + 10) + (tag === 'div' ? '<p>' + e(item) + '</p>' : '<li>' + e(item) + '</li>');
+      }).join('\n');
+      return [
+        pad(i + 6) + '<details>',
+        pad(i + 8) + '<summary class="urdu"' + langAttrs(panel.title) + '>' + e(panel.title) +
+          ' <span class="toggle" aria-hidden="true">+</span></summary>',
+        pad(i + 8) + '<' + tag + ' class="urdu"' + langAttrs(panel.title) + '>',
+        items,
+        pad(i + 8) + '</' + tag + '>',
+        pad(i + 6) + '</details>'
+      ].filter(Boolean).join('\n');
+    }).join('\n\n');
+
+    var pdf = bio.pdf && bio.pdf.url
+      ? [
+          pad(i + 4) + '<p class="bio-source">',
+          pad(i + 6) + '<a class="document-link" href="' + e(bio.pdf.url) +
+            '" target="_blank" rel="noopener">',
+          pad(i + 8) + e(bio.pdf.label || 'Open the PDF') +
+            ' <span data-icon="open" aria-hidden="true"></span>',
+          pad(i + 6) + '</a>',
+          pad(i + 4) + '</p>'
+        ].join('\n')
+      : '';
+
+    return [
+      pad(i) + INTRO_MARK,
+      pad(i) + '<div class="intro-body">',
+      head,
+      '',
+      pad(i + 2) + '<details class="bio" id="bio">',
+      pad(i + 4) + '<summary>',
+      pad(i + 6) + '<span>',
+      bio.openLabelUr
+        ? pad(i + 8) + '<span class="section-label urdu align-left"' + langAttrs(bio.openLabelUr) +
+          '>' + e(bio.openLabelUr) + '</span>'
+        : '',
+      pad(i + 8) + '<strong>' + e(bio.openLabel || 'Read the full introduction') + '</strong>',
+      pad(i + 6) + '</span>',
+      pad(i + 6) + '<span class="toggle" aria-hidden="true">+</span>',
+      pad(i + 4) + '</summary>',
+      '',
+      pad(i + 4) + '<div class="bio-body">',
+      pad(i + 6) + '<div class="bio-heading">',
+      pad(i + 8) + BIO_CALLIGRAPHY,
+      bio.nameUr ? pad(i + 8) + '<h3 class="urdu"' + langAttrs(bio.nameUr) + '>' + e(bio.nameUr) + '</h3>' : '',
+      bio.byline ? pad(i + 8) + '<p class="bio-byline urdu"' + langAttrs(bio.byline) + '>' + e(bio.byline) + '</p>' : '',
+      pad(i + 6) + '</div>',
+      '',
+      (bio.prose || []).length
+        ? [pad(i + 6) + '<div class="bio-prose urdu"' + langAttrs((bio.prose || []).join(' ')) + '>',
+           (bio.prose || []).map(function (p) { return pad(i + 8) + '<p>' + e(p) + '</p>'; }).join('\n'),
+           pad(i + 6) + '</div>', ''].join('\n')
+        : '',
+      facts
+        ? [pad(i + 6) + '<dl class="bio-facts urdu"' +
+             langAttrs((bio.facts || []).map(function (f) { return f.term; }).join(' ')) + '>',
+           facts,
+           pad(i + 6) + '</dl>', ''].join('\n')
+        : '',
+      panels ? [pad(i + 4) + '<div class="bio-panels">', panels, pad(i + 4) + '</div>', ''].join('\n') : '',
+      pdf,
+      pad(i + 4) + '</div>',
+      pad(i + 2) + '</details>',
+      pad(i) + '</div>'
+    ].filter(function (part) { return part !== ''; }).join('\n');
+  }
+
+  function indexContact(indent) {
+    var e = site.escapeHtml;
+    var contact = model.contact || {};
+    return [
+      pad(indent) + '<div>',
+      stack(indent + 2, [
+        contact.label ? '<p class="section-label"' + langAttrs(contact.label) + '>' + e(contact.label) + '</p>' : '',
+        '<h2>' + e(contact.heading || '') + '</h2>',
+        contact.copy ? '<p' + langAttrs(contact.copy) + '>' + e(contact.copy) + '</p>' : ''
+      ]),
+      pad(indent) + '</div>',
+      pad(indent) + '<a class="button button-dark" id="contact-email" href="#">' +
+        e(contact.button || 'Email') + '</a>'
+    ].join('\n');
+  }
+
+  function indexFooter(indent) {
+    var e = site.escapeHtml;
+    var footer = model.footer || {};
+    return stack(indent, [
+      '<span>© <span id="year"></span> ' + e((model.site && model.site.name) || '') + '</span>',
+      footer.credit ? '<span' + langAttrs(footer.credit) + '>' + e(footer.credit) + '</span>' : '',
+      '<a href="#top">Back to top ↑</a>'
+    ]);
+  }
+
+  /* Filled in with the recently added strip. Until then the markers sit
+     in the page with nothing between them, which is what an empty region
+     looks like and costs a reader nothing. */
+  function indexRecent() { return ''; }
+
+  var INDEX_BUILDER = {
+    nav: indexNav, hero: indexHero, about: indexAbout,
+    recent: indexRecent, contact: indexContact, footer: indexFooter
+  };
+
+  /* Replaces one region and leaves the rest of the file alone. The indent
+     the opening marker itself sits at is given back to the closing one,
+     so the block lands where a person would have typed it and the file
+     stays readable to whoever opens it on GitHub. */
+  function spliceRegion(html, name, build) {
+    var open = '<!-- editor:' + name + ' -->';
+    var close = '<!-- /editor:' + name + ' -->';
+    var start = html.indexOf(open);
+    if (start === -1) return null;
+    var end = html.indexOf(close, start);
+    if (end === -1) return null;
+    var lineStart = html.lastIndexOf('\n', start) + 1;
+    var indent = /^[ \t]*/.exec(html.slice(lineStart, start))[0];
+    /* The body sits at the marker's own indent, not one step in: the
+       marker is a comment about the block, not a container around it. */
+    var body = build(indent.length);
+    return html.slice(0, start + open.length) +
+      (body ? '\n' + body + '\n' + indent : '') +
+      html.slice(end);
+  }
+
+  /* { text } when every region was found, { missing: [names] } otherwise.
+     Never both, and never a file with some regions written and some not. */
+  function buildIndex(html) {
+    var out = String(html);
+    var missing = [];
+    INDEX_REGIONS.forEach(function (name) {
+      var next = spliceRegion(out, name, INDEX_BUILDER[name]);
+      if (next === null) { missing.push(name); return; }
+      out = next;
+    });
+    return missing.length ? { missing: missing } : { text: out };
+  }
+
   /* ---- One entry ---- */
 
   function buildRow(entry) {
@@ -2443,6 +2729,13 @@
 
   /* ---- Checking before writing ---- */
 
+  /* "a, b and c" rather than "a and b and c". Three or more names read
+     as one list only with the commas in. */
+  function andList(items) {
+    if (items.length < 2) return items.join('');
+    return items.slice(0, -1).join(', ') + ' and ' + items[items.length - 1];
+  }
+
   function problems() {
     var found = [];
     var seen = {};
@@ -2479,6 +2772,22 @@
         }
       }
     });
+    /* The homepage is written into index.html between markers. If the
+       markers are gone the region cannot be found, and writing some
+       regions and not others would leave the front door of the site half
+       generated — so nothing is written and this says which are missing. */
+    if (indexTrouble) {
+      found.push(indexTrouble);
+    } else if (indexHtml) {
+      var home = buildIndex(indexHtml);
+      if (home.missing) {
+        found.push('index.html has lost the ' + andList(home.missing) + ' marker' +
+          (home.missing.length === 1 ? '' : 's') + ' the editor writes between, so the ' +
+          'homepage cannot be published. Put the pair back — the comment ' +
+          'editor:' + home.missing[0] + ' and its closing half — and try again.');
+      }
+    }
+
     return found;
   }
 
@@ -2513,11 +2822,65 @@
     ''
   ].join('\n');
 
+  var HOME_HEADER = [
+    '  /* ---- The homepage\'s own words ------------------------------------',
+    '',
+    '     index.html holds a *rendering* of what is below, not the original:',
+    '     admin.html writes the blocks between its `editor:` markers back on',
+    '     every publish, exactly the way it writes works/<id>.html from a',
+    '     record. So this is the one place to edit them — anything typed',
+    '     into index.html between those markers is overwritten by the next',
+    '     publish. Open admin.html and use the "Site & About" panel, or edit',
+    '     here by hand and publish once.',
+    '',
+    '     No string here says which script it is in. The generator asks the',
+    '     same question the writing box asks of a typed line — see scriptOf —',
+    '     and writes the lang and dir out itself. */',
+    '',
+    ''
+  ].join('\n');
+
   /* JSON.stringify is the escaping. It produces valid JavaScript for any
      string, keeps Urdu and Arabic readable rather than turning them into
      \u escapes, and cannot be tricked by a quote inside a title. */
   function str(value) {
     return JSON.stringify(String(value));
+  }
+
+  /* The homepage's blocks are plain data — strings, arrays of strings,
+     small objects — so one writer serves all of them rather than a
+     hand-written serialiser each. Unquoted keys and double-quoted values,
+     to match the rest of the file; str() is still the escaping, the same
+     as everywhere else here. */
+  var BARE_KEY = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+
+  function writeValue(value, indent) {
+    var p = ' '.repeat(indent);
+    if (Array.isArray(value)) {
+      if (!value.length) return '[]';
+      /* A short list of short strings reads better on one line than as
+         five lines of one word each — a nav link's two fields, say. */
+      var flat = value.every(function (v) { return typeof v === 'string'; }) &&
+        value.join('').length < 56;
+      if (flat) return '[' + value.map(str).join(', ') + ']';
+      return '[\n' + value.map(function (v) {
+        return p + '  ' + writeValue(v, indent + 2);
+      }).join(',\n') + '\n' + p + ']';
+    }
+    if (value && typeof value === 'object') {
+      var keys = Object.keys(value).filter(function (key) { return value[key] !== undefined; });
+      if (!keys.length) return '{}';
+      var short = keys.every(function (key) { return typeof value[key] !== 'object'; }) &&
+        keys.map(function (key) { return String(value[key]); }).join('').length < 56;
+      var pairs = keys.map(function (key) {
+        return (BARE_KEY.test(key) ? key : str(key)) + ': ' + writeValue(value[key], indent + 2);
+      });
+      if (short) return '{ ' + pairs.join(', ') + ' }';
+      return '{\n' + pairs.map(function (pair) { return p + '  ' + pair; }).join(',\n') +
+        '\n' + p + '}';
+    }
+    if (typeof value === 'boolean' || typeof value === 'number') return String(value);
+    return str(value);
   }
 
   function writeFiles(files, indent) {
@@ -2562,7 +2925,14 @@
     out += '    // Change this if the site later moves to its own domain — and change\n';
     out += '    // robots.txt and sitemap.xml with it.\n';
     out += '    baseUrl: ' + str(site_.baseUrl || '') + '\n';
-    out += '  },\n\n  categories: [\n';
+    out += '  },\n\n';
+    out += HOME_HEADER;
+    out += '  nav: ' + writeValue(model.nav || [], 2) + ',\n\n';
+    out += '  hero: ' + writeValue(model.hero || {}, 2) + ',\n\n';
+    out += '  about: ' + writeValue(model.about || {}, 2) + ',\n\n';
+    out += '  contact: ' + writeValue(model.contact || {}, 2) + ',\n\n';
+    out += '  footer: ' + writeValue(model.footer || {}, 2) + ',\n\n';
+    out += '  categories: [\n';
 
     out += (model.categories || [])
       .map(function (category) {
@@ -2681,9 +3051,10 @@
     extra.textContent = '';
     var writtenPosts = 0;
     var writtenWorks = 0;
+    var offered = 0;
 
     function offerFile(path, text) {
-      var id = 'out-file-' + (writtenPosts + writtenWorks);
+      var id = 'out-file-' + (offered += 1);
       var section = document.createElement('section');
       var head = document.createElement('div');
       head.className = 'admin-file-head';
@@ -2729,6 +3100,14 @@
       section.appendChild(head);
       section.appendChild(img);
       extra.appendChild(section);
+    }
+
+    /* The homepage, first, because it is the one file here that is not
+       generated whole — it is the committed page with the editor's own
+       blocks written back into it. */
+    if (indexHtml) {
+      var home = buildIndex(indexHtml);
+      if (home.text) offerFile('index.html', home.text);
     }
 
     allRecords().forEach(function (entry) {
@@ -2843,7 +3222,7 @@
      The paths catch one they changed and did not: whatever the version
      claims, a Worker that will not take a work page cannot publish this
      library, and it is better to hear that on load. */
-  var WORKER_EXPECTS = '2026-08-12.3';
+  var WORKER_EXPECTS = '2026-08-21.1';
 
   /* This editor's own version, bumped whenever admin.js changes in a way
      a publish depends on. It exists because a tab left open goes on
@@ -2853,11 +3232,11 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-08-18.1';
+  var EDITOR_VERSION = '2026-08-21.1';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */
-  var WRITES = ['content.js', 'sitemap.xml', 'posts/a.html', 'works/a.html', 'files/cards/a.jpg'];
+  var WRITES = ['content.js', 'sitemap.xml', 'index.html', 'posts/a.html', 'works/a.html', 'files/cards/a.jpg'];
 
   function workerTrouble(report) {
     var patterns = [];
@@ -3157,6 +3536,12 @@
      fonts and on the canvas itself. */
   function filesToCommit() {
     var out = [{ path: 'content.js', text: buildContent() }, { path: 'sitemap.xml', text: buildSitemap() }];
+    /* problems() has already refused a publish that could not splice this,
+       so reaching here with no text means there was nothing to write. */
+    if (indexHtml) {
+      var home = buildIndex(indexHtml);
+      if (home.text) out.push({ path: 'index.html', text: home.text });
+    }
     allRecords().forEach(function (entry) {
       if (isPost(entry)) {
         if (!entry.record.page || bodies[entry.record.id] === undefined) return;
@@ -3392,6 +3777,7 @@
     document.body.classList.remove('is-locked');
     try { sessionStorage.setItem('editor-open', '1'); } catch (error) { /* private mode */ }
     render();
+    loadIndex();
     checkWorker();
     checkEditor();
   }
