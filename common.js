@@ -205,7 +205,8 @@
     'معلوماتی پمفلٹ': 'Information pamphlet',
     'رسالہ و پریزینٹیشن': 'Booklet & presentation',
     'تلخیص': 'Summary',
-    'مضمون': 'Essay'
+    'مضمون': 'Essay',
+    'ایپ': 'App'
   };
 
   /* The kind a record should show, in the language the record reads in.
@@ -290,6 +291,16 @@
       'M4 20.2l1.2-3.7L16.4 5.3a1.7 1.7 0 0 1 2.4 0l.5.5a1.7 1.7 0 0 1 0 2.4L8.1 19.4z',
       'M14.9 6.8l2.9 2.9'
     ],
+    /* A handset with a row of keys on it — ایپس. Not a magnifying glass
+       or a cog: what these are is something you open on a phone, and the
+       keys say a calculation without needing a calculator's own grid,
+       which at 24px closes up into a smudge. */
+    app: [
+      'M7.5 2.8h9A1.7 1.7 0 0 1 18.2 4.5v15A1.7 1.7 0 0 1 16.5 21.2h-9A1.7 1.7 0 0 1 5.8 19.5v-15A1.7 1.7 0 0 1 7.5 2.8z',
+      'M8.8 7.2h6.4',
+      'M9.2 11.4h.1M12 11.4h.1M14.8 11.4h.1',
+      'M9.2 15.2h.1M12 15.2h.1M14.8 15.2h.1'
+    ],
     /* A reply with words in it — مضامین و جوابات */
     response: [
       'M4.5 4.5h15A1.5 1.5 0 0 1 21 6v8.5a1.5 1.5 0 0 1-1.5 1.5H10.5L6 20v-4H4.5A1.5 1.5 0 0 1 3 14.5V6a1.5 1.5 0 0 1 1.5-1.5z',
@@ -337,6 +348,7 @@
     charts: 'chart',
     'ilmi-mawad': 'books',
     posts: 'pen',
+    apps: 'app',
     maqalat: 'response',
     rulings: 'seal'
   };
@@ -407,6 +419,37 @@
     Array.prototype.forEach.call(targets, function (node) { watcher.observe(node); });
   }
 
+  /* Cards arriving as you reach them — the same argument as the icons
+     above, and built the same way round.
+
+     The class this adds is what carries the movement *and* the state it
+     moves from. Nothing on the page starts shifted or faded waiting to be
+     revealed, so no JavaScript, no IntersectionObserver, or a reader who
+     asked for less motion all leave the cards simply where they are.
+     That is the difference between animating a decoration and hiding
+     content behind a script. */
+  function revealOnEntry(selector, root) {
+    if (!window.IntersectionObserver) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var targets = (root || document).querySelectorAll(selector);
+    if (!targets.length) return;
+
+    var seen = 0;
+    var watcher = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        /* Capped, for the same reason the icons' stagger is: past a
+           handful the last one waits long enough to look broken. */
+        entry.target.style.setProperty('--rise-delay', Math.min(seen, 5) * 70 + 'ms');
+        entry.target.classList.add('card-rise');
+        seen += 1;
+        watcher.unobserve(entry.target);
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.2 });
+
+    Array.prototype.forEach.call(targets, function (node) { watcher.observe(node); });
+  }
+
   /* Always decorative: every icon here sits beside a word that already
      says the same thing, so it is hidden from a reader who is listening
      rather than looking, and taken out of the tab order. */
@@ -418,8 +461,23 @@
     );
   }
 
+  /* A category's drawing. CATEGORY_ICON is the table that has always
+     named one per id; `icon` on the category itself overrules it, so a
+     category made in the editor can be given a drawing without anyone
+     editing this file. The table stays because the six that were here
+     first should not each have to carry a field saying what they have
+     always been. */
+  function categoryIconName(category) {
+    return (category && category.icon) || CATEGORY_ICON[category && category.id] || '';
+  }
+
   function categoryIcon(category, className) {
-    return icon(CATEGORY_ICON[category && category.id], className);
+    return icon(categoryIconName(category), className);
+  }
+
+  /* Every drawing there is, for the editor to offer. */
+  function iconNames() {
+    return Object.keys(ICONS);
   }
 
   var LANGUAGE_NAMES = { ur: 'Urdu', ar: 'Arabic', en: 'English' };
@@ -477,7 +535,13 @@
     });
     parts = parts.concat(languages);
 
-    var date = formatDate(record.date);
+    /* The date it carries, or the day it last changed if it carries none.
+       A work added before there was a date field on the form has no
+       `date` and will not gain one until someone types it; `updated` is
+       stamped by the editor the moment anything about it is edited, and
+       is the truer answer to "when was this last touched" anyway. One
+       function, so the row, the card and the page cannot disagree. */
+    var date = formatDate(record.date) || formatDate(record.updated);
     if (date) parts.push(date);
     return parts;
   }
@@ -977,7 +1041,11 @@
   function pageTools(record, url) {
     var box = document.createElement('div');
     box.className = 'page-tools';
-    var printable = !!record.page;
+    /* An app has a page of its own too, and it is not writing. Printing
+       it prints a stub with a button that does nothing on paper — the
+       same argument as a work's page, which is why `record.page` alone
+       stopped being the whole test once apps arrived. */
+    var printable = !!record.page && !record.app;
 
     /* No arrows on these two. The glyphs elsewhere on the site say two
        specific things — ↗ opens something away from here, ↓ puts a file
@@ -1045,7 +1113,10 @@
     isArabicScript: isArabicScript,
     icon: icon,
     categoryIcon: categoryIcon,
+    categoryIconName: categoryIconName,
+    iconNames: iconNames,
     drawIconsOnEntry: drawIconsOnEntry,
+    revealOnEntry: revealOnEntry,
     recordKind: recordKind,
     kindMarkup: kindMarkup,
     recordMeta: recordMeta,

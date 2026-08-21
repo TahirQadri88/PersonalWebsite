@@ -231,6 +231,41 @@ page.on('dialog', async (d) => {
 
 let row = await openEditor(page);
 
+/* ---- the generator agrees with the repository -----------------------
+
+   content.js and index.html are both written by this editor, and both are
+   committed. If what it writes today differs from what is in the branch,
+   every publish carries files nobody edited — and worse, the reverse is
+   invisible: a generator quietly drifting from the committed page is only
+   found when someone reads a diff.
+
+   So this runs first, before any test below has typed a character. Once
+   they have, "unchanged" is no longer the question. */
+console.log('\nwhat the editor writes, against what is committed');
+{
+  await page.click('#export');
+  await page.waitForSelector('#out-pages section', { timeout: 30000 });
+  await page.waitForTimeout(800);
+  const made = await page.evaluate(() => {
+    const home = [...document.querySelectorAll('#out-pages section')]
+      .find((x) => x.querySelector('h3').textContent.trim() === 'index.html');
+    return { content: document.getElementById('out-content').value,
+             home: home ? home.querySelector('textarea').value : null };
+  });
+  const onDisk = {
+    content: await readFile(join(ROOT, 'content.js'), 'utf8'),
+    home: await readFile(join(ROOT, 'index.html'), 'utf8')
+  };
+  t('the content.js it writes is the content.js in the branch',
+    made.content === onDisk.content,
+    made.content === onDisk.content ? '' : firstDifference(onDisk.content, made.content));
+  t('the index.html it writes is the index.html in the branch',
+    made.home === onDisk.home,
+    made.home === onDisk.home ? '' : firstDifference(onDisk.home, made.home || ''));
+  await page.evaluate(() => document.getElementById('export-dialog').close());
+  await page.waitForTimeout(150);
+}
+
 console.log('\nthe Style buttons');
 
 for (const [word, tag, cls] of [['Heading', 'H2', ''], ['Sub-heading', 'H3', ''],
@@ -541,6 +576,135 @@ await pickOut(page, 10, 18);
 await use(page, row, 'B');
 await page.waitForTimeout(150);
 
+/* ---- the Site & About panel -----------------------------------------
+
+   The homepage's words are in content.js now, and this is the form that
+   edits them. What matters is the whole way through: a word typed into a
+   field reaches the generated content.js, and from there the generated
+   index.html — three files and two generators between the keystroke and
+   the page. Checking only that the field accepts text would prove none
+   of it. */
+console.log('\nthe Site & About panel');
+
+const panel = page.locator('.admin-group').first();
+t('the panel is above the library',
+  (await panel.locator('h2').textContent()).startsWith('Site & About'),
+  await panel.locator('h2').textContent());
+
+const blocks = await page.locator('.admin-row-plain .admin-row-title').allTextContents();
+for (const name of ['The site itself', 'Header links', 'The hero', 'The author',
+                    'Contact', 'Footer', 'Categories']) {
+  t(`  …with a row for ${name}`, blocks.includes(name), blocks.join(' | '));
+}
+
+/* A filter is a search for a record. Leaving the site's own words on top
+   of the results would be answering a different question. */
+await page.fill('#filter', 'saa-ki');
+await page.waitForTimeout(120);
+t('  …and it steps out of the way when the library is filtered',
+  await page.locator('.admin-row-plain').count() === 0);
+t('  …without the filter claiming nothing matched',
+  await page.locator('.empty-state').count() === 0);
+await page.fill('#filter', 'zzzznothing');
+await page.waitForTimeout(120);
+t('  …and a filter that really matches nothing still says so',
+  await page.locator('.empty-state').count() === 1);
+await page.fill('#filter', '');
+await page.waitForTimeout(150);
+
+/* Typing into the author's introduction, and following it out. */
+const AUTHOR_BLOCK = '.admin-row-plain:has(.admin-row-title:text-is("The author"))';
+await page.locator(AUTHOR_BLOCK + ' > summary').click();
+await page.waitForTimeout(150);
+const headingBox = page.locator(AUTHOR_BLOCK + ' .admin-field:has(label:text-is("Heading")) input');
+const headingWas = await headingBox.inputValue();
+await headingBox.fill('Abul Laith Muhammad Tahir Qadri An-Naeemi, teacher');
+await page.waitForTimeout(120);
+
+/* The Urdu fields are in Nastaleeq and read right to left while they are
+   being typed, not only once published. */
+const labelBox = page.locator(AUTHOR_BLOCK + ' .admin-field:has(label:text-is("Label")) input');
+const script = await labelBox.evaluate((el) => ({
+  dir: el.getAttribute('dir'), cls: el.className, font: getComputedStyle(el).fontFamily
+}));
+t('  …an Urdu field is right to left and in Nastaleeq as it is typed',
+  script.dir === 'rtl' && /urdu/.test(script.cls), JSON.stringify(script));
+
+await page.locator(AUTHOR_BLOCK + ' .admin-files button:text("+ Add a paragraph")').first().click();
+await page.waitForTimeout(120);
+const added = page.locator(AUTHOR_BLOCK + ' .admin-file.is-single textarea').last();
+await added.fill('ایک نیا پیراگراف جو صفحے پر آنا چاہیے۔');
+await page.waitForTimeout(150);
+t('  …a paragraph added to the introduction is in Nastaleeq too',
+  /urdu/.test(await added.getAttribute('class') || ''), await added.getAttribute('class'));
+
+/* And out the other end. */
+await page.click('#export');
+await page.waitForSelector('#out-pages section', { timeout: 30000 });
+await page.waitForTimeout(800);
+const reached = await page.evaluate(() => {
+  const sections = Array.from(document.querySelectorAll('#out-pages section'));
+  const home = sections.find((s) => s.querySelector('h3').textContent.trim() === 'index.html');
+  return { content: document.getElementById('out-content').value,
+           home: home ? home.querySelector('textarea').value : '' };
+});
+t('  …an edit reaches the generated content.js',
+  reached.content.includes('Abul Laith Muhammad Tahir Qadri An-Naeemi, teacher'));
+t('  …and the generated index.html',
+  reached.home.includes('Abul Laith Muhammad Tahir Qadri An-Naeemi, teacher'));
+t('  …a new paragraph reaches both',
+  reached.content.includes('ایک نیا پیراگراف') && reached.home.includes('ایک نیا پیراگراف'));
+t('  …and it lands inside the introduction, not loose on the page',
+  /<div class="bio-prose[^>]*>[\s\S]*?ایک نیا پیراگراف[\s\S]*?<\/div>/.test(reached.home));
+/* content.js is loaded by every visitor. A field that can put an
+   apostrophe or a quote into it must not be able to break it. */
+/* Editing a record stamps the day it was edited on it, which is what the
+   strip on the homepage is ordered by. Stamped here rather than at
+   publish time: a publish rewrites every page in the library whether or
+   not anything about it changed, so stamping there would mark the whole
+   library as new every time and the strip would say nothing. */
+{
+  const now = new Date();
+  const stamp = now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+  t('  …and the record typed into earlier carries the day it was edited',
+    reached.content.includes('updated: "' + stamp + '"'), stamp);
+  /* In the author's own day, not UTC's. Karachi is five hours ahead, so
+     a post written before five in the morning used to be stamped
+     yesterday. */
+  t('  …in the day where the editor is, not UTC\u2019s',
+    !reached.content.includes('updated: "' + new Date(Date.now() - 864e5).toISOString().slice(0, 10) + '"') ||
+    stamp === new Date(Date.now() - 864e5).toISOString().slice(0, 10), stamp);
+}
+
+t('  …and the generated content.js still parses after all of that',
+  (() => { try { const c = {}; new Function('window', reached.content).call(c, c);
+    return !!(c.siteContent && c.siteContent.about); } catch { return false; } })());
+
+/* The dialog is modal — nothing behind it can be clicked while it is
+   open, and the restoring below is all behind it. */
+await page.evaluate(() => document.getElementById('export-dialog').close());
+
+/* Put back what this section typed. Everything below writes the same
+   files out again and compares them with what is committed, and a
+   heading left edited here would read as the generator disagreeing with
+   the repository when it is only this test still holding a pen. */
+await headingBox.fill(headingWas);
+await page.locator(AUTHOR_BLOCK + ' .admin-file.is-single:has(textarea) .admin-danger').last().click();
+await page.waitForTimeout(150);
+await page.locator(AUTHOR_BLOCK + ' > summary').click();
+await page.waitForTimeout(120);
+
+/* Filtering rebuilt the library three times just now, and a rebuild
+   closes every row that is not in view — the post the tests below write
+   into among them. Open it again before carrying on, and only if it is
+   shut: a row is a <details>, and clicking an open one closes it. */
+if (!(await row.evaluate((el) => el.open))) {
+  await row.locator('summary').click();
+  await page.waitForTimeout(400);
+}
+await row.locator('.writing-canvas').waitFor();
+
 console.log('\nwriting it out and reading it back');
 
 /* The strongest thing here. Everything above is built out of the block
@@ -603,6 +767,54 @@ t(`a publish sends ${publish.count} files, and the Worker takes ${maxFiles}`,
 t(`the largest file is ${Math.round(publish.biggest.bytes / 1024)}KB, and the Worker takes ${Math.round(maxBytes / 1024)}KB`,
   publish.biggest.bytes <= maxBytes, publish.biggest.path);
 
+/* ---- the homepage --------------------------------------------------
+
+   The author's introduction, the hero, the contact lines and the footer
+   all live in content.js now, and index.html carries a rendering of them
+   between markers the editor writes into. That is the awkward way round
+   — drawing them with a script at load would have been three lines — and
+   it is the right way round: the introduction is the most-read prose
+   about the author on the site, and a crawler, a WhatsApp preview and a
+   reader with JavaScript off never run a script.
+
+   So what these check is that the awkward part works: the words go in,
+   the marked region comes out holding them, and everything outside the
+   markers is left exactly as it was. */
+console.log('\nthe homepage');
+
+const home = await page.evaluate(() => {
+  const sections = Array.from(document.querySelectorAll('#out-pages section'));
+  const mine = sections.find((s) => s.querySelector('h3').textContent.trim() === 'index.html');
+  return mine ? mine.querySelector('textarea').value : null;
+});
+t('index.html is among the files a publish would write', typeof home === 'string' && home.length > 0);
+
+for (const region of ['nav', 'hero', 'about', 'recent', 'contact', 'footer']) {
+  t(`  …the ${region} region survives being written`,
+    (home || '').includes(`<!-- editor:${region} -->`) &&
+    (home || '').includes(`<!-- /editor:${region} -->`));
+}
+
+/* The words themselves, out of content.js and into the page — the whole
+   point of the exercise. */
+const words = await page.evaluate(() => {
+  const c = window.siteContent;
+  return { label: c.about.label, byline: c.about.bio.byline,
+           fact: c.about.bio.facts[0].value, panel: c.about.bio.panels[0].title,
+           item: c.about.bio.panels[0].items[0], urdu: c.hero.urdu,
+           contact: c.contact.heading, credit: c.footer.credit };
+});
+for (const [name, text] of Object.entries(words)) {
+  t(`  …the ${name} from content.js is in the page`, (home || '').includes(text), text);
+}
+
+/* Nothing outside a marker moved. The <head>, the category bar, the
+   library and the fatawa panel are hand-written and stay that way. */
+for (const untouched of ['<meta property="og:image"', 'id="category-bar"',
+                         'id="work-library"', 'id="rulings-library"', '<script src="content.js">']) {
+  t(`  …and ${untouched.slice(0, 28)}… is left alone`, (home || '').includes(untouched));
+}
+
 /* Serve back what was just written, and open it again. */
 overlay.set(`posts/${POST}.html`, written);
 row = await openEditor(page);
@@ -615,6 +827,78 @@ function firstDifference(a, b) {
   while (i < a.length && i < b.length && a[i] === b[i]) i++;
   return 'they part at character ' + i + ':\n      was:  …' + a.slice(Math.max(0, i - 60), i + 90) +
          '\n      now:  …' + b.slice(Math.max(0, i - 60), i + 90);
+}
+
+/* ---- an app ----------------------------------------------------------
+
+   An app is a record with an `app` block on it. It gets a page of its own
+   the way a post does, so everything that already walks the library
+   reaches it untold — the sitemap line, the share card, the category
+   pill, the search — but its page is built from fields rather than
+   written, because an app page is a link, a version and a list of what is
+   new. Written as prose it would be an essay about an app. */
+console.log('\nan app');
+
+const APP = 'zakat-calculator';
+{
+  const appRow = page.locator('.admin-row').filter({ hasText: APP }).first();
+  await appRow.locator('summary').click();
+  await page.waitForTimeout(250);
+  t('an app row has no writing box — there is no writing in an app',
+    await appRow.locator('.writing-canvas').count() === 0);
+  t('  …it has the address the app opens at instead',
+    await appRow.locator('input[placeholder="https://…"]').count() === 1);
+  t('  …a version, the platforms and what is new',
+    await appRow.locator('.admin-field:has(label:text-is("Version"))').count() === 1 &&
+    await appRow.locator('.admin-field:has(label:text-is("Runs on"))').count() === 1 &&
+    (await appRow.locator('.admin-field label').allTextContents()).some((x) => /What.s new/.test(x)));
+  await appRow.locator('summary').click();
+  await page.waitForTimeout(150);
+}
+
+await page.click('#export');
+await page.waitForSelector('#out-pages section', { timeout: 30000 });
+await page.waitForTimeout(900);
+const appOut = await page.evaluate((id) => {
+  const sections = [...document.querySelectorAll('#out-pages section')];
+  const mine = sections.find((s) => s.querySelector('h3').textContent.trim() === 'apps/' + id + '.html');
+  return { page: mine ? mine.querySelector('textarea').value : null,
+           paths: sections.map((s) => s.querySelector('h3').textContent.trim()),
+           sitemap: document.getElementById('out-sitemap').value };
+}, APP);
+
+t('a publish writes the app its own page under apps/',
+  typeof appOut.page === 'string' && appOut.page.length > 0, appOut.paths.join(', '));
+t('  …and not a post page as well', !appOut.paths.includes('posts/' + APP + '.html'));
+t('  …nor a works page', !appOut.paths.includes('works/' + APP + '.html'));
+t('  …the sitemap names it', appOut.sitemap.includes('apps/' + APP + '.html'));
+t('  …its own share card is drawn for it',
+  appOut.paths.includes('files/cards/' + APP + '.jpg'), appOut.paths.join(', '));
+
+t('  …the page opens the app, away from here',
+  /<a class="button button-dark" href="https:\/\/[^"]+"[^>]*target="_blank"[^>]*rel="noopener"/.test(appOut.page || ''),
+  (appOut.page || '').slice(0, 0) + 'no offsite open button');
+t('  …says which version, and what runs it',
+  /<dt>Version<\/dt>/.test(appOut.page || '') && /Apple/.test(appOut.page || ''));
+t('  …lists what is new', /What.s new in version/.test(appOut.page || ''));
+t('  …calls itself a SoftwareApplication, not an article',
+  /"@type":"SoftwareApplication"/.test(appOut.page || '') &&
+  !/BlogPosting/.test(appOut.page || ''));
+t('  …and its description follows the app, both scripts',
+  /class="urdu"/.test(appOut.page || '') && /zak/.test(appOut.page || ''));
+/* An app is not a piece of writing, so its page carries no Print — the
+   same reason a work's page does not. */
+t('  …and nothing on it claims to be printable',
+  !/id="post-body"/.test(appOut.page || ''));
+
+await page.evaluate(() => document.getElementById('export-dialog').close());
+await page.waitForTimeout(150);
+/* Open only if it is not already — a row is a <details>, and clicking
+   the summary of an open one shuts it. */
+if (!(await row.evaluate((el) => el.open))) {
+  await row.locator('summary').click();
+  await row.locator('.writing-canvas').waitFor();
+  await page.waitForTimeout(300);
 }
 
 /* ---- a publish that changed nothing ----------------------------------
@@ -733,6 +1017,39 @@ const quietBox = await page.evaluate(() => {
 });
 t('  …and stays quiet when it cannot tell which version the site serves',
   !/older copy of the editor/.test(quietBox), quietBox);
+
+
+/* ---- a homepage the editor cannot splice ----------------------------
+
+   index.html is the front door of the site. Writing some of its regions
+   and not others would leave it half generated, so a missing marker
+   writes nothing at all and stops the publish with a sentence naming it.
+
+   Routed on the fetch only, the same way the version check above is: the
+   page under test is admin.html, and index.html reaches it only through
+   the one fetch the editor makes for it. */
+console.log('\na homepage the editor cannot splice');
+
+await page.unroute('**/admin.js');
+await page.route('**/index.html', async (route, request) => {
+  if (request.resourceType() !== 'fetch') return route.fallback();
+  const real = await readFile(join(ROOT, 'index.html'), 'utf8');
+  route.fulfill({ status: 200, contentType: 'text/html',
+    body: real.replace('<!-- editor:about -->', '') });
+});
+await page.reload({ waitUntil: 'domcontentloaded' });
+await page.waitForSelector('.admin-row');
+await page.waitForFunction(
+  () => !/Loading the current text/.test(document.body.textContent), null, { timeout: 20000 });
+await page.click('#publish');
+await page.waitForFunction(() => /\S/.test(document.getElementById('publish-status').textContent),
+  null, { timeout: 15000 });
+const broke = await page.evaluate(() => document.getElementById('publish-status').textContent);
+t('a homepage missing a marker stops the publish rather than half writing it',
+  /marker/.test(broke) && /about/.test(broke), broke);
+t('  …and names the marker, so it can be put back', /editor:about/.test(broke), broke);
+t('  …and nothing was sent — it did not report a publish',
+  !/Published /.test(broke), broke);
 
 t('nothing threw along the way', jsErrors.length === 0, jsErrors.join(' | '));
 

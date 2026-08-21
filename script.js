@@ -14,6 +14,41 @@
   var searchCount = document.getElementById('search-count');
   var startSpy = null;
 
+  /* A strip holding more than fits, with a fade and an arrow at whichever
+     end still has something. Written for the category bar; the recently
+     updated rail behaves the same way and there is no reason for it to
+     learn the behaviour again.
+
+     It scrolls the track and nothing else. scrollIntoView was the obvious
+     call and it is the wrong one: it scrolls every scrollable ancestor,
+     the document included, so the rail dragged the page back to whatever
+     it had just moved to and a reader could not get past it. */
+  function rail(bar, track, back, forward) {
+    if (!bar || !track) return null;
+
+    var refreshEnds = function () {
+      /* A pixel of slack: browsers round fractional scroll positions, and
+         an arrow that never quite goes away looks broken. */
+      var max = track.scrollWidth - track.clientWidth;
+      bar.setAttribute('data-more-before', String(track.scrollLeft > 1));
+      bar.setAttribute('data-more-after', String(track.scrollLeft < max - 1));
+    };
+
+    var nudge = function (direction) {
+      return function () {
+        track.scrollBy({ left: direction * Math.max(160, track.clientWidth * 0.7),
+                         behavior: 'smooth' });
+      };
+    };
+
+    if (back) back.addEventListener('click', nudge(-1));
+    if (forward) forward.addEventListener('click', nudge(1));
+    track.addEventListener('scroll', refreshEnds, { passive: true });
+    window.addEventListener('resize', refreshEnds);
+    refreshEnds();
+    return refreshEnds;
+  }
+
   /* ---- Category navigation ---- */
 
   if (nav) {
@@ -33,28 +68,8 @@
        so it is CSS that decides how to show it. */
     var bar = document.getElementById('category-bar');
     if (bar) {
-      var back = document.getElementById('cat-back');
-      var forward = document.getElementById('cat-forward');
-
-      var refreshEnds = function () {
-        /* A pixel of slack: browsers round fractional scroll positions,
-           and an arrow that never quite goes away looks broken. */
-        var max = nav.scrollWidth - nav.clientWidth;
-        bar.setAttribute('data-more-before', String(nav.scrollLeft > 1));
-        bar.setAttribute('data-more-after', String(nav.scrollLeft < max - 1));
-      };
-
-      var nudge = function (direction) {
-        return function () {
-          nav.scrollBy({ left: direction * Math.max(160, nav.clientWidth * 0.7), behavior: 'smooth' });
-        };
-      };
-
-      if (back) back.addEventListener('click', nudge(-1));
-      if (forward) forward.addEventListener('click', nudge(1));
-      nav.addEventListener('scroll', refreshEnds, { passive: true });
-      window.addEventListener('resize', refreshEnds);
-      refreshEnds();
+      var refreshEnds = rail(bar, nav,
+        document.getElementById('cat-back'), document.getElementById('cat-forward'));
 
       /* Which section you are actually in. The strip has listed all seven
          since it was written and never said which one you were reading;
@@ -275,7 +290,15 @@
      what writes them — so both start here rather than where they are
      defined. */
   site.drawIconsOnEntry();
+  site.revealOnEntry('.recent-card');
   if (startSpy) startSpy();
+
+  /* The strip of recently changed things. Its cards are written into
+     index.html at publish time, not by this file — a crawler and a reader
+     with no JavaScript both get them — so all there is to do here is the
+     scrolling. */
+  rail(document.getElementById('recent-rail'), document.getElementById('recent-track'),
+       document.getElementById('recent-back'), document.getElementById('recent-forward'));
 
   /* One listener for the whole library rather than one per row: the list
      is rebuilt whenever a category is chosen, and handlers attached to

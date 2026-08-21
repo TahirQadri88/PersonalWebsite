@@ -147,6 +147,12 @@
 .admin-row-meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .admin-row.is-new { border-color: var(--gold-rule); }
 
+/* The Site & About rows are not records and carry no id, so their summary
+   is name, note, toggle rather than the four columns a record's takes.
+   Declared before the phone block below, which retargets both. */
+.admin-row-plain > summary { grid-template-columns: minmax(0, 1fr) auto 22px; }
+.admin-row-plain > summary .admin-row-title { font-weight: 600; }
+
 .admin-fields { display: grid; gap: 14px; padding: 4px 16px 20px; }
 /* min-width: 0 because a grid item's automatic minimum is "as wide as
    whatever is inside me", and something inside here is deliberately
@@ -193,6 +199,33 @@
   align-items: center;
 }
 .admin-file input { font-size: 13px; }
+/* A repeatable row with one field in it rather than two — a paragraph of
+   the introduction, an item in one of its panels. start rather than
+   centre, because the one field may be a box several lines tall and its
+   Remove belongs beside the first of them. */
+.admin-file.is-single { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+/* Taller than an ordinary field's 74px: what goes in one is a paragraph
+   of the introduction, and in Nastaliq at line-height 2.05 four lines of
+   it is already 130px. It still resizes by hand. */
+.admin-file.is-single textarea { min-height: 120px; }
+.admin-file.is-single textarea.urdu,
+.admin-file.is-single textarea.arabic { min-height: 160px; }
+
+/* A panel of the introduction, or a category: a heading and a list of its
+   own inside one repeatable row, so it needs a box rather than a line. */
+/* A chip that carries a drawing as well as its name. */
+.chip .icon-inline { margin-right: 6px; }
+
+.admin-panels { gap: 14px; }
+.admin-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #fbf8f0;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+.admin-panel > .admin-fields { padding: 0; gap: 12px; }
 .admin-row-tools { display: flex; flex-wrap: wrap; gap: 16px; padding-top: 4px; }
 .admin-danger { color: #a3341f; }
 

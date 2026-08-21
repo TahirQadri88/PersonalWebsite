@@ -40,6 +40,7 @@ test/          drives a browser over admin.html and over the homepage —
                  touching script.js, common.js or the library's CSS
 posts/         one HTML file per post — the writing is the page, not a download
 works/         one HTML file per work and fatwa — written by admin.html, same as posts/
+apps/          one HTML file per app — built from fields, not written
 styles.css     all design, in 13 numbered sections
 404.html robots.txt sitemap.xml share-card.png CNAME
 files/images/   the seal used as favicon and header mark, and the calligraphed name
@@ -94,6 +95,37 @@ which breaks the line instead of emphasising part of it. The synthesised
 one measures 0% wider. Less contrast, and right: emphasis inside a
 sentence must not resize the sentence.
 
+**The homepage's words live in `content.js`, and `index.html` is a
+rendering of them.** The hero, the author's introduction and the whole
+collapsible bio, the header links, the contact lines and the footer
+credit are `hero`, `about`, `nav`, `contact` and `footer` in `content.js`.
+`index.html` carries them between marker comments — `<!-- editor:about -->`
+and its closing half — and a publish replaces what is between each pair
+and touches nothing else in the file. Editing between the markers by hand
+is editing a generated file: the next publish overwrites it.
+
+Drawing them with a script at load would have been three lines and is the
+wrong answer. The introduction is the most-read prose about the author on
+the site, and a crawler, a WhatsApp preview and a reader with JavaScript
+off never run one — the library can afford to be JS-rendered because
+`sitemap.xml` and every work's own page carry it; the introduction has no
+such second copy.
+
+`buildIndex` in `admin.js` does the splice, and it is all-or-nothing: a
+missing marker writes **no** region and stops the publish with a sentence
+naming it. `index.html` is the front door; a half-generated one is worse
+than an unchanged one. The editor reads the committed page back over
+http, the same way it reads a post's writing back, so this needs the
+editor opened over http and not from the file system.
+
+None of these strings says which script it is in. `langAttrs` asks
+`scriptOf` — the same function the writing box asks of a typed line — and
+writes `lang` and `dir` out itself. It never writes a **class**: `.urdu`
+carries a font size and `text-align: right` along with the font, and the
+hero's Urdu line has a size of its own and no alignment of its own, so
+the class would send it to the far edge of its column. Which classes an
+element wears is written out element by element in the builders.
+
 **A post is a page, not a download.** Entries in the `posts` category carry
 `page` and `date` instead of `files`, and their words live in the HTML file, not
 in `content.js`. `admin.html` writes that file; editing one needs the editor
@@ -113,6 +145,66 @@ to, when a record has been added straight into `content.js` and not yet
 published through the editor. Relative file paths inside a work page climb
 back out with `../`, since the page now lives one folder down; an offsite
 link (Google Drive) is left alone. See `site.isOffsite`.
+
+**A record carries the day it was last edited, and the editor stamps
+it.** `updated` is written by `touch(record)` in `admin.js`, from a
+listener delegated on the row — so a field added later cannot be
+forgotten — and it is what the *Recently added and updated* strip is
+ordered by, newest first, `updated || date`. Not stamped at publish
+time: a publish rewrites every page in the library whether or not
+anything about it changed, which is deliberate, so stamping there would
+mark all twenty-three as new every time and the strip would say nothing.
+Moving a record up the page or into another category does **not** stamp
+it — that changes where it is read, not what it says.
+
+The date is `today()`, built from local date parts. `toISOString()` is
+UTC and Karachi is five hours ahead of it, so a post written before five
+in the morning was stamped with yesterday. `site.formatDate` has never
+had that fault — it parses `"2026-08-04"` with a regex and never builds
+a `Date` — and `recordMeta` falls back to `updated` when a record has no
+`date` of its own, so the row, the card and the page all say the same
+thing from one function.
+
+**The recently-added strip is in the file, not drawn by a script.** It is
+generated into `index.html` by `indexRecent` at publish time like every
+other marked region, which is why `test/homepage.mjs` can turn
+JavaScript off and still find the cards with their titles in them —
+where the library below it renders nothing at all. Every part of a card
+comes from the helper the library row uses for the same part —
+`titleMarkup`, `kindMarkup`, `metaMarkup`, `categoryIcon` — so a card
+cannot end up saying something different from the row it mirrors.
+
+`rail()` in `script.js` is the category strip's own scrolling behaviour,
+extracted and used twice. It scrolls the *track*, never
+`scrollIntoView` — same reason as the rail that marks your place.
+
+The cards rise as they arrive, and `card-rise` carries both the movement
+**and** the state it moves from. Putting `opacity: 0` on `.recent-card`
+itself was tried and the tests caught it: no JavaScript, no
+`IntersectionObserver`, or `prefers-reduced-motion` must each leave the
+cards exactly where they already are. Same argument as the icons.
+
+**An app is a record with an `app` block, and its page is built from
+fields.** `apps/<id>.html`, written by `buildApp` and regenerated in full
+on every publish the way a work's page is — there is no writing to read
+back, so nothing to lose. `isApp` is what tells it from a post, and it is
+checked first everywhere `isPost` is: an app has a `page` too, and
+without that order it would be handed the writing box, blocked by
+`problems()` for having no writing in it, and given a `BlogPosting` in
+its structured data. It is a `SoftwareApplication`, because it is
+something you open rather than something you read.
+
+Everything else reaches it untold — the sitemap line, the share card, the
+category pill, the search — because they all walk the library and an app
+is in it. Two things did need telling: **Print** is mounted on
+`record.page && !record.app` (an app page prints a stub with a button
+that does nothing on paper, the same argument a work's page makes), and
+the Worker's `WRITABLE` needs `apps/…`, which is a hand deploy.
+
+The `app` icon is the twelfth drawing. A card's mark in the recently-added
+strip deliberately does **not** carry `.category-icon`: those draw
+themselves on as you reach them, and a mark sitting off the right-hand
+end of a rail would never come into view to be drawn.
 
 **Missing files are a normal state.** A work with no `files` array renders as
 "Not published here yet". Do not delete such entries or invent placeholder URLs.
@@ -256,7 +348,7 @@ serves them, they cost a visitor nothing, and after the downsample above
 they are the only originals left.
 
 **Space between sections is a ratio, not a number.** `--block` sets the
-vertical padding on the four full-bleed sections and nothing else reads
+vertical padding on the five full-bleed sections and nothing else reads
 it. It was `clamp(56px, 8vw, 118px)`, which gave 236–283px between
 sections at 1440 — 15 to 18 body lines — against 30px between the
 category cards inside the library. Nine to one is what made the page read
@@ -322,6 +414,13 @@ Worker and neither may erase the other. A check that cannot run says
 nothing at all — opened from the file system there is nothing to fetch,
 and that is not a fault.
 
+**A change to the Worker's writable list is a change to what the editor
+may touch.** `WRITABLE` in `worker/src/index.js` is the only thing between
+"the editor may update the author's introduction" and "the editor may
+replace any page it likes". `index.html` is on it; `404.html`,
+`about/index.html` and `index.htm` are not, and `worker/test.mjs` checks
+each of those is still refused.
+
 **Adding a work by hand means editing sitemap.xml too, and its page is missing
 until admin.html writes it.** `sitemap.xml` is the one file outside
 `content.js` that names a work, one `<url>` per id — the homepage list is
@@ -352,6 +451,10 @@ the editor.
   GitHub token itself, so no device ever does. Opened any other way the editor
   falls back to asking for a token, and `Files…` works everywhere.
   `worker/README.md` has the one-time setup.
+- The `apps` category holds one app, the Zakat calculator, at
+  `apps/zakat-calculator.html`. Adding another is a form: **+ Add an app**
+  in the editor, then the address, the version, the platforms and what is
+  new. No screenshot on the page yet — the author has one.
 - The `posts` category holds three pieces now. Two of them are the same essay
   in English and Urdu — separate entries with separate ids, not one entry with
   two files, because each is a page to be read rather than a download to be

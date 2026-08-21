@@ -34,7 +34,7 @@ const GITHUB = 'https://api.github.com';
    writes any, which at least means nothing lands half done. The editor
    asks /version on load now, so the drift is said before anything is
    sent rather than after. */
-const WORKER_VERSION = '2026-08-12.3';
+const WORKER_VERSION = '2026-08-21.2';
 
 /* The token here can write to the repository, so this endpoint must not
    become a way to write anything anywhere. Only what the editor
@@ -62,8 +62,17 @@ const WORKER_VERSION = '2026-08-12.3';
 const WRITABLE = [
   /^content\.js$/,
   /^sitemap\.xml$/,
+  /* The homepage. The editor does not generate it whole — it commits the
+     page that is already there with its own blocks written back in
+     between markers, so that the author's introduction, the hero and the
+     contact lines can be edited in a form and still arrive as real HTML
+     rather than being drawn by a script a crawler never runs. */
+  /^index\.html$/,
   /^posts\/[A-Za-z0-9-]+\.html$/,
   /^works\/[A-Za-z0-9-]+\.html$/,
+  /* An app's own page. Built from fields rather than written, so it is
+     regenerated in full on every publish the way a work's page is. */
+  /^apps\/[A-Za-z0-9-]+\.html$/,
   /^files\/cards\/[A-Za-z0-9-]+\.jpg$/
 ];
 

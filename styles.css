@@ -1,8 +1,9 @@
 /* ============================================================
    Scholarly Works and Research — stylesheet
    Sections: 1 tokens · 2 base · 3 typography · 4 header & nav
-   5 hero · 6 author · 7 library · 8 fatawa · 9 contact
-   10 footer · 11 work page · 12 responsive · 13 print
+   5 hero · 6 author · 6a recently added · 7 library · 8 fatawa
+   9 contact · 10 footer · 11 work page · 11c app page
+   12 responsive · 13 print
    ============================================================ */
 
 /* 1 ── Tokens ─────────────────────────────────────────────── */
@@ -720,6 +721,119 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .bio-panels details > div { margin: 0; padding: 0 22px 20px 0; color: #3d4b45; }
 .bio-panels li { margin: 0 0 10px; }
 .bio-source { margin: 26px 0 0; }
+
+/* 6a ── Recently added ─────────────────────────────────────── */
+
+/* A rail rather than a grid. Eight cards in a row on a desktop would be
+   a second library above the library; scrolled sideways they are a
+   shelf, which is what "what changed lately" wants to be — glanced at,
+   not studied. The bar's own vocabulary is the category strip's, fade
+   and arrow at whichever end still has something, because the page
+   already teaches that once at the top. */
+.recent {
+  padding: var(--block) 0 var(--block) var(--gutter);
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+  overflow: hidden;
+}
+.recent .section-heading { padding-right: var(--gutter); }
+
+.recent-rail { position: relative; margin-top: 26px; }
+.recent-rail::before,
+.recent-rail::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 64px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  z-index: 1;
+}
+.recent-rail::before {
+  left: 0;
+  background: linear-gradient(to right, var(--paper) 40%, rgba(255, 253, 248, 0));
+}
+.recent-rail::after {
+  right: 0;
+  background: linear-gradient(to left, var(--paper) 40%, rgba(255, 253, 248, 0));
+}
+.recent-rail[data-more-before="true"]::before,
+.recent-rail[data-more-after="true"]::after { opacity: 1; }
+.recent-rail[data-more-before="true"] .category-arrow-start,
+.recent-rail[data-more-after="true"] .category-arrow-end { display: grid; }
+
+.recent-track {
+  display: flex;
+  gap: 16px;
+  /* The right-hand gutter as padding rather than margin, so the last
+     card can be scrolled fully clear of the fade. */
+  padding: 4px var(--gutter) 4px 0;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+.recent-track::-webkit-scrollbar { display: none; }
+
+.recent-card {
+  flex: none;
+  scroll-snap-align: start;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 14px;
+  /* Wide enough for a long Urdu title to take two lines rather than
+     five, narrow enough that a second card is always showing — which is
+     what says the rail scrolls before any arrow does. */
+  width: min(320px, 78vw);
+  padding: 20px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+.recent-card:hover {
+  border-color: #d5c29e;
+  box-shadow: 0 6px 20px rgba(26, 46, 39, 0.07);
+  transform: translateY(-2px);
+}
+.recent-card:focus-visible { outline: 2px solid var(--gold-rule); outline-offset: 3px; }
+/* Deliberately not .category-icon. The drawings on the category headings
+   draw themselves on as you reach them; a card's mark is not a heading,
+   and one sitting off the right-hand end of a rail would never come into
+   view to be drawn. The cards have an arrival of their own. */
+.recent-mark {
+  width: 24px;
+  height: 24px;
+  margin-top: 2px;
+  color: var(--gold-on-light);
+}
+
+.recent-card-body { display: grid; gap: 8px; min-width: 0; }
+/* The same rule the library rows follow: everything on a card travels on
+   the one axis the record's own script starts from. */
+.recent-card-body.reads-rtl { text-align: right; }
+.recent-card-body.reads-ltr { text-align: left; }
+.recent-card-body .record-title { font-size: 19px; line-height: 1.35; }
+.recent-card-body .record-title.urdu { font-size: 21px; line-height: 1.9; }
+.recent-card-body .record-title.arabic { font-size: 21px; line-height: 1.7; }
+
+/* Arriving as you reach them. The class carries the movement and the
+   state it moves from, both — so a card with no JavaScript, no observer
+   or a reader who asked for less motion is simply where it already is,
+   and never starts invisible waiting to be shown. */
+@keyframes card-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.card-rise { animation: card-rise 0.5s ease-out var(--rise-delay, 0ms) both; }
+
+@media (max-width: 720px) {
+  .recent-card { padding: 16px; }
+}
 
 /* 7 ── Library ────────────────────────────────────────────── */
 
@@ -1484,6 +1598,74 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   font-family: var(--font-ui);
   font-size: 13px;
 }
+
+/* 11c ── An app's page ─────────────────────────────────────── */
+
+/* An app is opened, not read and not downloaded, so its page is built
+   round the one button that opens it rather than round a column of
+   prose. Everything above that button is what you need to decide to
+   press it; everything below is for the reader who wants more first. */
+.app-tagline {
+  max-width: 46ch;
+  margin: 14px 0 0;
+  color: #4c5651;
+  font-size: 18px;
+}
+/* .app-tagline sets 18px and is declared after .urdu, so it wins — and
+   18px is below the 19px floor the rest of the site keeps for Nastaliq.
+   Its own size back, and its own leading with it: at 18px with Latin
+   leading the descenders of one line met the next. */
+.app-tagline.urdu,
+.app-tagline.arabic {
+  max-width: 40ch;
+  color: #45534d;
+  font-size: clamp(20px, 2vw, 24px);
+  line-height: 2;
+  margin-top: 10px;
+}
+.app-tagline + .app-tagline { margin-top: 4px; }
+
+.app-open { margin: 28px 0 0; }
+.app-open .button { font-size: 16px; padding: 14px 26px; }
+.app-open .icon-inline { margin-left: 8px; }
+.work-hero[dir="rtl"] .app-open .icon-inline { margin: 0 0 0 8px; }
+
+/* The facts, as a row of pairs rather than a sentence: version, the
+   platforms, when it went up, who built it. The same two-column card the
+   author's own facts panel uses, so the site has one way of setting a
+   short list of labelled things and not two. */
+.app-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  margin: 34px 0 0;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+.app-facts div { padding: 14px 18px; background: var(--card); }
+.app-facts dt {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-on-light);
+}
+.app-facts dd { margin: 6px 0 0; color: #2f3d38; font-size: 15px; }
+
+.app-new { margin: 38px 0 0; }
+.app-new h2 { font-size: clamp(21px, 2.2vw, 27px); margin-bottom: 12px; }
+.app-new ul { margin: 0; padding-inline-start: 22px; color: #3d4b45; }
+.app-new li { margin: 0 0 8px; }
+/* A line of the list written in Urdu keeps its own script and leading
+   without turning the list round: the marker follows the list's own
+   direction, which is the page's. */
+.app-new li.urdu,
+.app-new li.arabic { margin-bottom: 2px; }
+
+.app-about { margin: 34px 0 0; }
+.app-about p { margin: 0 0 16px; color: #45534d; }
 
 /* 11b ── The reading column ───────────────────────────────── */
 

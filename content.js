@@ -35,6 +35,116 @@ window.siteContent = {
     baseUrl: "https://tahirqadri.com.pk/"
   },
 
+  /* ---- The homepage's own words ------------------------------------
+
+     index.html holds a *rendering* of what is below, not the original:
+     admin.html writes the blocks between its `editor:` markers back on
+     every publish, exactly the way it writes works/<id>.html from a
+     record. So this is the one place to edit them — anything typed
+     into index.html between those markers is overwritten by the next
+     publish. Open admin.html and use the "Site & About" panel, or edit
+     here by hand and publish once.
+
+     No string here says which script it is in. The generator asks the
+     same question the writing box asks of a typed line — see scriptOf —
+     and writes the lang and dir out itself. */
+
+  nav: [
+    { text: "Author", href: "#about" },
+    { text: "Library", href: "#library", echo: true },
+    { text: "Fatawa", href: "#rulings", echo: true },
+    { text: "Contact", href: "#contact" }
+  ],
+
+  hero: {
+    eyebrow: "Abul Laith Muhammad Tahir Qadri An-Naeemi",
+    headline: "A library of ",
+    headlineEm: "useful knowledge.",
+    copy: "Booklets, edited treatises, teaching charts, study material and fatāwā (rulings) — in Urdu, Arabic and English, for Islamic scholars, students of dars-e-niẓāmī and interested readers.",
+    urdu: "کُتُب، رسائل، فتاویٰ، معلوماتی پمفلٹس اور پریزینٹیشنز",
+    cta: "Browse the works"
+  },
+
+  about: {
+    label: "تعارفِ مصنّف",
+    heading: "Abul Laith Muhammad Tahir Qadri An-Naeemi",
+    summary: "Teacher of dars-e-niẓāmī at Jamia tun Noor, Karachi since 2012, teaching Ṣiḥāḥ Sitta in Dawra-e-Hadith and advanced fiqh texts in Takhaṣṣuṣ. Trained in Takhaṣṣuṣ fil Fiqh (Ḥanafī) and iftā under Shaykh al-Hadith Dr. Muftī Muhammad Ataullah Naeemi.",
+    bio: {
+      openLabel: "Read the full introduction",
+      openLabelUr: "تعارفِ مُصنّف",
+      nameUr: "أبو اللّیث محمد طاہر القادری النّعیمی حفظہ اللہ",
+      byline: "از قلم: علّامہ سیّد محمد منیز شاہ حفظہ اللہ، متخصِّص فی الفقہ الإسلامی، دارالاِفتاء النّور",
+      prose: [
+        "اُستادِ محترم علّامہ محمد طاہر صاحب زِید مجدُہ ایک نہایت ذہین، نفیس اور سہل شخصیت کے مالک ہیں۔ شیخ الحدیث جامعۃ النّور و رئیس دارالإفتاء النّور ڈاکٹر مفتی محمد عطاء اللہ نعیمی مدظلہ کے ہونہار تلامذہ اور جامعۃ النّور کے قابل اساتذہ میں سے ہیں۔ ہماری کلاس کو تخصُّص سالِ اوّل میں آپ سے درِّ مختار کتاب البُیوع اور تخصُّص فی الفقہ سالِ دوم میں درِّ مختار کتاب الوقف اور سراجی فی المیراث پڑھنے کا موقع ملا۔ آپ نہ صرف متون کی اَحسن انداز میں تدریس کرتے ہیں بلکہ مسائل کو دورِ حاضر پر بھی منطبق فرماتے ہیں۔ مقام کا تقاضا اختصار کا ہے، لہٰذا مندرجہ ذیل تعارُف اِجمالی طور پر پیش کیا جاتا ہے۔"
+      ],
+      facts: [
+        { term: "نام", value: "أبو اللیث محمد طاہر قادری نعیمی" },
+        { term: "کنیت", value: "أبو اللیث" },
+        {
+          term: "مرشدِ گرامی",
+          value: "حضرت علّامہ مولانا سیّد شاہ تراب الحق قادری نوری رحمۃ اللہ تعالیٰ علیہ"
+        },
+        { term: "تدریس", value: "جامعۃ النّور، کاغذی بازار، کراچی — ۲۰۱۲ء سے تاحال" }
+      ],
+      panels: [
+        {
+          title: "تعلیمی سفر",
+          kind: "ol",
+          items: [
+            "میٹرک سائنس، سندھ بورڈ، ۲۰۰۴ء — اے ون گریڈ",
+            "انٹر کامرس، انٹر بورڈ سندھ، ۲۰۰۶ء — اے گریڈ",
+            "بی کام، کراچی یونیورسٹی، ۲۰۰۸ء — فرسٹ ڈویژن",
+            "ایم اے اسلامک اسٹڈیز، کراچی یونیورسٹی، ۲۰۱۹ء — فرسٹ ڈویژن",
+            "درسِ نظامی و دورۂ حدیث (۸ سالہ عالم کورس)، جامعۃ النّور (جمعیّت اشاعتِ اہلسنّت پاکستان)، نور مسجد، کاغذی بازار، کراچی — ۲۰۱۲ء",
+            "ACCA پروفیشنل سرٹیفیکیٹ — ۲۰۱۴ء",
+            "تخصُّص فی الفقہ الاسلامی (حنفی) اور شیخ الحدیث ڈاکٹر مفتی محمد عطاء اللہ نعیمی کی زیرِ سرپرستی تربیتِ اِفتاء — ۲۰۱۶ء سے جاری"
+          ]
+        },
+        {
+          title: "تدریسی تجربہ",
+          kind: "prose",
+          items: [
+            "۲۰۱۲ء سے درسِ نظامی کی تدریس جاری ہے۔ گزشتہ کئی سالوں سے دورۂ حدیث شریف میں صحاح ستّہ اور تخصُّص فی الفقہ میں مختلف مُنتہیٰ کتب کی تدریس بھی جاری ہے۔"
+          ]
+        },
+        {
+          title: "اجازات",
+          kind: "ul",
+          items: [
+            "اجازتِ حدیث — شیخ الحدیث حضرت علّامہ مولانا المفتی الدکتور محمد عطاء اللہ نعیمی",
+            "اجازت بالحدیث و الفقہ و التصوف — شیخ عبدالعزیز محمد سہیل الخطیب الحسنی، شیخ السجادہ الرفاعیہ و الشاذلیہ و القادریہ و النقشبندیہ، شام"
+          ]
+        },
+        {
+          title: "اساتذۂ کرام",
+          kind: "ul",
+          items: [
+            "شیخ الحدیث حضرت علّامہ ڈاکٹر محمد عطاء اللہ نعیمی دامت برکاتہ العالیہ",
+            "حضرت علّامہ مولانا محمد عثمان برکاتی رحمہ اللہ — بانی جامعۃ النّور",
+            "حضرت علّامہ مولانا مفتی محمد ذاکر اللہ نقشبندی دامت برکاتہ العالیہ — مترجمِ کنزالایمان پشتو",
+            "حضرت علّامہ مولانا محمد مختار اشرفی دامت برکاتہ العالیہ",
+            "حضرت علّامہ مولانا محمد انیس برکاتی دامت برکاتہ العالیہ",
+            "حضرت علّامہ مولانا عبد المصطفیٰ اللہ رحم ہمدمی دامت برکاتہ العالیہ",
+            "وغیرہم"
+          ]
+        }
+      ],
+      pdf: {
+        label: "Open the introduction as a PDF",
+        url: "files/introduction-to-author/introduction-to-author.pdf"
+      }
+    }
+  },
+
+  contact: {
+    label: "Get in touch",
+    heading: "Questions, corrections, requests",
+    copy: "Students and readers are welcome to write — whether about a ruling, a reference in one of the treatises, or a correction to something published here.",
+    button: "Email"
+  },
+
+  footer: { credit: "Urdu set in Mehr Nastaliq Web, CC BY-SA 4.0" },
+
   categories: [
     {
       id: "talifat",
@@ -220,6 +330,38 @@ window.siteContent = {
           files: [
             { label: "Arabic PDF", url: "files/study-notes-for-specialization-students-of-hanafi-fiqh/sai-ul-ifham.pdf" }
           ]
+        }
+      ]
+    },
+
+    {
+      id: "apps",
+      title: "Apps",
+      titleUr: "ایپس",
+      blurb: "Tools built to make a calculation or a lookup easier — free, and they run in a browser.",
+      works: [
+        {
+          id: "zakat-calculator",
+          title: "Zakat Calculator",
+          language: "en",
+          kind: "ایپ",
+          date: "2026-08-21",
+          description: "A simple, comprehensive calculator for working out zakāt on most businesses and on a salaried income — in Urdu and English, with live silver rates for the niṣāb.",
+          descriptionUr: "زکوٰۃ کا حساب لگانے کے لیے ایک آسان اور جامع ایپ — عام کاروبار اور تنخواہ دار افراد دونوں کے لیے۔ اردو اور انگریزی دونوں زبانوں میں، اور نصاب کے لیے چاندی کے تازہ نرخ خود لے لیتی ہے۔",
+          tags: ["زکوٰۃ", "حساب", "نصاب"],
+          page: "apps/zakat-calculator.html",
+          app: {
+            url: "https://zakathisab.web.app/",
+            version: "2",
+            tagline: "Simple, easy and comprehensive — for most businesses and for salaried individuals.",
+            taglineUr: "آسان، سہل اور جامع — اکثر کاروباروں اور تنخواہ دار حضرات کے لیے۔",
+            platforms: ["Apple", "Android", "Windows"],
+            whatsNew: [
+              "Two languages — Urdu and English",
+              "Live silver rates, so the niṣāb is today’s and not last year’s",
+              "A clearer interface throughout"
+            ]
+          }
         }
       ]
     },

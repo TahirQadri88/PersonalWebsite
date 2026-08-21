@@ -49,6 +49,14 @@
      reading from. */
   var model = JSON.parse(JSON.stringify({
     site: source.site || {},
+    /* The homepage's own words. They are edited here and written back
+       into index.html on publish — see buildIndex — so they belong in
+       the model beside the records, not in the page. */
+    nav: source.nav || [],
+    hero: source.hero || {},
+    about: source.about || {},
+    contact: source.contact || {},
+    footer: source.footer || {},
     categories: source.categories || [],
     rulings: source.rulings || []
   }));
@@ -89,6 +97,30 @@
   function markDirty() {
     dirty = true;
     dirtyNote.textContent = 'Unsaved changes';
+  }
+
+  /* Today, where the person editing is — not in UTC. toISOString() gives
+     UTC, and Karachi is five hours ahead of it, so a post written between
+     midnight and five in the morning was stamped with yesterday. */
+  function today() {
+    var now = new Date();
+    return now.getFullYear() + '-' +
+      String(now.getMonth() + 1).padStart(2, '0') + '-' +
+      String(now.getDate()).padStart(2, '0');
+  }
+
+  /* A record that was just changed is a record that was just updated, and
+     the strip on the homepage reads that.
+
+     Stamped as it is edited rather than at publish time. A publish
+     rewrites every page in the library whether or not anything about it
+     changed — that is deliberate, and it is why there is never a "does
+     this still match" question to answer by hand — so stamping there
+     would mark all twenty-three as new, every time, and the strip would
+     say nothing at all. */
+  function touch(record) {
+    if (!record || !record.id) return;
+    record.updated = today();
   }
 
   /* ---- Small builders ---- */
@@ -184,6 +216,10 @@
       var button = el('button', 'chip' + (item.cls ? ' ' + item.cls : ''));
       button.type = 'button';
       button.textContent = item.text;
+      /* A chip that names a drawing shows it. Eleven names in a row say
+         nothing about which is a book and which is a pen, and the whole
+         point of choosing one is what it looks like. */
+      if (item.icon) button.insertAdjacentHTML('afterbegin', site.icon(item.icon, 'icon-inline'));
       button.setAttribute('aria-pressed', 'false');
       button.addEventListener('click', function () {
         var next = clearable && button.getAttribute('aria-pressed') === 'true' ? '' : item.value;
@@ -302,6 +338,34 @@
 
   var POSTS_CATEGORY = 'posts';
   var bodies = {};
+
+  /* The homepage as it currently stands, read back so a publish can write
+     its own blocks into it and leave every other line exactly as it is.
+     The same reason a post's writing is read back before it is edited:
+     the file is the store, and the editor may only rewrite the parts it
+     owns.
+
+     Over file:// there is nothing to fetch. That is not a fault of the
+     page, but it does mean the homepage cannot be published from there,
+     and problems() says so rather than letting an edit to the author's
+     introduction quietly go nowhere. */
+  var indexHtml = null;
+  var indexTrouble = '';
+
+  function loadIndex() {
+    return fetch('index.html', { cache: 'no-store' })
+      .then(function (response) {
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        return response.text();
+      })
+      .then(function (html) { indexHtml = html; indexTrouble = ''; })
+      .catch(function () {
+        indexHtml = null;
+        indexTrouble = 'index.html could not be read, so nothing on the homepage — the ' +
+          'introduction, the hero, the contact lines — can be published from here. ' +
+          'Open this editor over http rather than from a file.';
+      });
+  }
 
   /* ---- The writing box ------------------------------------------------
 
@@ -1030,6 +1094,10 @@
   }
 
   function isPost(entry) {
+    /* An app has a page of its own too, and is not a post: its page is
+       built from fields, so there is no writing to read back and nothing
+       to lose by regenerating it. */
+    if (entry.record.app) return false;
     return !!(entry.record.page || (entry.category && entry.category.id === POSTS_CATEGORY));
   }
 
@@ -1460,6 +1528,201 @@
       ''
     ]
       .filter(function (line) { return line !== null; })
+      .join('\n');
+  }
+
+  /* ---- An app's own page ----------------------------------------------
+
+     An app is a record with an `app` block on it, and it gets a page of
+     its own the way a post does — `page` names the file, and everything
+     that already walks the library reaches it without being told: the
+     sitemap line, the share card, the category pill, the search.
+
+     It does not get the writing box, though, and that is the whole
+     reason for a shape of its own. An app page is a link, a version, a
+     list of what is new and the platforms it runs on. Written as prose
+     it would be an essay about an app; written as fields it is an app
+     page, and the next one is a form to fill in rather than a page to
+     compose. */
+  function isApp(entry) {
+    return !!(entry && entry.record && entry.record.app);
+  }
+
+  function buildApp(record, entry) {
+    var e = site.escapeHtml;
+    var app = record.app || {};
+    var base = String((model.site && model.site.baseUrl) || '').replace(/\/+$/, '') + '/';
+    var url = base + record.page;
+    var author = (model.site && model.site.name) || '';
+    var rtl = record.language === 'ur' || record.language === 'ar';
+    var scriptClass = record.language === 'ur' ? 'urdu' : record.language === 'ar' ? 'arabic' : 'latin';
+    /* Same rule as buildPost and shareCaption: the sentence shown to a
+       reader follows the piece, not the site. */
+    var shared = rtl
+      ? record.descriptionUr || record.description
+      : record.description || record.descriptionUr;
+    var categoryTitle = entry.category ? entry.category.title : 'Apps';
+    var categoryId = entry.category ? entry.category.id : 'apps';
+    var pretty = site.formatDate(record.date);
+
+    /* SoftwareApplication rather than BlogPosting: it is not an article,
+       and saying so is what lets a search engine show it as a thing you
+       can open rather than something to read. */
+    var jsonLd = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: record.title,
+      inLanguage: record.language || 'en',
+      description: record.description || undefined,
+      applicationCategory: 'UtilitiesApplication',
+      operatingSystem: (app.platforms || []).join(', ') || undefined,
+      softwareVersion: app.version || undefined,
+      datePublished: record.date || undefined,
+      url: app.url || url,
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'PKR' },
+      author: {
+        '@type': 'Person',
+        name: author,
+        alternateName: (model.site && model.site.nameUr) || undefined,
+        url: base
+      }
+    });
+
+    /* A line of the app's own copy, in whichever script it was written
+       in — the same question langAttrs asks of a homepage line. */
+    function line(text, className, tag) {
+      if (!text) return null;
+      var element = tag || 'p';
+      var script = scriptOf(String(text), 'ur');
+      var cls = [className, script === 'ur' ? 'urdu' : script === 'ar' ? 'arabic' : '']
+        .filter(Boolean).join(' ');
+      return '<' + element + (cls ? ' class="' + cls + '"' : '') +
+        langAttrs(text) + '>' + e(text) + '</' + element + '>';
+    }
+
+    var whatsNew = (app.whatsNew || []).filter(Boolean);
+    var platforms = (app.platforms || []).filter(Boolean);
+
+    return [
+      '<!doctype html>',
+      '<html lang="' + e(record.language || 'en') + '">',
+      '  <head>',
+      '    <meta charset="UTF-8" />',
+      '    <meta name="viewport" content="width=device-width, initial-scale=1.0" />',
+      '    <title>' + e(record.title) + ' — ' + e(author) + '</title>',
+      record.description ? '    <meta name="description" content="' + e(record.description) + '" />' : null,
+      '    <meta name="author" content="' + e(author) + '" />',
+      '    <link rel="canonical" href="' + e(url) + '" />',
+      '',
+      '    <meta property="og:type" content="website" />',
+      '    <meta property="og:title" content="' + e(record.title) + '" />',
+      shared ? '    <meta property="og:description" content="' + e(shared) + '" />' : null,
+      '    <meta property="og:url" content="' + e(url) + '" />',
+      '    <meta property="og:image" content="' + e(base + 'files/cards/' + record.id + '.jpg') + '" />',
+      '    <meta name="twitter:card" content="summary_large_image" />',
+      '',
+      '    <link rel="icon" type="image/png" sizes="32x32" href="../files/images/logo-circle-32.png" />',
+      '    <link rel="apple-touch-icon" href="../files/images/logo-circle-180.png" />',
+      '    <link rel="preconnect" href="https://fonts.googleapis.com" />',
+      '    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />',
+      '    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" rel="stylesheet" />',
+      '    <link rel="stylesheet" href="../styles.css" />',
+      '    <script type="application/ld+json">' + jsonLd + '</scr' + 'ipt>',
+      '  </head>',
+      '',
+      '  <body class="work-page">',
+      '    <header class="site-header">',
+      '      <a class="brand" href="../index.html"><img class="brand-mark" src="../files/images/logo-circle-180.png" alt="" width="180" height="180" /> Scholarly Works and Research</a>',
+      '      <nav class="header-nav" aria-label="Sections">',
+      '        <a href="../index.html#about">Author</a>',
+      '        <a class="nav-echo" href="../index.html#library">Library</a>',
+      '        <a class="nav-echo" href="../index.html#rulings">Fatawa</a>',
+      '        <a href="../index.html#contact">Contact</a>',
+      '      </nav>',
+      '    </header>',
+      '',
+      '    <main class="work-page-main">',
+      '      <article class="work-hero app-page"' + (rtl ? ' dir="rtl"' : '') + '>',
+      '        <a class="back-link" href="../index.html#' + e(categoryId) + '"><span aria-hidden="true">' +
+        (rtl ? '→' : '←') + '</span> ' + e(categoryTitle) + '</a>',
+      record.kind
+        ? '        ' + site.kindMarkup(record, 'section-label' + (rtl ? '' : ' align-left'), 'p')
+        : null,
+      '        <h1 class="record-title ' + scriptClass + '" lang="' + e(record.language || 'en') +
+        '" dir="' + (rtl ? 'rtl' : 'ltr') + '">' + e(record.title) + '</h1>',
+      app.tagline ? '        ' + line(app.tagline, 'app-tagline') : null,
+      app.taglineUr ? '        ' + line(app.taglineUr, 'app-tagline') : null,
+      '',
+      /* The one thing this page is for. An app is opened, not
+         downloaded, so it is a button and not a file row — and it is
+         somewhere else, so it opens in its own tab and says so with the
+         same drawing every offsite link on this site uses. */
+      app.url
+        ? '        <p class="app-open"><a class="button button-dark" href="' + e(app.url) + '"' +
+          (site.isOffsite(app.url) ? ' target="_blank" rel="noopener"' : '') + '>Open the app ' +
+          site.icon('open', 'icon-inline') + '</a></p>'
+        : '        <p class="availability-note">Not published here yet.</p>',
+      '',
+      (app.version || platforms.length)
+        ? [
+            '        <dl class="app-facts">',
+            app.version
+              ? '          <div><dt>Version</dt><dd>' + e(app.version) + '</dd></div>'
+              : null,
+            platforms.length
+              ? '          <div><dt>Runs on</dt><dd>' + e(platforms.join(' · ')) + '</dd></div>'
+              : null,
+            pretty ? '          <div><dt>Published</dt><dd>' + e(pretty) + '</dd></div>' : null,
+            '          <div><dt>Built by</dt><dd>' + e(author) + '</dd></div>',
+            '        </dl>'
+          ].filter(function (x) { return x !== null; }).join('\n')
+        : null,
+      '',
+      whatsNew.length
+        ? [
+            '        <section class="app-new">',
+            '          <h2>What’s new' + (app.version ? ' in version ' + e(app.version) : '') + '</h2>',
+            '          <ul>',
+            whatsNew.map(function (item) {
+              return '            ' + line(item, '', 'li');
+            }).join('\n'),
+            '          </ul>',
+            '        </section>'
+          ].join('\n')
+        : null,
+      '',
+      /* The descriptions, under the app rather than over it: a reader
+         came here to open the thing, and the prose is what they read if
+         they want to know more first. Both, the record's own language
+         leading, through the same helper the library uses. */
+      (record.description || record.descriptionUr)
+        ? '        <div class="app-about">\n' +
+          (rtl
+            ? [record.descriptionUr, record.description]
+            : [record.description, record.descriptionUr])
+            .filter(Boolean)
+            .map(function (text) { return '          ' + site.proseMarkup(text, '', record.language); })
+            .join('\n') +
+          '\n        </div>'
+        : null,
+      '',
+      (record.tags || []).length ? '        ' + site.tagMarkup(record) : null,
+      '        <p class="post-foot"><a class="text-link" href="../index.html#' + e(categoryId) + '">← All apps</a></p>',
+      '      </article>',
+      '    </main>',
+      '',
+      '    <footer>',
+      '      <span>© <span id="year"></span> ' + e(author) + '</span>',
+      '      <a href="../index.html">All works</a>',
+      '    </footer>',
+      '',
+      '    <script src="../content.js"></scr' + 'ipt>',
+      '    <script src="../common.js"></scr' + 'ipt>',
+      '  </body>',
+      '</html>',
+      ''
+    ]
+      .filter(function (part) { return part !== null; })
       .join('\n');
   }
 
@@ -1957,6 +2220,330 @@
       .join('\n');
   }
 
+  /* ---- The homepage ---------------------------------------------------
+
+     index.html is a page a person wrote, and the editor owns only parts
+     of it. Each part sits between a pair of markers — `editor:about` and
+     `/editor:about` — and a publish replaces what is between them and
+     touches nothing else in the file.
+
+     That is what lets the author's introduction be edited in a form and
+     still arrive as real HTML. Drawing it with a script instead would
+     have been less work and would have cost the thing that matters: a
+     crawler, a WhatsApp preview and a reader with JavaScript off would
+     all have found the introduction missing, and it is the most-read
+     prose about the author on the site.
+
+     A missing marker writes nothing and stops the publish with a
+     sentence saying which one. index.html is the front door; a half
+     spliced one is worse than an unchanged one. */
+
+  var INDEX_REGIONS = ['nav', 'hero', 'about', 'recent', 'contact', 'footer'];
+
+  /* The script a line of the homepage is written in. scriptOf is the same
+     function the writing box asks of a typed line, so a heading here and
+     a heading in a post cannot disagree about what counts as Urdu.
+
+     It answers with lang and dir only, never a class. `.urdu` carries a
+     font size and `text-align: right` along with the font, and the hero's
+     Urdu line has a size of its own and no alignment of its own — the
+     class would send it to the far edge of its column. Which classes an
+     element wears is written out below, element by element, the same ones
+     the page already wears. */
+  function langAttrs(text) {
+    var script = scriptOf(String(text || ''), 'ur');
+    if (script === 'ur') return ' lang="ur" dir="rtl"';
+    if (script === 'ar') return ' lang="ar" dir="rtl"';
+    return '';
+  }
+
+  function pad(indent) { return new Array(indent + 1).join(' '); }
+
+  /* Drops the empty ones, so a block left blank in the form leaves no
+     element behind rather than an empty one to wonder about. */
+  function stack(indent, parts) {
+    var p = pad(indent);
+    return parts
+      .filter(function (part) { return part !== null && part !== undefined && part !== ''; })
+      .map(function (part) { return p + part; })
+      .join('\n');
+  }
+
+  function indexNav(indent) {
+    var e = site.escapeHtml;
+    return stack(indent, (model.nav || []).map(function (link) {
+      return '<a' + (link.echo ? ' class="nav-echo"' : '') + ' href="' + e(link.href) + '">' +
+        e(link.text) + '</a>';
+    }));
+  }
+
+  function indexHero(indent) {
+    var e = site.escapeHtml;
+    var hero = model.hero || {};
+    return stack(indent, [
+      hero.eyebrow ? '<p class="eyebrow"' + langAttrs(hero.eyebrow) + '>' + e(hero.eyebrow) + '</p>' : '',
+      '<h1>' + e(hero.headline || '') +
+        (hero.headlineEm ? '<em>' + e(hero.headlineEm) + '</em>' : '') + '</h1>',
+      hero.copy ? '<p class="hero-copy"' + langAttrs(hero.copy) + '>' + e(hero.copy) + '</p>' : '',
+      hero.urdu ? '<p class="hero-urdu"' + langAttrs(hero.urdu) + '>' + e(hero.urdu) + '</p>' : '',
+      hero.cta ? '<a class="button" href="#library">' + e(hero.cta) +
+        ' <span aria-hidden="true">→</span></a>' : ''
+    ]);
+  }
+
+  /* The seal and the calligraphed name are the two pictures inside the
+     introduction. They are not words and there is nothing to edit about
+     them, so they are written out as they stand. */
+  var INTRO_MARK =
+    '<img class="intro-mark" src="files/images/logo-circle-180.png" ' +
+    'srcset="files/images/logo-circle-180.png 180w, files/images/logo-circle-512.png 512w, ' +
+    'files/images/logo-circle-1024.png 1024w" sizes="60px" ' +
+    'alt="Calligraphic seal reading Abu al-Layth Muhammad Tahir al-Qadri" width="180" height="180" />';
+  var BIO_CALLIGRAPHY =
+    '<img class="bio-calligraphy" src="files/images/name-calligraphy.png" alt="" ' +
+    'width="840" height="219" loading="lazy" />';
+
+  function indexAbout(indent) {
+    var e = site.escapeHtml;
+    var about = model.about || {};
+    var bio = about.bio || {};
+    var i = indent;
+
+    /* align-left on both labels, for the reason written into CLAUDE.md:
+       `.urdu` sets text-align right, a label inherits it, and above an
+       English heading it lands at the far edge of the block. Three of
+       these went years without it. */
+    var head = stack(i + 2, [
+      about.label
+        ? '<!-- align-left because the heading under it reads leftwards. Without\n' +
+          pad(i + 2) + '     it `.urdu` sets the block right and the label lands at the far\n' +
+          pad(i + 2) + '     edge of a 780px column, across from the name it introduces. -->'
+        : '',
+      about.label ? '<p class="section-label urdu align-left"' + langAttrs(about.label) + '>' +
+        e(about.label) + '</p>' : '',
+      '<h2>' + e(about.heading || '') + '</h2>',
+      about.summary ? '<p' + langAttrs(about.summary) + '>' + e(about.summary) + '</p>' : ''
+    ]);
+
+    var facts = (bio.facts || []).map(function (fact) {
+      return pad(i + 8) + '<div><dt>' + e(fact.term) + '</dt><dd>' + e(fact.value) + '</dd></div>';
+    }).join('\n');
+
+    var panels = (bio.panels || []).map(function (panel) {
+      var tag = panel.kind === 'ol' ? 'ol' : panel.kind === 'ul' ? 'ul' : 'div';
+      var items = (panel.items || []).map(function (item) {
+        return pad(i + 10) + (tag === 'div' ? '<p>' + e(item) + '</p>' : '<li>' + e(item) + '</li>');
+      }).join('\n');
+      return [
+        pad(i + 6) + '<details>',
+        pad(i + 8) + '<summary class="urdu"' + langAttrs(panel.title) + '>' + e(panel.title) +
+          ' <span class="toggle" aria-hidden="true">+</span></summary>',
+        pad(i + 8) + '<' + tag + ' class="urdu"' + langAttrs(panel.title) + '>',
+        items,
+        pad(i + 8) + '</' + tag + '>',
+        pad(i + 6) + '</details>'
+      ].filter(Boolean).join('\n');
+    }).join('\n\n');
+
+    var pdf = bio.pdf && bio.pdf.url
+      ? [
+          pad(i + 4) + '<p class="bio-source">',
+          pad(i + 6) + '<a class="document-link" href="' + e(bio.pdf.url) +
+            '" target="_blank" rel="noopener">',
+          pad(i + 8) + e(bio.pdf.label || 'Open the PDF') +
+            ' <span data-icon="open" aria-hidden="true"></span>',
+          pad(i + 6) + '</a>',
+          pad(i + 4) + '</p>'
+        ].join('\n')
+      : '';
+
+    return [
+      pad(i) + INTRO_MARK,
+      pad(i) + '<div class="intro-body">',
+      head,
+      '',
+      pad(i + 2) + '<details class="bio" id="bio">',
+      pad(i + 4) + '<summary>',
+      pad(i + 6) + '<span>',
+      bio.openLabelUr
+        ? pad(i + 8) + '<span class="section-label urdu align-left"' + langAttrs(bio.openLabelUr) +
+          '>' + e(bio.openLabelUr) + '</span>'
+        : '',
+      pad(i + 8) + '<strong>' + e(bio.openLabel || 'Read the full introduction') + '</strong>',
+      pad(i + 6) + '</span>',
+      pad(i + 6) + '<span class="toggle" aria-hidden="true">+</span>',
+      pad(i + 4) + '</summary>',
+      '',
+      pad(i + 4) + '<div class="bio-body">',
+      pad(i + 6) + '<div class="bio-heading">',
+      pad(i + 8) + BIO_CALLIGRAPHY,
+      bio.nameUr ? pad(i + 8) + '<h3 class="urdu"' + langAttrs(bio.nameUr) + '>' + e(bio.nameUr) + '</h3>' : '',
+      bio.byline ? pad(i + 8) + '<p class="bio-byline urdu"' + langAttrs(bio.byline) + '>' + e(bio.byline) + '</p>' : '',
+      pad(i + 6) + '</div>',
+      '',
+      (bio.prose || []).length
+        ? [pad(i + 6) + '<div class="bio-prose urdu"' + langAttrs((bio.prose || []).join(' ')) + '>',
+           (bio.prose || []).map(function (p) { return pad(i + 8) + '<p>' + e(p) + '</p>'; }).join('\n'),
+           pad(i + 6) + '</div>', ''].join('\n')
+        : '',
+      facts
+        ? [pad(i + 6) + '<dl class="bio-facts urdu"' +
+             langAttrs((bio.facts || []).map(function (f) { return f.term; }).join(' ')) + '>',
+           facts,
+           pad(i + 6) + '</dl>', ''].join('\n')
+        : '',
+      panels ? [pad(i + 4) + '<div class="bio-panels">', panels, pad(i + 4) + '</div>', ''].join('\n') : '',
+      pdf,
+      pad(i + 4) + '</div>',
+      pad(i + 2) + '</details>',
+      pad(i) + '</div>'
+    ].filter(function (part) { return part !== ''; }).join('\n');
+  }
+
+  function indexContact(indent) {
+    var e = site.escapeHtml;
+    var contact = model.contact || {};
+    return [
+      pad(indent) + '<div>',
+      stack(indent + 2, [
+        contact.label ? '<p class="section-label"' + langAttrs(contact.label) + '>' + e(contact.label) + '</p>' : '',
+        '<h2>' + e(contact.heading || '') + '</h2>',
+        contact.copy ? '<p' + langAttrs(contact.copy) + '>' + e(contact.copy) + '</p>' : ''
+      ]),
+      pad(indent) + '</div>',
+      pad(indent) + '<a class="button button-dark" id="contact-email" href="#">' +
+        e(contact.button || 'Email') + '</a>'
+    ].join('\n');
+  }
+
+  function indexFooter(indent) {
+    var e = site.escapeHtml;
+    var footer = model.footer || {};
+    return stack(indent, [
+      '<span>© <span id="year"></span> ' + e((model.site && model.site.name) || '') + '</span>',
+      footer.credit ? '<span' + langAttrs(footer.credit) + '>' + e(footer.credit) + '</span>' : '',
+      '<a href="#top">Back to top ↑</a>'
+    ]);
+  }
+
+  /* ---- Recently added and updated -----------------------------------
+
+     Eight cards, newest first, on a rail that scrolls. The date they are
+     ordered by is `updated` where a record has one and `date` where it
+     does not — `updated` is stamped as a record is edited, not at publish
+     time, because a publish rewrites every page in the library whether or
+     not anything about it changed.
+
+     Every part of a card comes from the helper the library row uses for
+     the same part — titleMarkup, kindMarkup, metaMarkup, categoryIcon —
+     so a card cannot end up saying something different from the row it
+     mirrors. That has already happened once on this site, when the kind
+     and its English rendering each kept their own copy of a default. */
+  var RECENT_MAX = 8;
+
+  /* Fatawa are not in a category, and their drawing is looked up by one.
+     The stand-in is what CATEGORY_ICON has always keyed the seal on. */
+  var RULINGS_CATEGORY = { id: 'rulings' };
+
+  function recentEntries() {
+    return allRecords()
+      .filter(function (entry) { return entry.record.updated || entry.record.date; })
+      .sort(function (a, b) {
+        var x = a.record.updated || a.record.date;
+        var y = b.record.updated || b.record.date;
+        /* ISO dates sort as text, which is the whole reason for the
+           format — no Date object, so no timezone to shift a day by. */
+        return x < y ? 1 : x > y ? -1 : 0;
+      })
+      .slice(0, RECENT_MAX);
+  }
+
+  function indexRecent(indent) {
+    var e = site.escapeHtml;
+    var entries = recentEntries();
+    /* Nothing dated yet is not an empty section with a heading over it —
+       it is no section. */
+    if (!entries.length) return '';
+    var i = indent;
+
+    var cards = entries.map(function (entry) {
+      var record = entry.record;
+      var dir = site.direction(record.language);
+      return [
+        pad(i + 6) + '<a class="recent-card" href="' + e(site.recordHref(record)) + '">',
+        pad(i + 8) + site.categoryIcon(entry.category || RULINGS_CATEGORY, 'recent-mark'),
+        pad(i + 8) + '<span class="recent-card-body ' +
+          (dir === 'rtl' ? 'reads-rtl' : 'reads-ltr') + '" dir="' + dir + '">',
+        pad(i + 10) + site.titleMarkup(record),
+        pad(i + 10) + '<span class="work-line">' + site.kindMarkup(record) +
+          site.metaMarkup(record) + '</span>',
+        pad(i + 8) + '</span>',
+        pad(i + 6) + '</a>'
+      ].join('\n');
+    }).join('\n');
+
+    return [
+      pad(i) + '<section class="recent" id="recent" aria-labelledby="recent-heading">',
+      pad(i + 2) + '<div class="section-heading">',
+      pad(i + 4) + '<div>',
+      pad(i + 6) + '<p class="section-label">Lately</p>',
+      pad(i + 6) + '<h2 id="recent-heading">Recently added and updated</h2>',
+      pad(i + 4) + '</div>',
+      pad(i + 4) + '<p class="section-note">The most recent additions and revisions.</p>',
+      pad(i + 2) + '</div>',
+      '',
+      pad(i + 2) + '<div class="recent-rail" id="recent-rail">',
+      pad(i + 4) + '<button class="category-arrow category-arrow-start" type="button" ' +
+        'id="recent-back" aria-label="Scroll back" tabindex="-1">‹</button>',
+      pad(i + 4) + '<div class="recent-track" id="recent-track">',
+      cards,
+      pad(i + 4) + '</div>',
+      pad(i + 4) + '<button class="category-arrow category-arrow-end" type="button" ' +
+        'id="recent-forward" aria-label="Scroll forward" tabindex="-1">›</button>',
+      pad(i + 2) + '</div>',
+      pad(i) + '</section>'
+    ].join('\n');
+  }
+
+  var INDEX_BUILDER = {
+    nav: indexNav, hero: indexHero, about: indexAbout,
+    recent: indexRecent, contact: indexContact, footer: indexFooter
+  };
+
+  /* Replaces one region and leaves the rest of the file alone. The indent
+     the opening marker itself sits at is given back to the closing one,
+     so the block lands where a person would have typed it and the file
+     stays readable to whoever opens it on GitHub. */
+  function spliceRegion(html, name, build) {
+    var open = '<!-- editor:' + name + ' -->';
+    var close = '<!-- /editor:' + name + ' -->';
+    var start = html.indexOf(open);
+    if (start === -1) return null;
+    var end = html.indexOf(close, start);
+    if (end === -1) return null;
+    var lineStart = html.lastIndexOf('\n', start) + 1;
+    var indent = /^[ \t]*/.exec(html.slice(lineStart, start))[0];
+    /* The body sits at the marker's own indent, not one step in: the
+       marker is a comment about the block, not a container around it. */
+    var body = build(indent.length);
+    return html.slice(0, start + open.length) +
+      (body ? '\n' + body + '\n' + indent : '') +
+      html.slice(end);
+  }
+
+  /* { text } when every region was found, { missing: [names] } otherwise.
+     Never both, and never a file with some regions written and some not. */
+  function buildIndex(html) {
+    var out = String(html);
+    var missing = [];
+    INDEX_REGIONS.forEach(function (name) {
+      var next = spliceRegion(out, name, INDEX_BUILDER[name]);
+      if (next === null) { missing.push(name); return; }
+      out = next;
+    });
+    return missing.length ? { missing: missing } : { text: out };
+  }
+
   /* ---- One entry ---- */
 
   function buildRow(entry) {
@@ -1970,6 +2557,25 @@
     var fields = row.querySelector('.admin-fields');
 
     if (!originalIds[record.id]) row.classList.add('is-new');
+
+    /* Anything typed or pressed anywhere in this row is a change to this
+       record. Delegated here rather than repeated at the twenty places a
+       field is built: input and change bubble, and a listener on the row
+       cannot be forgotten by whoever adds the twenty-first.
+
+       Not the row's own tools, though. Moving a record up the page or
+       into another category changes where it is read, not what it says,
+       and the strip is about what was written. */
+    var stamp = function (event) {
+      if (event.target.closest && event.target.closest('.admin-row-tools')) return;
+      touch(record);
+    };
+    row.addEventListener('input', stamp);
+    row.addEventListener('change', stamp);
+    row.addEventListener('click', function (event) {
+      if (!event.target.closest || !event.target.closest('button')) return;
+      stamp(event);
+    });
 
     function refreshSummary() {
       idCell.textContent = record.id || '(no id)';
@@ -2115,6 +2721,71 @@
     dateInput.type = 'date';
     dateField.appendChild(dateField.own(dateInput));
     fields.appendChild(dateField);
+
+    /* An app is neither a page of writing nor a record of a file: it is a
+       link, a version, a list of what is new and the platforms it runs
+       on. Written as prose it would be an essay about an app; as fields
+       it is an app page, and the next one is a form to fill in. */
+    if (isApp(entry)) {
+      var app = record.app;
+
+      var appPageField = field('Page', 'the file this app’s page lives in');
+      var appPageInput = textInput(record.page, function (value) {
+        record.page = value.trim() || undefined;
+      });
+      appPageInput.placeholder = 'apps/name-of-app.html';
+      appPageField.appendChild(appPageField.own(appPageInput));
+      fields.appendChild(appPageField);
+
+      var appField = field('The app', 'where it opens, and which version this is');
+      var urlInput = textInput(app.url, function (value) { app.url = value.trim(); });
+      urlInput.placeholder = 'https://…';
+      urlInput.setAttribute('aria-label', 'Where the app opens');
+      appField.appendChild(appField.own(urlInput));
+      fields.appendChild(appField);
+
+      var versionField = field('Version');
+      var versionInput = textInput(app.version, function (value) {
+        app.version = value.trim() || undefined;
+      });
+      versionInput.placeholder = '2';
+      versionField.appendChild(versionField.own(versionInput));
+      fields.appendChild(versionField);
+
+      bound(fields, app, 'tagline', 'The line under the title');
+      bound(fields, app, 'taglineUr', 'The same line in Urdu');
+
+      if (!app.platforms) app.platforms = [];
+      repeatable(fields, 'Runs on', 'one per platform — Apple, Android, Windows',
+        app.platforms, '+ Add a platform',
+        function (line, item, index) {
+          var input = textInput(app.platforms[index], function (value) {
+            app.platforms[index] = value;
+          });
+          input.setAttribute('aria-label', 'Platform ' + (index + 1));
+          line.appendChild(input);
+          return true;
+        },
+        function () { return ''; });
+
+      if (!app.whatsNew) app.whatsNew = [];
+      repeatable(fields, 'What’s new', 'one per line, in whichever script it is written in',
+        app.whatsNew, '+ Add a line',
+        function (line, item, index) {
+          var input = textInput(app.whatsNew[index], function (value) {
+            app.whatsNew[index] = value;
+          });
+          input.setAttribute('aria-label', 'What is new, line ' + (index + 1));
+          var follow = function () { applyScript(input, scriptOf(input.value, 'ur') || 'en'); };
+          follow();
+          input.addEventListener('input', follow);
+          line.appendChild(input);
+          return true;
+        },
+        function () { return ''; });
+
+      return finish();
+    }
 
     /* A post is a page of writing. Everything else is a record of a file.
        The row shows one or the other, never both. */
@@ -2309,6 +2980,441 @@
     }
   }
 
+  /* ---- Site & About ---------------------------------------------------
+
+     Everything on the homepage that is not a record: the site's name and
+     address, the header links, the hero, the author's introduction and
+     the whole of the bio behind it, the contact lines, the footer credit,
+     and each category's own name, blurb and drawing.
+
+     All of it was typed into index.html and content.js by hand until now
+     — the introduction included, which is the piece anyone would want to
+     change and the one thing no form could reach. It is one panel above
+     the library, built from the same three helpers a record's row is
+     built from, so there is nothing new about how it behaves and a phone
+     gets the same one-column stack it already gets everywhere here. */
+
+  /* Which of these were open. render() runs again on every reorder, and
+     a panel that shut itself each time would be unusable to reorder
+     anything with. */
+  var openBlocks = {};
+
+  function block(title, note) {
+    var row = el('details', 'admin-row admin-row-plain');
+    row.open = !!openBlocks[title];
+    row.addEventListener('toggle', function () { openBlocks[title] = row.open; });
+    var summary = document.createElement('summary');
+    summary.appendChild(el('span', 'admin-row-title', title));
+    summary.appendChild(el('span', 'admin-row-meta', note || ''));
+    var toggle = el('span', 'toggle', '+');
+    toggle.setAttribute('aria-hidden', 'true');
+    summary.appendChild(toggle);
+    row.appendChild(summary);
+    row.fields = el('div', 'admin-fields');
+    row.appendChild(row.fields);
+    return row;
+  }
+
+  /* A labelled box bound to one key of one object — which is what nearly
+     every field in this panel is. The script follows what is typed, the
+     same way a record's title does, so an Urdu line is in Nastaleeq and
+     reading right to left while it is being written and not only after. */
+  function bound(fields, object, key, label, hint, big) {
+    var wrap = field(label, hint);
+    var control = big
+      ? textArea(object[key], function (value) { object[key] = value; })
+      : textInput(object[key], function (value) { object[key] = value; });
+    var follow = function () { applyScript(control, scriptOf(control.value, 'ur') || 'en'); };
+    follow();
+    control.addEventListener('input', follow);
+    wrap.appendChild(wrap.own(control));
+    fields.appendChild(wrap);
+    return wrap;
+  }
+
+  /* A box of rows that can be added to and removed from. The Files field
+     has worked this way since the editor was written; this is that
+     pattern lifted out, so the introduction's paragraphs, its facts, a
+     panel's items and the header's links all behave like it rather than
+     each growing a shape of its own. */
+  function repeatable(fields, label, hint, list, addLabel, drawRow, blank, onChange) {
+    var wrap = field(label, hint);
+    var box = el('div', 'admin-files');
+    wrap.appendChild(wrap.group(box));
+    fields.appendChild(wrap);
+
+    function draw() {
+      box.textContent = '';
+      list.forEach(function (item, index) {
+        var line = el('div', 'admin-file');
+        var single = drawRow(line, item, index);
+        if (single) line.classList.add('is-single');
+        var remove = el('button', 'text-link admin-danger', 'Remove');
+        remove.type = 'button';
+        remove.addEventListener('click', function () {
+          list.splice(index, 1);
+          draw();
+          markDirty();
+          if (onChange) onChange();
+        });
+        line.appendChild(remove);
+        box.appendChild(line);
+      });
+      var add = el('button', 'text-link', addLabel);
+      add.type = 'button';
+      add.addEventListener('click', function () {
+        list.push(blank());
+        draw();
+        markDirty();
+        if (onChange) onChange();
+      });
+      box.appendChild(add);
+    }
+    draw();
+    return draw;
+  }
+
+  /* One line inside a repeatable row, bound the same way `bound` binds a
+     field — without the label, since the box above it carries that. */
+  function lineInput(object, key, placeholder, aria) {
+    var input = textInput(object[key], function (value) { object[key] = value; });
+    input.placeholder = placeholder || '';
+    input.setAttribute('aria-label', aria || placeholder || '');
+    var follow = function () { applyScript(input, scriptOf(input.value, 'ur') || 'en'); };
+    follow();
+    input.addEventListener('input', follow);
+    return input;
+  }
+
+  function siteBlock() {
+    var row = block('The site itself', 'name, email, address');
+    var site_ = model.site;
+    bound(row.fields, site_, 'name', 'Name', 'as it is written in English — the footer and every page’s byline read this');
+    bound(row.fields, site_, 'nameUr', 'Name in Urdu');
+    bound(row.fields, site_, 'email', 'Email', 'the address the Contact button opens');
+    bound(row.fields, site_, 'baseUrl', 'Address',
+      'the site’s own domain. Changing it here is not enough on its own — robots.txt, sitemap.xml, the CNAME file and the sharing tags in index.html all name it too');
+    return row;
+  }
+
+  function navBlock() {
+    var row = block('Header links', 'the four across the top');
+    repeatable(row.fields, 'Links',
+      'the text, then where it goes — #about, #library, #rulings, #contact, or a page',
+      model.nav, '+ Add a link',
+      function (line, link) {
+        line.appendChild(lineInput(link, 'text', 'Author', 'What this link says'));
+        line.appendChild(lineInput(link, 'href', '#about', 'Where this link goes'));
+        var echo = el('label', 'admin-check');
+        var box = document.createElement('input');
+        box.type = 'checkbox';
+        box.checked = !!link.echo;
+        box.addEventListener('change', function () {
+          link.echo = box.checked || undefined;
+          markDirty();
+        });
+        echo.appendChild(box);
+        echo.appendChild(document.createTextNode(' Echoed in the category strip'));
+        line.appendChild(echo);
+      },
+      function () { return { text: '', href: '#' }; });
+    return row;
+  }
+
+  function heroBlock() {
+    var row = block('The hero', 'the first screen');
+    var hero = model.hero;
+    bound(row.fields, hero, 'eyebrow', 'Above the headline');
+    bound(row.fields, hero, 'headline', 'Headline', 'the plain half, up to the words set in italic');
+    bound(row.fields, hero, 'headlineEm', 'Headline, in italic', 'the tail of the same sentence, set in the display italic and gold');
+    bound(row.fields, hero, 'copy', 'The paragraph under it', null, true);
+    bound(row.fields, hero, 'urdu', 'The Urdu line under that');
+    bound(row.fields, hero, 'cta', 'The button');
+    return row;
+  }
+
+  function aboutBlock() {
+    var row = block('The author', 'the introduction, and the whole of the bio behind it');
+    var about = model.about;
+    if (!about.bio) about.bio = {};
+    var bio = about.bio;
+
+    bound(row.fields, about, 'label', 'Label', 'the small line above the name');
+    bound(row.fields, about, 'heading', 'Heading');
+    bound(row.fields, about, 'summary', 'The paragraph everyone sees',
+      'what is on the page before anything is opened', true);
+
+    row.fields.appendChild(el('p', 'hint', 'Everything below is behind “' +
+      (bio.openLabel || 'Read the full introduction') + '”.'));
+
+    bound(row.fields, bio, 'openLabel', 'What the fold says');
+    bound(row.fields, bio, 'openLabelUr', 'The label above it');
+    bound(row.fields, bio, 'nameUr', 'The name, in Urdu');
+    bound(row.fields, bio, 'byline', 'Who wrote the introduction', 'the “از قلم” line');
+
+    if (!bio.prose) bio.prose = [];
+    proseList(row.fields, bio);
+
+    if (!bio.facts) bio.facts = [];
+    repeatable(row.fields, 'The facts panel', 'نام, کنیت, مرشدِ گرامی, تدریس — the pair of columns',
+      bio.facts, '+ Add a fact',
+      function (line, fact) {
+        line.appendChild(lineInput(fact, 'term', 'نام', 'What this fact is called'));
+        line.appendChild(lineInput(fact, 'value', '', 'The fact itself'));
+      },
+      function () { return { term: '', value: '' }; });
+
+    if (!bio.panels) bio.panels = [];
+    panelsList(row.fields, bio);
+
+    if (!bio.pdf) bio.pdf = {};
+    bound(row.fields, bio.pdf, 'label', 'The link at the end');
+    bound(row.fields, bio.pdf, 'url', 'and what it opens', 'a path under files/, or an address');
+    return row;
+  }
+
+  /* Paragraphs are long, so each gets a box it can grow in rather than
+     the one-line input the shorter lists use. */
+  function proseList(fields, bio) {
+    var wrap = field('The introduction itself', 'one box per paragraph');
+    var box = el('div', 'admin-files');
+    wrap.appendChild(wrap.group(box));
+    fields.appendChild(wrap);
+
+    function draw() {
+      box.textContent = '';
+      bio.prose.forEach(function (text, index) {
+        var line = el('div', 'admin-file is-single');
+        var area = textArea(text, function (value) { bio.prose[index] = value; });
+        area.setAttribute('aria-label', 'Paragraph ' + (index + 1));
+        var follow = function () { applyScript(area, scriptOf(area.value, 'ur') || 'en'); };
+        follow();
+        area.addEventListener('input', follow);
+        var remove = el('button', 'text-link admin-danger', 'Remove');
+        remove.type = 'button';
+        remove.addEventListener('click', function () {
+          bio.prose.splice(index, 1);
+          draw();
+          markDirty();
+        });
+        line.appendChild(area);
+        line.appendChild(remove);
+        box.appendChild(line);
+      });
+      var add = el('button', 'text-link', '+ Add a paragraph');
+      add.type = 'button';
+      add.addEventListener('click', function () {
+        bio.prose.push('');
+        draw();
+        markDirty();
+      });
+      box.appendChild(add);
+    }
+    draw();
+  }
+
+  var PANEL_KINDS = [
+    { value: 'ol', text: 'Numbered' },
+    { value: 'ul', text: 'Bulleted' },
+    { value: 'prose', text: 'Paragraphs' }
+  ];
+
+  /* A panel holds a heading and a list, and each list is its own
+     repeatable box — so this is a repeatable of repeatables, and the only
+     part of the panel that needed more than one line to build. */
+  function panelsList(fields, bio) {
+    var wrap = field('The panels', 'each opens on the page — تعلیمی سفر, اجازات and the rest');
+    var box = el('div', 'admin-files');
+    box.classList.add('admin-panels');
+    wrap.appendChild(wrap.group(box));
+    fields.appendChild(wrap);
+
+    function draw() {
+      box.textContent = '';
+      bio.panels.forEach(function (panel, index) {
+        var card = el('div', 'admin-panel');
+        var head = el('div', 'admin-file');
+        head.appendChild(lineInput(panel, 'title', '', 'What this panel is called'));
+        head.appendChild(chipGroup(PANEL_KINDS, panel.kind || 'ul', function (value) {
+          panel.kind = value;
+          markDirty();
+        }));
+        var remove = el('button', 'text-link admin-danger', 'Remove');
+        remove.type = 'button';
+        remove.addEventListener('click', function () {
+          bio.panels.splice(index, 1);
+          draw();
+          markDirty();
+        });
+        head.appendChild(remove);
+        card.appendChild(head);
+
+        if (!panel.items) panel.items = [];
+        var items = el('div', 'admin-files');
+        card.appendChild(items);
+        drawItems(items, panel);
+        box.appendChild(card);
+      });
+      var add = el('button', 'text-link', '+ Add a panel');
+      add.type = 'button';
+      add.addEventListener('click', function () {
+        bio.panels.push({ title: '', kind: 'ul', items: [] });
+        draw();
+        markDirty();
+      });
+      box.appendChild(add);
+    }
+
+    function drawItems(items, panel) {
+      items.textContent = '';
+      panel.items.forEach(function (text, index) {
+        var line = el('div', 'admin-file is-single');
+        var input = textInput(text, function (value) { panel.items[index] = value; });
+        input.setAttribute('aria-label', 'Item ' + (index + 1) + ' of ' + (panel.title || 'this panel'));
+        var follow = function () { applyScript(input, scriptOf(input.value, 'ur') || 'en'); };
+        follow();
+        input.addEventListener('input', follow);
+        var remove = el('button', 'text-link admin-danger', 'Remove');
+        remove.type = 'button';
+        remove.addEventListener('click', function () {
+          panel.items.splice(index, 1);
+          drawItems(items, panel);
+          markDirty();
+        });
+        line.appendChild(input);
+        line.appendChild(remove);
+        items.appendChild(line);
+      });
+      var add = el('button', 'text-link', '+ Add an item');
+      add.type = 'button';
+      add.addEventListener('click', function () {
+        panel.items.push('');
+        drawItems(items, panel);
+        markDirty();
+      });
+      items.appendChild(add);
+    }
+
+    draw();
+  }
+
+  function contactBlock() {
+    var row = block('Contact', 'the last section on the page');
+    bound(row.fields, model.contact, 'label', 'Label');
+    bound(row.fields, model.contact, 'heading', 'Heading');
+    bound(row.fields, model.contact, 'copy', 'The paragraph', null, true);
+    bound(row.fields, model.contact, 'button', 'The button');
+    return row;
+  }
+
+  function footerBlock() {
+    var row = block('Footer', 'the credit line');
+    bound(row.fields, model.footer, 'credit', 'Credit',
+      'the font Urdu is set in is licensed CC BY-SA, and the licence asks to be named');
+    return row;
+  }
+
+  /* The categories themselves — their names, their blurbs, the drawing
+     beside each heading, and the order they are read in. A record can be
+     moved between them already; until now the category it was moved into
+     could not be renamed. */
+  function categoriesBlock() {
+    var row = block('Categories', (model.categories || []).length + ' in the library');
+    var wrap = field('Each category', 'the works inside them are edited below, in the library itself');
+    var box = el('div', 'admin-files');
+    box.classList.add('admin-panels');
+    wrap.appendChild(wrap.group(box));
+    row.fields.appendChild(wrap);
+
+    var icons = site.iconNames().map(function (name) { return { value: name, text: name, icon: name }; });
+
+    function draw() {
+      box.textContent = '';
+      (model.categories || []).forEach(function (category, index) {
+        var card = el('div', 'admin-panel');
+        var fields = el('div', 'admin-fields');
+        card.appendChild(fields);
+
+        bound(fields, category, 'title', 'Name');
+        bound(fields, category, 'titleUr', 'Name in Urdu');
+        bound(fields, category, 'blurb', 'Blurb', 'the line under the name', true);
+
+        var iconField = field('Drawing', 'the mark beside the heading');
+        iconField.appendChild(iconField.group(chipGroup(icons, category.icon || site.categoryIconName(category), function (value) {
+          category.icon = value;
+          markDirty();
+          render();
+        })));
+        fields.appendChild(iconField);
+
+        var tools = el('div', 'admin-row-tools');
+        var up = el('button', 'text-link', '↑ Move up');
+        up.type = 'button';
+        up.addEventListener('click', function () {
+          if (index === 0) return;
+          model.categories.splice(index - 1, 0, model.categories.splice(index, 1)[0]);
+          markDirty();
+          render();
+        });
+        var down = el('button', 'text-link', '↓ Move down');
+        down.type = 'button';
+        down.addEventListener('click', function () {
+          if (index >= model.categories.length - 1) return;
+          model.categories.splice(index + 1, 0, model.categories.splice(index, 1)[0]);
+          markDirty();
+          render();
+        });
+        /* A category with works in it is not deleted, it is emptied
+           first. Deleting it here would take every work with it and
+           every link anyone holds to one of them. */
+        var remove = el('button', 'text-link admin-danger', 'Delete this category');
+        remove.type = 'button';
+        remove.addEventListener('click', function () {
+          var count = (category.works || []).length;
+          if (count) {
+            window.alert('“' + (category.title || category.id) + '” still holds ' + count +
+              (count === 1 ? ' work' : ' works') +
+              '.\n\nMove them to another category first — each row has a Category field — ' +
+              'or delete them one at a time. Deleting the category here would take them with it, ' +
+              'and every link already shared to one of them.');
+            return;
+          }
+          if (!window.confirm('Delete the empty category “' + (category.title || category.id) + '”?')) return;
+          model.categories.splice(index, 1);
+          markDirty();
+          render();
+        });
+        tools.appendChild(up);
+        tools.appendChild(down);
+        tools.appendChild(remove);
+        fields.appendChild(tools);
+        box.appendChild(card);
+      });
+
+      var add = el('button', 'text-link', '+ Add a category');
+      add.type = 'button';
+      add.addEventListener('click', function () {
+        model.categories.push({ id: freshId('category'), title: 'New category', works: [] });
+        markDirty();
+        render();
+      });
+      box.appendChild(add);
+    }
+    draw();
+    return row;
+  }
+
+  function buildSitePanel() {
+    var group = el('section', 'admin-group');
+    var heading = el('h2', null, 'Site & About');
+    heading.appendChild(el('span', 'admin-count', 'the homepage, and the categories'));
+    group.appendChild(heading);
+    [siteBlock(), navBlock(), heroBlock(), aboutBlock(),
+     contactBlock(), footerBlock(), categoriesBlock()]
+      .forEach(function (row) { group.appendChild(row); });
+    return group;
+  }
+
   /* ---- Drawing everything ---- */
 
   function matchesFilter(entry, needle) {
@@ -2329,11 +3435,21 @@
     var needle = site.fold(filterInput.value);
     var openIds = {};
     editor.querySelectorAll('.admin-row[open]').forEach(function (row) {
-      openIds[row.querySelector('.admin-row-id').textContent] = true;
+      /* The Site & About rows are .admin-row too and have no id — they
+         are not records. They remember whether they were open for
+         themselves, in openBlocks. */
+      var id = row.querySelector('.admin-row-id');
+      if (id) openIds[id.textContent] = true;
     });
 
     editor.textContent = '';
 
+    /* Above the library, and only when the whole library is showing. A
+       filter is a search for a record; leaving the site's own words at
+       the top of the results would be answering a different question. */
+    if (!needle) editor.appendChild(buildSitePanel());
+
+    var shown = 0;
     (model.categories || []).forEach(function (category) {
       var entries = allRecords().filter(function (entry) {
         return entry.category === category && matchesFilter(entry, needle);
@@ -2349,6 +3465,7 @@
         group.appendChild(row);
       });
       editor.appendChild(group);
+      shown += 1;
     });
 
     var rulings = allRecords().filter(function (entry) {
@@ -2365,9 +3482,13 @@
         group.appendChild(row);
       });
       editor.appendChild(group);
+      shown += 1;
     }
 
-    if (!editor.children.length) {
+    /* Counted, not measured off the page: the Site & About panel is an
+       .admin-group too, so asking whether anything was drawn would always
+       answer yes and a filter matching nothing would say nothing. */
+    if (!shown) {
       editor.appendChild(el('p', 'empty-state', 'Nothing matches that filter.'));
     }
   }
@@ -2407,6 +3528,32 @@
     revealRow(newId);
   });
 
+  var APPS_CATEGORY = 'apps';
+
+  document.getElementById('add-app').addEventListener('click', function () {
+    var category = (model.categories || []).filter(function (c) { return c.id === APPS_CATEGORY; })[0];
+    if (!category) {
+      window.alert('There is no “' + APPS_CATEGORY + '” category to put it in.\n\n' +
+        'Add one in Site & About → Categories first, with the id “' + APPS_CATEGORY + '”.');
+      return;
+    }
+    var id = freshId('new-app');
+    if (!category.works) category.works = [];
+    category.works.unshift({
+      id: id,
+      title: '',
+      language: 'en',
+      kind: 'ایپ',
+      date: today(),
+      page: 'apps/' + id + '.html',
+      app: { url: '', version: '', platforms: [], whatsNew: [] }
+    });
+    filterInput.value = '';
+    markDirty();
+    render();
+    revealRow(id);
+  });
+
   document.getElementById('add-post').addEventListener('click', function () {
     var category = (model.categories || []).filter(function (c) { return c.id === POSTS_CATEGORY; })[0];
     if (!category) {
@@ -2419,7 +3566,7 @@
       id: id,
       title: '',
       language: 'ur',
-      date: new Date().toISOString().slice(0, 10),
+      date: today(),
       page: 'posts/' + id + '.html'
     });
     bodies[id] = '';
@@ -2443,6 +3590,13 @@
 
   /* ---- Checking before writing ---- */
 
+  /* "a, b and c" rather than "a and b and c". Three or more names read
+     as one list only with the commas in. */
+  function andList(items) {
+    if (items.length < 2) return items.join('');
+    return items.slice(0, -1).join(', ') + ' and ' + items[items.length - 1];
+  }
+
   function problems() {
     var found = [];
     var seen = {};
@@ -2461,6 +3615,14 @@
       if (category && category.id === POSTS_CATEGORY && !record.page) {
         found.push(where + ': a post needs a page, e.g. posts/' + (record.id || 'slug') + '.html');
       }
+      if (record.app) {
+        if (!record.page) {
+          found.push(where + ': an app needs a page, e.g. apps/' + (record.id || 'slug') + '.html');
+        }
+        /* Without an address the page has nothing to open, which is the
+           one thing an app page is for. */
+        if (!record.app.url) found.push(where + ': needs the address the app opens at.');
+      }
 
       /* A post is its writing. Publishing the entry without it puts a
          link to nothing on the homepage and hands the sitemap a 404 —
@@ -2470,7 +3632,10 @@
 
          Empty counts as missing. There is no such thing as a post with
          no words in it. */
-      if (record.page) {
+      /* An app has a page too, and no writing at all: its page is built
+         from the fields beside this one and regenerated whole on every
+         publish, so there is nothing to read back and nothing to lose. */
+      if (record.page && !record.app) {
         var body = bodies[record.id];
         if (body === undefined) {
           found.push(where + ': its writing is not loaded, so publishing would link to a page that does not exist — open its row first.');
@@ -2479,6 +3644,22 @@
         }
       }
     });
+    /* The homepage is written into index.html between markers. If the
+       markers are gone the region cannot be found, and writing some
+       regions and not others would leave the front door of the site half
+       generated — so nothing is written and this says which are missing. */
+    if (indexTrouble) {
+      found.push(indexTrouble);
+    } else if (indexHtml) {
+      var home = buildIndex(indexHtml);
+      if (home.missing) {
+        found.push('index.html has lost the ' + andList(home.missing) + ' marker' +
+          (home.missing.length === 1 ? '' : 's') + ' the editor writes between, so the ' +
+          'homepage cannot be published. Put the pair back — the comment ' +
+          'editor:' + home.missing[0] + ' and its closing half — and try again.');
+      }
+    }
+
     return found;
   }
 
@@ -2513,11 +3694,65 @@
     ''
   ].join('\n');
 
+  var HOME_HEADER = [
+    '  /* ---- The homepage\'s own words ------------------------------------',
+    '',
+    '     index.html holds a *rendering* of what is below, not the original:',
+    '     admin.html writes the blocks between its `editor:` markers back on',
+    '     every publish, exactly the way it writes works/<id>.html from a',
+    '     record. So this is the one place to edit them — anything typed',
+    '     into index.html between those markers is overwritten by the next',
+    '     publish. Open admin.html and use the "Site & About" panel, or edit',
+    '     here by hand and publish once.',
+    '',
+    '     No string here says which script it is in. The generator asks the',
+    '     same question the writing box asks of a typed line — see scriptOf —',
+    '     and writes the lang and dir out itself. */',
+    '',
+    ''
+  ].join('\n');
+
   /* JSON.stringify is the escaping. It produces valid JavaScript for any
      string, keeps Urdu and Arabic readable rather than turning them into
      \u escapes, and cannot be tricked by a quote inside a title. */
   function str(value) {
     return JSON.stringify(String(value));
+  }
+
+  /* The homepage's blocks are plain data — strings, arrays of strings,
+     small objects — so one writer serves all of them rather than a
+     hand-written serialiser each. Unquoted keys and double-quoted values,
+     to match the rest of the file; str() is still the escaping, the same
+     as everywhere else here. */
+  var BARE_KEY = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+
+  function writeValue(value, indent) {
+    var p = ' '.repeat(indent);
+    if (Array.isArray(value)) {
+      if (!value.length) return '[]';
+      /* A short list of short strings reads better on one line than as
+         five lines of one word each — a nav link's two fields, say. */
+      var flat = value.every(function (v) { return typeof v === 'string'; }) &&
+        value.join('').length < 56;
+      if (flat) return '[' + value.map(str).join(', ') + ']';
+      return '[\n' + value.map(function (v) {
+        return p + '  ' + writeValue(v, indent + 2);
+      }).join(',\n') + '\n' + p + ']';
+    }
+    if (value && typeof value === 'object') {
+      var keys = Object.keys(value).filter(function (key) { return value[key] !== undefined; });
+      if (!keys.length) return '{}';
+      var short = keys.every(function (key) { return typeof value[key] !== 'object'; }) &&
+        keys.map(function (key) { return String(value[key]); }).join('').length < 56;
+      var pairs = keys.map(function (key) {
+        return (BARE_KEY.test(key) ? key : str(key)) + ': ' + writeValue(value[key], indent + 2);
+      });
+      if (short) return '{ ' + pairs.join(', ') + ' }';
+      return '{\n' + pairs.map(function (pair) { return p + '  ' + pair; }).join(',\n') +
+        '\n' + p + '}';
+    }
+    if (typeof value === 'boolean' || typeof value === 'number') return String(value);
+    return str(value);
   }
 
   function writeFiles(files, indent) {
@@ -2540,12 +3775,14 @@
     var lines = [pad + 'id: ' + str(record.id), pad + 'title: ' + str(record.title), pad + 'language: ' + str(record.language)];
     if (record.kind) lines.push(pad + 'kind: ' + str(record.kind));
     if (record.date) lines.push(pad + 'date: ' + str(record.date));
+    if (record.updated) lines.push(pad + 'updated: ' + str(record.updated));
     if (record.description) lines.push(pad + 'description: ' + str(record.description));
     if (record.descriptionUr) lines.push(pad + 'descriptionUr: ' + str(record.descriptionUr));
     if (record.tags && record.tags.length) {
       lines.push(pad + 'tags: [' + record.tags.map(str).join(', ') + ']');
     }
     if (record.page) lines.push(pad + 'page: ' + str(record.page));
+    if (record.app) lines.push(pad + 'app: ' + writeValue(record.app, indent));
     if (record.files && record.files.length) {
       lines.push(pad + writeFiles(record.files, indent));
     }
@@ -2562,7 +3799,14 @@
     out += '    // Change this if the site later moves to its own domain — and change\n';
     out += '    // robots.txt and sitemap.xml with it.\n';
     out += '    baseUrl: ' + str(site_.baseUrl || '') + '\n';
-    out += '  },\n\n  categories: [\n';
+    out += '  },\n\n';
+    out += HOME_HEADER;
+    out += '  nav: ' + writeValue(model.nav || [], 2) + ',\n\n';
+    out += '  hero: ' + writeValue(model.hero || {}, 2) + ',\n\n';
+    out += '  about: ' + writeValue(model.about || {}, 2) + ',\n\n';
+    out += '  contact: ' + writeValue(model.contact || {}, 2) + ',\n\n';
+    out += '  footer: ' + writeValue(model.footer || {}, 2) + ',\n\n';
+    out += '  categories: [\n';
 
     out += (model.categories || [])
       .map(function (category) {
@@ -2571,6 +3815,7 @@
           '      id: ' + str(category.id) + ',\n' +
           '      title: ' + str(category.title) + ',\n' +
           (category.titleUr ? '      titleUr: ' + str(category.titleUr) + ',\n' : '') +
+          (category.icon ? '      icon: ' + str(category.icon) + ',\n' : '') +
           (category.blurb ? '      blurb: ' + str(category.blurb) + ',\n' : '') +
           '      works: [\n';
         var works = (category.works || [])
@@ -2681,9 +3926,10 @@
     extra.textContent = '';
     var writtenPosts = 0;
     var writtenWorks = 0;
+    var offered = 0;
 
     function offerFile(path, text) {
-      var id = 'out-file-' + (writtenPosts + writtenWorks);
+      var id = 'out-file-' + (offered += 1);
       var section = document.createElement('section');
       var head = document.createElement('div');
       head.className = 'admin-file-head';
@@ -2731,8 +3977,20 @@
       extra.appendChild(section);
     }
 
+    /* The homepage, first, because it is the one file here that is not
+       generated whole — it is the committed page with the editor's own
+       blocks written back into it. */
+    if (indexHtml) {
+      var home = buildIndex(indexHtml);
+      if (home.text) offerFile('index.html', home.text);
+    }
+
     allRecords().forEach(function (entry) {
-      if (isPost(entry)) {
+      if (isApp(entry)) {
+        if (!entry.record.page) return;
+        writtenPosts += 1;
+        offerFile(entry.record.page, buildApp(entry.record, entry));
+      } else if (isPost(entry)) {
         if (!entry.record.page || bodies[entry.record.id] === undefined) return;
         writtenPosts += 1;
         offerFile(entry.record.page, buildPost(entry.record, entry));
@@ -2843,7 +4101,7 @@
      The paths catch one they changed and did not: whatever the version
      claims, a Worker that will not take a work page cannot publish this
      library, and it is better to hear that on load. */
-  var WORKER_EXPECTS = '2026-08-12.3';
+  var WORKER_EXPECTS = '2026-08-21.2';
 
   /* This editor's own version, bumped whenever admin.js changes in a way
      a publish depends on. It exists because a tab left open goes on
@@ -2853,11 +4111,12 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-08-18.1';
+  var EDITOR_VERSION = '2026-08-21.2';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */
-  var WRITES = ['content.js', 'sitemap.xml', 'posts/a.html', 'works/a.html', 'files/cards/a.jpg'];
+  var WRITES = ['content.js', 'sitemap.xml', 'index.html', 'posts/a.html', 'works/a.html',
+                'apps/a.html', 'files/cards/a.jpg'];
 
   function workerTrouble(report) {
     var patterns = [];
@@ -3157,8 +4416,19 @@
      fonts and on the canvas itself. */
   function filesToCommit() {
     var out = [{ path: 'content.js', text: buildContent() }, { path: 'sitemap.xml', text: buildSitemap() }];
+    /* problems() has already refused a publish that could not splice this,
+       so reaching here with no text means there was nothing to write. */
+    if (indexHtml) {
+      var home = buildIndex(indexHtml);
+      if (home.text) out.push({ path: 'index.html', text: home.text });
+    }
     allRecords().forEach(function (entry) {
-      if (isPost(entry)) {
+      if (isApp(entry)) {
+        /* Regenerated in full every publish, like a work's own page:
+           nothing about an app lives anywhere but content.js, so there is
+           no "has the writing changed" question to answer for it. */
+        if (entry.record.page) out.push({ path: entry.record.page, text: buildApp(entry.record, entry) });
+      } else if (isPost(entry)) {
         if (!entry.record.page || bodies[entry.record.id] === undefined) return;
         out.push({ path: entry.record.page, text: buildPost(entry.record, entry) });
       } else {
@@ -3392,6 +4662,7 @@
     document.body.classList.remove('is-locked');
     try { sessionStorage.setItem('editor-open', '1'); } catch (error) { /* private mode */ }
     render();
+    loadIndex();
     checkWorker();
     checkEditor();
   }
