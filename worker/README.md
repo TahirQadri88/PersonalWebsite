@@ -130,41 +130,82 @@ Fine-grained** → **Generate new token**
 Nothing else is needed and nothing less will work. Copy it; GitHub shows it
 once.
 
-### 4. Fill in `wrangler.toml`
+### 4. Settings
 
-Open it beside this file and set the three empty values:
+`wrangler.toml` beside this file carries the settings that are the same for
+anyone reading this repository — the GitHub owner and repo, the branch, the
+site's own address, the Firebase project.
 
-With **Firebase**:
+Three are **not** in it, and are set in the Cloudflare dashboard instead —
+Workers & Pages → the Worker → Settings → Variables:
 
-```toml
-FIREBASE_PROJECT = "your-project-id"
-EDITOR_EMAIL     = "you@example.com"
-```
-
-With **Access**:
-
-```toml
-ACCESS_TEAM  = "your-team-name"     # from something.cloudflareaccess.com
-ACCESS_AUD   = "the-long-aud-tag"   # from the Access application overview
-EDITOR_EMAIL = "you@example.com"
-```
+| | |
+| --- | --- |
+| `EDITOR_EMAIL` | the one address allowed to publish |
+| `ACCESS_TEAM` | Access only — the name in `<team>.cloudflareaccess.com` |
+| `ACCESS_AUD` | Access only — the application's Audience tag |
 
 `EDITOR_EMAIL` is a second lock. Whichever service did the signing in, only
 that address may publish — so another account in the same Firebase project, or
 an Access policy widened by accident, still cannot.
 
+**Never write any of them into `wrangler.toml` as `""`.** A deploy replaces
+the Worker's whole set of variables with what the file lists, so an empty
+string does not mean "leave it alone" — it means "set it to nothing". And
+nothing is not a closed lock here; the check reads
+
+```js
+if (env.EDITOR_EMAIL && payload.email !== env.EDITOR_EMAIL)
+```
+
+so a blank value skips the lock entirely. `worker/test.mjs` refuses to pass
+if any variable in the file is `""`, which means the deploy never runs.
+
+Keeping them in the dashboard is what the deploy assumes: it passes
+`--keep-vars`, so it ships the code and leaves the configuration alone. If
+you would rather have them in `wrangler.toml` where they can be reviewed,
+that is fine too — put in real values, never blanks.
+
 ### 5. Deploy
 
-From inside this folder:
+**It deploys itself.** Push a change under `worker/` to `main` and
+`.github/workflows/deploy-worker.yml` runs the Worker's tests and then
+deploys it. That is why this section used to be the thing everyone forgot:
+the Worker sat weeks behind the repository with nothing to say so, and
+publishing broke for a week.
+
+It needs two repository secrets, once — **Settings → Secrets and variables →
+Actions → New repository secret**:
+
+| | |
+| --- | --- |
+| `CLOUDFLARE_ACCOUNT_ID` | Workers & Pages → Overview, in the right-hand column |
+| `CLOUDFLARE_API_TOKEN` | see below |
+
+For the token: **My Profile → API Tokens → Create Token → Edit Cloudflare
+Workers**, then narrow it to this account and this zone. That template is
+wider than this needs; a custom token with **Account → Workers Scripts →
+Edit** is enough, and is the one to prefer. Give it an expiry and put a
+reminder somewhere — an expired token fails the deploy loudly, which is the
+right way for it to fail.
+
+Until both secrets exist the workflow **fails on purpose**, saying which is
+missing. A Worker that did not deploy must never look like one that did.
+
+The GitHub token from step 3 is separate and is set once, by hand, because it
+is a secret rather than a setting:
 
 ```
 npx wrangler login
 npx wrangler secret put GITHUB_TOKEN     # paste the token from step 3
-npx wrangler deploy
 ```
 
-`wrangler login` opens a browser once. The token goes in as a **secret**, so
-it is never written into `wrangler.toml` and never appears in this repository.
+Secrets survive every deploy untouched — they are stored apart from the
+script — so this is genuinely once. And by hand, if ever needed:
+
+```
+npx wrangler deploy --keep-vars
+```
 
 ### 6. Check it
 

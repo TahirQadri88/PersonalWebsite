@@ -1,0 +1,92 @@
+# The editor's backend, deployed when it changes.
+#
+# The site itself needs none of this: GitHub Pages serves the repository
+# straight, so pushing is publishing. The Worker is a second deployment on
+# Cloudflare, and until this workflow existed it was put up by hand — which
+# meant it could sit weeks behind the repository with nothing to say so. It
+# did, and publishing from the editor broke for a week.
+#
+# Runs only when something under worker/ changes, so an ordinary content
+# publish from admin.html — which touches content.js, index.html and the
+# pages — never triggers a deploy.
+
+name: Deploy the editor's Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'worker/**'
+      - '.github/workflows/deploy-worker.yml'
+  # So it can be re-run after adding the secrets, without a code change.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One at a time, and never cancel one half way: a cancelled deploy leaves
+# the question of which version is live, which is the thing this exists to
+# settle.
+concurrency:
+  group: deploy-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # No install step. worker/test.mjs imports the Worker directly and
+      # has no dependencies — the same reason the site has none.
+      - name: Test the Worker
+        run: node worker/test.mjs
+
+      # Fail here rather than deploy a Worker nobody can reach: without
+      # these the deploy step would fail anyway, but with a message about
+      # authentication rather than about what is actually missing.
+      # Through env, not interpolated into the script. A secret written
+      # straight into a `run:` becomes part of the command line, and a
+      # command line is not a private place — this only ever asks whether
+      # they are empty, and never needs their value.
+      - name: Check the deploy is configured
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=
+          [ -n "$CF_TOKEN" ] || missing="$missing CLOUDFLARE_API_TOKEN"
+          [ -n "$CF_ACCOUNT" ] || missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secret(s):$missing"
+            echo "Settings → Secrets and variables → Actions → New repository secret."
+            echo "worker/README.md, 'Deploying it', says which token to make and how to scope it."
+            exit 1
+          fi
+
+      # --keep-vars: deploy the code, leave the Worker's configuration
+      # alone. The three settings this repository does not know —
+      # EDITOR_EMAIL and the two ACCESS_* — live in the Cloudflare
+      # dashboard, and a deploy that replaced the var set with what
+      # wrangler.toml lists would blank them. EDITOR_EMAIL blank does not
+      # fail closed; it fails open, and drops the second publish lock.
+      #
+      # Secrets (GITHUB_TOKEN) are stored apart from the script and are
+      # never touched by a deploy either way.
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          command: deploy --keep-vars
+
+      - name: Say which version is live now
+        run: |
+          v=$(grep -oE "WORKER_VERSION = '[^']+'" worker/src/index.js | head -1)
+          echo "Deployed ${v#WORKER_VERSION = }" >> "$GITHUB_STEP_SUMMARY"
+          echo "The editor checks this against WORKER_EXPECTS in admin.js on load." >> "$GITHUB_STEP_SUMMARY"

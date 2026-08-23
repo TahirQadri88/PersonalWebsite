@@ -481,14 +481,31 @@ it, a heading ignoring the script marked on it, or a publish grown past what
 the Worker will take — all three of which shipped, and all three of which
 the author found mid-sentence while writing. `test/README.md` says more.
 
-**A change to `worker/` is not deployed by pushing it.** The Worker is put
-up by hand in Cloudflare, separately from the site, so it can sit weeks
-behind the repository with nothing to say so — it did, and publishing broke.
-Bump `WORKER_VERSION` in `worker/src/index.js` and `WORKER_EXPECTS` in
-`admin.js` together whenever the Worker changes in a way the editor depends
-on; the editor asks `/version` on load and says plainly when the two have
-parted. Then say clearly, in the reply, that the Worker still needs
-deploying — pasting the file into Cloudflare → Edit code → Deploy.
+**A change to `worker/` deploys itself now, and it did not always.** The
+Worker is a second deployment on Cloudflare, not served by GitHub Pages,
+and it used to be put up by hand — so it could sit weeks behind the
+repository with nothing to say so. It did, and publishing broke for a
+week. `.github/workflows/deploy-worker.yml` runs the Worker's tests and
+deploys it on any push to `main` touching `worker/`, so that cannot
+happen again *provided* `CLOUDFLARE_API_TOKEN` and
+`CLOUDFLARE_ACCOUNT_ID` are set as repository secrets; without them the
+workflow fails loudly rather than skipping, because a Worker that did not
+deploy must never look like one that did. `worker/README.md`, step 5, has
+the setup.
+
+The deploy passes **`--keep-vars`**. A deploy otherwise replaces the
+Worker's whole variable set with what `wrangler.toml` lists, and the three
+settings this repository does not know — `EDITOR_EMAIL` and the two
+`ACCESS_*` — live in the Cloudflare dashboard. Blanking `EDITOR_EMAIL`
+would not fail closed: the check is `if (env.EDITOR_EMAIL && …)`, so an
+empty value drops the second publish lock altogether. `worker/test.mjs`
+refuses to pass if any var in the file is `""`, which stops the deploy.
+
+Still bump `WORKER_VERSION` in `worker/src/index.js` and `WORKER_EXPECTS`
+in `admin.js` **together** whenever the Worker changes in a way the editor
+depends on — the editor asks `/version` on load and says plainly when the
+two have parted. `worker/test.mjs` now fails when they disagree, so a
+half-bump cannot reach a deploy.
 
 **The editor is deployed by pushing it, and an open tab is not.** A tab
 left open across a deploy keeps running the `admin.js` it loaded, and an
