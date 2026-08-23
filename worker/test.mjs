@@ -305,5 +305,41 @@ const noEnv = await worker.fetch(new Request('https://admin.tahirqadri.com.pk/pu
   {method:'POST',headers:{'content-type':'application/json'},body:'{}'}), {...env, ACCESS_TEAM:'', ACCESS_AUD:'', FIREBASE_PROJECT:''});
 t('with nothing configured it refuses rather than falls open', noEnv.status===500);
 
+/* ---- the two constants that have to move together --------------------
+
+   The editor asks the deployed Worker for its version on load and says
+   so when it does not match what it expects. That only works if the two
+   are bumped together — and they live in different files, so they have
+   drifted before. Now the Worker's own suite refuses to pass when they
+   have, which means the deploy workflow refuses to run too.
+
+   Read out of the files as text rather than imported: admin.js is a
+   browser program that expects a document, and this is the only thing
+   in it worth knowing here. */
+{
+  const { readFile } = await import('node:fs/promises');
+  const here = new URL('.', import.meta.url).pathname;
+  const src = await readFile(here + 'src/index.js', 'utf8');
+  const admin = await readFile(here + '../admin.js', 'utf8');
+  const mine = /const WORKER_VERSION = '([^']+)'/.exec(src);
+  const theirs = /var WORKER_EXPECTS = '([^']+)'/.exec(admin);
+  t('the Worker names a version', !!mine, String(mine));
+  t('the editor names the version it expects', !!theirs, String(theirs));
+  t('and the two agree — bump them together, or the editor cries stale',
+    !!mine && !!theirs && mine[1] === theirs[1],
+    `worker ${mine && mine[1]} vs editor ${theirs && theirs[1]}`);
+
+  /* A var left as "" in wrangler.toml is not "unset": a deploy would
+     write the empty string over whatever is configured in Cloudflare.
+     For EDITOR_EMAIL that is not a small thing — the check reads
+     `if (env.EDITOR_EMAIL && ...)`, so blank skips the second lock and
+     leaves every account in the Firebase project able to publish. */
+  const toml = await readFile(here + 'wrangler.toml', 'utf8');
+  const blanks = [...toml.matchAll(/^\s*([A-Z_]+)\s*=\s*""\s*$/gm)].map((m) => m[1]);
+  t('no var in wrangler.toml is set to the empty string',
+    blanks.length === 0,
+    blanks.join(', ') + ' — comment it out instead, and let --keep-vars leave the deployed value alone');
+}
+
 console.log('PASS ('+pass.length+')'); pass.forEach(x=>console.log('  ✓ '+x));
 if(fail.length){console.log('\nFAIL ('+fail.length+')'); fail.forEach(x=>console.log('  ✗ '+x)); process.exit(1);}

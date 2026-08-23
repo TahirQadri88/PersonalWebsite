@@ -1,11 +1,23 @@
 # The editor's backend. Deployed separately from the website — the site
 # itself is still plain static files with no build step.
 #
-#   npx wrangler deploy          from inside this folder
+# Normally you do not run this by hand any more: pushing a change under
+# worker/ to main deploys it, through .github/workflows/deploy-worker.yml.
+# By hand, from inside this folder, it is still:
+#
+#   npx wrangler deploy --keep-vars
 #
 # The GitHub token is NOT in this file. It is a secret, set once with:
 #
 #   npx wrangler secret put GITHUB_TOKEN
+#
+# Secrets survive a deploy untouched — they are stored apart from the
+# script and wrangler never sends them. Plain [vars] below are different:
+# without --keep-vars a deploy replaces the Worker's whole var set with
+# whatever this file lists, so a var that is set in the dashboard and
+# blank here would be *cleared*. That is why the three settings this
+# repository does not know are commented out rather than left as "", and
+# why both the workflow and the line above pass --keep-vars.
 
 name = "tahirqadri-editor"
 main = "src/index.js"
@@ -33,12 +45,19 @@ SITE_ORIGIN = "https://tahirqadri.com.pk"
 # Firebase console. The editor signs in against it and sends the token.
 FIREBASE_PROJECT = "tahirqadri-website"
 #
-# Cloudflare Access — guards the page itself, but wants a payment method on
-# file even on the free plan. ACCESS_TEAM is the name in
-# <team>.cloudflareaccess.com; ACCESS_AUD is the application's Audience tag.
-ACCESS_TEAM = ""
-ACCESS_AUD = ""
+# The three below are deliberately NOT set here, and must not be set to ""
+# — see the note at the top of this file. An empty EDITOR_EMAIL does not
+# fail closed, it fails *open*: the check reads
 #
-# Whichever is used: set this and only this address may publish. It is the
-# second lock — a policy widened by accident still cannot get past it.
-EDITOR_EMAIL = ""
+#   if (env.EDITOR_EMAIL && payload.email !== env.EDITOR_EMAIL)
+#
+# so a blank value skips the second lock entirely and leaves any account
+# in the Firebase project able to publish. Whatever is configured in the
+# Cloudflare dashboard is the truth for these, and --keep-vars leaves it
+# alone.
+#
+# ACCESS_TEAM  — Cloudflare Access: the name in <team>.cloudflareaccess.com
+# ACCESS_AUD   — the Access application's Audience tag
+# EDITOR_EMAIL — the one address allowed to publish, whichever service did
+#                the signing in. The second lock: a policy widened by
+#                accident still cannot get past it.
