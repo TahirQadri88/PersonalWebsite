@@ -2169,6 +2169,14 @@
       ? [[record.descriptionUr, 'ur'], [record.description, record.language]]
       : [[record.description, record.language], [record.descriptionUr, 'ur']])
       .filter(function (pair) { return pair[0]; })
+      /* No alignment class here, deliberately. A work's page already
+         solves this a better way than the homepage row does: section 11
+         of styles.css shrinks the description in the other script to
+         `fit-content` and pushes the box to the page's reading edge, so
+         the box ends where the rest of the page ends while the words
+         inside it still start where their own script starts. Forcing
+         both to one edge would set a long run of English flush right,
+         which is harder to read than it is tidy. */
       .map(function (pair) { return site.proseMarkup(pair[0], 'work-page-description', pair[1]); })
       .join('');
 
@@ -2351,7 +2359,16 @@
       '<h1>' + e(hero.headline || '') +
         (hero.headlineEm ? '<em>' + e(hero.headlineEm) + '</em>' : '') + '</h1>',
       hero.copy ? '<p class="hero-copy"' + langAttrs(hero.copy) + '>' + e(hero.copy) + '</p>' : '',
-      hero.urdu ? '<p class="hero-urdu"' + langAttrs(hero.urdu) + '>' + e(hero.urdu) + '</p>' : '',
+      /* align-left, for the fourth time in this codebase and the first
+         time anyone measured the hero. The line carries dir="rtl", which
+         makes `text-align: start` resolve to right — so its words sat at
+         the right edge of a 520px box and began 234px in, while the
+         eyebrow, the headline and the paragraph above all began at the
+         column edge. Nothing in the class list said so; only the
+         rendered page did. */
+      hero.urdu
+        ? '<p class="hero-urdu align-left"' + langAttrs(hero.urdu) + '>' + e(hero.urdu) + '</p>'
+        : '',
       hero.cta ? '<a class="button" href="#library">' + e(hero.cta) +
         ' <span aria-hidden="true">→</span></a>' : ''
     ]);
@@ -2942,12 +2959,13 @@
       filesBox.textContent = '';
       (record.files || []).forEach(function (file, index) {
         var line = el('div', 'admin-file');
-        var label = textInput(file.label, function (value) { file.label = value; });
-        label.placeholder = 'Urdu PDF';
-        label.setAttribute('aria-label', 'Label for this file');
-        var url = textInput(file.url, function (value) { file.url = value.trim(); });
-        url.placeholder = 'files/booklets-authored/name.pdf';
-        url.setAttribute('aria-label', 'Address of this file');
+        /* Through lineInput, so a label follows the script it is written
+           in — the same as every other box in the editor. These did not:
+           six chart labels written in Urdu were set in DM Sans and
+           running left to right, in the oldest field here. */
+        var label = lineInput(file, 'label', 'Urdu PDF', 'Label for this file');
+        var url = lineInput(file, 'url', 'files/booklets-authored/name.pdf',
+          'Address of this file', trimmed);
         var remove = el('button', 'text-link admin-danger', 'Remove');
         remove.type = 'button';
         remove.addEventListener('click', function () {
@@ -2965,11 +2983,8 @@
         if (site.isImage(file.url)) {
           var previewLine = el('div', 'admin-file');
           previewLine.appendChild(el('span', 'hint', 'Preview image'));
-          var preview = textInput(file.preview, function (value) {
-            file.preview = value.trim() || undefined;
-          });
-          preview.placeholder = 'optional lighter copy to show on the page';
-          preview.setAttribute('aria-label', 'Preview image address, optional');
+          var preview = lineInput(file, 'preview', 'optional lighter copy to show on the page',
+            'Preview image address, optional', trimmedOrGone);
           previewLine.appendChild(preview);
           previewLine.appendChild(el('span'));
           filesBox.appendChild(previewLine);
@@ -3166,8 +3181,10 @@
 
   /* One line inside a repeatable row, bound the same way `bound` binds a
      field — without the label, since the box above it carries that. */
-  function lineInput(object, key, placeholder, aria) {
-    var input = textInput(object[key], function (value) { object[key] = value; });
+  function lineInput(object, key, placeholder, aria, clean) {
+    var input = textInput(object[key], function (value) {
+      object[key] = clean ? clean(value) : value;
+    });
     input.placeholder = placeholder || '';
     input.setAttribute('aria-label', aria || placeholder || '');
     var follow = function () { applyScript(input, scriptOf(input.value, 'ur') || 'en'); };
@@ -3175,6 +3192,10 @@
     input.addEventListener('input', follow);
     return input;
   }
+
+  /* A path or an address: trimmed, and gone entirely when emptied. */
+  function trimmed(value) { return value.trim(); }
+  function trimmedOrGone(value) { return value.trim() || undefined; }
 
   function siteBlock() {
     var row = block('The site itself', 'name, email, address');

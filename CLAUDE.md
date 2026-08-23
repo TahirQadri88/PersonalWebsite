@@ -287,6 +287,41 @@ English, because the line describes what opening it would get you. It is
 set in Latin whatever the piece is, since it is 12px, uppercase and
 tracked — Nastaliq at that size cannot be read.
 
+**Urdu in a left-reading column.** This one rule has now been broken
+seven times, so it is stated once here rather than told as seven stories.
+
+`.urdu` carries `text-align: right` *and* a font size. An Urdu element
+also carries `dir="rtl"`, which turns even an inherited `text-align:
+start` into **right** — so a line of Urdu inside a left-reading column
+goes to the far edge of its own box with no rule saying so anywhere.
+The three consequences:
+
+- Never put `.urdu` on something that has a size or an alignment of its
+  own; it brings both.
+- Anything Urdu that sits in a left-reading column needs `align-left`,
+  even where nothing sets alignment at all. That is what hid in the hero:
+  its Urdu line began 234px in while the eyebrow, the headline and the
+  paragraph above it all began at the column edge.
+- Do not set `text-align: right` on an Urdu selector "for safety". It
+  buys nothing — the direction already does it — and it outranks
+  `align-left`, which is how the two descriptions in an open library row
+  ended up at opposite edges of one panel.
+
+**Urdu stacked against English shares a starting edge; Urdu among Urdu
+keeps its own.** A block of Urdu prose surrounded by Urdu is right-set
+because that is how the script sets. It is only when the two scripts are
+stacked in one column that they have an edge to share.
+
+The exception, and it is a real one: a box shrunk to its own longest
+line is *placed*, not aligned. A work's page does this deliberately —
+`fit-content` plus `margin-inline-start: auto`, so the box ends at the
+page's margin while a long run of English still reads from its own left,
+which is easier to read than it is tidy. See section 11 of `styles.css`.
+
+All of it is held by *urdu stacked against english* in
+`test/homepage.mjs`, which measures 89 stacked pairs across four pages at
+two widths. It found the last two faults itself.
+
 **A label written by hand into `index.html` needs `align-left` too.**
 `.urdu` sets `text-align: right`, and a section label inherits it, so above
 an English heading the label lands at the far edge of its block. `work.js`
@@ -417,6 +452,16 @@ values for a reason. Do not collapse them into one.
 - Check Urdu at mobile width (~380px) after any layout change — that is where
   Nastaliq breaks first.
 - Keep commits small and in plain language; the author reads the history.
+
+**The suites are quick, and they should stay quick.** `test/homepage.mjs`
+took seven and a half minutes because every one of its thirty-odd page
+loads waited for `networkidle` — and Google's CDN is turned away at the
+top of the file, so there was never anything for it to go quiet about.
+`domcontentloaded` plus `document.fonts.ready` is the right wait here:
+`script.js` runs at the end of `<body>`, so the library is drawn by the
+time the document has loaded, and the only thing left is the two
+self-hosted faces. One minute forty-nine now. Do not reach for
+`networkidle` in these tests.
 
 **Touching `script.js`, `common.js` or the library's CSS means running
 `node test/homepage.mjs`.** It measures where things landed on the rendered

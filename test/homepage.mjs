@@ -64,7 +64,17 @@ function t(name, ok, detail) {
   if (ok) { passed++; console.log('  ✓ ' + name); }
   else { failed.push(name); console.log('  ✗ ' + name + (detail ? '\n      ' + detail : '')); }
 }
-function group(name) { console.log('\n' + name); }
+/* How long each group takes, so a slow one can be found rather than
+   guessed at. The suite runs a real browser over five pages at up to
+   nine widths; without this, "the tests are slow" has no answer. */
+let groupAt = Date.now();
+let groupName = '';
+function group(name) {
+  if (groupName) console.log(`    (${((Date.now() - groupAt) / 1000).toFixed(1)}s)`);
+  groupName = name;
+  groupAt = Date.now();
+  console.log('\n' + name);
+}
 
 const server = await serve();
 const browser = await chromium.launch();
@@ -76,12 +86,20 @@ const threw = [];
    resolved to — neither of which the typeface decides. Waiting on a real
    round trip to another origin would only make the run slow and its
    result dependent on someone else's uptime. */
-async function open(width) {
+async function open(width, path) {
   const context = await browser.newContext({ viewport: { width, height: 1000 } });
   await context.route('https://fonts.g**', (r) => r.abort());
   const page = await context.newPage();
   page.on('pageerror', (e) => threw.push(width + 'px: ' + e.message));
-  await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'networkidle' });
+  /* domcontentloaded, not networkidle. Google's CDN is turned away a few
+     lines above, so networkidle has nothing to go quiet about and simply
+     waits out its own settling period on every load — and this suite
+     opens a page more than thirty times, at up to nine widths. The page
+     is rendered by script.js at the end of <body>, so by the time the
+     document has loaded the library is drawn; `fonts.ready` covers the
+     two self-hosted faces, which is all that is left to wait for. Seven
+     and a half minutes to about one. */
+  await page.goto(`http://127.0.0.1:${PORT}${path || '/index.html'}`, { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(150);
   return { context, page };
@@ -221,6 +239,150 @@ try {
       labels.every((l) => l.fromLeft < 4),
       JSON.stringify(labels.filter((l) => l.fromLeft >= 4)));
     await context.close();
+  }
+
+  /* ---- urdu stacked against english ----
+
+     The rule above measures the labels, because labels are what went
+     wrong. This measures the family they belong to: a block of Urdu with
+     a block of English directly above or below it, on four pages at two
+     widths. Two lines stacked in one column should begin on the same
+     edge, whichever scripts they are in.
+
+     This is where the fault keeps coming back, and it has now been found
+     seven times. `.urdu` carries `text-align: right` along with the
+     font, and an Urdu element also carries `dir="rtl"`, which turns even
+     an inherited `text-align: start` into right — so the words go to the
+     far edge of their own box while the English line above starts at the
+     column edge. Nothing in the markup says so. Two of the seven were
+     found by this check and by nothing else: the hero's Urdu line, wrong
+     since the day it was written, and every open row in the library,
+     where the two descriptions of one work sat at opposite edges.
+
+     Deliberately not a sweep of every Urdu element. A block of Urdu
+     among other Urdu — the bio, a post's body — is right-aligned because
+     that is how the script sets, and flagging it would be flagging the
+     language for being itself. It is only when the two are stacked that
+     they have an edge to share. */
+  group('urdu stacked against english starts on the same edge');
+  {
+    const PAGES = ['/index.html', '/apps/zakat-calculator.html',
+                   '/posts/reservations-shariah-screening-stocks.html',
+                   '/works/saa-ki-tahqeeq.html'];
+    const measure = () => {
+      const ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
+      const own = (el) => [...el.childNodes].filter((n) => n.nodeType === 3)
+        .map((n) => n.textContent).join('').trim();
+      const script = (text) => {
+        const rtl = (text.match(ARABIC) || []).length;
+        const lat = (text.match(/[A-Za-z]/g) || []).length;
+        if (!rtl && !lat) return '';
+        return rtl > lat ? 'rtl' : 'ltr';
+      };
+      /* Where the words are, not where the box is. */
+      const ink = (el) => {
+        const r = document.createRange();
+        r.selectNodeContents(el);
+        const x = [...r.getClientRects()].filter((v) => v.width > 0.5 && v.height > 0.5);
+        if (!x.length) return null;
+        return { left: Math.min(...x.map((v) => v.left)), right: Math.max(...x.map((v) => v.right)),
+                 top: Math.min(...x.map((v) => v.top)), bottom: Math.max(...x.map((v) => v.bottom)) };
+      };
+      const isBlock = (el) => {
+        const d = getComputedStyle(el).display;
+        return d === 'block' || d === 'flex' || d === 'grid' || d === 'list-item';
+      };
+      const resolved = (el) => {
+        const cs = getComputedStyle(el);
+        let a = cs.textAlign;
+        if (a === 'start' || a === '') a = cs.direction === 'rtl' ? 'right' : 'left';
+        if (a === 'end') a = cs.direction === 'rtl' ? 'left' : 'right';
+        return a;
+      };
+      /* A box shrunk to its own longest line is *placed*, not aligned. A
+         work's page does this deliberately — section 11 of styles.css
+         explains why — so that the box ends at the page's margin while a
+         long run of English still reads from its own left. Judge those on
+         where the box sits, not on which way the text runs inside it. */
+      const fits = (el) => {
+        const b = el.getBoundingClientRect(), k = ink(el);
+        return !!k && b.width - (k.right - k.left) < 10;
+      };
+
+      const pairs = [];
+      for (const el of document.querySelectorAll('body *')) {
+        if (!el.getClientRects().length) continue;
+        const text = own(el);
+        if (script(text) !== 'rtl' || !isBlock(el)) continue;
+        /* A tag is a pill in a wrapping row, not a line of a column. A
+           post's body carries the alignment its author chose block by
+           block in the writing box — a decision, not a default. */
+        if (el.closest('.tag-row, .post-body, .writing-canvas')) continue;
+
+        for (const sib of [el.previousElementSibling, el.nextElementSibling]) {
+          if (!sib || !sib.getClientRects().length) continue;
+          /* The sibling's own words, or those of the one thing inside it
+             — a paragraph holding a single link still counts. */
+          const sibText = own(sib) || (sib.children.length === 1 ? sib.textContent.trim() : '');
+          if (script(sibText) !== 'ltr' || !isBlock(sib)) continue;
+          const a = ink(el), b = ink(sib);
+          if (!a || !b) continue;
+          /* Stacked, not side by side. Two things on one line of a flex
+             row are siblings too, and of course they do not start
+             together — that is what a row is. */
+          if (a.top < b.bottom - 2 && b.top < a.bottom - 2) continue;
+
+          const ea = resolved(el), eb = resolved(sib);
+          if (/center|justify/.test(ea) || /center|justify/.test(eb)) continue;
+
+          const parent = el.parentElement;
+          const ps = getComputedStyle(parent);
+          const one = { urdu: text.replace(/\s+/g, ' ').slice(0, 24),
+                        cls: String(el.className).slice(0, 34),
+                        english: sibText.replace(/\s+/g, ' ').slice(0, 24) };
+
+          if (fits(el) || fits(sib)) {
+            const ab = el.getBoundingClientRect(), bb = sib.getBoundingClientRect();
+            const side = ps.direction === 'rtl' ? 'right' : 'left';
+            pairs.push({ ...one, edge: 'box-' + side,
+              apart: Math.round(side === 'right' ? ab.right - bb.right : ab.left - bb.left) });
+            continue;
+          }
+          /* Pulling to opposite edges is the fault itself, not a distance
+             — there is no tolerance that makes it acceptable. */
+          pairs.push({ ...one, edge: ea === eb ? ea : ea + '/' + eb,
+            apart: ea !== eb ? 9999 : Math.round(ea === 'right' ? a.right - b.right : a.left - b.left) });
+        }
+      }
+      return pairs;
+    };
+
+    /* One context per width walked across the four pages, rather than a
+       fresh browser for each — and domcontentloaded plus a real wait on
+       the fonts rather than networkidle, which here only waits out a
+       timeout because Google's CDN is already turned away. */
+    let seen = 0;
+    const apart = [];
+    for (const width of [1440, 380]) {
+      const context = await browser.newContext({ viewport: { width, height: 1000 } });
+      await context.route('https://fonts.g**', (r) => r.abort());
+      const page = await context.newPage();
+      page.on('pageerror', (e) => threw.push(width + 'px: ' + e.message));
+      for (const path of PAGES) {
+        await page.goto(`http://127.0.0.1:${PORT}${path}`, { waitUntil: 'domcontentloaded' });
+        await page.evaluate(() => document.fonts.ready);
+        /* Every fold open, or half the Urdu on the site is never seen. */
+        await page.evaluate(() => document.querySelectorAll('details').forEach((d) => { d.open = true; }));
+        await page.waitForTimeout(120);
+        const rows = await page.evaluate(measure);
+        seen += rows.length;
+        rows.filter((r) => Math.abs(r.apart) > 8).forEach((r) => apart.push({ width, path, ...r }));
+      }
+      await context.close();
+    }
+    t(`there are stacked pairs to measure — ${seen} of them`, seen >= 40, String(seen));
+    t('every one of them begins on the same edge as the line it sits with',
+      apart.length === 0, JSON.stringify(apart.slice(0, 6), null, 1));
   }
 
   /* ---- a category head ---- */
@@ -528,7 +690,8 @@ try {
       const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
       await context.route('https://fonts.g**', (r) => r.abort());
       const page = await context.newPage();
-      await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'networkidle' });
+      await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => document.fonts.ready).catch(() => {});
       await readerScroll(page);
       const r = await page.evaluate(readIcons);
       t('a reader who asked for less motion gets them drawn, unanimated',
@@ -539,7 +702,8 @@ try {
       const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, javaScriptEnabled: false });
       await context.route('https://fonts.g**', (r) => r.abort());
       const page = await context.newPage();
-      await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'networkidle' });
+      await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => document.fonts.ready).catch(() => {});
       /* Nothing renders without script here, so the check is that the dash
          lives only on a class no markup carries — never on .icon itself. */
       const css = await readFile(join(ROOT, 'styles.css'), 'utf8');
@@ -690,7 +854,8 @@ try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
     await context.route('https://fonts.g**', (r) => r.abort());
     const page = await context.newPage();
-    await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'networkidle' });
+    await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => document.fonts.ready).catch(() => {});
     await page.locator('#recent').scrollIntoViewIfNeeded();
     await page.waitForTimeout(900);
     const r = await page.evaluate(() => {
@@ -729,7 +894,8 @@ try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, javaScriptEnabled: false });
     await context.route('https://fonts.g**', (r) => r.abort());
     const page = await context.newPage();
-    await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'networkidle' });
+    await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => document.fonts.ready).catch(() => {});
     const r = await page.evaluate(() => {
       const cards = [...document.querySelectorAll('.recent-card')];
       return { count: cards.length,
