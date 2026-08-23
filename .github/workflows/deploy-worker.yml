@@ -64,7 +64,8 @@ jobs:
           if [ -n "$missing" ]; then
             echo "::error::Missing repository secret(s):$missing"
             echo "Settings → Secrets and variables → Actions → New repository secret."
-            echo "worker/README.md, 'Deploying it', says which token to make and how to scope it."
+            echo "worker/README.md, step 5, says which token to make and how to scope it."
+            echo "It needs BOTH Account -> Workers Scripts -> Edit AND Zone -> Workers Routes -> Edit."
             exit 1
           fi
 
@@ -77,6 +78,11 @@ jobs:
       #
       # Secrets (GITHUB_TOKEN) are stored apart from the script and are
       # never touched by a deploy either way.
+      # Needs a token with Zone -> Workers Routes -> Edit as well as
+      # Account -> Workers Scripts -> Edit. Without the zone half this step
+      # uploads the code and *then* fails reconciling the route in
+      # wrangler.toml — so the Worker is live and the run is red, which is
+      # the one outcome this workflow exists to make impossible.
       - name: Deploy
         uses: cloudflare/wrangler-action@v3
         with:

@@ -182,12 +182,26 @@ Actions → New repository secret**:
 | `CLOUDFLARE_ACCOUNT_ID` | Workers & Pages → Overview, in the right-hand column |
 | `CLOUDFLARE_API_TOKEN` | see below |
 
-For the token: **My Profile → API Tokens → Create Token → Edit Cloudflare
-Workers**, then narrow it to this account and this zone. That template is
-wider than this needs; a custom token with **Account → Workers Scripts →
-Edit** is enough, and is the one to prefer. Give it an expiry and put a
-reminder somewhere — an expired token fails the deploy loudly, which is the
-right way for it to fail.
+For the token: **My Profile → API Tokens → Create Token**. It needs **two**
+permissions, and the second one is easy to miss:
+
+| | |
+| --- | --- |
+| **Account** → Workers Scripts → **Edit** | to upload the code |
+| **Zone** → Workers Routes → **Edit** | to keep `admin.tahirqadri.com.pk/*` pointed at it |
+
+With only the first, the deploy uploads the Worker and then fails on the
+route with *"Authentication error [code: 10000] … does not have permission
+to access the zone"*. That is a confusing failure, because the code went up
+before it: the Worker is live and the run is red. Both permissions from the
+start avoids it.
+
+Under **Zone Resources**, include the `tahirqadri.com.pk` zone. The
+**Edit Cloudflare Workers** template also works and covers both, but it is
+wider than this needs.
+
+Give it an expiry and put a reminder somewhere — an expired token fails the
+deploy loudly, which is the right way for it to fail.
 
 Until both secrets exist the workflow **fails on purpose**, saying which is
 missing. A Worker that did not deploy must never look like one that did.
