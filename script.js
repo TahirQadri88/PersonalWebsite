@@ -192,11 +192,23 @@
      in Urdu leads with the Urdu; an English fatwa leads with the English. */
   function prose(record) {
     var rtl = site.direction(record.language) === 'rtl';
+    /* Both descriptions on the one axis the record itself reads from —
+       the same rule the row above them already follows. Without it the
+       panel set its Urdu flush right and its English flush left, two
+       paragraphs of the same thing at opposite edges of one box. The
+       summary was fixed for this long ago; the panel under it was not,
+       and nothing said so until every stacked pair on the site was
+       measured.
+
+       `.align-left` and `.align-right` are declared after `.urdu` in
+       styles.css, so they win over the alignment the script class
+       carries — which is the only reason one class can settle both. */
+    var edge = rtl ? 'align-right' : 'align-left';
     return (rtl
       ? [[record.descriptionUr, 'ur'], [record.description, record.language]]
       : [[record.description, record.language], [record.descriptionUr, 'ur']])
       .filter(function (pair) { return pair[0]; })
-      .map(function (pair) { return site.proseMarkup(pair[0], '', pair[1]); })
+      .map(function (pair) { return site.proseMarkup(pair[0], edge, pair[1]); })
       .join('');
   }
 

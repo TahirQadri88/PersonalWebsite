@@ -155,6 +155,13 @@ h1, h2, h3 {
   line-height: 1.12;
   letter-spacing: -0.02em;
   margin: 0;
+  /* A heading that wraps should not leave one word alone on the last
+     line. "Abul Laith Muhammad Tahir Qadri An-Naeemi" was breaking with
+     An-Naeemi by itself, and فتویٰ was doing the same under a fatwa's
+     title on a phone. This evens the lines instead. Ignored by a browser
+     that does not know it, and by any block over a few lines, which is
+     the right way for it to fail. */
+  text-wrap: balance;
 }
 
 .eyebrow,
@@ -188,6 +195,12 @@ h1, h2, h3 {
   line-height: 2.05;
   text-align: right;
 }
+/* A title is a heading wherever it is shown, even when it is a <span>
+   in a library row — so it balances its lines like one. */
+.record-title,
+.app-name-ur,
+.app-attest-name { text-wrap: balance; }
+
 /* A record's own title, wherever it's shown — the library list, the
    fatawa grid, a work or post's own page — set by titleMarkup in
    common.js. Nothing else carries this class, so it never touches an
@@ -1108,13 +1121,19 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   line-height: 1.9;
 }
 /* Urdu prose keeps prose proportions rather than the title size .urdu
-   otherwise carries, and the leading the script needs. */
+   otherwise carries, and the leading the script needs.
+
+   No text-align here. It used to say `right`, which is what an Urdu
+   element resolves to anyway — `dir="rtl"` turns the inherited `start`
+   into right without any rule at all — so the declaration bought
+   nothing. What it did do was outrank `.align-left` at three classes to
+   one, so a panel that asked both its paragraphs to sit on the left
+   edge got its English there and its Urdu at the other side. */
 .work-detail p.urdu,
 .category-blurb.urdu,
 .ruling p.urdu {
   font-size: 19px;
   line-height: 2.05;
-  text-align: right;
 }
 
 /* Mehr draws up to 4.75px past the right edge of the box that lays it
