@@ -30,7 +30,7 @@
      own, which is why it's here at all — but Noto Nastaliq Urdu, already
      loaded for this same fallback role, catches it if Mehr's file (self-
      hosted, not on Google's CDN) is ever slow or unreachable. */
-  --font-urdu: "Mehr", "Noto Nastaliq Urdu", serif;
+  --font-urdu: "Mehr", "Latin in Urdu", "Noto Nastaliq Urdu", serif;
   /* A record's own title, and an in-prose subheading inside a post —
      see `.record-title` and `.post-body h2` below. Bold reads better
      than Nastaliq at heading weight, which is the same reasoning Jameel
@@ -134,6 +134,24 @@ img { max-width: 100%; }
        url("files/fonts/mehr-nastaliq-web.ttf") format("truetype");
   font-weight: 400;
   font-display: swap;
+  /* Everything Mehr should draw, which is everything except Latin
+     letters. Mehr carries a Latin set of its own — measured, `HHHH` at
+     60px against Arial's 61 — and it was drawing every English term in
+     an Urdu sentence at the Urdu's own 21px. Beside Nastaliq, whose
+     three letters measure 12px, a Latin word that size dominates the
+     line; in a printed capture of the shares article the English terms
+     are the first thing the eye lands on in every paragraph holding one.
+     Withholding the letters lets them fall through to `Latin in Urdu`,
+     which is the same face 29% smaller.
+
+     Digits, spaces, brackets and punctuation stay with Mehr on purpose.
+     They are shared with the Urdu around them — a bracket belonging to
+     an Urdu clause has no business being set at 71% — so they render
+     exactly as they do today. Only A–Z, a–z and the accented Latin
+     letters are handed over. */
+  unicode-range: U+0000-0040, U+005B-0060, U+007B-00BF, U+02B0-036F,
+                 U+0600-06FF, U+0750-077F, U+08A0-08FF, U+200C-200F,
+                 U+2010-205E, U+FB50-FDFF, U+FE70-FEFF;
 }
 
 /* Aslam — bold Naskh, used here for the same reason Jameel Noori
@@ -147,6 +165,37 @@ img { max-width: 100%; }
        url("files/fonts/Aslam.ttf") format("truetype");
   font-weight: 400;
   font-display: swap;
+}
+
+/* An English term inside an Urdu sentence — and this library is full of
+   them: `board of directors`, `legal entity`, `screening criteria` — is
+   drawn by none of the Urdu faces, because Mehr and Noto Nastaliq hold
+   no Latin at all. It falls through to whatever the system offers, at
+   the Urdu's own 21px, and a Latin face at 21px beside Nastaliq is
+   enormous: `HHHH` measures 60px where three letters of Mehr measure 12.
+   In a printed capture of the shares article the English terms dominate
+   every paragraph they appear in.
+
+   `font-size-adjust` cannot do this — measured, it scales Mehr by the
+   same proportion, because Mehr does report an x-height. So the fallback
+   is named and adjusted on its own, and `unicode-range` keeps it to
+   Latin letters. 71% is the site's own ratio, not a guess: a block of
+   English in an Urdu piece is 15px against the body's 21px.
+
+   Letters only. Digits, spaces, parentheses and punctuation are shared
+   with the Urdu around them and must stay at the Urdu's size — a
+   bracket belonging to an Urdu clause set at 71% would be its own fault.
+
+   `local()` throughout: if a device has none of them the face is simply
+   unused and the term renders as it does today, which is the right way
+   for this to fail. */
+@font-face {
+  font-family: "Latin in Urdu";
+  src: local("DM Sans"), local("Segoe UI"), local("Roboto"),
+       local("Helvetica Neue"), local("Helvetica"), local("Arial"),
+       local("Liberation Sans"), local("DejaVu Sans");
+  size-adjust: 71%;
+  unicode-range: U+0041-005A, U+0061-007A, U+00C0-024F;
 }
 
 h1, h2, h3 {
@@ -1717,16 +1766,22 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .post-body .latin {
   font-family: var(--font-ui);
 }
-/* Left unless the author said otherwise — the same fault the justify
-   rule above had, in the Latin branch. `.post-body .latin` is (0,2,0)
-   and `.align-center` is (0,1,0), so an English block inside an Urdu
-   piece could not be centred, right-set or justified however the button
-   was pressed. The two headings over the reference list are the case:
-   `(مصادر و مراجع )` and `References:` both carry align-center, and only
-   the Urdu one was centred — the English sat at the left margin under
-   it. The face above is not guarded, because Nastaliq has no Latin to
-   draw whatever the alignment. */
-.post-body .latin:not(.align-left):not(.align-center):not(.align-right):not(.align-justify) {
+/* Centre and justify are honoured; right is not, and that asymmetry is
+   deliberate. `References:` carries align-center beside `(مصادر و مراجع )`
+   and was not being centred — a real fault, fixed by letting the class
+   through. But every one of the fourteen Latin blocks in the shares post
+   carries align-right, and every one is an English bibliography entry
+   that reads left to right. Honouring that set them flush right, ragged
+   down the left, which is how a numbered reference list should never be
+   set — and is a state the site had never been in until the class was
+   let through.
+
+   The reason is the one written above: an English line inside an Urdu
+   piece is surrounded by right-set text, so `right` is the context
+   leaking into the block rather than a decision about the block. Left is
+   what the line itself wants. If a right-set English line is ever really
+   wanted, this is the rule to revisit. */
+.post-body .latin:not(.align-center):not(.align-justify) {
   text-align: left;
 }
 /* The small size is for a citation, not for anything marked English.

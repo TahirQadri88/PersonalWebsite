@@ -129,8 +129,28 @@ post lost a line outright. The heading goes *under* the 21px body rather
 than over it, which it already did at 20px — what sets one apart here is
 bold Aslam against Mehr, not size.
 
+**Mehr and Aslam carry Latin, and Mehr's had to be taken away.** An
+English term inside an Urdu sentence — `board of directors`, `legal
+entity`, `screening criteria`, and this library is full of them — was
+being drawn by Mehr itself at the Urdu's own 21px. Measured: `HHHH` in
+Mehr is 60px against Arial's 61, while three letters of Mehr are 12px.
+Beside Nastaliq that is enormous, and in a printed capture of the shares
+article the English is the first thing the eye meets in every paragraph
+holding any.
+
+`font-size-adjust` cannot fix it — measured, it scales Mehr by the same
+proportion, because Mehr reports an x-height. So Mehr's `@font-face`
+carries a `unicode-range` that withholds **Latin letters only**, and they
+fall through to `Latin in Urdu`: the same system face at `size-adjust:
+71%`, which is the site's own ratio (a block of English in an Urdu piece
+is 15px against the body's 21px). Digits, brackets and punctuation stay
+with Mehr deliberately — they are shared with the Urdu around them, and a
+bracket in an Urdu clause set at 71% would be a new fault. `local()`
+throughout, so a device with none of the named faces simply renders as
+before. Aslam still has its Latin; nothing has asked for it yet.
+
 **A class the editor writes must outrank the stylesheet's default, or
-the button is a lie.** Three rules were quietly beating the writing
+the button is a lie — except where the class is the context leaking.** Three rules were quietly beating the writing
 box's alignment classes, all found by measuring one post:
 `.post-body.urdu p:not(.latin)` (0,3,1) justified every Urdu paragraph
 whatever was chosen; `.post-body .latin` (0,2,0) pinned every English
@@ -141,7 +161,16 @@ words on their own reading edge. `admin.js` writes an alignment class
 only when someone picks one (`if (b.align)`), so every one in a file is a
 decision. Each default now excuses `.align-left`/`-center`/`-right`/
 `-justify` by name, which keeps the default visible in the selector that
-sets it. The flush group in `test/homepage.mjs` measures post bodies for
+sets it.
+
+One exception, learned by breaking it: a Latin block does **not** get
+`align-right`. All fourteen in that post carry it, and all fourteen are
+English bibliography entries; honouring it set a numbered reference list
+flush right and ragged down the left, a state the site had never been in.
+An English line inside an Urdu piece is surrounded by right-set text, so
+`right` is the context leaking into the block rather than a decision
+about it. Centre and justify are still honoured — `References:` beside
+`(مصادر و مراجع )` was genuinely not being centred. The flush group in `test/homepage.mjs` measures post bodies for
 this reason — it used to exempt them whole, and all three faults lived in
 that exemption.
 
