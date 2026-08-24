@@ -1439,6 +1439,37 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 /* Alignment a post's author chose for one block. Written as classes
    rather than inline styles so the stylesheet keeps the say, and so a
    post page carries no inline CSS. */
+/* An Urdu or Arabic block sitting in a left-reading column.
+   `align-left` is not the answer for one of these, and getting that
+   wrong is what put the Zakat app's description on the page ragged the
+   wrong way round: every line pinned at the left, so every line *began*
+   — on the right, where the script begins — in a different place. The
+   English equivalent would be a paragraph set ragged-left.
+
+   What is wanted is both things at once: the block placed where the
+   column starts, and the words inside it set on their own reading edge.
+   Shrinking the box to its own longest line does exactly that — the
+   longest line begins at the column edge, the shorter ones fall back
+   from it as Urdu should, and nothing floats out into the middle.
+
+   A single line renders identically to `align-left`, which is why this
+   is safe to put anywhere `align-left` used to go on Urdu.
+
+   Only ever on `.urdu` and `.arabic`. It is written alongside
+   `align-left`, not instead of it: where the content turns out to be
+   English — a kind label rendered as "App" rather than ایپ — this rule
+   does not match and `align-left` still does the right thing.
+
+   `.work-page-description` in section 11 is this same idea written for
+   one page, and it stays: it also mirrors the case where an English
+   paragraph sits in a right-reading column, which this does not. */
+.own-edge.urdu,
+.own-edge.arabic {
+  width: fit-content;
+  max-width: 100%;
+  text-align: right;
+}
+
 .align-left { text-align: left; }
 .align-center { text-align: center; }
 .align-right { text-align: right; }
@@ -1903,6 +1934,11 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 @media (max-width: 620px) {
   .app-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .app-credits { grid-template-columns: minmax(0, 1fr); }
+  /* An odd number of facts in a two-column grid leaves the last cell
+     empty — and because the panel's own background is the rule colour
+     showing through 1px gaps, an empty cell is not nothing, it is a grey
+     box. The same fault the credits panel had. */
+  .app-facts > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .app-open .button { width: 100%; justify-content: center; }
 }
 

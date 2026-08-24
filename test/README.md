@@ -120,7 +120,7 @@ The same idea one floor down: it asks the browser where things on
 
 ## Why it exists
 
-Seven faults have been found in the library by measuring the rendered
+Eight faults have been found in the library by measuring the rendered
 page, and every one of them was invisible in the source:
 
 - the fatawa grid resolved to four columns with five fatawa in it, so one
@@ -143,10 +143,19 @@ page, and every one of them was invisible in the source:
   `text-align: start` into right, so nothing in the markup says so;
 - **every open library row** set its two descriptions at opposite edges,
   the Urdu flush right and the English flush left, two accounts of one work
-  in one panel.
+  in one panel;
+- **the Zakat app's description** was ragged on the edge it reads from.
+  `align-left` on a paragraph of Urdu pins every line at the left — which
+  means every line *begins*, on the right where the script begins, in a
+  different place. Its lines ran `[192→808], [192→828], [192→678]`. The
+  English equivalent is a paragraph set ragged-left, and nobody would ship
+  that. It had passed the stacked-pairs check below, because that check
+  asks where a block *starts* and this fault is inside the block.
 
-The last two were found by the test itself rather than by anyone looking,
-which is the whole argument for it.
+The two before last were found by the test itself rather than by anyone
+looking, which is the whole argument for it. The last was found by the
+author, reading the page — which is the argument for the group that now
+measures it.
 
 None would fail a linter. None changed a single string. They were all
 geometry, which is why this test measures rather than reads.
@@ -175,12 +184,35 @@ geometry, which is why this test measures rather than reads.
   four pages at two widths: 89 pairs. Two lines stacked in one column
   should begin together whatever scripts they are in.
 
+  Which edge it compares depends on how much Urdu there is. On **one
+  line** the block hugs its own words, so the ink *is* the block and
+  comparing ink is what caught the hero's 234px drift. On **several** the
+  ink is legitimately ragged on the far side, so the block's own left edge
+  is the honest measure — comparing ink there would flag correctly set
+  prose.
+
   It is narrow on purpose. Urdu *among* Urdu is right-set because that is
   how the script sets, and flagging it would be flagging the language for
   being itself; a box shrunk to `fit-content` and placed at the margin is
   positioned rather than aligned, which a work's page does deliberately so
-  a long run of English still reads from its own left. Both are skipped.
-  What is left is the case that has gone wrong seven times.
+  a long run of English still reads from its own left. Both are skipped —
+  and the `fit-content` case is asked **first**, before the line count,
+  since such a box is placed whether it holds one line or four. What is
+  left is the case that has gone wrong seven times.
+- **Urdu sets flush on the edge it reads from** — the other half of the
+  same question, and the one the Zakat page needed. The check above asks
+  whether two stacked blocks *start* together; this asks whether the lines
+  *inside* one block do. Every block of Urdu or Arabic taking more than one
+  line, on three pages at two widths — 64 of them — must have its right ink
+  edges within 3px of each other. Ragged on the far side is right; ragged
+  on the reading side is the fault.
+
+  Two exemptions. A post's body is skipped: the writing box has alignment
+  buttons and an author who pressed one made a decision, which is not this
+  rule's business. And an inline Arabic phrase quoted inside an English
+  sentence — a book title, a line of hadith — flows with the line it sits
+  in and cannot be flush with anything; that is what `.arabic-inline` is
+  for.
 - **Recently added and updated** — the strip stays under 400px and under
   half the viewport, a card under 190px, and the library starts by 1900px,
   so it cannot grow back into a second screen. Its meta line stays one line.

@@ -1477,7 +1477,7 @@
          the post reads in, and the script it comes out in decides the
          font, the direction and whether align-left is needed at all. */
       record.kind
-        ? '        ' + site.kindMarkup(record, 'section-label' + (rtl ? '' : ' align-left'), 'p')
+        ? '        ' + site.kindMarkup(record, 'section-label' + (rtl ? '' : ' align-left own-edge'), 'p')
         : null,
       /* record-title, not just the script class — matches site.titleMarkup,
          which builds every other title on the site and is what lets an
@@ -1680,7 +1680,7 @@
       '        <a class="back-link" href="../index.html#' + e(categoryId) + '"><span aria-hidden="true">' +
         (rtl ? '→' : '←') + '</span> ' + e(categoryTitle) + '</a>',
       record.kind
-        ? '        ' + site.kindMarkup(record, 'section-label' + (rtl ? '' : ' align-left'), 'p')
+        ? '        ' + site.kindMarkup(record, 'section-label' + (rtl ? '' : ' align-left own-edge'), 'p')
         : null,
       '        <h1 class="record-title ' + scriptClass + '" lang="' + e(record.language || 'en') +
         '" dir="' + (rtl ? 'rtl' : 'ltr') + '">' + e(record.title) + '</h1>',
@@ -1689,7 +1689,7 @@
          takes .record-title like every other title the site renders —
          which is what gives it Aslam rather than the body Nastaliq. */
       app.nameUr
-        ? '        <p class="app-name-ur record-title urdu' + (rtl ? '' : ' align-left') +
+        ? '        <p class="app-name-ur record-title urdu' + (rtl ? '' : ' align-left own-edge') +
           '" lang="ur" dir="rtl">' + e(app.nameUr) + '</p>'
         : null,
       /* The title, the words under it and the button are one block. They
@@ -1702,7 +1702,7 @@
          left-reading column sits at the far edge of its own box —
          which here is mid-page, away from the English line above it. */
       app.taglineUr
-        ? '        ' + line(app.taglineUr, 'app-tagline' + (rtl ? '' : ' align-left'))
+        ? '        ' + line(app.taglineUr, 'app-tagline' + (rtl ? '' : ' align-left own-edge'))
         : null,
       /* An app is opened, not downloaded, so it is a button and not a
          file row — and it is somewhere else, so it opens in its own tab
@@ -1716,7 +1716,7 @@
          the way to pressing it, and it has nothing to say to a reader
          who has already decided. */
       app.cta && app.url
-        ? '        ' + line(app.cta, 'app-cta' + (rtl ? '' : ' align-left'))
+        ? '        ' + line(app.cta, 'app-cta' + (rtl ? '' : ' align-left own-edge'))
         : null,
       '',
       (app.version || platforms.length)
@@ -1764,7 +1764,7 @@
             : [record.description, record.descriptionUr])
             .filter(Boolean)
             .map(function (text) {
-              return '          ' + site.proseMarkup(text, rtl ? '' : 'align-left', record.language);
+              return '          ' + site.proseMarkup(text, rtl ? '' : 'align-left own-edge', record.language);
             })
             .join('\n') +
           '\n        </div>'
@@ -2263,7 +2263,7 @@
       '        <a class="back-link" href="' + e(backHref) + '"><span aria-hidden="true">' +
         (rtl ? '→' : '←') + '</span> ' + e(categoryTitle) + '</a>',
       kind
-        ? '        ' + site.kindMarkup(record, 'section-label' + (rtl ? '' : ' align-left'), 'p')
+        ? '        ' + site.kindMarkup(record, 'section-label' + (rtl ? '' : ' align-left own-edge'), 'p')
         : null,
       '        ' + site.titleMarkup(record, 'h1'),
       /* Same reasoning as buildPost: formatDate's month name is always
@@ -2367,7 +2367,7 @@
          column edge. Nothing in the class list said so; only the
          rendered page did. */
       hero.urdu
-        ? '<p class="hero-urdu align-left"' + langAttrs(hero.urdu) + '>' + e(hero.urdu) + '</p>'
+        ? '<p class="hero-urdu align-left own-edge"' + langAttrs(hero.urdu) + '>' + e(hero.urdu) + '</p>'
         : '',
       hero.cta ? '<a class="button" href="#library">' + e(hero.cta) +
         ' <span aria-hidden="true">→</span></a>' : ''
@@ -2402,7 +2402,7 @@
           pad(i + 2) + '     it `.urdu` sets the block right and the label lands at the far\n' +
           pad(i + 2) + '     edge of a 780px column, across from the name it introduces. -->'
         : '',
-      about.label ? '<p class="section-label urdu align-left"' + langAttrs(about.label) + '>' +
+      about.label ? '<p class="section-label urdu align-left own-edge"' + langAttrs(about.label) + '>' +
         e(about.label) + '</p>' : '',
       '<h2>' + e(about.heading || '') + '</h2>',
       about.summary ? '<p' + langAttrs(about.summary) + '>' + e(about.summary) + '</p>' : ''
@@ -2449,7 +2449,7 @@
       pad(i + 4) + '<summary>',
       pad(i + 6) + '<span>',
       bio.openLabelUr
-        ? pad(i + 8) + '<span class="section-label urdu align-left"' + langAttrs(bio.openLabelUr) +
+        ? pad(i + 8) + '<span class="section-label urdu align-left own-edge"' + langAttrs(bio.openLabelUr) +
           '>' + e(bio.openLabelUr) + '</span>'
         : '',
       pad(i + 8) + '<strong>' + e(bio.openLabel || 'Read the full introduction') + '</strong>',
@@ -4222,7 +4222,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-08-21.2';
+  var EDITOR_VERSION = '2026-08-24.1';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */

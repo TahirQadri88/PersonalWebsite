@@ -203,7 +203,11 @@
        `.align-left` and `.align-right` are declared after `.urdu` in
        styles.css, so they win over the alignment the script class
        carries — which is the only reason one class can settle both. */
-    var edge = rtl ? 'align-right' : 'align-left';
+    /* own-edge, not align-left, for the left-reading case: a paragraph
+       of Urdu pinned at the left has every line *beginning* in a
+       different place, because an Urdu line begins on its right. See
+       styles.css. */
+    var edge = rtl ? 'align-right' : 'align-left own-edge';
     return (rtl
       ? [[record.descriptionUr, 'ur'], [record.description, record.language]]
       : [[record.description, record.language], [record.descriptionUr, 'ur']])
@@ -295,7 +299,7 @@
              so a reader scrolling had no landmark to aim at. */
           '<h3>' + site.categoryIcon(category, 'category-icon') +
           site.escapeHtml(category.title) + '</h3>' +
-          (category.titleUr ? '<p class="category-urdu urdu align-left" lang="ur" dir="rtl">' + site.escapeHtml(category.titleUr) + '</p>' : '') +
+          (category.titleUr ? '<p class="category-urdu urdu align-left own-edge" lang="ur" dir="rtl">' + site.escapeHtml(category.titleUr) + '</p>' : '') +
           (category.blurb ? site.proseMarkup(category.blurb, 'category-blurb') : '') +
           '</div>' +
           '<span class="work-category-count">' + count + (count === 1 ? ' work' : ' works') + '</span>' +

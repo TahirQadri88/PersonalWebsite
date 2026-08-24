@@ -3,15 +3,18 @@
    Not part of the website, the same way editor.mjs and worker/test.mjs are
    not. Needs Playwright:  npm i -D playwright
 
-   Why this exists. Seven faults have been found here by measuring the
+   Why this exists. Eight faults have been found here by measuring the
    rendered page, and every one of them was invisible in the source: a grid
    whose column count happened to leave a card orphaned, a label sent to
    the far edge of its block by a rule written for something else, a row
    with its title on one side and the label naming it on the other, two
    names for one category set 900px apart, a strip that took two thirds of
    the screen, the hero's Urdu line beginning 234px in from where every
-   line above it began, and an open library row setting its two
-   descriptions at opposite edges. The last two this file found itself.
+   line above it began, an open library row setting its two descriptions at
+   opposite edges, and a paragraph of Urdu pinned left so that every line
+   began somewhere different. The sixth and seventh this file found itself;
+   the eighth the author found by reading the page, and it is measured
+   here now.
    None of them would fail a linter and none of them changed a single
    string. They were all geometry.
 
@@ -339,17 +342,48 @@ try {
           const ea = resolved(el), eb = resolved(sib);
           if (/center|justify/.test(ea) || /center|justify/.test(eb)) continue;
 
-          const parent = el.parentElement;
-          const ps = getComputedStyle(parent);
           const one = { urdu: text.replace(/\s+/g, ' ').slice(0, 24),
                         cls: String(el.className).slice(0, 34),
                         english: sibText.replace(/\s+/g, ' ').slice(0, 24) };
 
+          const parent = el.parentElement;
+          const ps = getComputedStyle(parent);
+
+          /* A box that hugs its own longest line is placed rather than
+             aligned, and that is true whether it holds one line or four —
+             so this has to be asked before anything below it. */
           if (fits(el) || fits(sib)) {
             const ab = el.getBoundingClientRect(), bb = sib.getBoundingClientRect();
             const side = ps.direction === 'rtl' ? 'right' : 'left';
             pairs.push({ ...one, edge: 'box-' + side,
               apart: Math.round(side === 'right' ? ab.right - bb.right : ab.left - bb.left) });
+            continue;
+          }
+
+          /* Two stacked blocks in different scripts do not share an
+             alignment — each sets on its own reading edge, which is what
+             `own-edge` is for and what the group below measures. What
+             they must share is where the *block* begins in the column.
+
+             Which edge to compare depends on how many lines the Urdu
+             takes. On one line the block hugs its words, so the ink is
+             the block and comparing ink catches a line that has drifted
+             — the hero's did, by 234px, and nothing else found it. On
+             several lines the ink is legitimately ragged on that side,
+             so the block's own edge is the honest measure. */
+          const lines = (() => {
+            const rows = [];
+            const rr = document.createRange();
+            rr.selectNodeContents(el);
+            for (const x of [...rr.getClientRects()].filter((v) => v.width > 0.5 && v.height > 0.5)) {
+              if (!rows.some((y) => Math.abs(y - x.top) < Math.max(4, x.height * 0.5))) rows.push(x.top);
+            }
+            return rows.length;
+          })();
+          if (lines > 1) {
+            const ab = el.getBoundingClientRect(), bb = sib.getBoundingClientRect();
+            pairs.push({ ...one, edge: 'block-left', lines,
+              apart: Math.round(ab.left - bb.left) });
             continue;
           }
           /* Pulling to opposite edges is the fault itself, not a distance
@@ -387,6 +421,101 @@ try {
     t(`there are stacked pairs to measure — ${seen} of them`, seen >= 40, String(seen));
     t('every one of them begins on the same edge as the line it sits with',
       apart.length === 0, JSON.stringify(apart.slice(0, 6), null, 1));
+  }
+
+  /* ---- urdu sets on its own edge ----
+
+     The check above asks whether two stacked lines *start* together. It
+     is not the whole question, and the Zakat app's page proved it: the
+     Urdu description passed that check while reading badly, because
+     `align-left` on a paragraph of Urdu pins every line at the left —
+     which means every line *begins*, on the right where the script
+     begins, in a different place. The English equivalent is a paragraph
+     set ragged-left.
+
+     So this asks the other half: a block of Urdu or Arabic that takes
+     more than one line must be flush on the edge its own script begins
+     from. Ragged on the far side is right; ragged on the reading side is
+     the fault.
+
+     A post's body is exempt. The writing box has alignment buttons and
+     an author who presses one has made a decision; this is about what
+     the site does when nobody chose. */
+  group('urdu sets flush on the edge it reads from');
+  {
+    const PAGES = ['/index.html', '/apps/zakat-calculator.html',
+                   '/works/saa-ki-tahqeeq.html'];
+    const measure = () => {
+      const ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
+      const out = [];
+      for (const el of document.querySelectorAll('body *')) {
+        if (!el.getClientRects().length) continue;
+        if (el.closest('.post-body, .writing-canvas')) continue;
+        const text = [...el.childNodes].filter((n) => n.nodeType === 3)
+          .map((n) => n.textContent).join('').trim();
+        if (!text) continue;
+        const rtl = (text.match(ARABIC) || []).length;
+        const lat = (text.match(/[A-Za-z]/g) || []).length;
+        if (rtl <= lat) continue;
+
+        const cs = getComputedStyle(el);
+        if (cs.visibility === 'hidden') continue;
+        /* Blocks only. An Arabic phrase quoted inside an English
+           sentence — a book title, a line of hadith — flows with the
+           line it sits in and cannot be flush with anything; that is
+           what `.arabic-inline` is for, and it is not this rule's
+           business. */
+        if (cs.display.indexOf('inline') === 0) continue;
+        let align = cs.textAlign;
+        if (align === 'start' || align === '') align = cs.direction === 'rtl' ? 'right' : 'left';
+        if (align === 'end') align = cs.direction === 'rtl' ? 'left' : 'right';
+        if (align === 'center' || align === 'justify') continue;
+
+        /* Runs grouped into visual lines: getClientRects gives one rect
+           per directional run, so a line holding a digit or a full stop
+           comes back as three. */
+        const r = document.createRange();
+        r.selectNodeContents(el);
+        const rects = [...r.getClientRects()].filter((x) => x.width > 0.5 && x.height > 0.5);
+        const lines = [];
+        for (const x of rects) {
+          const line = lines.find((l) => Math.abs(l.top - x.top) < Math.max(4, x.height * 0.5));
+          if (line) { line.left = Math.min(line.left, x.left); line.right = Math.max(line.right, x.right); }
+          else lines.push({ top: x.top, left: x.left, right: x.right });
+        }
+        if (lines.length < 2) continue;
+
+        /* Flush on the reading edge — the right, for these. */
+        const rights = lines.map((l) => l.right);
+        const spread = Math.max(...rights) - Math.min(...rights);
+        out.push({ tag: el.tagName.toLowerCase(), cls: String(el.className).slice(0, 40),
+                   text: text.replace(/\s+/g, ' ').slice(0, 26),
+                   align, lines: lines.length, spread: Math.round(spread) });
+      }
+      return out;
+    };
+
+    let seen = 0;
+    const ragged = [];
+    for (const width of [1440, 380]) {
+      const context = await browser.newContext({ viewport: { width, height: 1000 } });
+      await context.route('https://fonts.g**', (r) => r.abort());
+      const page = await context.newPage();
+      page.on('pageerror', (e) => threw.push(width + 'px: ' + e.message));
+      for (const path of PAGES) {
+        await page.goto(`http://127.0.0.1:${PORT}${path}`, { waitUntil: 'domcontentloaded' });
+        await page.evaluate(() => document.fonts.ready);
+        await page.evaluate(() => document.querySelectorAll('details').forEach((d) => { d.open = true; }));
+        await page.waitForTimeout(120);
+        const rows = await page.evaluate(measure);
+        seen += rows.length;
+        rows.filter((x) => x.spread > 3).forEach((x) => ragged.push({ width, path, ...x }));
+      }
+      await context.close();
+    }
+    t(`there are multi-line urdu blocks to measure — ${seen} of them`, seen >= 8, String(seen));
+    t('every one of them is flush where its script begins, ragged on the far side',
+      ragged.length === 0, JSON.stringify(ragged.slice(0, 6), null, 1));
   }
 
   /* ---- a category head ---- */
