@@ -2003,6 +2003,21 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .app-about p:last-child { margin-bottom: 0; }
 
 @media (max-width: 620px) {
+  /* An in-prose heading that is a whole sentence — this piece has three
+     over 96 characters — does not fit a phone's column at 20px, and the
+     first line comes up short because `balance` then evens two lines out
+     of it. No `text-wrap` setting fixes that; only the text fitting
+     does. 20px needs 381px for the shortest of them against a 328px
+     column, so 17px is where it comes back onto one line. It goes under
+     the 21px body rather than over it, which it already did at 20px —
+     what sets a heading apart here is bold Aslam against Mehr, not size.
+     Judge any change to these two numbers by rendering the page at
+     390px and looking at it, not by measuring the first line. */
+  .post-body.urdu h2:not(.latin):not(.arabic),
+  .post-body.arabic h2:not(.latin):not(.urdu) { font-size: 20px; }
+  .post-body.urdu h3:not(.latin):not(.arabic),
+  .post-body.arabic h3:not(.latin):not(.urdu) { font-size: 17px; }
+
   .app-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .app-credits { grid-template-columns: minmax(0, 1fr); }
   /* An odd number of facts in a two-column grid leaves the last cell
