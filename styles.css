@@ -1597,6 +1597,25 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   line-height: 1.4;
   color: var(--moss-deep);
 }
+/* `h1, h2, h3` up at the top set `text-wrap: balance`, and text-wrap is
+   inherited, so every heading inside a post got it too. Balance evens
+   the line lengths instead of filling the first, which is right for what
+   it was written for — a title of a few words, where it stopped
+   `An-Naeemi` and `فتویٰ` being orphaned — and wrong for a subheading
+   that is a whole sentence. The headings on the shares post run to 96,
+   97 and 112 characters, and one of them came out `200, 175` in a 328px
+   column: 128px of the first line unused, with the words moved down to
+   even the two.
+
+   `pretty` fills the first line and still repairs the worst orphan that
+   plain filling leaves — that heading measures `268, 107` rather than
+   `327, 48`. No heading gains a line under any of the three; balance was
+   only ever redistributing. A browser that does not know `pretty` drops
+   the declaration and fills the lines anyway, which is the half that
+   matters, the same way `balance` was allowed to fail when it went in. */
+.post-body h2,
+.post-body h3 { text-wrap: pretty; }
+
 /* Not the body's ~2.0. That number is Nastaliq's, and it is right for
    Mehr running as prose; on a heading it puts a full body line between
    the two halves of one sentence, so a heading that wraps — and at 380px
