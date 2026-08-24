@@ -1607,14 +1607,15 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    column: 128px of the first line unused, with the words moved down to
    even the two.
 
-   `pretty` fills the first line and still repairs the worst orphan that
-   plain filling leaves — that heading measures `268, 107` rather than
-   `327, 48`. No heading gains a line under any of the three; balance was
-   only ever redistributing. A browser that does not know `pretty` drops
-   the declaration and fills the lines anyway, which is the half that
-   matters, the same way `balance` was allowed to fail when it went in. */
-.post-body h2,
-.post-body h3 { text-wrap: pretty; }
+   `pretty` was tried instead and is worse to look at, which measuring
+   first-line fill could not see and rendering it immediately did: it
+   leaves the tail of a sentence stranded on a line of its own —
+   `موقوف نہیں۔` under a full line, `شرعی ”ضرورت“ نہیں۔` under two. Two
+   even lines beat one full line and a stub. Balance stays.
+
+   The under-filled first line is real, but it is a symptom of the
+   heading being too long for the column at 20px, not of how the break
+   is placed. Nothing in `text-wrap` fixes that. */
 
 /* Not the body's ~2.0. That number is Nastaliq's, and it is right for
    Mehr running as prose; on a heading it puts a full body line between

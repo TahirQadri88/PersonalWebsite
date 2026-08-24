@@ -100,17 +100,28 @@ instead of emphasising part of it. The synthesised one measures **0%
 wider**. Less contrast, and right: emphasis inside a sentence must not
 resize the sentence.
 
-**`balance` is for a title, `pretty` for a heading inside prose, and
-the difference is length.** `h1, h2, h3` set `text-wrap: balance`, which
-evens the line lengths instead of filling the first — right for a display
-title of a few words, where it stopped `An-Naeemi` and `فتویٰ` being left
-alone on a line. `text-wrap` inherits, so an in-prose subheading got it
-too, and those are sentences: one on the shares post measured `200, 175`
-in a 328px column, 128px of the first line unused because the words had
-been moved down to even the two. `.post-body h2`/`h3` take `pretty`
-instead — it fills the first line and still repairs the worst orphan
-plain filling leaves (`268, 107` rather than `327, 48`). No heading gains
-a line under any of the three; balance was only ever redistributing.
+**`text-wrap: balance` on a heading stays, and a measurement said
+otherwise once.** `h1, h2, h3` set it, and `text-wrap` inherits, so an
+in-prose subheading gets it too. On a heading that is a whole sentence —
+the shares post has three over 96 characters — it leaves the first line
+short: one measured `200, 175` in a 328px column, 128px unused, because
+the words were moved down to even the two lines. That looks wrong and was
+reported as wrong.
+
+`pretty` and plain filling were both tried and both look **worse**. They
+strand the tail of the sentence on a line of its own — `موقوف نہیں۔` under
+a full line, `شرعی ”ضرورت“ نہیں۔` under two. Two even lines beat one full
+line and a stub.
+
+The lesson is the measurement, not the setting. First-line fill was the
+wrong quantity: by that number `pretty` won, and rendering the three side
+by side at 390px showed within seconds that it lost. **A typographic
+judgement needs looking at, not only measuring** — screenshot the element
+and read it. Line count, worth knowing: identical under all three, so
+balance was only ever redistributing.
+
+The under-filled first line is real and `text-wrap` cannot fix it — it
+is the heading being too long for the column at 20px.
 
 **A class the editor writes must outrank the stylesheet's default, or
 the button is a lie.** Three rules were quietly beating the writing
