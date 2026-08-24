@@ -1696,6 +1696,17 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    because a citation is not the argument. */
 .post-body .latin {
   font-family: var(--font-ui);
+}
+/* Left unless the author said otherwise — the same fault the justify
+   rule above had, in the Latin branch. `.post-body .latin` is (0,2,0)
+   and `.align-center` is (0,1,0), so an English block inside an Urdu
+   piece could not be centred, right-set or justified however the button
+   was pressed. The two headings over the reference list are the case:
+   `(مصادر و مراجع )` and `References:` both carry align-center, and only
+   the Urdu one was centred — the English sat at the left margin under
+   it. The face above is not guarded, because Nastaliq has no Latin to
+   draw whatever the alignment. */
+.post-body .latin:not(.align-left):not(.align-center):not(.align-right):not(.align-justify) {
   text-align: left;
 }
 /* The small size is for a citation, not for anything marked English.
