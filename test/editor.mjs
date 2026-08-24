@@ -891,9 +891,13 @@ t('  …and its description is there in both scripts',
    right, so without align-left it sits at the far edge of its own box —
    which on this page is the middle of the screen, away from the English
    line it belongs under. The trap CLAUDE.md names, in a fourth place. */
-t('  …with the Urdu aligned to the column, not to the far edge of its box',
-  /class="app-tagline align-left urdu"/.test(appOut.page || '') &&
-  /<p class="align-left urdu"/.test(appOut.page || ''),
+/* own-edge, not align-left alone: the block is placed at the column's
+   start and its words set on their own reading edge. align-left by itself
+   pins every line at the left, which means every line *begins* — on the
+   right, where Urdu begins — somewhere different. */
+t('  …with the Urdu placed at the column and set on its own edge',
+  /class="app-tagline align-left own-edge urdu"/.test(appOut.page || '') &&
+  /<p class="align-left own-edge urdu"/.test(appOut.page || ''),
   (appOut.page || '').split('\n').filter((l) => /tagline|align-left/.test(l)).join(' | '));
 /* An app is not a piece of writing, so its page carries no Print — the
    same reason a work's page does not. */

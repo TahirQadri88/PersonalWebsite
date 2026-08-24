@@ -288,13 +288,13 @@ set in Latin whatever the piece is, since it is 12px, uppercase and
 tracked — Nastaliq at that size cannot be read.
 
 **Urdu in a left-reading column.** This one rule has now been broken
-seven times, so it is stated once here rather than told as seven stories.
+eight times, so it is stated once here rather than told as eight stories.
 
 `.urdu` carries `text-align: right` *and* a font size. An Urdu element
 also carries `dir="rtl"`, which turns even an inherited `text-align:
 start` into **right** — so a line of Urdu inside a left-reading column
 goes to the far edge of its own box with no rule saying so anywhere.
-The three consequences:
+The four consequences:
 
 - Never put `.urdu` on something that has a size or an alignment of its
   own; it brings both.
@@ -302,6 +302,24 @@ The three consequences:
   even where nothing sets alignment at all. That is what hid in the hero:
   its Urdu line began 234px in while the eyebrow, the headline and the
   paragraph above it all began at the column edge.
+- **A paragraph needs `own-edge` beside it, and `align-left` alone is
+  wrong for one.** `align-left` pins every line at the left, which means
+  every line *begins* — on the right, where the script begins — in a
+  different place. That is a paragraph set ragged-left, and it is what
+  the Zakat app's description was doing: `[192→808], [192→828],
+  [192→678]`. `.own-edge.urdu` shrinks the box to its own longest line
+  (`fit-content`) and sets the words right inside it, so the block starts
+  at the column edge and the words fall back from it as Urdu should. One
+  line renders identically to `align-left`, which is why it is safe to
+  write anywhere `align-left` goes on Urdu.
+
+  Write **both** classes, always — `align-left own-edge`. `.own-edge.urdu`
+  (0,2,0) only outbids `.align-left` (0,1,0) when the content really is
+  Urdu, so where a string turns out English — a kind label rendered as
+  "App" rather than ایپ — `align-left` still does the right thing.
+  `.align-left` itself could not simply be redefined: the writing box
+  authors it onto a post's blocks as the author's own choice, and that
+  must stand.
 - Do not set `text-align: right` on an Urdu selector "for safety". It
   buys nothing — the direction already does it — and it outranks
   `align-left`, which is how the two descriptions in an open library row
@@ -318,9 +336,14 @@ line is *placed*, not aligned. A work's page does this deliberately —
 page's margin while a long run of English still reads from its own left,
 which is easier to read than it is tidy. See section 11 of `styles.css`.
 
-All of it is held by *urdu stacked against english* in
-`test/homepage.mjs`, which measures 89 stacked pairs across four pages at
-two widths. It found the last two faults itself.
+All of it is held by two groups in `test/homepage.mjs`. *Urdu stacked
+against english* measures 89 stacked pairs across four pages at two
+widths — where each block **starts**; it found two of these faults
+itself. *Urdu sets flush on the edge it reads from* measures 64
+multi-line blocks across three pages and asks the other half of the
+question: whether the lines **inside** one block begin together. The
+first passed the Zakat page while it read badly, which is why there are
+two.
 
 **A label written by hand into `index.html` needs `align-left` too.**
 `.urdu` sets `text-align: right`, and a section label inherits it, so above

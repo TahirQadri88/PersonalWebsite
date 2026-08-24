@@ -96,8 +96,10 @@
       '</a>' +
       /* align-left only when the label is Urdu and the page is not:
          `.urdu` would otherwise set it against the far margin. An English
-         kind on an English page needs nothing — it is already there. */
-      site.kindMarkup(record, 'section-label' + (rtl ? '' : ' align-left'), 'p') +
+         kind on an English page needs nothing — it is already there.
+         own-edge beside it, the same as buildWork writes, so a long Urdu
+         kind that wraps at 380px begins each line in one place. */
+      site.kindMarkup(record, 'section-label' + (rtl ? '' : ' align-left own-edge'), 'p') +
       site.titleMarkup(record, 'h1') +
       (site.formatDate(record.date) ? '<p class="work-date">' + site.escapeHtml(site.formatDate(record.date)) + '</p>' : '') +
       prose +
