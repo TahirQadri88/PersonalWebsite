@@ -1565,7 +1565,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   font-family: var(--font-urdu-heading);
   word-spacing: var(--space-urdu-heading);
   font-size: 23px;
-  line-height: 2.05;
+  line-height: 1.5;
 }
 .post-body h3 {
   margin-top: 1.5em;
@@ -1573,12 +1573,28 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   line-height: 1.4;
   color: var(--moss-deep);
 }
+/* Not the body's ~2.0. That number is Nastaliq's, and it is right for
+   Mehr running as prose; on a heading it puts a full body line between
+   the two halves of one sentence, so a heading that wraps — and at 380px
+   most of them do — reads as two headings rather than one. Aslam is a
+   Naskh with shallower descenders and does not need it. Measured at
+   380px: the three lines of a wrapped h3 sat 40px apart, the same gap
+   the paragraph below them uses. */
 .post-body.urdu h3:not(.latin):not(.arabic) {
   font-family: var(--font-urdu-heading);
   word-spacing: var(--space-urdu-heading);
   font-size: 20px;
-  line-height: 2;
+  line-height: 1.5;
 }
+/* The same fault the footnote below had, in the headings. `1.32em` and
+   `1.1em` are relative to `.post-body`, which is 21px in an Urdu piece
+   because Mehr needed it — so `References:` came out at 27.72px beside
+   its own Urdu peer at 23px, an English heading a fifth larger than the
+   Urdu one it translates. A Latin block in this piece is set from the
+   15px Latin body, not the Urdu one: 1.32 and 1.1 of that. */
+.post-body.urdu h2.latin, .post-body.arabic h2.latin { font-size: 19.8px; }
+.post-body.urdu h3.latin, .post-body.arabic h3.latin { font-size: 16.5px; }
+
 .post-body .footnote {
   font-size: 0.85em;
   line-height: 1.6;
