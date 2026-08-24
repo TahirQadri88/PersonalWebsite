@@ -1477,7 +1477,7 @@
          the post reads in, and the script it comes out in decides the
          font, the direction and whether align-left is needed at all. */
       record.kind
-        ? '        ' + site.kindMarkup(record, 'section-label' + (rtl ? '' : ' align-left own-edge'), 'p')
+        ? '        ' + site.kindMarkup(record, 'section-label' + (rtl ? '' : ' align-left'), 'p')
         : null,
       /* record-title, not just the script class — matches site.titleMarkup,
          which builds every other title on the site and is what lets an
@@ -1680,7 +1680,7 @@
       '        <a class="back-link" href="../index.html#' + e(categoryId) + '"><span aria-hidden="true">' +
         (rtl ? '→' : '←') + '</span> ' + e(categoryTitle) + '</a>',
       record.kind
-        ? '        ' + site.kindMarkup(record, 'section-label' + (rtl ? '' : ' align-left own-edge'), 'p')
+        ? '        ' + site.kindMarkup(record, 'section-label' + (rtl ? '' : ' align-left'), 'p')
         : null,
       '        <h1 class="record-title ' + scriptClass + '" lang="' + e(record.language || 'en') +
         '" dir="' + (rtl ? 'rtl' : 'ltr') + '">' + e(record.title) + '</h1>',
@@ -1689,7 +1689,7 @@
          takes .record-title like every other title the site renders —
          which is what gives it Aslam rather than the body Nastaliq. */
       app.nameUr
-        ? '        <p class="app-name-ur record-title urdu' + (rtl ? '' : ' align-left own-edge') +
+        ? '        <p class="app-name-ur record-title urdu' + (rtl ? '' : ' align-left') +
           '" lang="ur" dir="rtl">' + e(app.nameUr) + '</p>'
         : null,
       /* The title, the words under it and the button are one block. They
@@ -1764,7 +1764,12 @@
             : [record.description, record.descriptionUr])
             .filter(Boolean)
             .map(function (text) {
-              return '          ' + site.proseMarkup(text, rtl ? '' : 'align-left own-edge', record.language);
+              /* Per string, not per record: `.own-edge` is scoped to
+                 `.urdu`/`.arabic`, so on the English half of a pair it
+                 is a class with no rule behind it. */
+              var lang = text === record.descriptionUr ? 'ur' : record.language;
+              var edge = rtl ? '' : (site.direction(lang) === 'rtl' ? 'align-left own-edge' : 'align-left');
+              return '          ' + site.proseMarkup(text, edge, lang);
             })
             .join('\n') +
           '\n        </div>'
@@ -2263,7 +2268,7 @@
       '        <a class="back-link" href="' + e(backHref) + '"><span aria-hidden="true">' +
         (rtl ? '→' : '←') + '</span> ' + e(categoryTitle) + '</a>',
       kind
-        ? '        ' + site.kindMarkup(record, 'section-label' + (rtl ? '' : ' align-left own-edge'), 'p')
+        ? '        ' + site.kindMarkup(record, 'section-label' + (rtl ? '' : ' align-left'), 'p')
         : null,
       '        ' + site.titleMarkup(record, 'h1'),
       /* Same reasoning as buildPost: formatDate's month name is always
@@ -2402,7 +2407,7 @@
           pad(i + 2) + '     it `.urdu` sets the block right and the label lands at the far\n' +
           pad(i + 2) + '     edge of a 780px column, across from the name it introduces. -->'
         : '',
-      about.label ? '<p class="section-label urdu align-left own-edge"' + langAttrs(about.label) + '>' +
+      about.label ? '<p class="section-label urdu align-left"' + langAttrs(about.label) + '>' +
         e(about.label) + '</p>' : '',
       '<h2>' + e(about.heading || '') + '</h2>',
       about.summary ? '<p' + langAttrs(about.summary) + '>' + e(about.summary) + '</p>' : ''
@@ -2449,7 +2454,7 @@
       pad(i + 4) + '<summary>',
       pad(i + 6) + '<span>',
       bio.openLabelUr
-        ? pad(i + 8) + '<span class="section-label urdu align-left own-edge"' + langAttrs(bio.openLabelUr) +
+        ? pad(i + 8) + '<span class="section-label urdu align-left"' + langAttrs(bio.openLabelUr) +
           '>' + e(bio.openLabelUr) + '</span>'
         : '',
       pad(i + 8) + '<strong>' + e(bio.openLabel || 'Read the full introduction') + '</strong>',

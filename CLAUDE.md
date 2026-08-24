@@ -150,13 +150,27 @@ The four consequences:
   line renders identically to `align-left`, which is why it is safe to
   write anywhere `align-left` goes on Urdu.
 
-  Write **both** classes, always — `align-left own-edge`. `.own-edge.urdu`
-  (0,2,0) only outbids `.align-left` (0,1,0) when the content really is
-  Urdu, so where a string turns out English — a kind label rendered as
-  "App" rather than ایپ — `align-left` still does the right thing.
-  `.align-left` itself could not simply be redefined: the writing box
-  authors it onto a post's blocks as the author's own choice, and that
-  must stand.
+  **A paragraph takes it; a label does not.** It went on ten call sites
+  first, and measuring found only three where anything wrapped: the two
+  descriptions, `.app-about` and the app's tagline. A kind, a category
+  name and a record's title are drawn short by construction and have
+  never taken a second line, so there `align-left` alone is the whole
+  answer and `own-edge` is a `width: fit-content` nobody asked for.
+  Author-typed running text — the hero's Urdu line, the app's call to
+  action — keeps it, because those can grow.
+
+  Decide per **string**, not per record. A panel holds an Urdu
+  description and an English one; `.own-edge` is scoped to
+  `.urdu`/`.arabic` and cannot match Latin, so writing it on the English
+  half put a class with no rule behind it on fourteen paragraphs.
+  `prose()` in `script.js` and the `.app-about` loop in `admin.js` both
+  ask `site.direction` of the string they are about to write.
+
+  Where it is written it is written **beside** `align-left`, never
+  instead: `.own-edge.urdu` (0,2,0) outbids `.align-left` (0,1,0) only
+  when the content really is Urdu. `.align-left` itself could not simply
+  be redefined — the writing box authors it onto a post's blocks as the
+  author's own choice, and that must stand.
 - Do not set `text-align: right` on an Urdu selector "for safety". It
   buys nothing — the direction already does it — and it outranks
   `align-left`, which is how the two descriptions in an open library row

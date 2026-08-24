@@ -203,16 +203,23 @@
        `.align-left` and `.align-right` are declared after `.urdu` in
        styles.css, so they win over the alignment the script class
        carries — which is the only reason one class can settle both. */
-    /* own-edge, not align-left, for the left-reading case: a paragraph
-       of Urdu pinned at the left has every line *beginning* in a
-       different place, because an Urdu line begins on its right. See
-       styles.css. */
-    var edge = rtl ? 'align-right' : 'align-left own-edge';
+    /* `own-edge` belongs to the paragraph that reads the other way, and
+       to no other. A paragraph of Urdu pinned left has every line
+       *beginning* in a different place, because an Urdu line begins on
+       its right — so the Urdu one in a left-reading panel takes it. The
+       English one alongside it must not: `.own-edge` is scoped to
+       `.urdu`/`.arabic` and cannot match Latin, so writing it there put
+       a class with no rule behind it on fourteen paragraphs. Decided per
+       string, not per record, because a panel holds one of each. */
+    var edge = function (lang) {
+      if (rtl) return 'align-right';
+      return site.direction(lang) === 'rtl' ? 'align-left own-edge' : 'align-left';
+    };
     return (rtl
       ? [[record.descriptionUr, 'ur'], [record.description, record.language]]
       : [[record.description, record.language], [record.descriptionUr, 'ur']])
       .filter(function (pair) { return pair[0]; })
-      .map(function (pair) { return site.proseMarkup(pair[0], edge, pair[1]); })
+      .map(function (pair) { return site.proseMarkup(pair[0], edge(pair[1]), pair[1]); })
       .join('');
   }
 
@@ -299,7 +306,7 @@
              so a reader scrolling had no landmark to aim at. */
           '<h3>' + site.categoryIcon(category, 'category-icon') +
           site.escapeHtml(category.title) + '</h3>' +
-          (category.titleUr ? '<p class="category-urdu urdu align-left own-edge" lang="ur" dir="rtl">' + site.escapeHtml(category.titleUr) + '</p>' : '') +
+          (category.titleUr ? '<p class="category-urdu urdu align-left" lang="ur" dir="rtl">' + site.escapeHtml(category.titleUr) + '</p>' : '') +
           (category.blurb ? site.proseMarkup(category.blurb, 'category-blurb') : '') +
           '</div>' +
           '<span class="work-category-count">' + count + (count === 1 ? ' work' : ' works') + '</span>' +
