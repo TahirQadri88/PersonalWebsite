@@ -121,7 +121,13 @@ and read it. Line count, worth knowing: identical under all three, so
 balance was only ever redistributing.
 
 The under-filled first line is real and `text-wrap` cannot fix it — it
-is the heading being too long for the column at 20px.
+is the heading being too long for the column at 20px. What fixes it is
+the text fitting: under 620px an in-prose Urdu heading is 17px and h2
+20px, which is where the shortest of the three comes back onto one line
+(it needs 381px at 20px against a 328px column). Three headings on that
+post lost a line outright. The heading goes *under* the 21px body rather
+than over it, which it already did at 20px — what sets one apart here is
+bold Aslam against Mehr, not size.
 
 **A class the editor writes must outrank the stylesheet's default, or
 the button is a lie.** Three rules were quietly beating the writing
