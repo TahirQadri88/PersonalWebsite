@@ -899,6 +899,15 @@ t('  …with the Urdu placed at the column and set on its own edge',
   /class="app-tagline align-left own-edge urdu"/.test(appOut.page || '') &&
   /<p class="align-left own-edge urdu"/.test(appOut.page || ''),
   (appOut.page || '').split('\n').filter((l) => /tagline|align-left/.test(l)).join(' | '));
+/* And only there. `.own-edge` is scoped to `.urdu`/`.arabic`, so on an
+   English paragraph it is a class with no rule behind it — which is what
+   it was, on fourteen of them, until the edge was decided per string
+   rather than per record. A kind label is short by construction and does
+   not take it either. */
+t('  …while the English beside it carries no rule it cannot match',
+  !/class="align-left own-edge"(?![^>]*\b(urdu|arabic)\b)/.test(appOut.page || '') &&
+  !/section-label[^"]*own-edge/.test(appOut.page || ''),
+  (appOut.page || '').split('\n').filter((l) => /own-edge/.test(l)).join(' | '));
 /* An app is not a piece of writing, so its page carries no Print — the
    same reason a work's page does not. */
 t('  …and nothing on it claims to be printable',
