@@ -100,6 +100,34 @@ instead of emphasising part of it. The synthesised one measures **0%
 wider**. Less contrast, and right: emphasis inside a sentence must not
 resize the sentence.
 
+**`balance` is for a title, `pretty` for a heading inside prose, and
+the difference is length.** `h1, h2, h3` set `text-wrap: balance`, which
+evens the line lengths instead of filling the first — right for a display
+title of a few words, where it stopped `An-Naeemi` and `فتویٰ` being left
+alone on a line. `text-wrap` inherits, so an in-prose subheading got it
+too, and those are sentences: one on the shares post measured `200, 175`
+in a 328px column, 128px of the first line unused because the words had
+been moved down to even the two. `.post-body h2`/`h3` take `pretty`
+instead — it fills the first line and still repairs the worst orphan
+plain filling leaves (`268, 107` rather than `327, 48`). No heading gains
+a line under any of the three; balance was only ever redistributing.
+
+**A class the editor writes must outrank the stylesheet's default, or
+the button is a lie.** Three rules were quietly beating the writing
+box's alignment classes, all found by measuring one post:
+`.post-body.urdu p:not(.latin)` (0,3,1) justified every Urdu paragraph
+whatever was chosen; `.post-body .latin` (0,2,0) pinned every English
+block left, so `(مصادر و مراجع )` centred and `References:` beside it did
+not; and `align-left` read literally rags the edge Urdu *begins* from, so
+in a post body it means `own-edge` — the block at the column's left, the
+words on their own reading edge. `admin.js` writes an alignment class
+only when someone picks one (`if (b.align)`), so every one in a file is a
+decision. Each default now excuses `.align-left`/`-center`/`-right`/
+`-justify` by name, which keeps the default visible in the selector that
+sets it. The flush group in `test/homepage.mjs` measures post bodies for
+this reason — it used to exempt them whole, and all three faults lived in
+that exemption.
+
 **A kind is shown in the language the record reads in.** Every `kind` in
 `content.js` is written in Urdu, because Urdu is what the library is
 catalogued in — so an English essay wore `مضمون` on its row, on its page,
