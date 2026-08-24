@@ -1538,8 +1538,32 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    read as stranded rather than set. Paragraphs and footnotes only: a
    heading or a quotation is short enough that justifying it would
    space out a handful of words rather than a paragraph's worth. */
-.post-body.urdu p:not(.latin),
-.post-body.arabic p:not(.latin) { text-align: justify; }
+/* …but only where the author did not say otherwise. This rule is
+   (0,3,1) and `.align-left` is (0,1,0), so for months every alignment
+   button pressed on an Urdu paragraph did nothing at all — the class was
+   written into the file and the page ignored it. `admin.js` writes one
+   only when someone chooses it (`if (b.align)`), so every one in a post
+   is a decision, and the writing box must not offer a choice it cannot
+   keep. Naming the four here rather than raising the classes elsewhere:
+   the default stays visible in the selector that sets it. */
+.post-body.urdu p:not(.latin):not(.align-left):not(.align-center):not(.align-right):not(.align-justify),
+.post-body.arabic p:not(.latin):not(.align-left):not(.align-center):not(.align-right):not(.align-justify) { text-align: justify; }
+/* "Left" on a paragraph of Urdu means *put the block at the left of the
+   column* — it cannot sensibly mean "rag the edge the script begins
+   from", which is what the literal reading gives: honouring it literally
+   put four paragraphs of the shares post at [31,320] [31,345] [31,335]
+   [31,346] [31,341], every line starting somewhere different. That is
+   the fault `own-edge` exists for, so this is `own-edge` by another
+   name, reached through the class the writing box actually writes.
+   Latin and Arabic-in-an-Urdu-piece are untouched: only the script that
+   reads right-to-left has a reading edge to rag. */
+.post-body p.align-left.urdu,
+.post-body p.align-left.arabic {
+  width: fit-content;
+  max-width: 100%;
+  text-align: right;
+}
+
 .post-body > * { margin: 0 0 1.1em; }
 .post-body > *:last-child { margin-bottom: 0; }
 .post-body h2 {
