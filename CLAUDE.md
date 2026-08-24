@@ -35,11 +35,9 @@ work.js        the work.html fallback above — nothing else uses it
 admin.html     form editor — publishes to GitHub, or hands you the files
 admin.css admin.js   its styles and logic, loaded by nothing else
 worker/        the editor's backend — Cloudflare Worker, deployed separately
-test/          drives a browser over admin.html and over the homepage —
-                 editor.mjs after touching the editor, homepage.mjs after
-                 touching script.js, common.js or the library's CSS
+test/          the browser suites — see "The suites" under Working on this
 posts/         one HTML file per post — the writing is the page, not a download
-works/         one HTML file per work and fatwa — written by admin.html, same as posts/
+works/         one HTML file per work and fatwa — written by admin.html
 apps/          one HTML file per app — built from fields, not written
 styles.css     all design, in 13 numbered sections
 404.html robots.txt sitemap.xml share-card.png CNAME
@@ -62,6 +60,12 @@ two lists drifted.
 page, `works/<id>.html`. Links get shared with students. Never regenerate IDs
 from array position, and never rename an existing one.
 
+**Missing files are a normal state.** A work with no `files` array renders as
+"Not published here yet". Do not delete such entries or invent placeholder URLs.
+
+**Escape user content.** All strings from `content.js` go through
+`site.escapeHtml` before reaching `innerHTML`.
+
 **Typography is not cosmetic.** Urdu must render in Nastaleeq and Arabic in
 Naskh (`Amiri`). Set `language: "ur" | "ar" | "en"` on every entry; the code
 derives font, `dir` and size from it. Nastaliq needs generous line-height
@@ -71,9 +75,8 @@ record's own title — and an in-prose subheading inside a post — is Aslam
 (`--font-urdu-heading`) instead, a bold Naskh face, since Nastaliq mostly has
 no bold cut of its own to set a heading apart from the body under it. Both
 fall back to Noto Nastaliq Urdu, already loaded regardless, if their own file
-is ever slow or unreachable. See `.record-title` in common.js — that's the
-class that carries the heading font, on every title the site renders,
-wherever it's shown.
+is ever slow or unreachable. `.record-title` in `common.js` is the class that
+carries the heading font, on every title the site renders, wherever shown.
 
 **A line can be marked inside, not only as a whole.** Bold, italic,
 underline and two size steps apply to the words picked out. They are kept
@@ -81,19 +84,99 @@ in the page itself — `<b>`, `<i>`, `<u>`, `span.text-small`,
 `span.text-large` — since a post's own HTML file is the store. Between
 reading that file and writing it again the text passes through `bodies`,
 which is memory and never a file, so the marks travel there as two
-characters no keyboard produces (`\u0002` opens and names a run,
-`\u0003` closes it) and nothing needs escaping. The sizes are steps in
-`em`, never pixels: "one larger" has to hold whether the line is Nastaliq
-at 21px, Naskh at 23 or English at 15. Bold inside Urdu is Mehr with the
-weight the browser synthesises: Mehr has exactly one weight, its upstream
-package ships one file and it is not variable, so there is no bold of its
-own. Noto Nastaliq Urdu's real 700 was tried and measured against it —
-45% wider and 40% taller at the same size, because Noto's letterforms run
-larger at the same declared size, which is the same reason the body size
-here was tuned up for Mehr. A bold word came out heavier *and* bigger,
-which breaks the line instead of emphasising part of it. The synthesised
-one measures 0% wider. Less contrast, and right: emphasis inside a
-sentence must not resize the sentence.
+characters no keyboard produces (U+0002 opens and names a run, U+0003
+closes it) and nothing needs escaping.
+
+The sizes are steps in `em`, never pixels: "one larger" has to hold
+whether the line is Nastaliq at 21px, Naskh at 23 or English at 15.
+
+Bold inside Urdu is Mehr with the weight the browser synthesises. Mehr
+has exactly one weight — one file upstream, not variable. Noto Nastaliq
+Urdu's real 700 was tried and measured against it: **45% wider and 40%
+taller** at the same size, because Noto's letterforms run larger at the
+same declared size (the same reason the body size here was tuned up for
+Mehr). A bold word came out heavier *and* bigger, which breaks the line
+instead of emphasising part of it. The synthesised one measures **0%
+wider**. Less contrast, and right: emphasis inside a sentence must not
+resize the sentence.
+
+**A kind is shown in the language the record reads in.** Every `kind` in
+`content.js` is written in Urdu, because Urdu is what the library is
+catalogued in — so an English essay wore `مضمون` on its row, on its page,
+on its share card, and the caption dropped the label rather than
+translate it. `site.recordKind` turns it round through `KIND_IN_ENGLISH`
+in `common.js`, a small closed table rather than a second field on every
+entry; an unmapped kind falls through as itself, which is the right way
+to fail. It carries the fatwa default (`فتویٰ` / `Fatwa`) too, so the
+row, the page and the card cannot disagree about what an untitled ruling
+is called — they each used to keep their own copy of that fallback and
+one of them was missing it. `site.kindMarkup` writes the element, and
+picks the font, `lang`, `dir` and the `urdu`/`latin` class off the script
+the word actually came out in. Translations are renderings, not the
+author's own English: change them in that one table.
+
+**A description shown to a reader follows the piece, not the site.**
+`og:description` in `buildPost` and `buildWork`, and `shareCaption` in
+`common.js`, all take `descriptionUr` first for an Urdu or Arabic record
+and `description` first otherwise. An Urdu article carried an English
+sentence under its Urdu title for months because the meta tags read
+`record.description` and nothing else.
+
+**Urdu in a left-reading column.** This one rule has been broken eight
+times, so it is stated once here rather than told as eight stories.
+
+`.urdu` carries `text-align: right` *and* a font size. An Urdu element
+also carries `dir="rtl"`, which turns even an inherited `text-align:
+start` into **right** — so a line of Urdu inside a left-reading column
+goes to the far edge of its own box with no rule saying so anywhere.
+The four consequences:
+
+- Never put `.urdu` on something that has a size or an alignment of its
+  own; it brings both.
+- Anything Urdu in a left-reading column needs `align-left`, even where
+  nothing sets alignment at all. That is what hid in the hero: its Urdu
+  line began 234px in while the eyebrow, the headline and the paragraph
+  above it all began at the column edge. A label typed by hand into
+  `index.html` is the same case and does not get it for free — three of
+  them went years without it, up to 1180px from the words they named.
+- **A paragraph needs `own-edge` beside it, and `align-left` alone is
+  wrong for one.** `align-left` pins every line at the left, which means
+  every line *begins* — on the right, where the script begins — in a
+  different place. That is a paragraph set ragged-left, and it is what
+  the Zakat app's description was doing: `[192→808], [192→828],
+  [192→678]`. `.own-edge.urdu` shrinks the box to its own longest line
+  (`fit-content`) and sets the words right inside it, so the block starts
+  at the column edge and the words fall back from it as Urdu should. One
+  line renders identically to `align-left`, which is why it is safe to
+  write anywhere `align-left` goes on Urdu.
+
+  Write **both** classes, always — `align-left own-edge`. `.own-edge.urdu`
+  (0,2,0) only outbids `.align-left` (0,1,0) when the content really is
+  Urdu, so where a string turns out English — a kind label rendered as
+  "App" rather than ایپ — `align-left` still does the right thing.
+  `.align-left` itself could not simply be redefined: the writing box
+  authors it onto a post's blocks as the author's own choice, and that
+  must stand.
+- Do not set `text-align: right` on an Urdu selector "for safety". It
+  buys nothing — the direction already does it — and it outranks
+  `align-left`, which is how the two descriptions in an open library row
+  ended up at opposite edges of one panel.
+
+Two limits on all of the above. **Urdu among Urdu keeps its own edge** —
+a block of Urdu surrounded by Urdu is right-set because that is how the
+script sets; it is only when the two scripts stack in one column that
+they have an edge to share. And **a box shrunk to its own longest line
+is *placed*, not aligned**: a work's page does this deliberately,
+`fit-content` plus `margin-inline-start: auto`, so the box ends at the
+page's margin while a long run of English still reads from its own left
+— easier to read than it is tidy. Section 11 of `styles.css`.
+
+Two groups in `test/homepage.mjs` hold it. *Urdu stacked against
+english* measures 89 pairs across four pages at two widths — where each
+block **starts**, and it found two of these faults itself. *Urdu sets
+flush on the edge it reads from* measures 64 multi-line blocks and asks
+whether the lines **inside** one block begin together. The first passed
+the Zakat page while it read badly, which is why there are two.
 
 **The homepage's words live in `content.js`, and `index.html` is a
 rendering of them.** The hero, the author's introduction and the whole
@@ -104,24 +187,22 @@ and its closing half — and a publish replaces what is between each pair
 and touches nothing else in the file. Editing between the markers by hand
 is editing a generated file: the next publish overwrites it.
 
-Drawing them with a script at load would have been three lines and is the
-wrong answer. The introduction is the most-read prose about the author on
-the site, and a crawler, a WhatsApp preview and a reader with JavaScript
-off never run one — the library can afford to be JS-rendered because
-`sitemap.xml` and every work's own page carry it; the introduction has no
-such second copy.
+Drawing them with a script at load is the wrong answer: the introduction
+is the most-read prose about the author on the site, and a crawler, a
+WhatsApp preview and a reader with JavaScript off never run one. The
+library can afford to be JS-rendered because `sitemap.xml` and every
+work's own page carry it; the introduction has no such second copy.
 
 `buildIndex` in `admin.js` does the splice, and it is all-or-nothing: a
 missing marker writes **no** region and stops the publish with a sentence
 naming it. `index.html` is the front door; a half-generated one is worse
 than an unchanged one. The editor reads the committed page back over
-http, the same way it reads a post's writing back, so this needs the
-editor opened over http and not from the file system.
+http, so this needs the editor opened over http, not from the file system.
 
 None of these strings says which script it is in. `langAttrs` asks
 `scriptOf` — the same function the writing box asks of a typed line — and
-writes `lang` and `dir` out itself. It never writes a **class**: `.urdu`
-carries a font size and `text-align: right` along with the font, and the
+writes `lang` and `dir` itself. It never writes a **class**: `.urdu`
+brings a font size and `text-align: right` along with the font, and the
 hero's Urdu line has a size of its own and no alignment of its own, so
 the class would send it to the far edge of its column. Which classes an
 element wears is written out element by element in the builders.
@@ -146,91 +227,6 @@ published through the editor. Relative file paths inside a work page climb
 back out with `../`, since the page now lives one folder down; an offsite
 link (Google Drive) is left alone. See `site.isOffsite`.
 
-**A record carries the day it was last edited, and the editor stamps
-it.** `updated` is written by `touch(record)` in `admin.js`, from a
-listener delegated on the row — so a field added later cannot be
-forgotten — and it is what the *Recently added and updated* strip is
-ordered by, newest first, `updated || date`. Not stamped at publish
-time: a publish rewrites every page in the library whether or not
-anything about it changed, which is deliberate, so stamping there would
-mark all twenty-three as new every time and the strip would say nothing.
-Moving a record up the page or into another category does **not** stamp
-it — that changes where it is read, not what it says.
-
-The date is `today()`, built from local date parts. `toISOString()` is
-UTC and Karachi is five hours ahead of it, so a post written before five
-in the morning was stamped with yesterday. `site.formatDate` has never
-had that fault — it parses `"2026-08-04"` with a regex and never builds
-a `Date` — and `recordMeta` falls back to `updated` when a record has no
-`date` of its own, so the row, the card and the page all say the same
-thing from one function.
-
-**A shelf on the way past, not a screen.** The strip went up at 575px —
-64% of a 900px viewport, against an author introduction of 591px — and
-pushed the library, which is the point of the site, to y=2021. It is
-368px now, 41%, with the library at 1814. Most of that was one thing: a
-card's meta line was **114px**, taller than its own title, because
-`Read here · Urdu · 8 August 2026` wrapped to three lines in a 280px
-card. A card says kind and date and nothing else — `site.recordWhen`,
-which `recordMeta` also calls, so "when" still has one answer. Format and
-language are the library row's job, one section down. Its heading is
-sized well under a section's too: at 48px it looked like a peer of the
-library it sits above. `test/homepage.mjs` holds all of it to numbers so
-it cannot creep back.
-
-**The cards drift, and the clones are made in the browser.** `startTicker`
-in `script.js` clones the set once into `.recent-ticker` and translates
-the pair by −50%; with a `margin-right` on each card rather than a flex
-`gap`, half the pair's width is exactly one set and the loop has no seam
-(a flex gap leaves it half a gap short, which jumps every time round).
-The clones are **never written into `index.html`** — the cards are in the
-file so that a reader without JavaScript gets them, and baking the
-duplicates in would give that reader, and a crawler, every card twice.
-Each clone carries `aria-hidden` and `tabindex="-1"`, so a screen reader
-and the keyboard meet each card once. Hover and focus-within pause it,
-which is owed to anything that moves by itself. No JavaScript, reduced
-motion, or nothing overflowing: no clones, no animation, and the strip
-stays the scrollable rail with arrows that it is otherwise — the same
-three cases as the icons.
-
-**The recently-added strip is in the file, not drawn by a script.** It is
-generated into `index.html` by `indexRecent` at publish time like every
-other marked region, which is why `test/homepage.mjs` can turn
-JavaScript off and still find the cards with their titles in them —
-where the library below it renders nothing at all. Every part of a card
-comes from the helper the library row uses for the same part —
-`titleMarkup`, `kindMarkup`, `metaMarkup`, `categoryIcon` — so a card
-cannot end up saying something different from the row it mirrors.
-
-`rail()` in `script.js` is the category strip's own scrolling behaviour,
-extracted and used twice. It scrolls the *track*, never
-`scrollIntoView` — same reason as the rail that marks your place.
-
-The cards rise as they arrive, and `card-rise` carries both the movement
-**and** the state it moves from. Putting `opacity: 0` on `.recent-card`
-itself was tried and the tests caught it: no JavaScript, no
-`IntersectionObserver`, or `prefers-reduced-motion` must each leave the
-cards exactly where they already are. Same argument as the icons.
-
-**An app is opened, so its row opens it.** `recordMeta` answers "Opens in
-a browser" for a record with an `app` block and names no language — this
-one has two, and calling it English because the title is in English
-describes nothing a reader would get. `workMarkup` puts **Open the app**
-first, straight to `record.app.url` and offsite, with **About this app**
-beside it: the request was for a direct link *as well*, not instead.
-
-**An app's page carries who stands behind it.** `presentedBy`,
-`preparedBy` and `verifiedBy[]` on the `app` block become the
-پیشکش / تیار کردہ / تصدیق panel at the foot of the page. The تصدیق is the
-part that matters: a zakāt calculator two muftis have checked is a
-different thing from one nobody has, and a page that does not say which
-leaves a reader to guess. Fields, not a sentence somebody remembers to
-type. The labels are Urdu words so they are set in Urdu — `.bio-facts dt`
-had to learn the same thing, where نام and کنیت were being set in the
-Latin UI face at 12px with 0.08em of tracking, which pulls joined letters
-apart. Who built it is said once: the *Built by* cell in the facts row is
-written only when `preparedBy` is absent.
-
 **An app is a record with an `app` block, and its page is built from
 fields.** `apps/<id>.html`, written by `buildApp` and regenerated in full
 on every publish the way a work's page is — there is no writing to read
@@ -248,30 +244,43 @@ is in it. Two things did need telling: **Print** is mounted on
 that does nothing on paper, the same argument a work's page makes), and
 the Worker's `WRITABLE` needs `apps/…`, which is a hand deploy.
 
-The `app` icon is the twelfth drawing. A card's mark in the recently-added
-strip deliberately does **not** carry `.category-icon`: those draw
-themselves on as you reach them, and a mark sitting off the right-hand
-end of a rail would never come into view to be drawn.
+**An app is opened, so its row opens it, and its page says who stands
+behind it.** `recordMeta` answers "Opens in a browser" for a record with
+an `app` block and names no language — this one has two, and calling it
+English because the title is in English describes nothing a reader would
+get. `workMarkup` puts **Open the app** first, straight to
+`record.app.url` and offsite, with **About this app** beside it: the
+request was for a direct link *as well*, not instead.
 
-**Missing files are a normal state.** A work with no `files` array renders as
-"Not published here yet". Do not delete such entries or invent placeholder URLs.
+`presentedBy`, `preparedBy` and `verifiedBy[]` on the `app` block become
+the پیشکش / تیار کردہ / تصدیق panel at the foot of the page. The تصدیق is
+the part that matters: a zakāt calculator two muftis have checked is a
+different thing from one nobody has, and a page that does not say which
+leaves a reader to guess. Fields, not a sentence somebody remembers to
+type. The labels are Urdu words so they are set in Urdu — `.bio-facts dt`
+had to learn the same thing, where نام and کنیت were being set in the
+Latin UI face at 12px with 0.08em of tracking, which pulls joined letters
+apart. Who built it is said once: the *Built by* cell in the facts row is
+written only when `preparedBy` is absent.
 
-**Escape user content.** All strings from `content.js` go through
-`site.escapeHtml` before reaching `innerHTML`.
+**A record carries the day it was last edited, and the editor stamps
+it.** `updated` is written by `touch(record)` in `admin.js`, from a
+listener delegated on the row so a field added later cannot be
+forgotten. The *Recently added and updated* strip is ordered by it,
+newest first, `updated || date`.
 
-**Share and Print are mounted, not written.** `common.js` adds them to any
-page whose address matches a record's own page — `site.ownPage`, `record.page`
-for a post or `works/<id>.html` otherwise — finding the mount point by
-`#post-body` for a post and `#work-page-files` for a work. Nothing is baked
-into the generated files themselves, so a change here reaches every post and
-work already written without regenerating one of them. Print only ever
-appears on a post — `record.page` is the same field that says a page holds
-the whole piece rather than a download. The caption reads kind, title, byline
-("by" / "از"), a blank line, the description, in the piece's own script —
-`shareCaption` in `common.js`. `navigator.share` gets it without the link,
-since every sheet appends one; a real failure (not the reader cancelling)
-falls back to copying it instead of doing nothing. Printing is section 13 of
-`styles.css` and needs no script.
+Not stamped at publish time: a publish deliberately rewrites every page
+whether or not it changed, so stamping there would mark all twenty-three
+as new every time and the strip would say nothing. Moving a record up the
+page or into another category does **not** stamp it — that changes where
+it is read, not what it says.
+
+The date is `today()`, from local date parts. `toISOString()` is UTC and
+Karachi is five hours ahead, so a post written before five in the morning
+was stamped with yesterday. `site.formatDate` has never had that fault —
+it parses `"2026-08-04"` with a regex and never builds a `Date` — and
+`recordMeta` falls back to `updated` when a record has no `date`, so the
+row, the card and the page all say the same thing from one function.
 
 **A row says what it would open, and nothing new was added to say it.**
 The line under a title in the library — `PDF · Urdu`, `6 PDFs · Urdu`,
@@ -287,72 +296,128 @@ English, because the line describes what opening it would get you. It is
 set in Latin whatever the piece is, since it is 12px, uppercase and
 tracked — Nastaliq at that size cannot be read.
 
-**Urdu in a left-reading column.** This one rule has now been broken
-eight times, so it is stated once here rather than told as eight stories.
+**Share and Print are mounted, not written.** `common.js` adds them to any
+page whose address matches a record's own page — `site.ownPage`, `record.page`
+for a post or `works/<id>.html` otherwise — finding the mount point by
+`#post-body` for a post and `#work-page-files` for a work. Nothing is baked
+into the generated files themselves, so a change here reaches every post and
+work already written without regenerating one of them. Print only ever
+appears on a post — `record.page` is the same field that says a page holds
+the whole piece rather than a download. The caption reads kind, title, byline
+("by" / "از"), a blank line, the description, in the piece's own script —
+`shareCaption` in `common.js`. `navigator.share` gets it without the link,
+since every sheet appends one; a real failure (not the reader cancelling)
+falls back to copying it instead of doing nothing. Printing is section 13 of
+`styles.css` and needs no script.
 
-`.urdu` carries `text-align: right` *and* a font size. An Urdu element
-also carries `dir="rtl"`, which turns even an inherited `text-align:
-start` into **right** — so a line of Urdu inside a left-reading column
-goes to the far edge of its own box with no rule saying so anywhere.
-The four consequences:
+**A published page keeps the marks it was written with.** Nothing rendered
+today writes a `.glyph` any more, but every work and post page committed
+before the icons still carries the old `↗`/`↓` characters in its own HTML,
+and will until the editor writes that page again. The rule stays in
+`styles.css` for exactly that reason.
 
-- Never put `.urdu` on something that has a size or an alignment of its
-  own; it brings both.
-- Anything Urdu that sits in a left-reading column needs `align-left`,
-  even where nothing sets alignment at all. That is what hid in the hero:
-  its Urdu line began 234px in while the eyebrow, the headline and the
-  paragraph above it all began at the column edge.
-- **A paragraph needs `own-edge` beside it, and `align-left` alone is
-  wrong for one.** `align-left` pins every line at the left, which means
-  every line *begins* — on the right, where the script begins — in a
-  different place. That is a paragraph set ragged-left, and it is what
-  the Zakat app's description was doing: `[192→808], [192→828],
-  [192→678]`. `.own-edge.urdu` shrinks the box to its own longest line
-  (`fit-content`) and sets the words right inside it, so the block starts
-  at the column edge and the words fall back from it as Urdu should. One
-  line renders identically to `align-left`, which is why it is safe to
-  write anywhere `align-left` goes on Urdu.
+**Adding a work by hand means editing sitemap.xml too, and its page is
+missing until admin.html writes it.** `sitemap.xml` is the one file outside
+`content.js` that names a work, one `<url>` per id — the homepage list is
+built by JS, so a crawler that does not run scripts sees nothing there. Miss
+the sitemap line and the work is published but unfindable. `admin.html`
+writes `content.js`, `sitemap.xml` and every work's own page together on
+every publish, so this only matters when content.js is hand-edited outside
+the editor.
 
-  Write **both** classes, always — `align-left own-edge`. `.own-edge.urdu`
-  (0,2,0) only outbids `.align-left` (0,1,0) when the content really is
-  Urdu, so where a string turns out English — a kind label rendered as
-  "App" rather than ایپ — `align-left` still does the right thing.
-  `.align-left` itself could not simply be redefined: the writing box
-  authors it onto a post's blocks as the author's own choice, and that
-  must stand.
-- Do not set `text-align: right` on an Urdu selector "for safety". It
-  buys nothing — the direction already does it — and it outranks
-  `align-left`, which is how the two descriptions in an open library row
-  ended up at opposite edges of one panel.
+**Icons are drawings, and they live in one sprite.** `ICONS` in
+`common.js` holds twelve line drawings on a 24×24 grid — no fill, stroke in
+`currentColor` at 1.5, round caps. `injectSprite` writes them into the page
+once as hidden `<symbol>`s and `site.icon(name)` emits ~55 bytes of `<use>`
+wherever one is wanted, so the whole set costs about 1.3KB and **no extra
+request**. Do not reach for an icon font or a `.svg` per icon: both are
+requests, and both are dependencies this site does not take.
+`currentColor` is what makes one drawing serve the cream and the dark
+fatawa panel alike — which is also why `.rulings .category-icon` has to
+name `--gold-on-dark`. A category gets its drawing from `CATEGORY_ICON`,
+keyed on the category's `id`, the same closed-table pattern as
+`KIND_IN_ENGLISH`; a mark written by hand into `index.html` asks for one
+with `data-icon`. Every icon is decorative — it sits beside a word that
+already says the same thing — so all of them carry `aria-hidden`.
+`→` and `+` are deliberately still characters: `+` is rotated into `×` by
+CSS, and `→` reads as punctuation inside a sentence.
 
-**Urdu stacked against English shares a starting edge; Urdu among Urdu
-keeps its own.** A block of Urdu prose surrounded by Urdu is right-set
-because that is how the script sets. It is only when the two scripts are
-stacked in one column that they have an edge to share.
+**Motion is allowed on a decoration, never on content.** Two things move
+as you scroll — the category icons and the recently-added cards — and
+both are built so that not moving costs nothing. **The three cases are
+the whole safety argument, and everything that moves here must pass all
+three: no JavaScript, no `IntersectionObserver`, and
+`prefers-reduced-motion` must each leave the thing exactly as it should
+look.** Nothing on this site may start invisible waiting for a script to
+reveal it.
 
-The exception, and it is a real one: a box shrunk to its own longest
-line is *placed*, not aligned. A work's page does this deliberately —
-`fit-content` plus `margin-inline-start: auto`, so the box ends at the
-page's margin while a long run of English still reads from its own left,
-which is easier to read than it is tidy. See section 11 of `styles.css`.
+The icons draw themselves on: `pathLength="1"` on every path in
+`iconSprite` normalises each stroke, so one dash figure suits them all,
+and `stroke-dasharray`/`stroke-dashoffset` being *inherited* is the only
+reason they reach inside `<use>`'s shadow tree at all. Crucially the dash
+lives on `.icon-draw`, a class `drawIconsOnEntry` adds — never on `.icon`
+— so all three cases leave the icon simply drawn. `test/homepage.mjs`
+checks all three, because that is the whole argument.
 
-All of it is held by two groups in `test/homepage.mjs`. *Urdu stacked
-against english* measures 89 stacked pairs across four pages at two
-widths — where each block **starts**; it found two of these faults
-itself. *Urdu sets flush on the edge it reads from* measures 64
-multi-line blocks across three pages and asks the other half of the
-question: whether the lines **inside** one block begin together. The
-first passed the Zakat page while it read badly, which is why there are
-two.
+**A shelf on the way past, not a screen.** The recently-added strip went
+up at 575px — 64% of a 900px viewport, against an author introduction of
+591px — and pushed the library, which is the point of the site, to
+y=2021. It is 368px now, 41%, with the library at 1814. Most of that was
+one thing: a card's meta line was **114px**, taller than its own title,
+because `Read here · Urdu · 8 August 2026` wrapped to three lines in a
+280px card. A card says kind and date and nothing else —
+`site.recordWhen`, which `recordMeta` also calls, so "when" still has one
+answer. Format and language are the library row's job, one section down.
+Its heading is sized well under a section's too: at 48px it looked like a
+peer of the library it sits above. `test/homepage.mjs` holds all of it to
+numbers so it cannot creep back.
 
-**A label written by hand into `index.html` needs `align-left` too.**
-`.urdu` sets `text-align: right`, and a section label inherits it, so above
-an English heading the label lands at the far edge of its block. `work.js`
-and `admin.js` add `align-left` for the pages they generate. The labels
-typed into `index.html` do not get it for free — three of them went years
-without it, up to 1180px from the words they named. `test/homepage.mjs`
-measures every Urdu label on the page now, so a fourth cannot happen
-quietly.
+**The strip is in the file; only the clones are made in the browser.** It
+is generated into `index.html` by `indexRecent` at publish time like
+every other marked region, which is why `test/homepage.mjs` can turn
+JavaScript off and still find the cards with their titles in them — where
+the library below it renders nothing at all. Every part of a card comes
+from the helper the library row uses for the same part — `titleMarkup`,
+`kindMarkup`, `metaMarkup`, `categoryIcon` — so a card cannot end up
+saying something different from the row it mirrors.
+
+`startTicker` in `script.js` clones the set once into `.recent-ticker`
+and translates the pair by −50%; with a `margin-right` on each card
+rather than a flex `gap`, half the pair's width is exactly one set and
+the loop has no seam (a flex gap leaves it half a gap short, which jumps
+every time round). The clones are **never written into `index.html`** —
+the cards are in the file so that a reader without JavaScript gets them,
+and baking the duplicates in would give that reader, and a crawler, every
+card twice. Each clone carries `aria-hidden` and `tabindex="-1"`, so a
+screen reader and the keyboard meet each card once. Hover and
+focus-within pause it, which is owed to anything that moves by itself.
+Fail any of the three cases above and there are no clones and no
+animation, and the strip stays the scrollable rail with arrows that it is
+otherwise.
+
+The cards rise as they arrive, and `card-rise` carries the movement
+**and** the state it moves from, together. Putting `opacity: 0` on `.recent-card`
+itself was tried and the tests caught it — the three cases again.
+
+`rail()` in `script.js` is the category strip's own scrolling behaviour,
+extracted and used twice. It scrolls the *track*, never `scrollIntoView`
+— same reason as the rail that marks your place.
+
+The `app` icon is the twelfth drawing. A card's mark in the strip
+deliberately does **not** carry `.category-icon`: those draw themselves
+on as you reach them, and a mark sitting off the right-hand end of a rail
+would never come into view to be drawn.
+
+**The rail marks the section you are in, and moves only itself.**
+`markPlace` in `script.js` sets `aria-current` on the matching pill —
+the attribute, not a class of our own, so a screen reader is told too.
+It reads live geometry on every scroll rather than remembering tops from
+the observer: a stored top goes stale immediately, and sorting them
+picked a section long scrolled past. It also must not use
+`scrollIntoView` to bring the pill into the strip — that scrolls every
+scrollable ancestor, the document included, so the rail dragged the page
+back to whatever it had just marked and a reader could not get past the
+first category. It scrolls `nav` itself. Both faults are guarded.
 
 **A share card is sized for a thumbnail, not for the 1200×630 it is drawn
 at.** WhatsApp renders the preview at the width of the bubble — about
@@ -374,74 +439,6 @@ every browser the editor gets opened in. The title size is **chosen by
 measuring**, not from a character count — a count says nothing across
 three scripts.
 
-**A kind is shown in the language the record reads in.** Every `kind` in
-`content.js` is written in Urdu, because Urdu is what the library is
-catalogued in — so an English essay wore `مضمون` on its row, on its page,
-on its share card, and the caption dropped the label rather than
-translate it. `site.recordKind` turns it round through `KIND_IN_ENGLISH`
-in `common.js`, a small closed table rather than a second field on every
-entry; an unmapped kind falls through as itself, which is the right way
-to fail. It carries the fatwa default (`فتویٰ` / `Fatwa`) too, so the
-row, the page and the card cannot disagree about what an untitled ruling
-is called — they each used to keep their own copy of that fallback and
-one of them was missing it. `site.kindMarkup` writes the element, and
-picks the font, `lang`, `dir` and the `urdu`/`latin` class off the script
-the word actually came out in. Translations are renderings, not the
-author's own English: change them in that one table.
-
-**A description shown to a reader follows the piece, not the site.**
-`og:description` in `buildPost` and `buildWork`, and `shareCaption` in
-`common.js`, all take `descriptionUr` first for an Urdu or Arabic record
-and `description` first otherwise. An Urdu article carried an English
-sentence under its Urdu title for months because the meta tags read
-`record.description` and nothing else.
-
-**Icons are drawings, and they live in one sprite.** `ICONS` in
-`common.js` holds eleven line drawings on a 24×24 grid — no fill, stroke in
-`currentColor` at 1.5, round caps. `injectSprite` writes them into the page
-once as hidden `<symbol>`s and `site.icon(name)` emits ~55 bytes of `<use>`
-wherever one is wanted, so the whole set costs about 1.3KB and **no extra
-request**. Do not reach for an icon font or a `.svg` per icon: both are
-requests, and both are dependencies this site does not take.
-`currentColor` is what makes one drawing serve the cream and the dark
-fatawa panel alike — which is also why `.rulings .category-icon` has to
-name `--gold-on-dark`. A category gets its drawing from `CATEGORY_ICON`,
-keyed on the category's `id`, the same closed-table pattern as
-`KIND_IN_ENGLISH`; a mark written by hand into `index.html` asks for one
-with `data-icon`. Every icon is decorative — it sits beside a word that
-already says the same thing — so all of them carry `aria-hidden`.
-`→` and `+` are deliberately still characters: `+` is rotated into `×` by
-CSS, and `→` reads as punctuation inside a sentence.
-
-**A published page keeps the marks it was written with.** Nothing rendered
-today writes a `.glyph` any more, but every work and post page committed
-before the icons still carries the old `↗`/`↓` characters in its own HTML,
-and will until the editor writes that page again. The rule stays in
-`styles.css` for exactly that reason.
-
-**Motion is allowed on a decoration, never on content.** Two things move
-as you scroll, and both are built so that not moving costs nothing. The
-category icons draw themselves on — `pathLength="1"` on every path in
-`iconSprite` normalises each stroke, so one dash figure suits them all,
-and `stroke-dasharray`/`stroke-dashoffset` being *inherited* is the only
-reason they reach inside `<use>`'s shadow tree at all. Crucially the dash
-lives on `.icon-draw`, a class `drawIconsOnEntry` adds — never on `.icon`
-— so no JavaScript, no `IntersectionObserver`, or `prefers-reduced-motion`
-all leave the icon simply drawn. Nothing on this site may start invisible
-waiting for a script to reveal it. `test/homepage.mjs` checks all three
-cases, because that is the whole argument.
-
-**The rail marks the section you are in, and moves only itself.**
-`markPlace` in `script.js` sets `aria-current` on the matching pill —
-the attribute, not a class of our own, so a screen reader is told too.
-It reads live geometry on every scroll rather than remembering tops from
-the observer: a stored top goes stale immediately, and sorting them
-picked a section long scrolled past. It also must not use
-`scrollIntoView` to bring the pill into the strip — that scrolls every
-scrollable ancestor, the document included, so the rail dragged the page
-back to whatever it had just marked and a reader could not get past the
-first category. It scrolls `nav` itself. Both faults are guarded.
-
 **Weight is a design decision, and the test measures it.** The homepage was
 961KB: a decorative 518KB PNG inside the collapsed bio, and two fonts
 shipped as TTF. It is ~320KB now — the fonts are woff2 (58% smaller,
@@ -458,7 +455,9 @@ vertical padding on the four full-bleed sections; `--block-tight`
 recently-updated strip alone. That strip is a band *between* two
 sections, not a section: at `--block` its own 93.6px stacked against the
 introduction's 93.6px and put 187px of nothing between the last line of
-the introduction and the first card. Nothing else reads either one. It was `clamp(56px, 8vw, 118px)`, which gave 236–283px between
+the introduction and the first card. Nothing else reads either one.
+
+`--block` was `clamp(56px, 8vw, 118px)`, which gave 236–283px between
 sections at 1440 — 15 to 18 body lines — against 30px between the
 category cards inside the library. Nine to one is what made the page read
 as separate slabs; three to five is the usual range. `6.5vw`/`96px` brings
@@ -476,33 +475,38 @@ values for a reason. Do not collapse them into one.
   Nastaliq breaks first.
 - Keep commits small and in plain language; the author reads the history.
 
-**The suites are quick, and they should stay quick.** `test/homepage.mjs`
-took seven and a half minutes because every one of its thirty-odd page
-loads waited for `networkidle` — and Google's CDN is turned away at the
-top of the file, so there was never anything for it to go quiet about.
+**The suites, and which one to run.** `test/README.md` says what each
+covers in full.
+
+- **Touching `script.js`, `common.js` or the library's CSS means running
+  `node test/homepage.mjs`.** It measures where things landed on the
+  rendered page, because the faults it guards against were all geometry —
+  a grid whose column count orphaned a card, a label sent to the far edge
+  of its block by a rule written for something else, a row with its title
+  on one side and the label naming it on the other, a category named
+  twice at opposite ends of its head, a paragraph of Urdu ragged on the
+  edge it reads from. Not one of them changed a string or would fail a
+  linter, and looking at the source could not see any of them.
+- **Touching `admin.js` means running `node test/editor.mjs`.** It types
+  into the writing box, presses the toolbar, exports a post and reads it
+  back, and counts a publish against the Worker's own limits. It exists
+  because looking at the editor was the only check there was for months,
+  and looking at it cannot see a Script button that clears a block's
+  language instead of setting it, a heading ignoring the script marked on
+  it, or a publish grown past what the Worker will take — all three of
+  which shipped.
+- **Touching `worker/` means running `node worker/test.mjs`**, which the
+  deploy workflow runs too, so a failure there stops the Worker going out.
+
+**They are quick, and they should stay quick.** `test/homepage.mjs` took
+seven and a half minutes because every one of its thirty-odd page loads
+waited for `networkidle` — and Google's CDN is turned away at the top of
+the file, so there was never anything for it to go quiet about.
 `domcontentloaded` plus `document.fonts.ready` is the right wait here:
 `script.js` runs at the end of `<body>`, so the library is drawn by the
 time the document has loaded, and the only thing left is the two
 self-hosted faces. One minute forty-nine now. Do not reach for
 `networkidle` in these tests.
-
-**Touching `script.js`, `common.js` or the library's CSS means running
-`node test/homepage.mjs`.** It measures where things landed on the rendered
-page, because the four faults it guards against were all geometry — a grid
-whose column count orphaned a card, a label sent to the far edge of its
-block by a rule written for something else, a row with its title on one
-side and the label naming it on the other, a category named twice at
-opposite ends of its head. Not one of them changed a string or would fail
-a linter, and looking at the source could not see any of them.
-
-**Touching `admin.js` means running `node test/editor.mjs`.** It types into
-the writing box, presses the toolbar, exports a post and reads it back, and
-counts a publish against the Worker's own limits. It exists because looking
-at the editor was the only check there was for months, and looking at it
-cannot see a Script button that clears a block's language instead of setting
-it, a heading ignoring the script marked on it, or a publish grown past what
-the Worker will take — all three of which shipped, and all three of which
-the author found mid-sentence while writing. `test/README.md` says more.
 
 **A change to `worker/` deploys itself now, and it did not always.** The
 Worker is a second deployment on Cloudflare, not served by GitHub Pages,
@@ -514,7 +518,8 @@ happen again *provided* `CLOUDFLARE_API_TOKEN` and
 `CLOUDFLARE_ACCOUNT_ID` are set as repository secrets; without them the
 workflow fails loudly rather than skipping, because a Worker that did not
 deploy must never look like one that did. `worker/README.md`, step 5, has
-the setup.
+the setup — the token needs the zone half (Workers Routes) as well as the
+account half, or the custom-domain route fails after the code uploads.
 
 The deploy passes **`--keep-vars`**. A deploy otherwise replaces the
 Worker's whole variable set with what `wrangler.toml` lists, and the three
@@ -524,32 +529,6 @@ would not fail closed: the check is `if (env.EDITOR_EMAIL && …)`, so an
 empty value drops the second publish lock altogether. `worker/test.mjs`
 refuses to pass if any var in the file is `""`, which stops the deploy.
 
-Still bump `WORKER_VERSION` in `worker/src/index.js` and `WORKER_EXPECTS`
-in `admin.js` **together** whenever the Worker changes in a way the editor
-depends on — the editor asks `/version` on load and says plainly when the
-two have parted. `worker/test.mjs` now fails when they disagree, so a
-half-bump cannot reach a deploy.
-
-**The editor is deployed by pushing it, and an open tab is not.** A tab
-left open across a deploy keeps running the `admin.js` it loaded, and an
-old editor rebuilds every page the way it used to be — which is exactly
-what is already committed. The Worker is handed the whole library on
-every publish and commits only what differs, so it finds nothing, commits
-nothing, and answers with no sha. That answer used to be shown in green,
-so an edit that never left the browser read as an edit that went out; it
-happened, to a post, and the author had no way to know. Two things guard
-it now. `dirty` is read before it is cleared, so *nothing committed* is
-calm when nothing was edited and a plain failure when something was.
-And `EDITOR_VERSION` beside `WORKER_EXPECTS` is checked on load the same
-way — `admin.js` fetched again past the cache, the constant read out of
-the text — so the tab is told it is old *before* a publish rather than
-after. Bump `EDITOR_VERSION` whenever `admin.js` changes in a way a
-publish depends on. Both notices land in `#worker-status`, and both
-append rather than write, since a tab can be old *and* pointed at an old
-Worker and neither may erase the other. A check that cannot run says
-nothing at all — opened from the file system there is nothing to fetch,
-and that is not a fault.
-
 **A change to the Worker's writable list is a change to what the editor
 may touch.** `WRITABLE` in `worker/src/index.js` is the only thing between
 "the editor may update the author's introduction" and "the editor may
@@ -557,48 +536,56 @@ replace any page it likes". `index.html` is on it; `404.html`,
 `about/index.html` and `index.htm` are not, and `worker/test.mjs` checks
 each of those is still refused.
 
-**Adding a work by hand means editing sitemap.xml too, and its page is missing
-until admin.html writes it.** `sitemap.xml` is the one file outside
-`content.js` that names a work, one `<url>` per id — the homepage list is
-built by JS, so a crawler that does not run scripts sees nothing there. Miss
-the sitemap line and the work is published but unfindable. `admin.html`
-writes `content.js`, `sitemap.xml` and every work's own page together on
-every publish, so this only matters when content.js is hand-edited outside
-the editor.
+**Three version numbers, and what each one guards.**
+
+- `WORKER_VERSION` in `worker/src/index.js` and `WORKER_EXPECTS` in
+  `admin.js` are bumped **together** whenever the Worker changes in a way
+  the editor depends on. The editor asks `/version` on load and says
+  plainly when the two have parted; `worker/test.mjs` fails when they
+  disagree, so a half-bump cannot reach a deploy.
+- `EDITOR_VERSION` in `admin.js` is bumped whenever `admin.js` changes in
+  a way a publish depends on. **A tab left open across a deploy is not
+  deployed.** It goes on running the `admin.js` it loaded, and an old
+  editor rebuilds every page the way it used to be — which is exactly
+  what is already committed. The Worker is handed the whole library on
+  every publish and commits only what differs, so it finds nothing,
+  commits nothing, and answers with no sha. That answer used to be shown
+  in green, so an edit that never left the browser read as an edit that
+  went out; it happened, to a post, and the author had no way to know.
+
+Two things guard it. `dirty` is read before it is cleared, so *nothing
+committed* is calm when nothing was edited and a plain failure when
+something was. And `EDITOR_VERSION` is checked on load the same way as
+the Worker's — `admin.js` fetched again past the cache, the constant read
+out of the text — so the tab is told it is old *before* a publish rather
+than after. Both notices land in `#worker-status`, and both append rather
+than write, since a tab can be old *and* pointed at an old Worker and
+neither may erase the other. A check that cannot run says nothing at all
+— opened from the file system there is nothing to fetch, and that is not
+a fault.
 
 ## Outstanding
 
 - Every work and fatwa has its files. Nothing is owed.
-- Every work and fatwa has its own page now, `works/<id>.html`, so a shared
-  link shows the right title and description instead of the one generic
-  preview every one of them used to share. `work.html?work=<id>` still
-  resolves an old link and still renders a record that has been added by
-  hand and not yet published — see the rule above and `work.js`.
-- The picture that comes with a shared link is per-record too now, not the
-  one static `share-card.png` every page used to point at. `admin.js` draws
-  it on a canvas at publish time — title, kind and byline, in the record's
-  own script and font — and writes it to `files/cards/<id>.jpg`; `buildPost`
-  and `buildWork` point `og:image` there. Regenerated in full on every
-  publish, same as a work's own page, so there is no "does this still match
-  the title" question to answer by hand.
-- Publishing from the editor goes through `worker/` when it is opened at
-  `admin.tahirqadri.com.pk`. The Worker checks who is asking — a Firebase
-  sign-in or a Cloudflare Access one, whichever is configured — and holds the
-  GitHub token itself, so no device ever does. Opened any other way the editor
-  falls back to asking for a token, and `Files…` works everywhere.
-  `worker/README.md` has the one-time setup.
 - The `apps` category holds one app, the Zakat calculator, at
   `apps/zakat-calculator.html`. Adding another is a form: **+ Add an app**
   in the editor, then the address, the version, the platforms and what is
   new. No screenshot on the page yet — the author has one.
-- The `posts` category holds three pieces now. Two of them are the same essay
-  in English and Urdu — separate entries with separate ids, not one entry with
-  two files, because each is a page to be read rather than a download to be
-  picked. Nothing links one to the other yet; the block format has no way to
-  write a link, and adding one is the next thing that category needs.
-- Writing a post still means opening the editor. The plan is a GitHub Action:
-  commit one Markdown file from the phone app, and it builds the page, the
-  entry and the sitemap line.
+- The `posts` category holds three pieces. Two of them are the same essay
+  in English and Urdu — separate entries with separate ids, not one entry
+  with two files, because each is a page to be read rather than a download
+  to be picked. Nothing links one to the other yet; the block format has
+  no way to write a link, and adding one is the next thing that category
+  needs.
+- Writing a post still means opening the editor. The plan is a GitHub
+  Action: commit one Markdown file from the phone app, and it builds the
+  page, the entry and the sitemap line.
+- Publishing from the editor goes through `worker/` when it is opened at
+  `admin.tahirqadri.com.pk`. The Worker checks who is asking — a Firebase
+  sign-in or a Cloudflare Access one, whichever is configured — and holds
+  the GitHub token itself, so no device ever does. Opened any other way
+  the editor falls back to asking for a token, and `Files…` works
+  everywhere. `worker/README.md` has the one-time setup.
 - The address is `https://tahirqadri.com.pk/` — a PKNIC domain on Cloudflare
   DNS, served by GitHub Pages. It is written in five places: `site.baseUrl` in
   `content.js`, `robots.txt`, `sitemap.xml`, the canonical and sharing tags in
