@@ -8,8 +8,18 @@ build step. These are tests that drive a real browser over it.
 npm install          # once, in this folder — fetches Playwright
 node editor.mjs      # the editor          — from anywhere in the repository
 node homepage.mjs    # the library         — likewise
-npm test             # both
+node ../worker/test.mjs   # the editor's backend — needs nothing at all
+npm test             # both browser suites
 ```
+
+About thirty seconds for the editor, under two minutes for the library,
+and the Worker's is instant. Keep them that way: `homepage.mjs` ran for
+seven and a half minutes until every page load stopped waiting on
+`networkidle` — and Google's CDN is turned away at the top of both files,
+so there was never anything for it to go quiet about. `domcontentloaded`
+plus `document.fonts.ready` is the right wait here; the library is drawn
+by the time the document has loaded, because `script.js` runs at the end
+of `<body>`.
 
 Neither writes anything to the repository, so a run that dies half way
 leaves nothing behind, and neither needs the network: both turn Google's
@@ -110,8 +120,8 @@ The same idea one floor down: it asks the browser where things on
 
 ## Why it exists
 
-Four faults were found in the library by measuring the rendered page, and
-every one of them was invisible in the source:
+Seven faults have been found in the library by measuring the rendered
+page, and every one of them was invisible in the source:
 
 - the fatawa grid resolved to four columns with five fatawa in it, so one
   card sat alone on a second row and set that row half again as tall as the
@@ -123,7 +133,20 @@ every one of them was invisible in the source:
   title flush right, leaving roughly 600px of nothing between them, and
   mirrored itself whenever an English title turned up in the same list;
 - a category's two names, which are one name in two scripts, were set at
-  opposite ends of a 1130px head.
+  opposite ends of a 1130px head;
+- the recently-updated strip went up at 575px — 64% of a 900px viewport —
+  and pushed the library, which is the point of the site, to y=2021;
+- **the hero's Urdu line began 234px in** while the eyebrow, the headline
+  and the paragraph above it all began at the column edge. It had been
+  wrong since the day the hero was written, and no review had caught it:
+  the line carries `dir="rtl"`, which turns even an inherited
+  `text-align: start` into right, so nothing in the markup says so;
+- **every open library row** set its two descriptions at opposite edges,
+  the Urdu flush right and the English flush left, two accounts of one work
+  in one panel.
+
+The last two were found by the test itself rather than by anyone looking,
+which is the whole argument for it.
 
 None would fail a linter. None changed a single string. They were all
 geometry, which is why this test measures rather than reads.
@@ -147,6 +170,41 @@ geometry, which is why this test measures rather than reads.
 - **Opening a row** — the detail block follows its title to the right on a
   right-to-left record, keeps its links and its share button, and only one
   work stays open at a time.
+- **Urdu stacked against English starts on the same edge** — the big one.
+  Any block of Urdu with a block of English directly above or below it, on
+  four pages at two widths: 89 pairs. Two lines stacked in one column
+  should begin together whatever scripts they are in.
+
+  It is narrow on purpose. Urdu *among* Urdu is right-set because that is
+  how the script sets, and flagging it would be flagging the language for
+  being itself; a box shrunk to `fit-content` and placed at the margin is
+  positioned rather than aligned, which a work's page does deliberately so
+  a long run of English still reads from its own left. Both are skipped.
+  What is left is the case that has gone wrong seven times.
+- **Recently added and updated** — the strip stays under 400px and under
+  half the viewport, a card under 190px, and the library starts by 1900px,
+  so it cannot grow back into a second screen. Its meta line stays one line.
+  The ticker clones the card set exactly once, every clone is hidden from a
+  screen reader and out of the tab order, and hovering pauses it.
+- **An app's row opens the app** — straight to the app, in its own tab,
+  with the page about it beside rather than instead; and the line under the
+  title says it opens rather than reads, naming no language for something
+  that has two.
+- **An icon always ends up drawn** — the three cases that are the entire
+  safety argument for animating anything here: no JavaScript, no
+  `IntersectionObserver`, and a reader who asked for less motion each leave
+  the drawing whole. The cards' arrival is held to the same three.
+- **The icons themselves** — the sprite is written in once, holds every
+  drawing in `ICONS` (counted out of `common.js`, not written down here),
+  and every `<use>` resolves to a symbol that exists.
+- **The page is not carrying dead weight** — the fonts are woff2 and the
+  calligraphy stays under 40KB. It was 961KB once.
+- **The page breathes without falling apart** — the space between sections
+  measured against the space between cards inside them.
+- **Nastaliq has room for its own overhang** — Mehr draws up to 4.75px past
+  the right edge of the box that lays it out.
+- **The rail says where you are** — `aria-current` follows the section you
+  are reading, and moving it scrolls the rail and not the page.
 - **Nothing pushes the page sideways**, at nine widths from 1920 to 380.
 
 ## When it fails
@@ -154,3 +212,50 @@ geometry, which is why this test measures rather than reads.
 It prints the boxes it measured. A row whose title and kind label parted
 company shows both edges, so it is usually clear at a glance which side
 each went to.
+
+---
+
+# ../worker/test.mjs
+
+The editor's backend, tested without a browser and without a network. It
+imports the Worker directly and hands it requests, so it needs no
+dependency at all — the same reason the site has none. 69 checks, instant.
+
+## Why it matters more than it looks
+
+It is the gate on the deploy. `.github/workflows/deploy-worker.yml` runs
+this before it ships anything, so a failure here means the Worker does not
+go out — which is the right way round, because the Worker is the one piece
+that can write to the repository.
+
+## What it covers
+
+- **Who may publish** — a token from another project, another account in
+  the same project, one naming nobody, an Access token where a Firebase one
+  is expected: each refused with the right status. And with nothing
+  configured at all it refuses rather than falls open.
+- **What may be written** — every path the editor sends, against the
+  Worker's own `WRITABLE` list, and the paths that must stay refused:
+  `404.html`, `about/index.html`, `index.htm`, and anything trying to climb
+  out of `apps/` or `files/cards/`.
+- **That `content.js` parses** before it is allowed anywhere near the
+  branch. If the editor ever sent something malformed the library would go
+  blank for every visitor.
+- **The ceiling** — file count and file size, read out of the Worker's own
+  constants rather than written down twice.
+- **The two constants that must move together** — `WORKER_VERSION` here
+  against `WORKER_EXPECTS` in `admin.js`. They live in different files and
+  have drifted before; the editor asks `/version` on load and says so, but
+  only if someone bumped both. Now a half-bump cannot reach a deploy.
+- **No variable in `wrangler.toml` is `""`.** A deploy replaces the
+  Worker's whole variable set with what the file lists, so an empty string
+  does not mean "leave alone", it means "set to nothing" — and for
+  `EDITOR_EMAIL` that fails *open*, dropping the second publish lock. The
+  three settings the repository does not know are commented out instead,
+  and the deploy passes `--keep-vars`.
+
+## When it fails
+
+It names the check and prints the response it got. Every case is a request
+the Worker either accepted or refused, so the fix is nearly always in
+`WRITABLE` or in the sign-in checks above it.

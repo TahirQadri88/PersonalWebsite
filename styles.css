@@ -849,8 +849,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .recent-rail[data-ticker="on"]:focus-within .recent-ticker { animation-play-state: paused; }
 
 /* A drag and an animation cannot share one track. */
-.recent-rail[data-ticker="on"] .recent-track { overflow: hidden; }
-.recent-rail[data-ticker="on"] .recent-track { padding-right: 0; }
+.recent-rail[data-ticker="on"] .recent-track { overflow: hidden; padding-right: 0; }
 
 .recent-card {
   flex: none;

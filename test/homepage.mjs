@@ -3,13 +3,17 @@
    Not part of the website, the same way editor.mjs and worker/test.mjs are
    not. Needs Playwright:  npm i -D playwright
 
-   Why this exists. Four faults were found here by measuring the rendered
-   page, and every one of them was invisible in the source: a grid whose
-   column count happened to leave a card orphaned, a label sent to the far
-   edge of its block by a rule written for something else, a row with its
-   title on one side and the label naming it on the other, two names for
-   one category set 900px apart. None of them would fail a linter and none
-   of them changed a single string. They were all geometry.
+   Why this exists. Seven faults have been found here by measuring the
+   rendered page, and every one of them was invisible in the source: a grid
+   whose column count happened to leave a card orphaned, a label sent to
+   the far edge of its block by a rule written for something else, a row
+   with its title on one side and the label naming it on the other, two
+   names for one category set 900px apart, a strip that took two thirds of
+   the screen, the hero's Urdu line beginning 234px in from where every
+   line above it began, and an open library row setting its two
+   descriptions at opposite edges. The last two this file found itself.
+   None of them would fail a linter and none of them changed a single
+   string. They were all geometry.
 
    So this asks the browser where things actually landed. Everything here
    is something a reader would notice if it broke again. */
