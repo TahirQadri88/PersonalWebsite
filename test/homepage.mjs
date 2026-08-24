@@ -443,14 +443,28 @@ try {
      the site does when nobody chose. */
   group('urdu sets flush on the edge it reads from');
   {
+    /* The shares post is here because it is the longest run of Urdu prose
+       on the site — forty-odd paragraphs and ten headings — and because
+       it is where the last two faults of this kind actually landed. */
     const PAGES = ['/index.html', '/apps/zakat-calculator.html',
-                   '/works/saa-ki-tahqeeq.html'];
+                   '/works/saa-ki-tahqeeq.html',
+                   '/posts/reservations-shariah-screening-stocks.html'];
     const measure = () => {
       const ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
       const out = [];
       for (const el of document.querySelectorAll('body *')) {
         if (!el.getClientRects().length) continue;
-        if (el.closest('.post-body, .writing-canvas')) continue;
+        /* A post's body used to be exempt whole, on the grounds that its
+           author pressed the alignment buttons themselves. That was too
+           broad: the site *interprets* those buttons, and for months it
+           ignored them outright — every Urdu paragraph came out justified
+           whatever was chosen, and when that was fixed, `align-left` read
+           literally and ragged the edge four paragraphs begin from. So
+           the body is measured too. Only a centred block is exempt, since
+           centring rags both edges by definition, and the editor's live
+           canvas, which is mid-edit and not a published page. */
+        if (el.closest('.writing-canvas')) continue;
+        if (el.closest('.align-center') || /\balign-center\b/.test(String(el.className))) continue;
         const text = [...el.childNodes].filter((n) => n.nodeType === 3)
           .map((n) => n.textContent).join('').trim();
         if (!text) continue;
