@@ -1666,6 +1666,27 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    heading being too long for the column at 20px, not of how the break
    is placed. Nothing in `text-wrap` fixes that. */
 
+/* Set the same way the prose under it is set. The body has been
+   justified all along and the headings were not, so they sat ragged
+   above justified paragraphs and the first line came up short. Justified,
+   every line but the last fills the measure edge to edge.
+
+   `text-wrap: wrap` cancels the `balance` inherited from `h1, h2, h3`:
+   with balance left on, justification would stretch lines it had
+   deliberately shortened and open gaps inside them.
+
+   This outranks the `align-right` the editor writes onto a heading
+   (0,3,1 against 0,1,0), which is deliberate — justified headings were
+   asked for. The last line stays short where the sentence ends, the same
+   as every justified paragraph on the page. */
+.post-body.urdu h2:not(.latin):not(.arabic),
+.post-body.urdu h3:not(.latin):not(.arabic),
+.post-body.arabic h2:not(.latin):not(.urdu),
+.post-body.arabic h3:not(.latin):not(.urdu) {
+  text-align: justify;
+  text-wrap: wrap;
+}
+
 /* Not the body's ~2.0. That number is Nastaliq's, and it is right for
    Mehr running as prose; on a heading it puts a full body line between
    the two halves of one sentence, so a heading that wraps — and at 380px

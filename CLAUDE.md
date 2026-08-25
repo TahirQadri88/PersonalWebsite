@@ -100,7 +100,19 @@ instead of emphasising part of it. The synthesised one measures **0%
 wider**. Less contrast, and right: emphasis inside a sentence must not
 resize the sentence.
 
-**`text-wrap: balance` on a heading stays, and a measurement said
+**An in-prose Urdu heading is justified, like the prose under it.**
+The body has been justified all along and the headings were not, so they
+sat ragged above justified paragraphs with the first line short. Setting
+them the same way fills every line but the last. `text-wrap: wrap` goes
+with it to cancel the inherited `balance` — justification would otherwise
+stretch lines balance had deliberately shortened. It outranks the
+`align-right` the editor writes onto a heading, deliberately.
+
+This is what three rounds of `balance` / `pretty` / font size were
+circling without reaching. The question to ask first is *how is the text
+around it set* — not *how should this break*.
+
+**`text-wrap: balance` elsewhere stays, and a measurement said
 otherwise once.** `h1, h2, h3` set it, and `text-wrap` inherits, so an
 in-prose subheading gets it too. On a heading that is a whole sentence —
 the shares post has three over 96 characters — it leaves the first line
