@@ -2005,6 +2005,28 @@
       lead = titlePx * (record.language === 'ur' ? 1.28 : 1.16);
       if (lines.length <= 3 && (lines.length - 1) * lead + titlePx <= BOTTOM - TOP) break;
     }
+    /* One step further: a size down that puts the whole title on one line
+       beats the larger size that breaks it. `اسبابِ سبعہ کی تفصیل` chose
+       106px, where three of its four words fill 70% of the measure and
+       `تفصیل` sits alone underneath; at 92px it is one line filling 94%.
+       The same lesson the in-prose headings taught — a line that comes up
+       short is the type being too big for the column, not the break being
+       in the wrong place, and no amount of redistributing fixes it.
+
+       Only two steps down are considered. Below that the title is being
+       shrunk more than a broken line costs, and a long title has no
+       one-line size worth having. */
+    for (var j = i + 1; j < sizes.length && j <= i + 2; j += 1) {
+      var px = sizes[j];
+      var gap = record.language === 'ur' ? px * 0.22 : 0;
+      ctx.font = cardTitleFont(record.language, px);
+      var one = wrapLines(ctx, record.title, maxWidth, 99, gap);
+      if (one.length === 1 && lines.length > 1) {
+        titlePx = px; titleGap = gap; lines = one;
+        lead = px * (record.language === 'ur' ? 1.28 : 1.16);
+        break;
+      }
+    }
     /* Nothing fitted even at the smallest step: take that step and let
        wrapLines cut it, which is the one case an ellipsis is right. */
     if (i === sizes.length) {
@@ -2021,8 +2043,33 @@
        and the block sits where the eye lands rather than up in a corner. */
     var middle = (TOP + BOTTOM) / 2;
     var startY = middle - ((lines.length - 1) * lead) / 2 + titlePx * 0.3;
+    /* Justified, the way the prose on a work's own page is set. A canvas
+       has no text-align, so the leftover width has to be handed out by
+       hand: every line but the last takes the gap that makes it exactly
+       maxWidth, and the last stays as it is, which is what leaves the
+       tail of a title short and is correct.
+
+       A one-word line cannot be justified — there is nowhere to put the
+       space — and an Arabic or English title arrives here with titleGap
+       at 0, because Amiri and Newsreader have a usable space of their own
+       and fillSpaced draws those lines whole. A justified line has to
+       take the word-by-word path whatever the script, since the gap
+       computed here replaces the natural space rather than widening it. */
     lines.forEach(function (line, n) {
-      fillSpaced(ctx, line, x, startY + n * lead, titleGap, rtl);
+      var gap = titleGap;
+      var words = String(line).split(' ').filter(Boolean);
+      if (n < lines.length - 1 && words.length > 1) {
+        var ink = 0;
+        words.forEach(function (word) { ink += ctx.measureText(word).width; });
+        var spread = (maxWidth - ink) / (words.length - 1);
+        /* Only where the line is nearly full already. Stretching three
+           big words across the whole measure opens holes you could drive
+           a bus through — worse than the short line it was meant to fix,
+           and the reason the size step above exists. Below 80% the line
+           is left as it is. */
+        if (spread > 0 && ink >= maxWidth * 0.8) gap = spread;
+      }
+      fillSpaced(ctx, line, x, startY + n * lead, gap, rtl);
     });
 
     ctx.strokeStyle = 'rgba(232, 200, 130, 0.26)';
@@ -4227,7 +4274,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-08-24.1';
+  var EDITOR_VERSION = '2026-08-30.1';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */
