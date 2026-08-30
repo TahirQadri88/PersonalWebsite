@@ -540,16 +540,24 @@ measuring**, not from a character count — a count says nothing across
 three scripts.
 
 The title is justified, which on a canvas has to be done by hand: every
-line but the last takes the gap that makes it exactly `maxWidth`. Two
-guards, both learned by looking at the drawn card. A line under **80%**
-full is left alone — stretching three big words across the measure opens
-holes far worse than the short line it was meant to fix. And the size
-step **prefers one line**: `اسبابِ سبعہ کی تفصیل` chose 106px, where three
-of its four words filled 70% and `تفصیل` sat alone underneath, when 92px
-puts it on one line at 94%. Only two steps down are considered, or a long
-title would be shrunk further than a broken line costs. Same lesson as the
-in-prose headings: a short line is the type being too big, not the break
-being in the wrong place.
+line but the last takes the gap that makes it exactly `maxWidth`. But
+justification is the second move, not the first. **The size is stepped
+down until every line but the last already fills `CARD_FILL` (0.72) on its
+own**, and only then is the remainder handed out. At the size that merely
+*fits*, `شیئرز کی شرعی` fills 59% of the measure and `اسبابِ سبعہ کی` 70%,
+because the next word is long and will not go; stretching either opens
+holes far worse than the short line. One step down each lands them at
+about 95% and on one line respectively.
+
+Both numbers came from drawing the cards and reading them, not from
+arithmetic — a first-line-fill percentage said `pretty` beat `balance` for
+the in-prose headings and it was wrong there too. **Screenshot the card.**
+
+The trade this makes is deliberate and was the author's call: the shares
+title now draws at 80px, which arrives as **17.6px** in a WhatsApp bubble,
+under the 19px floor the rest of the site keeps for Urdu. A full line at
+17.6px was judged to read better than a 59% line at 23.3px. If that ever
+looks too small, bound the size loop — not the justification under it.
 
 **Weight is a design decision, and the test measures it.** The homepage was
 961KB: a decorative 518KB PNG inside the collapsed bio, and two fonts
