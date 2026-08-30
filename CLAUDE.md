@@ -539,6 +539,18 @@ every browser the editor gets opened in. The title size is **chosen by
 measuring**, not from a character count — a count says nothing across
 three scripts.
 
+The title is justified, which on a canvas has to be done by hand: every
+line but the last takes the gap that makes it exactly `maxWidth`. Two
+guards, both learned by looking at the drawn card. A line under **80%**
+full is left alone — stretching three big words across the measure opens
+holes far worse than the short line it was meant to fix. And the size
+step **prefers one line**: `اسبابِ سبعہ کی تفصیل` chose 106px, where three
+of its four words filled 70% and `تفصیل` sat alone underneath, when 92px
+puts it on one line at 94%. Only two steps down are considered, or a long
+title would be shrunk further than a broken line costs. Same lesson as the
+in-prose headings: a short line is the type being too big, not the break
+being in the wrong place.
+
 **Weight is a design decision, and the test measures it.** The homepage was
 961KB: a decorative 518KB PNG inside the collapsed bio, and two fonts
 shipped as TTF. It is ~320KB now — the fonts are woff2 (58% smaller,
