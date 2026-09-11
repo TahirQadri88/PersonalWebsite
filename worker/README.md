@@ -280,7 +280,8 @@ The editor prints what happened on the line under its opening paragraph.
 | *the sign-in came from somewhere else* | `FIREBASE_PROJECT` or `ACCESS_TEAM` does not match. |
 | *…may not publish* | You are signed in as a different address than `EDITOR_EMAIL`. |
 | *That email and password do not match* | Firebase said no. Check the user exists under Authentication → Users. |
-| *the stored GitHub token was refused* | It expired. Make a new one and `wrangler secret put GITHUB_TOKEN` again. |
+| *the stored GitHub token was refused* | It expired, or was revoked. Make a new one (section 3) and set it again — from a phone, Cloudflare → Workers & Pages → **tahirqadri-editor** → Settings → **Variables and Secrets** → `GITHUB_TOKEN`; from a computer, `wrangler secret put GITHUB_TOKEN`. No redeploy needed. |
+| *the Worker has no EDITOR_EMAIL set* | The second lock is missing. Add `EDITOR_EMAIL` under Settings → Variables, as the one address that may publish. It refuses rather than letting every account in the Firebase project write to the repository. |
 | *content.js is missing … / has a stray … / unclosed …* | Nothing was committed. Tell me and I will look — it should not happen. |
 | *the Worker has no way to check who you are* | Section 4 was skipped. It refuses rather than run unprotected. |
 

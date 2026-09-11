@@ -649,6 +649,32 @@ would not fail closed: the check is `if (env.EDITOR_EMAIL && …)`, so an
 empty value drops the second publish lock altogether. `worker/test.mjs`
 refuses to pass if any var in the file is `""`, which stops the deploy.
 
+**The Worker's two locks are both required, and one of them was not.**
+`verifyIdentity` refuses outright when no sign-in service is configured —
+"a Worker holding a token that can write to the repository must never
+fall open because a variable was left blank". Fourteen lines later the
+second lock read `if (env.EDITOR_EMAIL && payload.email !== …)`, which
+did exactly that: a blank or absent `EDITOR_EMAIL` skipped the check and
+every account in the Firebase project could publish. Proved by restoring
+it — a publish with the variable blank returned **200 and committed the
+file**. It is now two checks, a 500 naming the variable and the existing
+403 for a wrong address, and `worker/test.mjs` asserts both. Neither had
+a test before; the `wrangler.toml` guard covered only a var set to `""`,
+not one never added in the dashboard.
+
+The Firebase **web API key in `admin.js` is not a secret** and GitHub's
+secret scanning will flag it anyway. It identifies the project to
+Google's client SDKs and authorises nothing; what authorises is the
+signed-in user, which is what the two locks above check. Dismiss such an
+alert as "won't fix", never "revoke" — and do not rotate the key, since
+the replacement has to be committed too and the alert simply returns.
+
+**An error should name its own remedy.** The Worker's *stored GitHub
+token was refused* said only "it may have expired". That was read on a
+phone, with the fix sitting in a README nobody opens mid-failure, and it
+cost a round trip. It now names the dashboard path. The same applies to
+the one above it.
+
 **A change to the Worker's writable list is a change to what the editor
 may touch.** `WRITABLE` in `worker/src/index.js` is the only thing between
 "the editor may update the author's introduction" and "the editor may
