@@ -4290,7 +4290,7 @@
      The paths catch one they changed and did not: whatever the version
      claims, a Worker that will not take a work page cannot publish this
      library, and it is better to hear that on load. */
-  var WORKER_EXPECTS = '2026-08-21.2';
+  var WORKER_EXPECTS = '2026-09-12.1';
 
   /* This editor's own version, bumped whenever admin.js changes in a way
      a publish depends on. It exists because a tab left open goes on
@@ -4300,7 +4300,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-08-30.2';
+  var EDITOR_VERSION = '2026-09-12.1';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */

@@ -305,6 +305,25 @@ const noEnv = await worker.fetch(new Request('https://admin.tahirqadri.com.pk/pu
   {method:'POST',headers:{'content-type':'application/json'},body:'{}'}), {...env, ACCESS_TEAM:'', ACCESS_AUD:'', FIREBASE_PROJECT:''});
 t('with nothing configured it refuses rather than falls open', noEnv.status===500);
 
+/* The second lock, which until now was only ever exercised by being
+   present. Both halves matter and neither had a test: a blank
+   EDITOR_EMAIL used to skip the check entirely — `if (env.EDITOR_EMAIL
+   && …)` — and the 403 for a wrong address had never once been asserted,
+   so the lock the whole arrangement rests on was untested in both
+   directions. */
+const noEmailRes = await worker.fetch(new Request('https://admin.tahirqadri.com.pk/publish',
+  {method:'POST',headers:{'content-type':'application/json','Authorization':'Bearer '+await mintFb()},
+   body:JSON.stringify({files:[{path:'content.js',text:GOOD}]})}), {...fbEnv, EDITOR_EMAIL:''});
+const noEmail = {status:noEmailRes.status, body:await noEmailRes.json()};
+t('a blank EDITOR_EMAIL refuses the publish rather than skipping the lock',
+  noEmail.status===500 && /EDITOR_EMAIL/.test(noEmail.body.message||''),
+  JSON.stringify(noEmail));
+
+const wrongAddress = await postFb([{path:'content.js',text:GOOD}], await mintFb({email:'someone@else.test'}));
+t('  …and a signed-in account that is not that address may not publish',
+  wrongAddress.status===403 && /may not publish/.test(wrongAddress.body.message||''),
+  JSON.stringify(wrongAddress));
+
 /* ---- the two constants that have to move together --------------------
 
    The editor asks the deployed Worker for its version on load and says

@@ -34,7 +34,7 @@ const GITHUB = 'https://api.github.com';
    writes any, which at least means nothing lands half done. The editor
    asks /version on load now, so the drift is said before anything is
    sent rather than after. */
-const WORKER_VERSION = '2026-08-21.2';
+const WORKER_VERSION = '2026-09-12.1';
 
 /* The token here can write to the repository, so this endpoint must not
    become a way to write anything anywhere. Only what the editor
@@ -228,8 +228,21 @@ async function identify(request, env) {
 
   /* The second lock. Whichever service did the signing in, only this
      address may publish — so a policy widened by accident, or another
-     account in the same Firebase project, still cannot. */
-  if (env.EDITOR_EMAIL && payload.email !== env.EDITOR_EMAIL) {
+     account in the same Firebase project, still cannot.
+
+     It used to read `if (env.EDITOR_EMAIL && …)`, which meant a blank or
+     absent variable skipped the lock altogether and left every account
+     in the Firebase project able to write to the repository. That is the
+     same fault the check above refuses to make, in the same function,
+     fourteen lines apart: a Worker holding a token that can write to the
+     repository must never fall open because a variable was left blank.
+     The `wrangler.toml` guard in the tests catches one half of it — a var
+     set to "" — but a variable simply never added in the dashboard was
+     covered by nothing. */
+  if (!env.EDITOR_EMAIL) {
+    throw new HttpError(500, 'the Worker has no EDITOR_EMAIL set — add it under Settings → Variables, as the one address that may publish');
+  }
+  if (payload.email !== env.EDITOR_EMAIL) {
     throw new HttpError(403, `${payload.email || 'that account'} may not publish`);
   }
   return payload;
@@ -253,7 +266,11 @@ async function github(env, path, options) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const reason = data && data.message ? data.message : `HTTP ${response.status}`;
-    if (response.status === 401) throw new HttpError(500, 'the stored GitHub token was refused — it may have expired');
+    /* Naming the remedy, not just the fault. This message was read on a
+       phone the morning the token was revoked, and "it may have expired"
+       left nowhere to go — the fix is in the README, which is no use to
+       someone looking at a status line. */
+    if (response.status === 401) throw new HttpError(500, 'the stored GitHub token was refused — it may have expired. Set a new one in Cloudflare under Settings → Variables and Secrets, as GITHUB_TOKEN');
     if (response.status === 403 || response.status === 404) {
       throw new HttpError(500, 'the stored GitHub token cannot write to the repository');
     }
