@@ -386,6 +386,63 @@ crosses over and the far page offers no way back. `problems()` catches
 the hand-edited cases: an id naming nothing, a mate that does not point
 back, and a pairing between two records in the same language.
 
+**A block's script may not disagree with the words in it, and "nobody
+chose this" is not the same as "Enter made this".** `guessed` in
+`admin.js` is the set of blocks whose script came from the line above
+rather than from anybody, and `adoptScript` lets the first Urdu letter
+turn such a line round. It was written for the line after an English
+citation and it fixed that. What it did not cover is a block that was
+never a guess — one read in from the file, or rebuilt after a paste, or
+marked English by hand and then emptied. Put the caret in one, type
+Urdu, and the line stays left to right for good. Every Urdu piece here
+ends in English references, so it is one tap away.
+
+The reader's word for that state is *the space bar deletes my word*. It
+does not: the text is always right, measured with plain keys and with
+IME composition both. What moves is the caret — a space at the end of
+right-to-left words inside a left-to-right block is a neutral character
+and takes the block's own direction, so it lands past everything just
+typed. Measured across four keystrokes it went **52, 83, 52, 116**:
+bouncing between the column's left edge and the middle. Corrected, the
+same four give 315, 320, 292, 297 — marching leftwards, identical to a
+block that was right all along.
+
+`correctScript` closes it, and the narrowness is the whole design:
+**Latin into Urdu or Arabic only, and only on the majority `scriptOf`
+counts.** Three Urdu letters typed into an English reference entry still
+leave it English — *a line read in from the piece keeps the script it
+was saved with* is a real rule and still passes. A line that is
+*nothing but* Urdu was never a decision. The other direction stays a
+decision with a button behind it: an English term inside an Urdu
+sentence is a term, not a change of language. And it reads
+`state.language || prefer`, not the class alone — an unmarked block is
+the piece's own language, which is what makes a marker unnecessary on
+most of them; asking the element would have left every unmarked block in
+an English piece out, and written a marker onto every block of every
+Urdu post on first edit.
+
+It waits for `compositionend` rather than running on `input` while a
+soft keyboard is mid-word. Replacing the element an IME is composing
+inside is how characters get lost, and the author writes on a phone.
+
+**Not every space that jumps is ours.** In a *correctly* marked Urdu
+block, a space typed after an English term — `board`, `legal entity`,
+and this library is full of them — still leaps to the far end of the
+line. That is Unicode bidi's L1 rule: trailing whitespace takes the
+paragraph's embedding level. `unicode-bidi: isolate`, `plaintext` and
+wrapping the Latin run in `<bdi>` were all measured and none of them
+changes it. Do not go looking for it in `admin.js` again.
+
+**The editor has two addresses and only one of them can publish.**
+`admin.html` is committed, so GitHub Pages serves it at the public
+address as well; `BACKEND` is set only over https on `admin.`, where the
+Worker holding the GitHub token is. The two copies are identical to look
+at, and the difference showed up at the one moment it cost most — a
+Publish asking for a token nobody had on them, read as the editor
+malfunctioning. `checkAddress` says so on load, and the token dialog now
+says why it is asking. Same rule as the Worker's own errors: an error
+should name its own remedy.
+
 **A new field has to be added to `writeRecord` or a publish drops it.**
 `alsoIn` was written into `content.js` first and the next regeneration
 threw it away silently — `buildContent` serialises a listed set of fields
@@ -647,6 +704,25 @@ covers in full.
   which shipped.
 - **Touching `worker/` means running `node worker/test.mjs`**, which the
   deploy workflow runs too, so a failure there stops the Worker going out.
+
+**Put the fault back once, and watch the new test fail.** Twice now a
+guard written against a real fault could not have caught it. Both times
+the assertion looked obviously right and both times the *fault* was
+restored and the test went on passing.
+
+The last one is the clearest. In a block marked English holding only
+Urdu, two measurements were tried before one worked. *The first word
+sits to the right of the last* — true in the broken block too, since a
+run of Urdu is laid out right to left inside itself wherever it is put.
+*The first word ends on the block's right edge* — failed on a perfectly
+correct block, at 682 against 1112, because that block had inherited
+`align-center` from the tests above it; alignment confounds it, and
+setting alignment to any known value makes it pass in both states.
+
+What separated them was the space bar — the very thing the reader
+complained about. Reached from the other end than the report, and only
+by restoring the fault twice. **A test that cannot fail is worse than no
+test:** it says the fault is guarded.
 
 **They are quick, and they should stay quick.** `test/homepage.mjs` took
 seven and a half minutes because every one of its thirty-odd page loads

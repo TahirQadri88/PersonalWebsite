@@ -654,6 +654,48 @@
        button for it. */
     if (found !== 'ur' && found !== 'ar') return false;
     if (found === state.language) return false;
+    return turn(canvas, block, state, found);
+  }
+
+  /* The same turn, for the one state that cannot be anybody's decision: a
+     block marked English holding words that are mostly Urdu or Arabic.
+
+     `guessed` above records "made by Enter", and what it was reaching for
+     is "nobody has chosen this block's script". A block read in from a
+     file falls outside it — rightly, since what it was marked as was
+     meant — and that left a hole with exactly the symptom reported. Every
+     Urdu piece here ends in English references; put the caret in one of
+     those, or in anything the box rebuilt after a paste, type Urdu, and
+     the line stays left to right for good. Nothing on screen says which
+     script a block is holding, and the space bar then walks the caret to
+     the far end of the line, which reads as the word being eaten.
+     Measured across four keystrokes, the caret went 52, 83, 52, 116 —
+     bouncing, not advancing.
+
+     Latin into Urdu or Arabic only, and only on the majority `scriptOf`
+     counts, so an English term inside an Urdu sentence still says nothing
+     and the other direction stays a decision with a button behind it. No
+     Latin block in any published post holds a single Urdu letter, so
+     there is nothing here for this to take away. */
+  function correctScript(canvas, prefer) {
+    var block = caretBlock(canvas);
+    if (!block) return false;
+    var state = blockState(block);
+    /* An unmarked block is the piece's own language — that is what makes a
+       marker unnecessary on most of them — so it is that, not the absent
+       class, this has to read. An unmarked block in an Urdu piece is
+       already Urdu and wants nothing; one in an English piece is set left
+       to right and has the same fault as a marked Latin block. Asking the
+       element alone would have left half the cases out and written a
+       marker onto every block of every Urdu post on first edit. */
+    if ((state.language || prefer) !== 'en') return false;
+    var found = scriptOf(block.textContent, prefer);
+    if (found !== 'ur' && found !== 'ar') return false;
+    return turn(canvas, block, state, found);
+  }
+
+  /* Re-mark one block, keeping the caret where the hand left it. */
+  function turn(canvas, block, state, found) {
     var offset = caretOffset(block);
     state.language = found;
     var next = makeBlock(state, block.innerHTML);
@@ -1042,8 +1084,23 @@
       });
     }
 
-    canvas.addEventListener('input', function () {
-      if (adoptScript(canvas, record.language)) refresh();
+    /* Turning a line round means replacing its element, and replacing the
+       element a soft keyboard is mid-word inside is how characters get
+       lost. So while a composition is running the words are left alone and
+       the turn waits for it to finish — which is one word later at worst,
+       and the block is right before the next one is typed. A hardware
+       keyboard never composes and so never waits. */
+    function settle() {
+      if (adoptScript(canvas, record.language) ||
+          correctScript(canvas, record.language)) refresh();
+    }
+
+    canvas.addEventListener('input', function (event) {
+      if (!event.isComposing) settle();
+      changed();
+    });
+    canvas.addEventListener('compositionend', function () {
+      settle();
       changed();
     });
     canvas.addEventListener('keyup', refresh);
@@ -4408,7 +4465,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-09-14.1';
+  var EDITOR_VERSION = '2026-09-14.2';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */
@@ -4490,6 +4547,35 @@
           ' nothing at all.');
       })
       .catch(function () { /* cannot tell, so says nothing */ });
+  }
+
+  /* The publishing address, and why saying nothing about it was wrong.
+
+     `admin.html` is committed, so GitHub Pages serves it at the public
+     address too — and opened there `BACKEND` is empty, because the Worker
+     that holds the GitHub token is only on `admin.`. Everything about the
+     page looks identical; the difference shows up at the one moment it is
+     most expensive, when Publish asks for a token nobody has on them.
+     That was read as the editor malfunctioning, and it is the editor
+     keeping a fact to itself: the same rule as the Worker's own errors —
+     an error should name its own remedy. Said on load, so there is time
+     to move, and again where the dialog used to open with no explanation.
+
+     Only over http(s): opened from the file system there is no Worker
+     anywhere and the token is the right and only answer. */
+  var EDITOR_HOME = 'https://admin.tahirqadri.com.pk/';
+
+  function wrongAddress() {
+    return !BACKEND && /^https?:$/.test(location.protocol);
+  }
+
+  function checkAddress() {
+    if (!wrongAddress()) return;
+    warnOnLoad('This is the public copy of the editor, at ' + location.host +
+      '. Publishing from here has to ask for a GitHub token, because the' +
+      ' Worker that holds one is only at admin.tahirqadri.com.pk. Open' +
+      ' ' + EDITOR_HOME + ' instead and there is nothing to type.' +
+      ' Files… works either way.');
   }
 
   function checkWorker() {
@@ -4927,7 +5013,10 @@
       publish(token);
       return;
     }
-    tokenError.textContent = '';
+    tokenError.textContent = wrongAddress()
+      ? 'This is the public copy of the editor. Open ' + EDITOR_HOME +
+        ' and Publish needs no token at all.'
+      : '';
     tokenInput.value = '';
     tokenDialog.showModal();
   });
@@ -4962,6 +5051,7 @@
     loadIndex();
     checkWorker();
     checkEditor();
+    checkAddress();
   }
 
   var gateForm = document.getElementById('gate-form');
