@@ -1613,6 +1613,19 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   text-align: right;
 }
 
+/* The way across to the same piece in another language. Navigation, not
+   the piece — so it sits with the date above the writing and stays
+   quieter than either. `fit-content` so the underline ends with the
+   words rather than running the column's width, and it is one line by
+   construction: two fixed strings. */
+.post-alt {
+  width: fit-content;
+  margin: -0.4em 0 1.6em;
+  font-size: 14px;
+}
+.post-alt .urdu,
+.post-alt .arabic { font-size: 17px; }
+
 .post-body > * { margin: 0 0 1.1em; }
 .post-body > *:last-child { margin-bottom: 0; }
 .post-body h2 {

@@ -262,6 +262,45 @@ console.log('\nwhat the editor writes, against what is committed');
   t('the index.html it writes is the index.html in the branch',
     made.home === onDisk.home,
     made.home === onDisk.home ? '' : firstDifference(onDisk.home, made.home || ''));
+  /* The two language versions of one essay, joined by `alsoIn`. What
+     matters is that the crossing holds from *both* ends: a reader who
+     follows the link and finds no way back is worse served than one who
+     was never offered it. So both pages are checked, and an unpaired post
+     is checked for carrying nothing — the field is opt-in and a page
+     without it must be exactly as it was. */
+  const pages = await page.evaluate(() => {
+    const out = {};
+    [...document.querySelectorAll('#out-pages section')].forEach((x) => {
+      /* Not every section holds text — a card is a picture. */
+      const box = x.querySelector('textarea');
+      if (box) out[x.querySelector('h3').textContent.trim()] = box.value;
+    });
+    return out;
+  });
+  const en = pages['posts/books-that-arent-coming-back.html'] || '';
+  const ur = pages['posts/kitabein-mashin-ki-khurak.html'] || '';
+  const solo = pages['posts/wisdom-behind-our-differences.html'] || '';
+  t('a paired post offers the way across, in the language it goes to',
+    /class="post-alt"/.test(en) && /اردو میں پڑھیے/.test(en) &&
+    /href="kitabein-mashin-ki-khurak\.html"/.test(en),
+    (en.split('\n').find((l) => /post-alt/.test(l)) || 'no post-alt line'));
+  t('  …and the far side offers the way back',
+    /class="post-alt"/.test(ur) && /Read this in English/.test(ur) &&
+    /href="books-that-arent-coming-back\.html"/.test(ur),
+    (ur.split('\n').find((l) => /post-alt/.test(l)) || 'no post-alt line'));
+  /* The trap CLAUDE.md names, in one more place: `.urdu` brings
+     `text-align: right`, so an Urdu line on an English page needs
+     align-left or it lands at the far edge of its own box. */
+  t('  …with the Urdu link on the English page pulled to the column',
+    /class="text-link urdu align-left"/.test(en),
+    (en.split('\n').find((l) => /post-alt/.test(l)) || ''));
+  t('  …and a crawler told they are one piece in two languages',
+    /hreflang="en"/.test(en) && /hreflang="ur"/.test(en) && /hreflang="x-default"/.test(en) &&
+    /hreflang="ur"/.test(ur) && /hreflang="en"/.test(ur));
+  t('  …while an unpaired post carries neither the link nor the tags',
+    !!solo && !/post-alt/.test(solo) && !/hreflang/.test(solo),
+    solo ? 'has post-alt or hreflang' : 'the unpaired post was not in the export');
+
   await page.evaluate(() => document.getElementById('export-dialog').close());
   await page.waitForTimeout(150);
 }
