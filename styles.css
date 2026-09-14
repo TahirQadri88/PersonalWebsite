@@ -1577,9 +1577,32 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    the same proportion twice. Naskh does read smaller than Nastaliq at
    the same size and keeps a little more for it, but a fixed little,
    measured against the body rather than the viewport. */
-.post-body.urdu > .arabic,
-.post-body.arabic > .urdu {
+.post-body.urdu > .arabic:not(.footnote),
+.post-body.arabic > .urdu:not(.footnote) {
   font-size: 23px;
+  line-height: 1.9;
+}
+/* …but not a footnote in that other script, which is the quieter
+   register and was coming out louder than the prose it annotates. The
+   two guards above cover a footnote in the piece's *own* script and
+   deliberately exclude the other one, so an Arabic reference at the foot
+   of an Urdu piece had nothing of its own and fell through to the
+   quotation size above: 23px against a 21px body. Measured on
+   `log-barabar-kyun-nahin`.
+
+   19px keeps the same +2 over the own-script footnote's 17 that the
+   quotation keeps over the body — Naskh reading smaller than Nastaliq is
+   the same argument either way — and stays under the body, which is the
+   whole point of a footnote.
+
+   The third time this fault has appeared: the headings had it, a Latin
+   citation had it, and this is the combination neither covered. A
+   selector list cannot be trusted to enumerate the rest, so
+   `test/homepage.mjs` now asserts the rule instead — every footnote
+   smaller than the prose it sits in. */
+.post-body.urdu > .arabic.footnote,
+.post-body.arabic > .urdu.footnote {
+  font-size: 19px;
   line-height: 1.9;
 }
 /* Straight edges on both sides, not just the one the text starts from

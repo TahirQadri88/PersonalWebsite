@@ -275,6 +275,10 @@ try {
   {
     const PAGES = ['/index.html', '/apps/zakat-calculator.html',
                    '/posts/reservations-shariah-screening-stocks.html',
+                   /* The only page carrying an Arabic footnote *and* an
+                      English cross-link inside an RTL container — neither
+                      arrangement had ever been measured. */
+                   '/posts/log-barabar-kyun-nahin.html',
                    '/works/saa-ki-tahqeeq.html'];
     const measure = () => {
       const ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
@@ -448,7 +452,8 @@ try {
        it is where the last two faults of this kind actually landed. */
     const PAGES = ['/index.html', '/apps/zakat-calculator.html',
                    '/works/saa-ki-tahqeeq.html',
-                   '/posts/reservations-shariah-screening-stocks.html'];
+                   '/posts/reservations-shariah-screening-stocks.html',
+                   '/posts/log-barabar-kyun-nahin.html'];
     const measure = () => {
       const ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
       const out = [];
@@ -1157,6 +1162,59 @@ try {
   }
 
   /* ---- widths ---- */
+  /* ---- a footnote is quieter than the prose ----
+
+     A footnote is the quieter register, and three times now it has been
+     published louder than the piece it annotates: an in-prose heading
+     took the body size that had grown for Mehr, a Latin citation inside
+     an Urdu piece came out at 17px against the 15px its prose gets, and
+     an Arabic reference at the foot of an Urdu piece took the size meant
+     for a quoted verse — 23px against a 21px body.
+
+     Each was fixed by naming one more script combination in a selector,
+     and each time the next combination was left uncovered. So this
+     asserts the rule rather than a number: whatever script a footnote is
+     in, and whatever the piece around it, it is smaller than the prose it
+     sits in. There is no selector list to keep current. */
+  group('a footnote is quieter than the prose it annotates');
+  {
+    const PAGES = ['/posts/log-barabar-kyun-nahin.html',
+                   '/posts/wisdom-behind-our-differences.html',
+                   '/posts/reservations-shariah-screening-stocks.html',
+                   '/posts/kitabein-mashin-ki-khurak.html'];
+    let seen = 0;
+    const louder = [];
+    const context = await browser.newContext({ viewport: { width: 390, height: 1000 } });
+    await context.route('https://fonts.g**', (r) => r.abort());
+    const page = await context.newPage();
+    page.on('pageerror', (e) => threw.push('390px: ' + e.message));
+    for (const path of PAGES) {
+      await page.goto(`http://127.0.0.1:${PORT}${path}`, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => document.fonts.ready);
+      const rows = await page.evaluate(() => {
+        const body = document.querySelector('.post-body');
+        if (!body) return [];
+        const base = parseFloat(getComputedStyle(body).fontSize);
+        return [...document.querySelectorAll('.footnote')].map((f) => ({
+          cls: String(f.className),
+          size: Math.round(parseFloat(getComputedStyle(f).fontSize) * 100) / 100,
+          body: base,
+          text: (f.textContent || '').trim().slice(0, 26)
+        }));
+      });
+      seen += rows.length;
+      rows.filter((r) => r.size >= r.body).forEach((r) => louder.push({ path, ...r }));
+    }
+    await context.close();
+    /* Three today: the Arabic reference on the Urdu post, and the English
+       line with the Arabic one beneath it on its twin. The other two
+       pages carry none — a floor, not a count, so writing a piece without
+       a footnote does not turn this red. */
+    t(`there are footnotes to measure — ${seen} of them`, seen >= 3, String(seen));
+    t('every one is set smaller than the prose it annotates',
+      louder.length === 0, JSON.stringify(louder.slice(0, 6), null, 1));
+  }
+
   group('nothing pushes the page sideways');
   for (const width of [1920, 1440, 1280, 1024, 900, 768, 620, 420, 380]) {
     const { context, page } = await open(width);
