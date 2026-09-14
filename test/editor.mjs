@@ -279,7 +279,16 @@ console.log('\nwhat the editor writes, against what is committed');
   });
   const en = pages['posts/books-that-arent-coming-back.html'] || '';
   const ur = pages['posts/kitabein-mashin-ki-khurak.html'] || '';
-  const solo = pages['posts/wisdom-behind-our-differences.html'] || '';
+  /* Whichever post has no `alsoIn`, found rather than named — this
+     assertion first pointed at a post that was later paired, and went
+     red for being out of date rather than for a fault. */
+  const soloPath = await page.evaluate(() => {
+    const w = (window.siteContent.categories || [])
+      .flatMap((c) => c.works || [])
+      .find((x) => x.page && /^posts\//.test(x.page) && !x.alsoIn);
+    return w ? w.page : '';
+  });
+  const solo = pages[soloPath] || '';
   t('a paired post offers the way across, in the language it goes to',
     /class="post-alt"/.test(en) && /اردو میں پڑھیے/.test(en) &&
     /href="kitabein-mashin-ki-khurak\.html"/.test(en),
@@ -299,7 +308,7 @@ console.log('\nwhat the editor writes, against what is committed');
     /hreflang="ur"/.test(ur) && /hreflang="en"/.test(ur));
   t('  …while an unpaired post carries neither the link nor the tags',
     !!solo && !/post-alt/.test(solo) && !/hreflang/.test(solo),
-    solo ? 'has post-alt or hreflang' : 'the unpaired post was not in the export');
+    solo ? soloPath + ' has post-alt or hreflang' : 'no unpaired post found in the export');
 
   await page.evaluate(() => document.getElementById('export-dialog').close());
   await page.waitForTimeout(150);
