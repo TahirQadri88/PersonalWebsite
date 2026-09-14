@@ -443,6 +443,52 @@ malfunctioning. `checkAddress` says so on load, and the token dialog now
 says why it is asking. Same rule as the Worker's own errors: an error
 should name its own remedy.
 
+**The toolbar's order is a claim about what is reached for while
+writing.** On a phone it is one rail that swipes sideways — deliberate,
+because stacked it stood 380px tall on an 820px screen — and the rail
+holds about **312px** before a swipe. So the order decides what is
+usable without one.
+
+Style led, and at the 132px "Sub-heading" genuinely needs it and Script
+filled the rail between them: Underline ended **18px past the edge**, so
+all three emphasis marks needed a swipe. They are reached for constantly
+— this library's Urdu is full of English terms — while Style is once a
+section and Size and Align rarer still. Script and Emphasis now lead,
+which puts B, I and U 134–224px inside the rail with Style still 100%
+in view beside them.
+
+Shrinking the controls was the first answer and it was wrong twice:
+at a 120px cap "Sub-heading" needs 88px of the 80 left after the padding
+and the arrow, so the control can no longer say what the block is — and
+the buttons are already narrower than a fingertip at 21–29px. **Ordering
+costs nothing and takes nothing away.** The gap (6→4) and the group
+separator (6+2→4+1) were kept; they are worth 12px between them and
+nothing reads differently for it.
+
+**A control has to be able to show what it is holding.** Size's options
+read *One step smaller* and *One step larger*, which need 119 and 109px
+of the 104 a phone gives that menu — so the only value that fitted was
+the one most words are *not* in, and the other two were shown cut off.
+They are *Smaller* and *Larger* now; the menu's own name says Size, in
+the label on a desktop and in `aria-label` everywhere, so the options do
+not have to repeat it and the full sentence stays on each one's title.
+`test/editor.mjs` measures every option of every menu against the box
+showing it — which is what caught the 120px cap above.
+
+**A field the order in `finish()` forgets floats to the top.** `alsoIn`
+did: the least-used control on a post sat above its Language and Title,
+81px of the 248 between the row's summary and the writing box. Same
+shape as a field missing from `writeRecord`, so the same answer — the
+named order first, then **anything else still in the box**, which lands
+a forgotten field at the bottom where a field nobody has thought about
+belongs.
+
+**The toolbar does not hide the caret, and `scroll-padding-top` is why.**
+It is `116px` on the root, for the 55px bar plus the 51px rail, and a
+screenshot mid-scroll shows static text behind the sticky rail and looks
+like a fault. Measured: **0 of 40** caret positions overlapped it. Do
+not go looking for this one either.
+
 **A new field has to be added to `writeRecord` or a publish drops it.**
 `alsoIn` was written into `content.js` first and the next regeneration
 threw it away silently — `buildContent` serialises a listed set of fields

@@ -606,18 +606,24 @@
     flex-wrap: nowrap;
     overflow-x: auto;
     overscroll-behavior-x: contain;
-    gap: 6px;
+    gap: 4px;
     padding: 7px 8px;
   }
   .writing-group-buttons { flex-wrap: nowrap; }
+  /* 132 is what "Sub-heading" needs to be readable in the control, and
+     a control that cannot say what the block is is worse than a swipe.
+     Narrowing this was tried first and the test caught it: at 120 the
+     word needs 88px of the 80 left after the padding and the arrow. The
+     rail is made to fit by ordering the groups instead — see
+     TOOL_GROUPS. */
   .writing-menu { max-width: 132px; height: 36px; padding: 0 4px 0 6px; font-size: 12px; }
   .writing-tools::-webkit-scrollbar { height: 0; }
   .writing-tools { scrollbar-width: none; }
   .writing-group-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .writing-group { flex: 0 0 auto; gap: 0; }
   .writing-group + .writing-group {
-    padding-left: 6px;
-    margin-left: 2px;
+    padding-left: 4px;
+    margin-left: 1px;
     border-left: 1px solid var(--line);
   }
   .writing-group-buttons { gap: 4px; }

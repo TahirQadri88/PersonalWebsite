@@ -403,7 +403,39 @@
      words picked out rather than on the block. Ctrl+B, I and U do the
      same thing now instead of explaining why they cannot. */
 
+  /* The order here is the order on a phone's rail, and the rail holds
+     about 312px before a swipe. What gets on it is therefore a statement
+     about what is reached for while writing, not about what is most
+     important.
+
+     Script and the three emphasis marks are constant — this library's
+     Urdu is full of English terms, and a block's script decides the font
+     and the direction under the caret. Style is once a section, Size and
+     Align rarely. Style used to lead, and at 132px — which "Sub-heading"
+     genuinely needs — it and Script filled the rail between them, so
+     Underline ended 18px past the edge and all three marks needed a
+     swipe.
+
+     Shrinking the menu was the first answer and it was wrong twice over:
+     at 120px "Sub-heading" no longer fits its own box, and the buttons
+     are already narrower than a fingertip. Ordering costs nothing and
+     takes nothing away — Style is still the next thing on the rail,
+     partly in view, one short swipe off. */
   var TOOL_GROUPS = [
+    { field: 'language', label: 'Script', menu: true, items: [
+      { value: 'ur', text: 'اردو', title: 'Set this block in Urdu — Nastaleeq', cls: 'urdu' },
+      { value: 'ar', text: 'عربی', title: 'Set this block in Arabic — Naskh', cls: 'arabic' },
+      { value: 'en', text: 'English', title: 'Set this block in English' }
+    ] },
+    /* These act on the words picked out, not on the whole line, so they
+       are a different kind of button from the groups around them —
+       `inline: true` is what tells the toolbar to leave the block alone
+       and work on the selection. */
+    { field: 'mark', label: 'Emphasis', inline: true, items: [
+      { value: 'b', text: 'B', title: 'Bold the words picked out', cls: 'is-bold' },
+      { value: 'i', text: 'I', title: 'Italicise the words picked out', cls: 'is-italic' },
+      { value: 'u', text: 'U', title: 'Underline the words picked out', cls: 'is-underline' }
+    ] },
     { field: 'kind', label: 'Style', menu: true, items: [
       { value: 'p', text: 'Text', title: 'Ordinary paragraph' },
       /* "Heading" and "Sub-heading" rather than "Heading 1" and
@@ -418,31 +450,25 @@
       { value: 'blockquote', text: 'Quote', title: 'A quotation, set apart', cls: 'is-quote' },
       { value: 'footnote', text: 'Footnote', title: 'A citation or footnote, set apart from the body', cls: 'is-footnote' }
     ] },
-    { field: 'language', label: 'Script', menu: true, items: [
-      { value: 'ur', text: 'اردو', title: 'Set this block in Urdu — Nastaleeq', cls: 'urdu' },
-      { value: 'ar', text: 'عربی', title: 'Set this block in Arabic — Naskh', cls: 'arabic' },
-      { value: 'en', text: 'English', title: 'Set this block in English' }
-    ] },
-    /* These four act on the words picked out, not on the whole line, so
-       they are a different kind of button from the three groups around
-       them — `inline: true` is what tells the toolbar to leave the block
-       alone and work on the selection. Size is two steps rather than a
-       number of pixels: a word set larger stays in proportion whether the
-       line is Nastaliq, Naskh or English, which a chosen pixel size
-       cannot be in all three at once. */
-    { field: 'mark', label: 'Emphasis', inline: true, items: [
-      { value: 'b', text: 'B', title: 'Bold the words picked out', cls: 'is-bold' },
-      { value: 'i', text: 'I', title: 'Italicise the words picked out', cls: 'is-italic' },
-      { value: 'u', text: 'U', title: 'Underline the words picked out', cls: 'is-underline' }
-    ] },
     /* Size gets a menu rather than two buttons, because a menu can show
        what the line already is and offer the way back to it. Two toggles
        could say "smaller" and "larger" but never "neither", which is the
-       state most words are in. */
+       state most words are in. It is two steps rather than a number of
+       pixels: a word set larger stays in proportion whether the line is
+       Nastaliq, Naskh or English, which a chosen pixel size cannot be in
+       all three at once.
+
+       One word each, because the control has to be able to show what it
+       is holding. "One step smaller" needs 119px of text and the menu on
+       a phone gives it 104, so the state most words are *not* in was the
+       only one that fitted and the other two read "One step smalle…".
+       The menu's own name says Size — in the label on a desktop, in
+       `aria-label` everywhere — so the options do not have to repeat it,
+       and the full sentence is still on each one's title. */
     { field: 'mark', label: 'Size', inline: true, menu: true, items: [
-      { value: '', text: 'Normal size', title: 'The size the line is set in' },
-      { value: 's', text: 'One step smaller', title: 'Set the words picked out a step smaller', cls: 'is-smaller' },
-      { value: 'l', text: 'One step larger', title: 'Set the words picked out a step larger', cls: 'is-bigger' }
+      { value: '', text: 'Normal', title: 'The size the line is set in' },
+      { value: 's', text: 'Smaller', title: 'Set the words picked out a step smaller', cls: 'is-smaller' },
+      { value: 'l', text: 'Larger', title: 'Set the words picked out a step larger', cls: 'is-bigger' }
     ] },
     { field: 'align', label: 'Align', items: [
       { value: 'r', icon: 'r', title: 'Align this block to the right', cls: 'is-align' },
@@ -3297,9 +3323,25 @@
        bottom. Re-appending an element moves it rather than copying it,
        so this is the order itself. The conditional ones are simply
        absent on a record that has none. */
-    [langField, titleField, bodyField, descField, descUrField, tagField,
-     kindField, dateField, filesField, pageField, idField, moveField, tools]
-      .forEach(function (part) { if (part) fields.appendChild(part); });
+    /* A field this list forgets floats to the top, and one did. `alsoIn`
+       was added after the order was written, so the cross-language
+       pairing menu — the least-used control on a post — sat above the
+       Language and Title fields, 81px of the 248px between the row's
+       summary and the writing box. Nothing was wrong with either the
+       field or the list; the list simply did not know about it.
+
+       The same shape as a new field missing from `writeRecord`, so it
+       gets the same answer: the named order first, then **anything else
+       still in the box**, which lands a forgotten field at the bottom
+       rather than the top. The bottom is where a field nobody has
+       thought about belongs. */
+    var order = [langField, titleField, bodyField, altField, descField,
+      descUrField, tagField, kindField, dateField, filesField, pageField,
+      idField, moveField, tools].filter(Boolean);
+    Array.prototype.slice.call(fields.children).forEach(function (part) {
+      if (order.indexOf(part) === -1) order.push(part);
+    });
+    order.forEach(function (part) { fields.appendChild(part); });
 
     return row;
     }
@@ -4465,7 +4507,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-09-14.2';
+  var EDITOR_VERSION = '2026-09-14.3';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */
