@@ -557,6 +557,77 @@ typed = await page.evaluate(CARET);
 t('a line read in from the piece keeps the script it was saved with',
   typed.cls.split(' ').includes('latin'), JSON.stringify(typed));
 
+/* The hole that rule left, and the one the author reported. "Keeps the
+   script it was saved with" is right for editing an English line, and
+   the count above is what keeps it right — three Urdu letters in a
+   reference entry do not make it Urdu. But the same guard also held a
+   block that had become *nothing but* Urdu left to right for good:
+   Enter never made it, so it was never a guess, and no button had been
+   pressed. Every Urdu piece here ends in English references, so the
+   state is one tap away, and nothing on screen says which script a
+   block is holding.
+
+   What it does say is the space bar. Measured across four keystrokes in
+   that state the caret went 52, 83, 52, 116 — bouncing between the
+   column's left edge and the middle, because a space at the end of
+   right-to-left words inside a left-to-right block belongs on the other
+   side of them. Read as the space bar deleting the word.
+
+   So the test is the pair, not the single case: mostly Urdu turns, a few
+   Urdu words among English do not. */
+/* Marked English by hand and then emptied, which is a block nobody made
+   by Enter — so `guessed` has never held it and never will. */
+await emptyEnglishBlock(page);
+for (const word of 'ایک دو تین چار'.split(' ')) {
+  if (word !== 'ایک') await page.keyboard.press('Space');
+  await page.keyboard.type(word);
+  await page.waitForTimeout(50);
+}
+typed = await page.evaluate(CARET);
+t('a line nobody made by Enter, left holding only Urdu, turns round even so',
+  typed.cls.split(' ').includes('urdu') && typed.dir === 'rtl', JSON.stringify(typed));
+
+/* And the symptom rather than the class behind it — for which the space
+   bar is the only measurement that works, which is the author's own
+   report arrived at from the other end.
+
+   Two obvious ones do not. "The first word sits to the right of the
+   last" is true in the broken block too — a run of Urdu is laid out
+   right to left inside itself wherever it is put — and passed with the
+   fault restored, proving nothing. "The first word ends on the block's
+   right edge" is confounded by alignment: the block here inherits
+   `align-center` from the tests above, so it failed at 682 against 1112
+   while being perfectly correct.
+
+   What separates the two states is where a space at the end of the words
+   goes. It is a neutral character, so it takes the paragraph's own
+   direction: at the left end of the line in an Urdu block, and at the
+   right end — past everything just typed — in a block still marked
+   English. That is the caret jumping, and it is measured inside one line
+   box, so nothing about alignment reaches it. The space is taken back
+   off afterwards: a trailing one is held as &nbsp; while editing and
+   trimmed when the piece is written, which the round trip below would
+   otherwise report as a difference this test had made. */
+await page.keyboard.press('Space');
+await page.waitForTimeout(60);
+const reads = await page.evaluate(() => {
+  const canvas = document.querySelector('.admin-row[open] .writing-canvas');
+  let block = window.getSelection().getRangeAt(0).startContainer;
+  while (block && block.parentNode !== canvas) block = block.parentNode;
+  const node = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, null).nextNode();
+  const at = (from, to) => {
+    const range = document.createRange();
+    range.setStart(node, from);
+    range.setEnd(node, to);
+    return Math.round(range.getBoundingClientRect().left);
+  };
+  return { text: node.textContent, words: at(0, 3), space: at(node.length - 1, node.length) };
+});
+await page.keyboard.press('Backspace');
+await page.waitForTimeout(60);
+t('  …so a space after the words falls on the far side of them, not this one',
+  reads.space < reads.words, JSON.stringify(reads));
+
 console.log('\nmarks inside a line');
 
 /* Until now a whole line could be a heading or a quotation and nothing
@@ -1108,6 +1179,57 @@ const quietBox = await page.evaluate(() => {
 });
 t('  …and stays quiet when it cannot tell which version the site serves',
   !/older copy of the editor/.test(quietBox), quietBox);
+
+/* ---- the editor opened where it cannot publish ------------------------
+
+   admin.html is committed, so GitHub Pages serves it at the public
+   address as well as the Worker doing so at admin. — and the two copies
+   are identical to look at. Only one has a Worker holding the GitHub
+   token behind it; the other has to ask for a token, which is how a
+   publish came to ask for one nobody had on them, and was read as the
+   editor malfunctioning.
+
+   Everything above stands `BACKEND` in as '/publish', because the answer
+   the Worker gives is what those tests are about. This one wants the
+   opposite: the expression as shipped, which on a test server resolves
+   exactly as it does on the public address — empty. */
+console.log('\nthe editor opened where it cannot publish');
+
+await page.unroute('**/admin.js');
+overlay.set('admin.js', (await patchedAdminJs()).replace(
+  "var BACKEND = '/publish';",
+  "var BACKEND = location.protocol === 'https:' && /^admin\\./.test(location.hostname) ? '/publish' : '';"));
+await page.reload({ waitUntil: 'domcontentloaded' });
+await page.waitForSelector('.admin-row');
+await page.waitForTimeout(600);
+const publicBox = await page.evaluate(() => {
+  const box = document.getElementById('worker-status');
+  return box.hidden ? '(nothing shown)' : box.textContent;
+});
+t('opened where no Worker is, the editor says so on load rather than at the dialog',
+  /public copy of the editor/.test(publicBox), publicBox);
+t('  …and names the address that needs no token',
+  /admin\.tahirqadri\.com\.pk/.test(publicBox), publicBox);
+
+/* And again where the cost actually fell: the dialog opened with an
+   empty explanation, on a phone, with the remedy in a README. */
+await page.evaluate(() => { document.getElementById('publish').click(); });
+await page.waitForTimeout(500);
+const dialogSays = await page.evaluate(() => {
+  const dialog = document.getElementById('token-dialog');
+  if (dialog && dialog.open) return document.getElementById('token-error').textContent || '(empty)';
+  const status = document.getElementById('publish-status');
+  return '(dialog did not open) ' + (status ? status.textContent : '');
+});
+t('  …and the token dialog says why it is asking at all',
+  /public copy of the editor/.test(dialogSays), dialogSays);
+await page.evaluate(() => {
+  const dialog = document.getElementById('token-dialog');
+  if (dialog && dialog.open) dialog.close();
+});
+
+/* Back to the stood-in backend for whatever follows. */
+overlay.set('admin.js', await patchedAdminJs());
 
 
 /* ---- a homepage the editor cannot splice ----------------------------
