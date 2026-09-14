@@ -363,6 +363,36 @@ Latin UI face at 12px with 0.08em of tracking, which pulls joined letters
 apart. Who built it is said once: the *Built by* cell in the facts row is
 written only when `preparedBy` is absent.
 
+**The same piece in two languages is two records joined by `alsoIn`.**
+Each is a page to be read, so each has its own id and its own file — and
+nothing joined them, which meant a reader arriving on one from a
+forwarded link could not learn the other existed. The field names the
+other record's id; `twinOf` resolves it and a page is never written from
+an id naming nothing.
+
+`buildPost` writes two things from it: the visible line under the date,
+and `<link rel="alternate" hreflang>` for both sides plus `x-default`,
+which is the half a crawler reads to see one piece rather than two
+unrelated pages. The visible line is written **in the language it goes
+to** — whoever wants it reads that language, so offering it in the one
+they are already reading helps nobody. That is not the "a kind is shown
+in the language the record reads in" case: a kind describes this piece,
+this describes the other one. And an Urdu link on an English page takes
+`align-left`, the trap above in one more place.
+
+The **Also in** menu writes the field on *both* records and clears both,
+because a one-sided pairing is the failure that matters — the reader
+crosses over and the far page offers no way back. `problems()` catches
+the hand-edited cases: an id naming nothing, a mate that does not point
+back, and a pairing between two records in the same language.
+
+**A new field has to be added to `writeRecord` or a publish drops it.**
+`alsoIn` was written into `content.js` first and the next regeneration
+threw it away silently — `buildContent` serialises a listed set of fields
+and nothing else. *The content.js it writes is the content.js in the
+branch* in `test/editor.mjs` is what caught it, and is the guard for
+every field added after this one.
+
 **A record carries the day it was last edited, and the editor stamps
 it.** `updated` is written by `touch(record)` in `admin.js`, from a
 listener delegated on the row so a field added later cannot be
@@ -717,12 +747,10 @@ a fault.
   `apps/zakat-calculator.html`. Adding another is a form: **+ Add an app**
   in the editor, then the address, the version, the platforms and what is
   new. No screenshot on the page yet — the author has one.
-- The `posts` category holds three pieces. Two of them are the same essay
-  in English and Urdu — separate entries with separate ids, not one entry
-  with two files, because each is a page to be read rather than a download
-  to be picked. Nothing links one to the other yet; the block format has
-  no way to write a link, and adding one is the next thing that category
-  needs.
+- The `posts` category's English/Urdu pairs are joined by `alsoIn`. The
+  block format still has no way to write a link inside the writing — that
+  was the wrong place for it, since the crossing belongs to the record and
+  not to a sentence in it.
 - Writing a post still means opening the editor. The plan is a GitHub
   Action: commit one Markdown file from the phone app, and it builds the
   page, the entry and the sitemap line.

@@ -407,7 +407,8 @@ window.siteContent = {
           description: "Books are being bought and shredded to feed machines — what the court allowed, what it cost, and why a printed copy still matters.",
           descriptionUr: "‏کتابیں خرید کر مشین کی خوراک بنائی جا رہی ہیں: عدالت نے کیا جائز ٹھہرایا، تاوان کتنا پڑا، اور چھپی ہوئی کتاب اب بھی کیوں ضروری ہے۔",
           tags: ["Books", "Artificial Intelligence", "Copyright", "Print"],
-          page: "posts/books-that-arent-coming-back.html"
+          page: "posts/books-that-arent-coming-back.html",
+          alsoIn: "kitabein-mashin-ki-khurak"
         },
         {
           id: "kitabein-mashin-ki-khurak",
@@ -418,7 +419,8 @@ window.siteContent = {
           description: "The Urdu version: books bought and pulped to feed machines, and why a book on the shelf depends on no server.",
           descriptionUr: "کتابیں خرید کر گودے میں بدلی جا رہی ہیں، اور الماری کی کتاب کسی سرور کی محتاج نہیں۔",
           tags: ["کتاب", "مصنوعی ذہانت", "حقوقِ اشاعت", "طباعت"],
-          page: "posts/kitabein-mashin-ki-khurak.html"
+          page: "posts/kitabein-mashin-ki-khurak.html",
+          alsoIn: "books-that-arent-coming-back"
         },
         {
           id: "alfaz-ka-intikhab",

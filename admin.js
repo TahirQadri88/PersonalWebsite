@@ -86,6 +86,17 @@
     });
   }
 
+  /* The entry a record's `alsoIn` names, or null. A page is never written
+     from an unresolved id: a typo, or a record since deleted, would then
+     cost a dead link on a published page rather than a missing one. */
+  function twinOf(id) {
+    var found = null;
+    allRecords().forEach(function (entry) {
+      if (entry.record.id === id && entry.record.page) found = entry;
+    });
+    return found;
+  }
+
   function allRecords() {
     var out = [];
     eachRecord(function (record, list, index, category) {
@@ -1398,6 +1409,13 @@
     var pretty = site.formatDate(record.date);
     var categoryTitle = entry.category ? entry.category.title : 'Posts, Notes & Reflections';
     var categoryId = entry.category ? entry.category.id : POSTS_CATEGORY;
+    /* The same piece in the other language, if there is one. Two entries
+       with two ids, because each is a page to be read rather than a file
+       to be picked — so the only thing joining them is this field, and a
+       reader who arrives on one from a forwarded link has no other way to
+       learn the other exists. Resolved, not trusted: an id naming nothing
+       writes nothing. */
+    var twin = record.alsoIn ? twinOf(record.alsoIn) : null;
 
     var jsonLd = JSON.stringify({
       '@context': 'https://schema.org',
@@ -1427,6 +1445,14 @@
       record.description ? '    <meta name="description" content="' + e(record.description) + '" />' : null,
       '    <meta name="author" content="' + e(author) + '" />',
       '    <link rel="canonical" href="' + e(url) + '" />',
+      /* What a crawler reads to learn these are one piece in two
+         languages rather than two unrelated pages. Both sides are named,
+         this one included — the standard asks for that — and x-default
+         points at the piece's own, which is where a reader with no
+         language preference should land. */
+      twin ? '    <link rel="alternate" hreflang="' + e(record.language || 'en') + '" href="' + e(url) + '" />' : null,
+      twin ? '    <link rel="alternate" hreflang="' + e(twin.record.language || 'en') + '" href="' + e(base + twin.record.page) + '" />' : null,
+      twin ? '    <link rel="alternate" hreflang="x-default" href="' + e(url) + '" />' : null,
       '',
       '    <meta property="og:type" content="article" />',
       '    <meta property="og:title" content="' + e(record.title) + '" />',
@@ -1489,6 +1515,28 @@
          to anchor it, and the bidi algorithm moves the leading day number
          to the end: "3 August 2026" renders as "August 2026 3". */
       pretty ? '        <p class="work-date" dir="ltr">' + e(pretty) + '</p>' : null,
+      /* The way across, written in the language it goes *to* — whoever
+         wants it reads that language, so offering it in the one they are
+         already reading helps nobody. This is not the "a kind is shown in
+         the language the record reads in" case: a kind describes this
+         piece, this describes the other one.
+
+         Both posts live in posts/, so the href is the bare filename and
+         needs no climbing out. `.urdu` brings its own size and
+         `text-align: right`, so on an English page the Urdu line takes
+         `align-left` beside it — the trap CLAUDE.md names, in one more
+         place. One line, so no `own-edge`. */
+      twin ? (function () {
+        var t = twin.record;
+        var trtl = t.language === 'ur' || t.language === 'ar';
+        var cls = t.language === 'ur' ? 'urdu' : t.language === 'ar' ? 'arabic' : 'latin';
+        var words = t.language === 'ur' ? 'اردو میں پڑھیے'
+          : t.language === 'ar' ? 'العربية میں پڑھیے' : 'Read this in English';
+        return '        <p class="post-alt"><a class="text-link ' + cls +
+          (trtl && !rtl ? ' align-left' : '') + '" lang="' + e(t.language || 'en') +
+          '" dir="' + (trtl ? 'rtl' : 'ltr') + '" href="' +
+          e(String(t.page).split('/').pop()) + '">' + e(words) + '</a></p>';
+      })() : null,
       /* Through the same helper the rest of the site uses, so a description
          written in Urdu comes out in Nastaliq here too. */
       /* No summary above the writing. On a work the description says what
@@ -2983,6 +3031,43 @@
       pageField.appendChild(pageField.own(pageInput));
       fields.appendChild(pageField);
 
+      /* The same piece in the other language. A menu rather than a typed
+         id, because an id typed twice is an id typed wrong once — and
+         picking here writes the field on *both* records, so the two can
+         never point at each other by halves. Clearing it clears both.
+         Only other posts are offered; a work has its own file to
+         download and is not a translation of anything. */
+      var altField = field('Also in', 'the same piece in another language — sets both sides');
+      var altSelect = document.createElement('select');
+      var none = document.createElement('option');
+      none.value = ''; none.textContent = 'Not paired';
+      altSelect.appendChild(none);
+      allRecords().forEach(function (other) {
+        if (!isPost(other) || other.record.id === record.id || !other.record.id) return;
+        var option = document.createElement('option');
+        option.value = other.record.id;
+        option.textContent = other.record.title || other.record.id;
+        altSelect.appendChild(option);
+      });
+      altSelect.value = record.alsoIn || '';
+      altSelect.addEventListener('change', function () {
+        /* Let go of whoever this record used to name, or that one is left
+           pointing back at a record that no longer answers. */
+        var had = record.alsoIn ? twinOf(record.alsoIn) : null;
+        if (had && had.record.alsoIn === record.id) {
+          had.record.alsoIn = undefined;
+          touch(had.record);
+        }
+        record.alsoIn = altSelect.value || undefined;
+        var now = record.alsoIn ? twinOf(record.alsoIn) : null;
+        if (now) { now.record.alsoIn = record.id; touch(now.record); }
+        touch(record);
+        markDirty();
+        render();
+      });
+      altField.appendChild(altField.own(altSelect));
+      fields.appendChild(altField);
+
       var bodyField = field(
         'The writing',
         'type it as it should read, or paste a WhatsApp message — a *line like this* becomes a Heading, ' +
@@ -3804,6 +3889,23 @@
       if (category && category.id === POSTS_CATEGORY && !record.page) {
         found.push(where + ': a post needs a page, e.g. posts/' + (record.id || 'slug') + '.html');
       }
+      /* A pairing has to hold from both ends. The menu writes both sides,
+         so this only catches a content.js edited by hand — but a one-sided
+         link is the failure that matters: the reader crosses over and the
+         far page offers no way back. */
+      if (record.alsoIn) {
+        var mate = twinOf(record.alsoIn);
+        if (!mate) {
+          found.push(where + ': is paired with "' + record.alsoIn +
+            '", which is not a record with a page of its own.');
+        } else if (mate.record.alsoIn !== record.id) {
+          found.push(where + ': is paired with "' + record.alsoIn +
+            '", but that one does not point back — pick it again under Also in, which sets both sides.');
+        } else if (mate.record.language === record.language) {
+          found.push(where + ': is paired with "' + record.alsoIn +
+            '", which is in the same language. Also in is for the same piece in another language.');
+        }
+      }
       if (record.app) {
         if (!record.page) {
           found.push(where + ': an app needs a page, e.g. apps/' + (record.id || 'slug') + '.html');
@@ -3971,6 +4073,12 @@
       lines.push(pad + 'tags: [' + record.tags.map(str).join(', ') + ']');
     }
     if (record.page) lines.push(pad + 'page: ' + str(record.page));
+    /* Beside `page`, because it names another record's page. Every field a
+       record can hold has to be listed here or a publish quietly drops
+       it — this one was written straight into content.js first and the
+       next regeneration threw it away, which is exactly the failure this
+       list makes possible. */
+    if (record.alsoIn) lines.push(pad + 'alsoIn: ' + str(record.alsoIn));
     if (record.app) lines.push(pad + 'app: ' + writeValue(record.app, indent));
     if (record.files && record.files.length) {
       lines.push(pad + writeFiles(record.files, indent));
@@ -4300,7 +4408,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-09-12.1';
+  var EDITOR_VERSION = '2026-09-14.1';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */
