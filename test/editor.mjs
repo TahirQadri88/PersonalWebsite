@@ -628,6 +628,65 @@ await page.waitForTimeout(60);
 t('  …so a space after the words falls on the far side of them, not this one',
   reads.space < reads.words, JSON.stringify(reads));
 
+/* ---- the caret has to survive the box tidying itself ----------------
+
+   `tidy` turns anything that is not one of the blocks — a bare `div`, a
+   run of loose text — back into a paragraph, and it runs on every
+   keystroke. It replaced the node and restored nothing, so if the caret
+   happened to be in that node it was thrown away and the next key landed
+   wherever the browser had left the selection.
+
+   Typing normally never reaches it: well-formed blocks leave nothing to
+   tidy, which is why typing whole paragraphs a key at a time across all
+   twenty-one blocks of a real post never showed it. A soft keyboard
+   does reach it — Chrome on Android wraps what you type in a `div` of
+   its own when it dislikes the block structure — so the state is made
+   here deliberately rather than typed into being. */
+for (const [kind, label] of [
+  ['div', 'a div the keyboard left behind'],
+  ['text', 'loose text at the box\'s own level'],
+]) {
+  const kept = await page.evaluate((which) => {
+    const canvas = document.querySelector('.admin-row[open] .writing-canvas');
+    const node = which === 'div'
+      ? Object.assign(document.createElement('div'), { textContent: 'ایک دو تین' })
+      : document.createTextNode('ایک دو تین');
+    canvas.appendChild(node);
+    /* Caret six characters in, which is inside "دو" — a place a restored
+       caret can be wrong about without being obviously wrong. */
+    const target = node.nodeType === 3 ? node : node.firstChild;
+    const range = document.createRange();
+    range.setStart(target, 6);
+    range.collapse(true);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    canvas.focus();
+    /* What every keystroke does, without a keystroke. */
+    canvas.dispatchEvent(new InputEvent('input', { bubbles: true }));
+
+    const now = window.getSelection();
+    if (!now.rangeCount) return { where: 'nowhere', offset: -1 };
+    const at = now.getRangeAt(0);
+    let block = at.startContainer;
+    while (block && block.parentNode !== canvas) block = block.parentNode;
+    /* With the fault present there is no block to measure into — the
+       selection is left outside the box entirely — so say so rather than
+       throwing, which would report as a crash instead of as the fault. */
+    if (!block) return { where: 'outside the box', offset: -1, inCanvas: false };
+    const measure = document.createRange();
+    measure.selectNodeContents(block);
+    try { measure.setEnd(at.endContainer, at.endOffset); } catch (error) {
+      return { where: block.nodeName, offset: -1, inCanvas: false };
+    }
+    return { where: block.nodeType === 1 ? block.tagName : 'loose text',
+             offset: measure.toString().length,
+             inCanvas: canvas.contains(at.startContainer) };
+  }, kind);
+  t('the caret survives the box tidying ' + label,
+    kept.inCanvas && kept.where === 'P' && kept.offset === 6, JSON.stringify(kept));
+}
+
 console.log('\nmarks inside a line');
 
 /* Until now a whole line could be a heading or a quotation and nothing
@@ -664,8 +723,8 @@ for (const [button, tag, label] of [['B', 'B', 'bold'], ['I', 'I', 'italic'], ['
     new RegExp('one <' + tag.toLowerCase() + '>two</' + tag.toLowerCase() + '> three', 'i').test(html), html);
 }
 
-for (const [button, cls, label] of [['One step smaller', 'text-small', 'a step smaller'],
-                                    ['One step larger', 'text-large', 'a step larger']]) {
+for (const [button, cls, label] of [['Smaller', 'text-small', 'a step smaller'],
+                                    ['Larger', 'text-large', 'a step larger']]) {
   await newBlock(page, 'one two three');
   await pickOut(page, 4, 7);
   await use(page, row, button);
@@ -673,11 +732,11 @@ for (const [button, cls, label] of [['One step smaller', 'text-small', 'a step s
   let html = await page.evaluate(() =>
     document.querySelector('.admin-row[open] .writing-canvas').lastElementChild.innerHTML);
   t(label + ' wraps the words picked out', html.indexOf('class="' + cls + '"') !== -1, html);
-  await use(page, row, 'Normal size');
+  await use(page, row, 'Normal');
   await page.waitForTimeout(120);
   html = await page.evaluate(() =>
     document.querySelector('.admin-row[open] .writing-canvas').lastElementChild.innerHTML);
-  t('  …and Normal size takes it off again', html.indexOf(cls) === -1, html);
+  t('  …and Normal takes it off again', html.indexOf(cls) === -1, html);
 }
 
 /* Bold inside Urdu, since Nastaliq has no bold of its own and the page
@@ -973,6 +1032,126 @@ const APP = 'zakat-calculator';
     (await appRow.locator('.admin-field label').allTextContents()).some((x) => /What.s new/.test(x)));
   await appRow.locator('summary').click();
   await page.waitForTimeout(150);
+}
+
+/* ---- what a row puts first ------------------------------------------
+
+   A row is opened to write, or to fix a title. The order in `finish()`
+   says so, and a field the order forgets floats to the top instead of
+   the bottom — `alsoIn` did, putting the least-used control on a post
+   above its Language and Title.
+
+   So the assertion is the rule, not a list of names: nothing a reader
+   would not reach for may sit between the row's summary and the writing
+   box. Measured on a phone, which is where the scrolling costs. */
+console.log('\nwhat a row puts first');
+
+{
+  await page.setViewportSize({ width: 390, height: 840 });
+  const postRow = page.locator('.admin-row').filter({ hasText: POST }).first();
+  /* It may already be open from the tests above — clicking would shut it. */
+  if (!(await postRow.evaluate((row) => row.open))) {
+    await postRow.locator('summary').click();
+  }
+  await postRow.locator('.writing-canvas').waitFor();
+  await page.waitForTimeout(800);
+  const above = await page.evaluate((id) => {
+    const row = [...document.querySelectorAll('.admin-row[open]')]
+      .find((r) => { const c = r.querySelector('.admin-row-id'); return c && c.textContent === id; });
+    const fields = row.querySelector('.admin-fields');
+    /* Up to the field that HOLDS the writing box, not to the box itself —
+       that field's own label sits above the canvas, so measuring to the
+       canvas counts the writing field as being before the writing. */
+    const kids = [...fields.children];
+    const before = kids.slice(0, kids.findIndex((e) => e.querySelector('.writing-canvas')));
+    return { labels: before.map((e) => (e.querySelector('label') || e).textContent.trim().split('—')[0].trim()),
+             height: Math.round(before.reduce((sum, e) => sum + e.getBoundingClientRect().height, 0)) };
+  }, POST);
+  t('only Language and Title come before the writing box',
+    above.labels.join(' | ') === 'Language | Title', JSON.stringify(above));
+  /* A budget beside the rule, not a restatement of it: two fields measure
+     167px, and a third — `alsoIn` was 81 — puts it at 248. 250 is
+     therefore the ceiling that a third field cannot pass, whatever it is
+     called, which is the half a list of names cannot say. */
+  t('  …so the writing stays within 250px of the top of the row',
+    above.height < 250, above.height + 'px');
+
+  /* ---- what the toolbar reaches without a swipe ---------------------
+
+     On a phone the toolbar is one rail that swipes sideways, and that is
+     deliberate: stacked, it stood 380px tall on an 820px screen. The
+     trade only works if the controls used while writing are on the rail
+     to begin with, and Bold, Italic and Underline were not — the two
+     menus filled it and U ended 18px past the edge. A piece of Urdu here
+     is full of English terms, so those three are reached for constantly;
+     Size and Align are not, and stay a swipe away on purpose.
+
+     Measured, not counted, because it is the pixel the rail ends at that
+     decides this and no number of controls predicts it. */
+  const rail = await page.evaluate(() => {
+    const bar = document.querySelector('.admin-row[open] .writing-tools');
+    const edge = bar.getBoundingClientRect().right;
+    const reach = (sel) => {
+      const e = bar.querySelector(sel);
+      return e ? Math.round(e.getBoundingClientRect().right - edge) : null;
+    };
+    /* By name, not by position — the order of the groups is the thing
+       under test, so addressing them by position would move with it. */
+    const seen = (sel) => {
+      const e = bar.querySelector(sel);
+      if (!e) return null;
+      const r = e.getBoundingClientRect();
+      return Math.round(100 * Math.max(0, Math.min(r.right, edge) - r.left) / r.width);
+    };
+    return { bold: reach('.writing-tool.is-bold'), italic: reach('.writing-tool.is-italic'),
+             underline: reach('.writing-tool.is-underline'),
+             script: reach('select[aria-label="Script"]'),
+             stylePast: reach('select[aria-label="Style"]'),
+             styleSeen: seen('select[aria-label="Style"]') };
+  });
+  t('the script and all three emphasis marks are on the rail without a swipe',
+    ['script', 'bold', 'italic', 'underline'].every((k) => rail[k] !== null && rail[k] <= 0),
+    JSON.stringify(rail) + ' (px past the rail\'s right edge; 0 or less is on it)');
+
+  /* Style is once a section, not once a sentence, so it is allowed to
+     want a swipe — but it must be visible enough to be found, or the
+     swipe is something you have to already know about. */
+  t('  …and Style is mostly in view beside them, so the swipe is discoverable',
+    rail.styleSeen >= 80, rail.styleSeen + '% of Style visible');
+
+  /* And a control has to be able to say what it is holding. Every option
+     of every menu must fit the box it is shown in — "One step smaller"
+     needed 119px of the 104 a phone gives it, so two of Size's three
+     values were shown cut off. */
+  const clipped = await page.evaluate(() => {
+    const bar = document.querySelector('.admin-row[open] .writing-tools');
+    const bad = [];
+    bar.querySelectorAll('select.writing-menu').forEach((sel) => {
+      const cs = getComputedStyle(sel);
+      const span = document.createElement('span');
+      span.style.cssText = 'position:absolute;visibility:hidden;white-space:pre;font:' + cs.font;
+      document.body.appendChild(span);
+      /* Minus the padding, and minus 18px for the arrow the control draws
+         itself — measured off Chromium at this size. */
+      const room = sel.getBoundingClientRect().width
+        - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 18;
+      [...sel.options].forEach((option) => {
+        span.textContent = option.textContent;
+        const need = span.getBoundingClientRect().width;
+        if (need > room) bad.push(sel.getAttribute('aria-label') + ': "' + option.textContent +
+          '" needs ' + Math.round(need) + ' of ' + Math.round(room));
+      });
+      span.remove();
+    });
+    return bad;
+  });
+  t('  …and every value a menu can show fits the box showing it',
+    clipped.length === 0, clipped.join(' | '));
+
+  await postRow.locator('summary').click();
+  await page.waitForTimeout(200);
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  await page.waitForTimeout(200);
 }
 
 await page.click('#export');
