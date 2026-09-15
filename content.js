@@ -342,10 +342,11 @@ window.siteContent = {
       works: [
         {
           id: "zakat-calculator",
-          title: "Zakat Calculator",
+          title: "Zakat Calculator (v2)",
           language: "en",
           kind: "ایپ",
           date: "2026-08-21",
+          updated: "2026-09-15",
           description: "A zakāt calculator for people in business and for those on a salary — in Urdu and English, with live silver rates for the niṣāb. It runs in the browser, on any device, with nothing to install.",
           descriptionUr: "کاروباری اور تنخواہ دار افراد کے لیے زکوٰۃ کا آسان حساب بنانے والی ایپلی کیشن — اردو اور انگریزی دونوں زبانوں میں، اور نصاب کے لیے چاندی کے تازہ نرخ خود لے لیتی ہے۔ براؤزر میں چلتی ہے، کسی بھی ڈیوائس پر — کچھ انسٹال کرنے کی ضرورت نہیں۔",
           tags: ["زکوٰۃ", "حساب", "نصاب"],
@@ -353,7 +354,7 @@ window.siteContent = {
           app: {
             url: "https://zakathisab.web.app/",
             version: "2",
-            nameUr: "زکوٰۃ کیلکولیٹر",
+            nameUr: "زکوٰۃ کیلکولیٹر ( ورژن ۲)",
             cta: "ابھی وزٹ کریں اور اپنی زکوٰۃ کا درست حساب حاصل کریں۔",
             presentedBy: "جمعیتِ اشاعتِ اہلِ سنت (پاکستان) کراچی",
             preparedBy: "ابواللیث محمد طاہر قادری",
