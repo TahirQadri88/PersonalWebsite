@@ -275,6 +275,33 @@
        to announce what typing into it does. */
     input.setAttribute('aria-label', 'Add a tag');
 
+    /* And the box has to take that script too, not only the pills below
+       it. This is the one that was reported as *the space bar going
+       backspace*, on a Windows desktop and an iPhone alike — which is
+       what said it could not be a keyboard.
+
+       Every tag in this library is Urdu. The box was plain and so read
+       left to right, and a space typed at the end of right-to-left words
+       inside a left-to-right box is a neutral character: it takes the
+       box's direction and lands on the far side of everything just
+       typed, carrying the caret with it. `سورۂ زخرف` has a space in it,
+       so it happened on most tags anybody types.
+
+       Nothing was wrong with the text. `value` was always right and
+       `selectionStart` was always at the end, which is why it survived
+       three rounds of looking — the fault is only in where the box draws
+       the caret, and no assertion about the string can see it.
+
+       Same `follow` as `lineInput`, except the fallback is the record's
+       own language rather than English: an empty box on an Urdu post
+       should already be right to left, so the first letter typed does
+       not have to turn it round. */
+    var follow = function () {
+      applyScript(input, scriptOf(input.value, record.language) || record.language || 'en');
+    };
+    follow();
+    input.addEventListener('input', follow);
+
     function draw() {
       Array.prototype.slice.call(box.querySelectorAll('.tag-pill')).forEach(function (node) {
         box.removeChild(node);
@@ -4557,7 +4584,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-09-15.1';
+  var EDITOR_VERSION = '2026-09-15.2';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */

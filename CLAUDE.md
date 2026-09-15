@@ -451,13 +451,69 @@ described. `caretChild` is the one helper it needed: `caretBlock`
 answers only for an element, and loose text is precisely what `tidy` is
 there to clear up.
 
-**Not every space that jumps is ours.** In a *correctly* marked Urdu
-block, a space typed after an English term — `board`, `legal entity`,
-and this library is full of them — still leaps to the far end of the
-line. That is Unicode bidi's L1 rule: trailing whitespace takes the
-paragraph's embedding level. `unicode-bidi: isolate`, `plaintext` and
-wrapping the Latin run in `<bdi>` were all measured and none of them
-changes it. Do not go looking for it in `admin.js` again.
+**A typed space must be a space, not a no-break space — and this was
+the reported fault all along.** `white-space` on `.writing-canvas.post-body`
+is `pre-wrap`, and that one line is *the space bar going backwards*.
+
+At `normal`, a typed space is one the browser is allowed to collapse,
+so every browser inserts **U+00A0** instead to protect it. Measured
+mid-paragraph in the Urdu post: three presses left two no-break spaces
+behind, and the caret moved **+3 to +5px rightwards** — backwards, in a
+line that reads right to left — creeping the wrong way until the next
+letter jumped it forward. NBSP is a neutral carrying no break
+opportunity, so a run of them beside an em-dash (that paragraph has
+two) is a long neutral run between two RTL runs, and where a caret sits
+inside one of those is exactly what browsers are unreliable about. At
+`pre-wrap` the browser inserts a plain `U+0020`, no NBSP is ever made,
+and the same presses move the caret **−1px each — forwards**.
+
+Safe because `bodyToHtml` keeps every block's text on one line, so
+there are no newlines inside a block for `pre-wrap` to begin honouring;
+the whitespace between blocks sits at the box's own level, where `tidy`
+removes it before anything is painted.
+
+**No published page was ever harmed** — something normalises the NBSPs
+on the way out and all six posts hold none. It was only ever the
+experience of typing, which is the part nobody had measured. Hence how
+long it took: the text was always right, `selectionStart` was always at
+the end, and **no assertion about the string could see it**. Three
+rounds went looking in `admin.js` for something that was in
+`admin.css`.
+
+**What that cost, and the lesson.** Two other real faults were found
+and fixed on the way — a block marked English holding Urdu, and `tidy`
+dropping the caret — and neither was this one. Both were reported as
+though they might be, which was fair at the time and wrong. When a
+reader says *the caret goes the wrong way*, **measure the caret, in the
+direction the script runs**, before anything else; and when a symptom
+survives two plausible fixes, the next move is not a third guess but
+the reader's own screenshot of the exact spot, which is what finally
+placed it.
+
+**Not every space that jumps is ours, though.** In a correctly marked
+Urdu block a space typed after an *English term* — `board`, `legal
+entity` — still leaps to the far end of the line. That one is Unicode
+bidi's L1 rule: trailing whitespace takes the paragraph's embedding
+level. `unicode-bidi: isolate`, `plaintext` and wrapping the Latin run
+in `<bdi>` were all measured and none of them changes it. That is a
+different thing from the NBSP fault above, and it is genuinely not
+fixable here.
+
+**A box you type Urdu into has to take the script too, not only what it
+writes out.** The tag box was the plainest case: each finished pill
+already took the script it was written in — the comment above `draw()`
+says why — while the input the tags are *typed into* stayed left to
+right. Every tag in this library is Urdu, `سورۂ زخرف` has a space in
+it, and a space at the end of RTL words inside an LTR box lands on the
+far side of them and takes the caret with it. It follows the content
+now, the same `follow` as `lineInput`, falling back to the *record's*
+language rather than English so an empty box on an Urdu post already
+reads right to left.
+
+The boxes that stay Latin are the ones holding a path, an id, a version
+or the English half of a paired description — probing every text box in
+the editor turned up 317, and those are the only ones that should not
+follow what is typed into them.
 
 **The editor has two addresses and only one of them can publish.**
 `admin.html` is committed, so GitHub Pages serves it at the public
