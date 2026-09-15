@@ -628,6 +628,65 @@ await page.waitForTimeout(60);
 t('  …so a space after the words falls on the far side of them, not this one',
   reads.space < reads.words, JSON.stringify(reads));
 
+/* ---- the caret has to survive the box tidying itself ----------------
+
+   `tidy` turns anything that is not one of the blocks — a bare `div`, a
+   run of loose text — back into a paragraph, and it runs on every
+   keystroke. It replaced the node and restored nothing, so if the caret
+   happened to be in that node it was thrown away and the next key landed
+   wherever the browser had left the selection.
+
+   Typing normally never reaches it: well-formed blocks leave nothing to
+   tidy, which is why typing whole paragraphs a key at a time across all
+   twenty-one blocks of a real post never showed it. A soft keyboard
+   does reach it — Chrome on Android wraps what you type in a `div` of
+   its own when it dislikes the block structure — so the state is made
+   here deliberately rather than typed into being. */
+for (const [kind, label] of [
+  ['div', 'a div the keyboard left behind'],
+  ['text', 'loose text at the box\'s own level'],
+]) {
+  const kept = await page.evaluate((which) => {
+    const canvas = document.querySelector('.admin-row[open] .writing-canvas');
+    const node = which === 'div'
+      ? Object.assign(document.createElement('div'), { textContent: 'ایک دو تین' })
+      : document.createTextNode('ایک دو تین');
+    canvas.appendChild(node);
+    /* Caret six characters in, which is inside "دو" — a place a restored
+       caret can be wrong about without being obviously wrong. */
+    const target = node.nodeType === 3 ? node : node.firstChild;
+    const range = document.createRange();
+    range.setStart(target, 6);
+    range.collapse(true);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    canvas.focus();
+    /* What every keystroke does, without a keystroke. */
+    canvas.dispatchEvent(new InputEvent('input', { bubbles: true }));
+
+    const now = window.getSelection();
+    if (!now.rangeCount) return { where: 'nowhere', offset: -1 };
+    const at = now.getRangeAt(0);
+    let block = at.startContainer;
+    while (block && block.parentNode !== canvas) block = block.parentNode;
+    /* With the fault present there is no block to measure into — the
+       selection is left outside the box entirely — so say so rather than
+       throwing, which would report as a crash instead of as the fault. */
+    if (!block) return { where: 'outside the box', offset: -1, inCanvas: false };
+    const measure = document.createRange();
+    measure.selectNodeContents(block);
+    try { measure.setEnd(at.endContainer, at.endOffset); } catch (error) {
+      return { where: block.nodeName, offset: -1, inCanvas: false };
+    }
+    return { where: block.nodeType === 1 ? block.tagName : 'loose text',
+             offset: measure.toString().length,
+             inCanvas: canvas.contains(at.startContainer) };
+  }, kind);
+  t('the caret survives the box tidying ' + label,
+    kept.inCanvas && kept.where === 'P' && kept.offset === 6, JSON.stringify(kept));
+}
+
 console.log('\nmarks inside a line');
 
 /* Until now a whole line could be a heading or a quotation and nothing

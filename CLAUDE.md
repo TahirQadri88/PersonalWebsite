@@ -425,6 +425,32 @@ It waits for `compositionend` rather than running on `input` while a
 soft keyboard is mid-word. Replacing the element an IME is composing
 inside is how characters get lost, and the author writes on a phone.
 
+**`tidy` runs on every keystroke, so it has to carry the caret.** It
+turns anything that is not one of the blocks — a bare `div`, loose text
+at the box's level — back into a paragraph, and it replaced the node and
+restored nothing. Every other place in the file that replaces an element
+measures the caret in characters first and puts it back:
+`setBlockField`, `adoptScript`, `turn`. This one did the surgery and
+dropped the selection **out of the writing box entirely**, which is what
+the test reports with the fix taken out again.
+
+A desktop almost never reaches the replacing path — well-formed blocks
+leave nothing to tidy, which is why typing whole paragraphs a key at a
+time through all twenty-one blocks of the Urdu post never showed it. A
+soft keyboard does: Chrome on Android wraps what you type in a `div` of
+its own whenever it dislikes the block structure. Then the caret was
+gone and the next key landed wherever the browser had left the
+selection.
+
+**This is not a proven account of the report**, and it should not be
+written up as one. The symptom could not be reproduced with key events
+anywhere in that post — every space measured a clean +5px, wraps
+included. What it is, is an unambiguous defect on the path every
+keystroke takes, whose failure looks exactly like the thing being
+described. `caretChild` is the one helper it needed: `caretBlock`
+answers only for an element, and loose text is precisely what `tidy` is
+there to clear up.
+
 **Not every space that jumps is ours.** In a *correctly* marked Urdu
 block, a space typed after an English term — `board`, `legal entity`,
 and this library is full of them — still leaps to the far end of the

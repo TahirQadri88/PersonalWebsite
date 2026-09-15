@@ -777,10 +777,44 @@
      becomes a paragraph. Run after every change, so the box can never
      hold a shape the file has no way to record. */
   function tidy(canvas) {
+    /* The caret has to be carried across this, and for a long time it was
+       not. Every other place that replaces an element — `setBlockField`,
+       `adoptScript` — measures the caret in characters first and puts it
+       back after, because replacing an element throws the selection away.
+       This one did the same surgery and restored nothing, and it runs on
+       **every** keystroke.
+
+       On a desktop it almost never reaches the replacing path: typing
+       into well-formed blocks leaves nothing here to tidy, which is why
+       typing out whole paragraphs one key at a time never showed it. A
+       soft keyboard is a different matter — Chrome on Android will wrap
+       what you type in a `div` of its own, or leave loose text at the
+       box's level, whenever it finds the block structure not to its
+       liking. Then this replaced the node the caret was in, the caret
+       went nowhere, and the next key landed wherever the browser had
+       decided to put the selection instead: the word you were typing
+       apparently eaten by the space bar.
+
+       Not a proven account of the report — it could not be reproduced
+       with key events on any of the twenty-one blocks of that post — but
+       an unambiguous defect on the path every keystroke takes, and the
+       remedy is the one the rest of the file already uses. */
+    var held = caretChild(canvas);
+    var offset = held ? caretOffset(held) : 0;
+    var restore = null;
+
     var children = Array.prototype.slice.call(canvas.childNodes);
     children.forEach(function (node) {
       if (node.nodeType === 1 && BLOCK_TAG[node.tagName.toLowerCase()]) return;
       if (node.nodeType === 3 && !node.textContent.trim()) {
+        /* Nothing to put a caret back into, so it goes to the end of the
+           block before this one — where the words are, rather than at the
+           top of the piece. */
+        if (node === held) {
+          var before = node.previousElementSibling;
+          restore = before || node.nextElementSibling;
+          offset = before ? before.textContent.length : 0;
+        }
         canvas.removeChild(node);
         return;
       }
@@ -793,8 +827,24 @@
       }
       fillEmpty(replacement);
       canvas.replaceChild(replacement, node);
+      if (node === held) restore = replacement;
     });
     if (!canvas.firstElementChild) canvas.appendChild(makeBlock({ kind: 'p' }, null));
+    if (restore && canvas.contains(restore)) putCaret(restore, offset);
+  }
+
+  /* The box's own child that the caret is inside — element or loose text.
+     `caretBlock` answers only for an element, because everything that
+     asks it wants a block to act on; `tidy` is the one caller that has to
+     know about a bare text node too, since that is exactly what it is
+     there to clear up. */
+  function caretChild(canvas) {
+    var selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return null;
+    var node = selection.getRangeAt(0).startContainer;
+    if (!canvas.contains(node)) return null;
+    while (node && node.parentNode !== canvas) node = node.parentNode;
+    return node && node.parentNode === canvas ? node : null;
   }
 
   /* Pasted text arrives as whatever the other program wrote — Word's
@@ -4507,7 +4557,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-09-14.3';
+  var EDITOR_VERSION = '2026-09-15.1';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */
