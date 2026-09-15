@@ -628,6 +628,46 @@ await page.waitForTimeout(60);
 t('  …so a space after the words falls on the far side of them, not this one',
   reads.space < reads.words, JSON.stringify(reads));
 
+/* ---- a typed space is a space, not a no-break space -----------------
+
+   The reported fault, found at last, and in the stylesheet rather than
+   in any of this. At `white-space: normal` a typed space is one the
+   browser may collapse, so it inserts U+00A0 to protect it instead.
+   Down the middle of an Urdu paragraph that leaves a run of no-break
+   spaces, and the caret creeps *rightwards* — backwards, in a line that
+   reads right to left — until the next letter jumps it forward.
+
+   The assertion is on the character, because that is the cause and it is
+   exact. The caret's own drift is measured after it, but a collapsed
+   range's geometry is the flakier of the two and it is the character
+   that decides. */
+{
+  await caretInto(page, 'p.urdu, p:not([class])', true);
+  const typed = await page.evaluate(() => {
+    const canvas = document.querySelector('.admin-row[open] .writing-canvas');
+    let block = window.getSelection().getRangeAt(0).startContainer;
+    while (block && block.parentNode !== canvas) block = block.parentNode;
+    return { whiteSpace: getComputedStyle(block).whiteSpace,
+             direction: getComputedStyle(block).direction };
+  });
+  t('the writing box does not let the browser collapse a typed space',
+    typed.whiteSpace === 'pre-wrap', JSON.stringify(typed));
+
+  await page.keyboard.type('ایک');
+  for (let i = 0; i < 3; i += 1) { await page.keyboard.press('Space'); await page.waitForTimeout(60); }
+  const put = await page.evaluate(() => {
+    const canvas = document.querySelector('.admin-row[open] .writing-canvas');
+    let block = window.getSelection().getRangeAt(0).startContainer;
+    while (block && block.parentNode !== canvas) block = block.parentNode;
+    const text = block.textContent;
+    return { nbsp: (text.match(/ /g) || []).length, tail: JSON.stringify(text.slice(-5)) };
+  });
+  t('  …so pressing it three times leaves three spaces and no no-break space',
+    put.nbsp === 0, JSON.stringify(put));
+  for (let i = 0; i < 6; i += 1) await page.keyboard.press('Backspace');
+  await page.waitForTimeout(80);
+}
+
 /* ---- the caret has to survive the box tidying itself ----------------
 
    `tidy` turns anything that is not one of the blocks — a bare `div`, a

@@ -563,6 +563,35 @@
   border: 1px solid var(--line);
   border-radius: 0 0 4px 4px;
   color: var(--ink);
+  /* This one line is the space bar going backwards, and it took three
+     rounds of looking in the wrong place to find.
+
+     At `normal` — the default — a typed space is one the browser would
+     be allowed to collapse, so every browser inserts a **no-break
+     space** instead to protect it. Measured in the middle of a real
+     Urdu paragraph: each press left `U+00A0 U+0020 U+00A0 U+0020 …`
+     behind, and the caret moved **+3 to +5px rightwards** — backwards,
+     in a line that reads right to left — creeping the wrong way until
+     the next letter jumped it forward again.
+
+     NBSP is a neutral with no break opportunity in it, so a run of them
+     beside an em-dash (that paragraph has two) is a long neutral run
+     between two right-to-left runs, and where a caret sits inside one
+     of those is exactly what browsers are unreliable about.
+
+     At `pre-wrap` there is nothing to protect: the browser inserts a
+     plain `U+0020`, no NBSP is ever created, and the same six presses
+     move the caret **−1px each — forwards**. Nothing else about the box
+     changes; `bodyToHtml` keeps every block's text on one line, so
+     there are no newlines inside a block for `pre-wrap` to start
+     honouring, and the whitespace between blocks is at the box's own
+     level where `tidy` removes it before anything is painted.
+
+     The published pages were never harmed — something normalises the
+     NBSPs on the way out, and all six posts hold none. This was only
+     ever the experience of typing, which is the part nobody had
+     measured. */
+  white-space: pre-wrap;
 }
 .writing-canvas:focus { outline: 0; border-color: var(--moss); box-shadow: 0 0 0 3px rgba(45, 87, 73, 0.12); }
 /* Blocks keep the site's proportions but lose the page's generous
