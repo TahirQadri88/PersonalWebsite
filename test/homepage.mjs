@@ -279,6 +279,12 @@ try {
                       English cross-link inside an RTL container — neither
                       arrangement had ever been measured. */
                    '/posts/log-barabar-kyun-nahin.html',
+                   /* The first pages putting Arabic honorifics inside
+                      English prose — an RTL run of a *third* script in a
+                      left-reading paragraph, which neither the Urdu nor
+                      the Latin cases above had ever covered. */
+                   '/posts/the-strong-and-the-trustworthy.html',
+                   '/posts/qawi-aur-ameen.html',
                    '/works/saa-ki-tahqeeq.html'];
     const measure = () => {
       const ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
@@ -453,7 +459,9 @@ try {
     const PAGES = ['/index.html', '/apps/zakat-calculator.html',
                    '/works/saa-ki-tahqeeq.html',
                    '/posts/reservations-shariah-screening-stocks.html',
-                   '/posts/log-barabar-kyun-nahin.html'];
+                   '/posts/log-barabar-kyun-nahin.html',
+                   '/posts/the-strong-and-the-trustworthy.html',
+                   '/posts/qawi-aur-ameen.html'];
     const measure = () => {
       const ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
       const out = [];
@@ -1181,7 +1189,12 @@ try {
     const PAGES = ['/posts/log-barabar-kyun-nahin.html',
                    '/posts/wisdom-behind-our-differences.html',
                    '/posts/reservations-shariah-screening-stocks.html',
-                   '/posts/kitabein-mashin-ki-khurak.html'];
+                   '/posts/kitabein-mashin-ki-khurak.html',
+                   /* Six Arabic references apiece, the most any page here
+                      carries, and on the English one they sit inside a
+                      Latin container. */
+                   '/posts/the-strong-and-the-trustworthy.html',
+                   '/posts/qawi-aur-ameen.html'];
     let seen = 0;
     const louder = [];
     const context = await browser.newContext({ viewport: { width: 390, height: 1000 } });
