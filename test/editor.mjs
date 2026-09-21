@@ -1354,6 +1354,84 @@ t('  …and names the tab, which is what it usually is',
 
    Routed on the fetch only. The same URL loads the editor itself, and
    answering that with a stub would leave nothing to test. */
+/* ---- references that were never marked as footnotes -----------------
+
+   A post's references are the quieter register, and a block that loses
+   the footnote mark falls through to the size an Arabic quotation gets:
+   23px against a 21px Urdu body, so the references come out **louder
+   than the article they annotate**. All seven on one article shipped
+   that way, because pasting rich text into the writing box brings the
+   words and not the marks.
+
+   test/homepage.mjs could not catch it. It measures every `.footnote`
+   against the prose around it, and with the class gone there was nothing
+   left to measure — the count fell from sixteen to ten and the assertion
+   passed. A guard that inspects only what is marked cannot see what is
+   not, which is why this one lives in the editor, where the piece is
+   still open and the author can put the mark back.
+
+   Done through the toolbar rather than by reaching into `bodies`: the
+   Style menu is how the mark comes off in life, and it is how it went. */
+console.log('\nreferences that lost their footnote mark');
+
+{
+  const refRow = page.locator('.admin-row').filter({ hasText: 'qawi-aur-ameen' }).first();
+  if (!(await refRow.evaluate((r) => r.open))) await refRow.locator('summary').click();
+  await refRow.locator('.writing-canvas').waitFor();
+  await page.waitForTimeout(900);
+
+  const marked = await page.evaluate(() => {
+    const canvas = document.querySelector('.admin-row[open] .writing-canvas');
+    return [...canvas.children].filter((e) => e.classList.contains('footnote')).length;
+  });
+  t('the article has references marked as footnotes to begin with', marked === 7, String(marked));
+
+  /* Take the mark off the last one, the way a paste does. */
+  await page.evaluate(() => {
+    const canvas = document.querySelector('.admin-row[open] .writing-canvas');
+    const last = canvas.lastElementChild;
+    const range = document.createRange();
+    range.selectNodeContents(last);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    canvas.focus();
+  });
+  await page.waitForTimeout(120);
+  await use(page, refRow, 'Text');
+  await page.waitForTimeout(200);
+
+  const said = await publishAndRead(page);
+  t('a reference left unmarked stops the publish',
+    /Fix these first/.test(said.text) && said.bad, said.text.slice(0, 120));
+  t('  …and says it would be set larger than the prose it annotates',
+    /louder|larger than the prose/.test(said.text), said.text.slice(0, 200));
+  t('  …and names the remedy and the line it means',
+    /Style . Footnote/.test(said.text) && /الشافعي|تفسير/.test(said.text), said.text.slice(0, 260));
+
+  /* Put it back, or every check after this one is measuring a broken post. */
+  await page.evaluate(() => {
+    const canvas = document.querySelector('.admin-row[open] .writing-canvas');
+    const last = canvas.lastElementChild;
+    const range = document.createRange();
+    range.selectNodeContents(last);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    canvas.focus();
+  });
+  await page.waitForTimeout(120);
+  await use(page, refRow, 'Footnote');
+  await page.waitForTimeout(200);
+  const restored = await publishAndRead(page);
+  t('  …and the publish is allowed again once the mark is back',
+    !/Fix these first/.test(restored.text), restored.text.slice(0, 120));
+  await refRow.locator('summary').click();
+  await page.waitForTimeout(150);
+}
+
 console.log('\na tab older than the site');
 
 await page.route('**/admin.js', (route, request) => {

@@ -960,6 +960,84 @@
     return prefer === 'ar' ? 'ar' : 'ur';
   }
 
+  /* ---- references that were never marked as footnotes -----------------
+
+     A post's references are set apart because they are the quieter
+     register — `.footnote` is 17px against a 21px Urdu body. A block
+     that misses that class falls through to the size an Arabic
+     quotation gets, 23px, and the references end up **louder than the
+     article they annotate**. That is not hypothetical: all seven on the
+     Urdu article shipped that way, because pasting rich text into the
+     writing box brings the words and not the marks.
+
+     Nothing caught it. `test/homepage.mjs` measures every `.footnote`
+     against the prose it sits in, and with the class gone there was
+     simply nothing to measure — the count fell from sixteen to ten and
+     the assertion passed. A test that looks only at the things that are
+     marked cannot see the ones that are not, so the check has to be here,
+     where the author still has the piece open.
+
+     Two signals, both deliberately narrow, because this refuses a
+     publish and a false positive would be worse than the fault:
+
+     1. The line begins with a reference numeral — ¹ ² ³ and the rest.
+        Nobody opens an ordinary sentence with a superscript digit.
+     2. The line comes after a heading that names the reference section,
+        and everything from there to the end of the piece is a
+        reference. This is what catches references with no numeral on
+        them at all, which the first signal never would.
+
+     Anything between the two is left alone. */
+  var REF_NUMERAL = /[\u00b9\u00b2\u00b3\u2070\u2074-\u2079]/;
+  var REF_HEADING = /^(references|bibliography|sources|notes|حوالہ\s*جات|حوالہ|مصادر|المراجع|مصادر\s*و\s*مراجع)$/i;
+
+  function unmarkedReferences(body, language) {
+    var blocks = String(body || '').split(/\n\s*\n/).filter(function (raw) { return raw.trim(); });
+    var parsed = blocks.map(readBlock);
+    var after = -1;
+    parsed.forEach(function (b, i) {
+      if ((b.kind === 'h2' || b.kind === 'h3') &&
+          REF_HEADING.test(b.text.replace(/[\s:：.،,]+$/g, '').trim())) after = i;
+    });
+
+    var loud = [];
+    parsed.forEach(function (b, i) {
+      if (b.kind === 'footnote') return;
+      var text = b.text.replace(/[\u200e\u200f\ufeff]/g, '').trim();
+      if (!text) return;
+      /* A heading inside the reference section groups the entries — the
+         shares post has four of them — and a quotation is a quotation
+         wherever it sits. Only the entries themselves are in question. */
+      if (b.kind !== 'p') return;
+      /* Signal one: the line opens with a reference numeral. Nobody
+         begins an ordinary sentence with a superscript digit, so this
+         needs no other evidence and holds anywhere in the piece. */
+      if (REF_NUMERAL.test(text.charAt(0))) { loud.push(text.slice(0, 40)); return; }
+      /* Signal two, and the one the Urdu article needed: an entry in the
+         closing reference run written in a script the piece is not. That
+         is the state that renders *louder* than the prose — `.post-body
+         .urdu > .arabic` is 23px against a 21px body, where an entry in
+         the piece's own script merely fails to get quieter. A reference
+         with no numeral on it is invisible to signal one, and this is
+         what catches it.
+
+         The two scripts have to be the right-to-left pair, not merely
+         different. English inside an Urdu piece is already quieter —
+         `.post-body .latin` sets it at 15px against 21 — so a bibliography
+         in English reads correctly whether or not it is a footnote, and
+         the shares post has fourteen of those. It is Arabic in Urdu, and
+         Urdu in Arabic, that fall *upward* to the quotation size.
+
+         Narrow on purpose: a check that refuses to publish the library as
+         it already stands is a check nobody can keep. */
+      var rtl = { ur: 1, ar: 1 };
+      if (after !== -1 && i > after && rtl[b.language] && rtl[language] && b.language !== language) {
+        loud.push(text.slice(0, 40));
+      }
+    });
+    return { count: loud.length, first: loud[0] || '' };
+  }
+
   function pastePlain(canvas, text, prefer) {
     var chunks = String(text || '')
       .split(/\n\s*\n/)
@@ -4108,6 +4186,15 @@
           found.push(where + ': its writing is not loaded, so publishing would link to a page that does not exist — open its row first.');
         } else if (!body.trim()) {
           found.push(where + ': has no writing in it yet.');
+        } else {
+          var loud = unmarkedReferences(body, record.language);
+          if (loud.count) {
+            found.push(where + ': ' + (loud.count === 1 ? 'a reference line is' : loud.count + ' reference lines are') +
+              ' not marked as a footnote, so ' + (loud.count === 1 ? 'it is' : 'they are') +
+              ' set at quotation size — larger than the prose ' + (loud.count === 1 ? 'it annotates' : 'they annotate') +
+              '. Put the caret in ' + (loud.count === 1 ? 'it' : 'each') + ' and choose Style → Footnote. First one: “' +
+              loud.first + '”.');
+          }
         }
       }
     });
@@ -4584,7 +4671,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-09-15.2';
+  var EDITOR_VERSION = '2026-09-21.1';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */

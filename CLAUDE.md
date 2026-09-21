@@ -571,6 +571,44 @@ screenshot mid-scroll shows static text behind the sticky rail and looks
 like a fault. Measured: **0 of 40** caret positions overlapped it. Do
 not go looking for this one either.
 
+**A guard that inspects only what is marked cannot see what is not.**
+A post's references are the quieter register — `.footnote` is 17px
+against a 21px Urdu body — and a block that loses that mark falls
+through to the size an Arabic *quotation* gets, 23px. The references
+then come out **louder than the article they annotate**. All seven on
+the Urdu article shipped that way, because pasting rich text into the
+writing box brings the words and not the marks.
+
+`test/homepage.mjs` measures every `.footnote` against the prose it
+sits in, and with the class gone there was **nothing left to measure**:
+the count fell from sixteen to ten and the assertion passed, green.
+That is the general lesson and it is worth more than the fix — a test
+keyed on a class is blind to the absence of that class, and the count
+it reports is the only thing that would have shown it.
+
+So the check is `unmarkedReferences` in `admin.js`, inside `problems()`,
+where a publish is refused and the piece is still open to correct. Two
+signals, both deliberately narrow, because it **blocks**:
+
+- the line opens with a reference numeral (¹ ² ³ …), which no ordinary
+  sentence does, so it needs no other evidence and holds anywhere;
+- the line sits in the closing run after a References heading **and is
+  in the other right-to-left script** — Arabic inside an Urdu piece, or
+  the reverse. That is the state that renders *upward*. This is what
+  catches a reference carrying no numeral at all.
+
+The scripts must be the RTL pair, not merely different: English inside
+an Urdu piece is already quieter at 15px through `.post-body .latin`,
+so the shares post's fourteen English entries read correctly whether or
+not they are footnotes. Headings and quotations inside the reference
+section are skipped — that post groups its entries under four of them.
+
+**Every narrowing above was forced by running it over the whole
+library, not reasoned out.** The first version flagged two posts that
+read perfectly well; a check that refuses to publish the library as it
+already stands is a check nobody can keep, and the temptation is then
+to delete it rather than narrow it.
+
 **A new field has to be added to `writeRecord` or a publish drops it.**
 `alsoIn` was written into `content.js` first and the next regeneration
 threw it away silently — `buildContent` serialises a listed set of fields
