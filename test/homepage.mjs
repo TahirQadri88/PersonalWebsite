@@ -391,9 +391,24 @@ try {
             return rows.length;
           })();
           if (lines > 1) {
+            /* The edge the block *begins* on, which is the right one in a
+               right-reading column — not the left one always.
+               Hardcoding left was wrong and said so the first time a
+               title grew long enough to wrap: the Urdu title of a post
+               and the date under it were reported 78px apart while their
+               right edges — where the script starts, and where a reader
+               looks — sat at exactly the same pixel. The 78 was on the
+               far side, where Urdu *ends*, and it was there because the
+               two blocks carry different max-widths, which is a layout
+               fact and not a fault.
+               Nothing is weakened by this: in a left-reading column,
+               where every fault this group has caught actually lived,
+               "begins" is still the left edge and the measure is
+               unchanged. */
             const ab = el.getBoundingClientRect(), bb = sib.getBoundingClientRect();
-            pairs.push({ ...one, edge: 'block-left', lines,
-              apart: Math.round(ab.left - bb.left) });
+            const side = ps.direction === 'rtl' ? 'right' : 'left';
+            pairs.push({ ...one, edge: 'block-' + side, lines,
+              apart: Math.round(side === 'right' ? ab.right - bb.right : ab.left - bb.left) });
             continue;
           }
           /* Pulling to opposite edges is the fault itself, not a distance
