@@ -389,7 +389,7 @@ window.siteContent = {
       works: [
         {
           id: "the-strong-and-the-trustworthy",
-          title: "The Strong and the Trustworthy",
+          title: "Strength and Trust: What the Qur'an Teaches About Hiring",
           language: "en",
           kind: "مضمون",
           date: "2026-09-21",
