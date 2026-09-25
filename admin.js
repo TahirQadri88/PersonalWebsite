@@ -1747,6 +1747,23 @@
          which builds every other title on the site and is what lets an
          Urdu title take the heading face in styles.css. */
       '        <h1 class="record-title ' + scriptClass + '" lang="' + e(record.language || 'en') + '" dir="' + (rtl ? 'rtl' : 'ltr') + '">' + e(record.title) + '</h1>',
+      /* The standfirst belongs with the title and nowhere else. Written
+         as the first block of the writing it landed 82 to 95px lower,
+         with the date and the cross-language link between it and the
+         line it belongs to — and the workaround reached for instead was
+         to append it to the *title* with a hyphen, which makes the title
+         long enough to wrap and carries it into the share card, the
+         library row and the browser tab, none of which want it.
+
+         It takes the piece's own script rather than `scriptOf` of its
+         words: a standfirst is the author's sentence about their own
+         article, so it reads in the language the article is in even when
+         it happens to quote a term in another. */
+      record.subtitle
+        ? '        <p class="record-subtitle ' + scriptClass + (rtl ? '' : ' align-left') +
+          '" lang="' + e(record.language || 'en') + '" dir="' + (rtl ? 'rtl' : 'ltr') + '">' +
+          e(record.subtitle) + '</p>'
+        : null,
       /* formatDate always writes the month name in English, whatever the
          post's own language — under an RTL article this paragraph would
          otherwise inherit dir="rtl" with no strong character of its own
@@ -3123,6 +3140,20 @@
     titleField.appendChild(titleField.own(titleInput));
     fields.appendChild(titleField);
 
+    /* The line under the title, on the page and nowhere else. It is not
+       the description: the description is what a share card and a search
+       result show, and it is written for somebody who has not opened the
+       piece. This is written for somebody who has. */
+    var subtitleField = field('Standfirst',
+      'the line under the title on the page — optional, and kept out of the share card and the library row');
+    var subtitleInput = textInput(record.subtitle, function (value) {
+      record.subtitle = value.trim() || undefined;
+    });
+    applyScript(subtitleInput, record.language);
+    subtitleField.appendChild(subtitleField.own(subtitleInput));
+    fields.appendChild(subtitleField);
+    languageChanged.push(function (language) { applyScript(subtitleInput, language); });
+
     /* description — both languages; either may be left empty */
     var descField = field('Description (English)', 'one or two lines — this is what search and Google read');
     var descArea = textArea(record.description, function (value) {
@@ -3490,7 +3521,7 @@
        still in the box**, which lands a forgotten field at the bottom
        rather than the top. The bottom is where a field nobody has
        thought about belongs. */
-    var order = [langField, titleField, bodyField, altField, descField,
+    var order = [langField, titleField, subtitleField, bodyField, altField, descField,
       descUrField, tagField, kindField, dateField, filesField, pageField,
       idField, moveField, tools].filter(Boolean);
     Array.prototype.slice.call(fields.children).forEach(function (part) {
@@ -4327,6 +4358,7 @@
   function writeRecord(record, indent) {
     var pad = ' '.repeat(indent);
     var lines = [pad + 'id: ' + str(record.id), pad + 'title: ' + str(record.title), pad + 'language: ' + str(record.language)];
+    if (record.subtitle) lines.push(pad + 'subtitle: ' + str(record.subtitle));
     if (record.kind) lines.push(pad + 'kind: ' + str(record.kind));
     if (record.date) lines.push(pad + 'date: ' + str(record.date));
     if (record.updated) lines.push(pad + 'updated: ' + str(record.updated));
@@ -4671,7 +4703,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-09-21.1';
+  var EDITOR_VERSION = '2026-09-25.1';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */

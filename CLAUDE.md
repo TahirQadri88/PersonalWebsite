@@ -609,6 +609,36 @@ read perfectly well; a check that refuses to publish the library as it
 already stands is a check nobody can keep, and the temptation is then
 to delete it rather than narrow it.
 
+**A standfirst is a field, not the first block of the writing.**
+`subtitle` on a record becomes `.record-subtitle` in the hero, directly
+under the title and above the date. Written as the opening block of the
+piece instead — which is where it had to go while there was no field —
+it landed **82 to 95px** below the title with the date *and* the
+cross-language link between it and the line it belongs to.
+
+The workaround reached for instead is the tell: the Urdu article's
+subtitle was appended to its **title** with a hyphen. That makes the
+title long enough to wrap, and carries the subtitle into the share
+card, the library row and the browser tab, none of which want it. It is
+12px under the title now, with nothing in between, and the title is
+short again.
+
+It takes the **piece's** script, not `scriptOf` of its own words: a
+standfirst is the author's sentence about their own article, so it reads
+in the language the article is in even when it quotes a term in another.
+And it is not the description — a description is written for somebody
+who has *not* opened the piece, and is what a card and a search result
+show.
+
+**Its own margin rule was the RTL trap again, in one more place.**
+`margin-inline-start: auto` was written on it to hold the box at the
+page's margin. In a right-reading hero the inline *start* is the right —
+the edge Urdu begins on — so `auto` pushed it away from exactly the edge
+it had to sit on, and the stacked-pairs guard measured the standfirst
+**496px** adrift of the date beside it. There is no margin rule now: a
+block narrower than its container already sits on the start edge, which
+is the right one in an RTL hero and the left one in an LTR hero.
+
 **A new field has to be added to `writeRecord` or a publish drops it.**
 `alsoIn` was written into `content.js` first and the next regeneration
 threw it away silently — `buildContent` serialises a listed set of fields

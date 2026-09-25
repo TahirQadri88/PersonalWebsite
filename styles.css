@@ -1526,6 +1526,36 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 
 /* 11a ── Posts ────────────────────────────────────────────── */
 
+/* The line under the title: the author's own sentence about their piece,
+   read by somebody who has already opened it. It sits directly under the
+   title and above the date, because that is where a standfirst goes — as
+   the first block of the writing it landed 82 to 95px lower with the
+   date and the cross-language link in between.
+
+   No `.urdu`/`.latin` of its own beyond the script class the builder
+   writes: that class carries the face and, on Urdu, the direction —
+   which is the whole of the trap stated further up this file. It takes
+   `align-left` from the builder when the column reads leftwards, and is
+   one line by construction, so it needs no `own-edge`. Sized under the
+   title and over the date, and it is not a heading: no bold, because the
+   title above it is already the loud thing. */
+.record-subtitle {
+  max-width: 34ch;
+  margin: 12px 0 0;
+  color: #55635c;
+  font-size: 17px;
+  line-height: 1.55;
+}
+.record-subtitle.urdu { font-size: 19px; line-height: 2; }
+.record-subtitle.arabic { font-size: 19px; line-height: 1.8; }
+/* No margin rule of its own, and the one written here first was wrong in
+   the way this file keeps warning about. `margin-inline-start: auto` in a
+   right-reading hero pushes the box away from the *right* — the edge Urdu
+   begins on — and the guard measured the standfirst 496px adrift of the
+   date beside it. A block narrower than its container already sits on the
+   start edge, which is the right one in an RTL hero and the left one in
+   an LTR hero. Nothing more is needed. */
+
 .work-date {
   margin: 10px 0 0;
   color: var(--gold-on-light);
