@@ -842,6 +842,45 @@ under the 19px floor the rest of the site keeps for Urdu. A full line at
 17.6px was judged to read better than a 59% line at 23.3px. If that ever
 looks too small, bound the size loop — not the justification under it.
 
+**Fill does not bound a hole; the stretch per gap does.** The card's
+title is justified by hand — every line but the last takes the gap that
+makes it exactly the measure — and `CARD_FILL` (0.72) was the only bar
+on it. That bar is about the *line*, and the fault is about the *gap*:
+`Technology Shapes People` put **two** words on its first line, cleared
+the bar at 81% fill, and handed the whole remainder to the one gap
+between them — **7.5 times a normal space**, a bar of empty card with a
+word at each end. `Zakat Calculator (v2)` had shipped the same way for
+as long as its card existed, and nobody had reported it.
+
+`CARD_STRETCH` is the second bar, and **2** was chosen by drawing all
+thirty cards at 2, 3, 4 and 6 and measuring every one. The worst hole
+on the site: 22% at the baseline, **7% at 2**, 10% at 3 and 4, 18% at
+6. Not by reasoning about typography — three attempts to model
+`wrapLines` in a script all got the measure wrong (it is
+`CARD_W - margin*2 - 120`, not `CARD_W - margin*2`) and produced
+confident numbers for the wrong card. **Draw the cards and measure the
+pixels; the model is not the thing.**
+
+**Tightening that loop is dangerous in a way that is not obvious.** The
+size ladder keeps the largest size that merely *fits* and only steps
+down while looking for one that reads well — so a stricter bar makes
+*more* titles fail every rung and fall back to the largest size, which
+is the one that opens the widest holes. `ھیلو وین کا تہوار اور مسلمان`
+sat on one line, gained the bar, and jumped to two stretched ones. The
+fallback now keeps the size whose **worst gap is smallest** rather than
+the first that fits. Any future bar added here has to fix the fallback
+in the same breath.
+
+**The guard reads the drawn card, not the code that drew it.** There
+are at least three routes to a bad layout — the ladder, the fallback,
+the justification — and a test aimed at one misses the others. So
+`test/editor.mjs` decodes every committed card, finds the widest run of
+columns with no ink inside the title band, and refuses more than 12% of
+the title's own width. It names both faults at 22% when the old cards
+are put back. The band matters: the byline and the domain share a row
+at opposite ends of the card, so measuring their row reports a hole on
+every card.
+
 **Weight is a design decision, and the test measures it.** The homepage was
 961KB: a decorative 518KB PNG inside the collapsed bio, and two fonts
 shipped as TTF. It is ~320KB now — the fonts are woff2 (58% smaller,

@@ -18,7 +18,7 @@
    Everything here is a behaviour someone relies on to write a post. */
 
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, extname, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -997,6 +997,82 @@ t(`the largest file is ${Math.round(publish.biggest.bytes / 1024)}KB, and the Wo
    So what is asserted is the order in the hero: title, standfirst, date.
    The round trip above already proves the field survives a publish,
    which is the other half and the one this file warns about loudest. */
+/* ---- no holes in a card's title ------------------------------------
+
+   A share card's title is justified by hand, because a canvas has no
+   text-align: every line but the last takes the gap that makes it
+   exactly the measure. That is right for a line of seven words and
+   ruinous for a line of two, where the whole remainder lands in the one
+   gap between them. `Technology Shapes People` put two words on its
+   first line, cleared the fill bar at 81%, and opened a gap **7.5 times
+   a normal space** — a bar of empty card with a word at each end.
+   `Zakat Calculator (v2)` had the same shape and had been shipping that
+   way for as long as the card existed.
+
+   Measured off the drawn card rather than off the code that drew it,
+   because the code has several paths to a bad layout — the size ladder,
+   the fallback when no size passes, the justification itself — and a
+   test aimed at any one of them would have missed the others. This
+   reads the pixels: inside the title band, find the widest run of
+   columns with no ink in them. Across all thirty cards that is 7% of
+   the title's own width; the two faults measured 22%.
+
+   It does mean the committed cards are what is judged. That is the
+   honest object of the test — they are the files that ship, and a
+   publish redraws every one of them. */
+console.log('\na card with a hole in its title');
+
+{
+  const dir = join(ROOT, 'files/cards');
+  const cards = (await readdir(dir)).filter((f) => f.endsWith('.jpg'));
+  const data = {};
+  for (const f of cards) data[f] = (await readFile(join(dir, f))).toString('base64');
+  const holes = await page.evaluate(async (cards) => {
+    const out = [];
+    for (const [name, b64] of Object.entries(cards)) {
+      const img = new Image();
+      img.src = 'data:image/jpeg;base64,' + b64;
+      await img.decode();
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      const x = c.getContext('2d');
+      x.drawImage(img, 0, 0);
+      /* Inside the title band only: the eyebrow sits above it and the
+         byline and the domain below, and those two are far apart by
+         design — measuring their row would report a hole on every card. */
+      const TOP = 170, BOT = 505;
+      const d = x.getImageData(0, TOP, img.width, BOT - TOP).data;
+      const W = img.width;
+      const ink = new Array(W).fill(false);
+      for (let yy = 0; yy < BOT - TOP; yy += 1) {
+        for (let xx = 0; xx < W; xx += 1) {
+          const i = (yy * W + xx) * 4;
+          /* Near-white on dark green. The seal watermark is far fainter
+             than the type and does not reach this. */
+          if (d[i] > 200 && d[i + 1] > 200 && d[i + 2] > 190) ink[xx] = true;
+        }
+      }
+      const first = ink.indexOf(true), last = ink.lastIndexOf(true);
+      if (first < 0) { out.push({ name, empty: true }); continue; }
+      let run = 0, worst = 0;
+      for (let xx = first; xx <= last; xx += 1) {
+        if (ink[xx]) run = 0; else { run += 1; if (run > worst) worst = run; }
+      }
+      out.push({ name, pct: Math.round((100 * worst) / (last - first + 1)) });
+    }
+    return out;
+  }, data);
+
+  t(`there are cards to measure — ${holes.length} of them`, holes.length >= 20, String(holes.length));
+  t('  …every one has its title drawn, not blank',
+    holes.filter((h) => h.empty).length === 0, holes.filter((h) => h.empty).map((h) => h.name).join(', '));
+  const gaping = holes.filter((h) => !h.empty && h.pct > 12);
+  t('  …and none of them opens a hole in the middle of its title',
+    gaping.length === 0,
+    gaping.map((h) => h.name + ' ' + h.pct + '%').join(', ') +
+    '  (the widest gap inside a title, as a share of the title\'s own width)');
+}
+
 console.log('\nthe standfirst');
 
 {
