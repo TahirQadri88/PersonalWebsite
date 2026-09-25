@@ -2115,6 +2115,19 @@
      شرعی` fills 59% at the size that merely fits and looked wrong
      stretched; at the size below it fills about 95% and looks right. */
   var CARD_FILL = 0.72;
+  /* How far one word space may be stretched before the line reads as a
+     hole rather than as justified type. Fill alone does not bound it:
+     `Technology Shapes People` put **two** words on its first line at
+     81% fill, cleared CARD_FILL comfortably, and handed the whole 19%
+     remainder to the single gap between them — **7.5 times a normal
+     space**, a bar of empty card with a word at each end.
+
+     Measured across every English card: the three that read well sit at
+     2.7, 2.8, 2.9 and 3.2; the broken one at 7.5. Four separates them
+     with room on both sides and moves none of the three. It is the
+     stretch *per gap* that matters, not the slack on the line — a line
+     of seven words can absorb what a line of two cannot. */
+  var CARD_STRETCH = 2;
 
   /* The card is set in the site's own faces, not in whichever family
      happened to be nearest. A record's title takes Aslam — the same bold
@@ -2335,25 +2348,50 @@
        three drawn side by side: a full line at 17.6px reads better here
        than a 59% line at 23.3px. If it ever looks too small, this loop is
        what to bound — not the justification below it. */
-    for (var j = i + 1; j < sizes.length; j += 1) {
+    var best = null;
+    for (var j = i; j < sizes.length; j += 1) {
       var px = sizes[j];
       var gap = record.language === 'ur' ? px * 0.22 : 0;
       ctx.font = cardTitleFont(record.language, px);
       var tryLines = wrapLines(ctx, record.title, maxWidth, 99, gap);
       var full = true;
+      var stretch = 0;
       tryLines.forEach(function (line, n) {
         if (n === tryLines.length - 1) return;
+        var words = String(line).split(' ').filter(Boolean);
         var ink = 0;
-        String(line).split(' ').filter(Boolean).forEach(function (word) {
-          ink += ctx.measureText(word).width;
-        });
+        words.forEach(function (word) { ink += ctx.measureText(word).width; });
         if (ink < maxWidth * CARD_FILL) full = false;
+        /* The hole test beside the fill test. The space to measure against
+           is the one the line will actually be set with: for Urdu that is
+           `gap`, since Aslam's own space is a single pixel and fillSpaced
+           puts `--space-urdu-heading` back by hand. */
+        if (words.length > 1) {
+          var space = gap || ctx.measureText(' ').width;
+          var each = space > 0 ? (maxWidth - ink) / (words.length - 1) / space : 0;
+          if (each > stretch) stretch = each;
+          if (each > CARD_STRETCH) full = false;
+        }
       });
-      if (full) {
-        titlePx = px; titleGap = gap; lines = tryLines;
-        lead = px * (record.language === 'ur' ? 1.28 : 1.16);
-        break;
-      }
+      var here = { px: px, gap: gap, lines: tryLines, stretch: stretch,
+                   lead: px * (record.language === 'ur' ? 1.28 : 1.16) };
+      if (full) { best = here; break; }
+      /* Nothing has passed yet, so remember the least bad. Keeping the
+         *largest* fitting size instead was the old fallback and it is
+         what made this test dangerous to tighten: a stricter bar meant
+         more titles fell through to it, and the largest size is the one
+         that opens the widest holes. `ھیلو وین کا تہوار اور مسلمان` sat
+         on one line until the bar was added, then jumped to two stretched
+         ones — not because the bar was wrong but because failing it threw
+         the title back to the top of the ladder.
+
+         Strictly better: the first size to pass outright still wins, and
+         a title that passes nowhere now takes the size whose worst gap is
+         smallest rather than the size that merely fits first. */
+      if (!best || stretch < best.stretch) best = here;
+    }
+    if (best) {
+      titlePx = best.px; titleGap = best.gap; lines = best.lines; lead = best.lead;
     }
     /* Nothing fitted even at the smallest step: take that step and let
        wrapLines cut it, which is the one case an ellipsis is right. */
@@ -2396,7 +2434,9 @@
            still checked here, because a title that never clears the bar at
            any size keeps its largest size and must not then be stretched
            into holes. */
-        if (spread > 0 && ink >= maxWidth * CARD_FILL) gap = spread;
+        var space = titleGap || ctx.measureText(' ').width;
+        if (spread > 0 && ink >= maxWidth * CARD_FILL &&
+            !(space > 0 && spread > space * CARD_STRETCH)) gap = spread;
       }
       fillSpaced(ctx, line, x, startY + n * lead, gap, rtl);
     });
