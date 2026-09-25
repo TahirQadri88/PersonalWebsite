@@ -985,6 +985,47 @@ t(`a publish sends ${publish.count} files, and the Worker takes ${maxFiles}`,
 t(`the largest file is ${Math.round(publish.biggest.bytes / 1024)}KB, and the Worker takes ${Math.round(maxBytes / 1024)}KB`,
   publish.biggest.bytes <= maxBytes, publish.biggest.path);
 
+/* ---- the standfirst, and where it lands -----------------------------
+
+   The line under the title is a field on the record, not the first block
+   of the writing, and that is the whole point of it. Written into the
+   writing it came out 82 to 95px below the title with the date and the
+   cross-language link in between, and the workaround reached for instead
+   was to append it to the *title* with a hyphen — which makes the title
+   wrap and carries it into the share card, the library row and the tab.
+
+   So what is asserted is the order in the hero: title, standfirst, date.
+   The round trip above already proves the field survives a publish,
+   which is the other half and the one this file warns about loudest. */
+console.log('\nthe standfirst');
+
+{
+  const hero = await page.evaluate(() => {
+    const sections = [...document.querySelectorAll('#out-pages section')];
+    const mine = sections.find((x) => /posts\/technology-shapes-people\.html/.test(
+      x.querySelector('h3').textContent));
+    if (!mine) return null;
+    const html = mine.querySelector('textarea').value;
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const inOrder = [...doc.querySelectorAll('.work-hero > *')]
+      .map((e) => e.className || e.tagName.toLowerCase());
+    return { inOrder,
+             text: (doc.querySelector('.record-subtitle') || {}).textContent || '',
+             lang: (doc.querySelector('.record-subtitle') || {}).getAttribute
+                   ? doc.querySelector('.record-subtitle').getAttribute('lang') : null,
+             inBody: /record-subtitle/.test((doc.getElementById('post-body') || {}).innerHTML || '') };
+  });
+  t('a post page carries the standfirst', hero && /For a Muslim/.test(hero.text),
+    hero ? JSON.stringify(hero.text.slice(0, 50)) : '(no page)');
+  const seq = hero ? hero.inOrder.join(' > ') : '';
+  t('  …directly under the title and above the date, with nothing between',
+    /record-title[^>]*> record-subtitle[^>]*> work-date/.test(seq), seq);
+  t('  …and it is not in the writing, which is where it used to be',
+    hero && !hero.inBody, String(hero && hero.inBody));
+  t('  …and it takes the language of the piece, not of its own words',
+    hero && hero.lang === 'en', String(hero && hero.lang));
+}
+
 /* ---- the homepage --------------------------------------------------
 
    The author's introduction, the hero, the contact lines and the footer
@@ -1107,14 +1148,16 @@ console.log('\nwhat a row puts first');
     return { labels: before.map((e) => (e.querySelector('label') || e).textContent.trim().split('—')[0].trim()),
              height: Math.round(before.reduce((sum, e) => sum + e.getBoundingClientRect().height, 0)) };
   }, POST);
-  t('only Language and Title come before the writing box',
-    above.labels.join(' | ') === 'Language | Title', JSON.stringify(above));
-  /* A budget beside the rule, not a restatement of it: two fields measure
-     167px, and a third — `alsoIn` was 81 — puts it at 248. 250 is
-     therefore the ceiling that a third field cannot pass, whatever it is
-     called, which is the half a list of names cannot say. */
-  t('  …so the writing stays within 250px of the top of the row',
-    above.height < 250, above.height + 'px');
+  t('only the fields that belong with the title come before the writing box',
+    above.labels.join(' | ') === 'Language | Title | Standfirst', JSON.stringify(above));
+  /* A budget beside the rule, not a restatement of it. Three fields
+     measure 282px — Language, Title and the Standfirst that belongs with
+     it — so 300 is the ceiling a fourth cannot pass, whatever it is
+     called, which is the half a list of names cannot say. Raised from 250
+     deliberately and once: the Standfirst earned its place above the
+     writing, where `alsoIn` had not. */
+  t('  …so the writing stays within 300px of the top of the row',
+    above.height < 300, above.height + 'px');
 
   /* ---- what the toolbar reaches without a swipe ---------------------
 
