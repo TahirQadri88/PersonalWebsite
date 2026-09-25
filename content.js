@@ -514,6 +514,20 @@ window.siteContent = {
   /* Fatāwā. Same fields as a work — id, title, language, description, files. */
   rulings: [
     {
+      id: "otherthan-falaq-nas-dam",
+      title: "کیا سورۂ فلق اور ناس کے علاوہ دوسرے اوراد اور دم ناجائز ہیں؟",
+      language: "ur",
+      kind: "فتویٰ",
+      date: "2026-09-15",
+      updated: "2026-09-25",
+      description: "When the magic performed upon the Noble Prophet ﷺ was dispelled by means of Sūrah al-Falaq and Sūrah al-Nās, does any need or justification remain for reciting other awrād (litany) or performing other forms of dam (ruqyah)? And what is the Sharʿī ruling on the methods and practices of the prevalent spiritual rituals, taʿwīzāt (amulets), and their commercialization?",
+      descriptionUr: "جب سُورۂ فَلَق اور سُورۂ نَاس کے ذریعے حُضُورِ اَقدَس ﷺ پر کیے گئے جادو کا اَثر زائل ہوگیا، تو کیا اس کے علاوہ دِیگر اَوراد و اَذکار اور دَم وغیرہ کی کوئی حاجت یا شرعی جواز باقی رہتا ہے؟ نیز رائج مُروجہ عَمَلیات و تَعویذات کے طریقۂ کار اور ان کے کاروبار کا شرعی حکم کیا ہے؟",
+      tags: ["سورۂ فلق", "سورۂ ناس", "دم", "رُقْیہ", "جواز", "عملیات", "وظائف"],
+      files: [
+        { label: "Urdu PDF", url: "files/my-fatawa/%E2%80%8E%E2%81%A8%DA%A9%DB%8C%D8%A7%20%D9%85%D8%B9%" }
+      ]
+    },
+    {
       id: "zakat-tax-credit",
       title: "Tax credit on zakat paid to non-profit organisations",
       language: "en",
