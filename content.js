@@ -521,7 +521,7 @@ window.siteContent = {
       date: "2026-09-15",
       updated: "2026-09-25",
       description: "Question: When the magic performed upon the Noble Prophet ﷺ was dispelled by means of Sūrah al-Falaq and Sūrah al-Nās, does any need or justification remain for reciting other awrād (litany) or performing other forms of dam (ruqyah)? And what is the Sharʿī ruling on the methods and practices of the prevalent spiritual rituals, taʿwīzāt (amulets), and their commercialization?",
-      descriptionUr: "سوال: جب سُورۂ فَلَق اور سُورۂ نَاس کے ذریعے حُضُورِ اَقدَس ﷺ پر کیے گئے جادو کا اَثر زائل ہوگیا، تو کیا اس کے علاوہ دِیگر اَوراد و اَذکار اور دَم وغیرہ کی کوئی حاجت یا شرعی جواز باقی رہتا ہے؟ نیز فی زمانہ رائِج عَمَلیات و تَعویذات کے طریقۂ کار اور ان کے کاروبار کا شرعی حکم کیا ہے؟",
+      descriptionUr: "سوال: جب سُورۂ فَلَق اور سُورۂ نَاس کے ذریعے حُضُورِ اَقدَس ﷺ پر کیے گئے جادو کا اَثر زائل ہوگیا، تو کیا اس کے علاوہ دِیگر اَوراد و اَذکار اور دَم وغیرہ کی کوئی حاجت یا شرعی جواز باقی رہتا ہے؟ نیز فی زمانہ رائِج عَمَلیات و تَعویذات کے طریقۂ کار اور ان کے کاروبار کا شرعی حکم کیا ہے؟ \nاس اشکال کا جواب",
       tags: ["سورۂ فلق", "سورۂ ناس", "دم", "رُقْیہ", "جواز", "عملیات", "وظائف"],
       files: [
         { label: "Urdu PDF", url: "files/my-fatawa/Otherthan-Surah-Falaq-Nas-Dam.pdf" }
