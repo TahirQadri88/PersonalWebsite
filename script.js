@@ -34,10 +34,32 @@
       bar.setAttribute('data-more-after', String(track.scrollLeft < max - 1));
     };
 
+    /* One card, not a fraction of the window. The old step was 70% of
+       the track's width, which on a desktop moved two and a half cards
+       and left the third cut in half at the edge — the thing that makes
+       a strip look like it is holding more than it can. With scroll-snap
+       under it the browser settles on a card boundary anyway, so the two
+       have to agree about what a step is. */
+    var step = function () {
+      var first = track.querySelector(':scope > *');
+      if (!first) return Math.max(160, track.clientWidth * 0.7);
+      var box = first.getBoundingClientRect();
+      var style = getComputedStyle(first);
+      return box.width + (parseFloat(style.marginRight) || 0) + (parseFloat(style.marginLeft) || 0);
+    };
+
+    /* A reader who has asked for less motion gets the same journey
+       without the slide. `scrollBy` with `smooth` is motion like any
+       other, and it is the one kind this site kept forgetting to ask
+       about because it is written in JavaScript rather than CSS. */
+    var gently = function () {
+      return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'auto' : 'smooth';
+    };
+
     var nudge = function (direction) {
       return function () {
-        track.scrollBy({ left: direction * Math.max(160, track.clientWidth * 0.7),
-                         behavior: 'smooth' });
+        track.scrollBy({ left: direction * step(), behavior: gently() });
       };
     };
 
@@ -47,6 +69,84 @@
     window.addEventListener('resize', refreshEnds);
     refreshEnds();
     return refreshEnds;
+  }
+
+  /* ---- Where you are in a carousel ----
+
+     A row of dots under the track, one per card, the one you are on
+     marked. Instagram's, and it is the part that was missing: the strip
+     said nothing about how much of it there was or how far along you
+     had got, so eight cards drifting past read as an endless supply.
+
+     Built here rather than written into index.html, deliberately. A dot
+     does nothing without script — it is a control, not content — and a
+     reader without JavaScript gets the cards and a track they can still
+     swipe, which is the whole of what the dots were offering. Nothing
+     starts invisible waiting for this to run. */
+  function dots(bar, track, refreshEnds) {
+    if (!bar || !track) return;
+    var cards = Array.prototype.slice.call(track.children);
+    if (cards.length < 2) return;
+
+    var strip = document.createElement('div');
+    strip.className = 'rail-dots';
+    strip.setAttribute('role', 'tablist');
+    strip.setAttribute('aria-label', 'Position in the list');
+
+    var marks = cards.map(function (card, index) {
+      var dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'rail-dot';
+      dot.setAttribute('role', 'tab');
+      /* The card's own title, so a screen reader is told where a dot
+         goes rather than "button 3 of 8". */
+      var title = card.querySelector('.record-title');
+      dot.setAttribute('aria-label',
+        'Show ' + ((title && title.textContent.trim()) || 'item ' + (index + 1)));
+      dot.addEventListener('click', function () {
+        track.scrollTo({
+          left: card.offsetLeft - track.offsetLeft,
+          behavior: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+            ? 'auto' : 'smooth'
+        });
+      });
+      strip.appendChild(dot);
+      return dot;
+    });
+
+    /* Read off live geometry on every scroll rather than counted from a
+       step — the same decision markPlace makes, and for the same reason:
+       a remembered position goes stale the moment anything resizes, and
+       the browser's own snapping is what actually decides where a card
+       came to rest. */
+    var mark = function () {
+      /* The card nearest the track's own left edge, not the one nearest
+         its middle. The cards snap on `start`, so this is the edge the
+         browser actually comes to rest against — and on a desktop, where
+         four cards are in view at once, measuring from the middle put
+         the mark on the third one after a single press forward. The dot
+         has to answer "how far along am I", which is a question about
+         where the run of cards begins. */
+      var edge = track.scrollLeft;
+      var nearest = 0;
+      var best = Infinity;
+      cards.forEach(function (card, index) {
+        var start = card.offsetLeft - track.offsetLeft;
+        var gap = Math.abs(start - edge);
+        if (gap < best) { best = gap; nearest = index; }
+      });
+      marks.forEach(function (dot, index) {
+        if (index === nearest) dot.setAttribute('aria-current', 'true');
+        else dot.removeAttribute('aria-current');
+        dot.setAttribute('aria-selected', String(index === nearest));
+      });
+    };
+
+    track.addEventListener('scroll', mark, { passive: true });
+    window.addEventListener('resize', mark);
+    bar.insertAdjacentElement('afterend', strip);
+    mark();
+    if (refreshEnds) refreshEnds();
   }
 
   /* ---- Category navigation ---- */
@@ -295,78 +395,45 @@
      file, so a crawler and a reader with no JavaScript both get them.
      What happens here is only how they move.
 
-     Two behaviours, and the quiet one is the default. Left alone the
-     strip is a rail you scroll, with the arrows and the fades the
-     category strip already taught. Where motion is allowed and there is
-     more than fits, it becomes a ticker instead: the set of cards is
-     cloned once and the pair drifts leftwards for ever.
+     It is a carousel: a track the browser snaps to a card boundary, a
+     step either way, and a row of dots under it saying how many cards
+     there are and which one is in view. All three are the same rail the
+     category strip uses, which is why `rail()` is written once and
+     called twice.
 
-     The clones are made here and never written into the page. That
-     matters — the cards are in index.html so that a reader without
-     JavaScript gets them, and baking the duplicates in would give that
-     reader, and a crawler, every card twice. Made here, they exist only
-     where they are actually moving.
-
-     Each clone is hidden from assistive technology and taken out of the
-     tab order, so a screen reader and the keyboard meet each card once
-     however many copies are on screen. */
+     Everything added here is a control rather than content, so a reader
+     without JavaScript loses none of the cards — they are in the file —
+     and keeps the one thing that needs no script at all: a track they
+     can still swipe. */
   var recentRail = document.getElementById('recent-rail');
   var recentTrack = document.getElementById('recent-track');
 
-  if (!startTicker(recentRail, recentTrack)) {
-    rail(recentRail, recentTrack,
-         document.getElementById('recent-back'), document.getElementById('recent-forward'));
-    /* The cards rise as you reach them — but only when they are standing
-       still. Under the ticker they are already arriving, and two
-       movements at once is neither. */
-    site.revealOnEntry('.recent-card');
-  }
+  /* A carousel, not a conveyor. What was here drifted on its own and
+     took the arrows away while it did — `startTicker` removed the very
+     attributes the arrows are shown by — so the strip could not be
+     scrolled, could not be stepped through, and could not be stopped at
+     all on a phone, where there is no hover to pause it with. Eight
+     cards sliding past with no way to go back to one is the "overloaded"
+     the author reported, and it was the right word.
 
-  /* True when the ticker took over. It declines, leaving the rail as it
-     is, when a reader has asked for less motion, when there are no cards,
-     or when they all fit — there is nothing to drift past. */
-  function startTicker(bar, track) {
-    if (!bar || !track) return false;
-    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+     Now it is a track you swipe, with a step either way and a dot per
+     card saying how many there are and which one you are on. The cards
+     still rise as they arrive; that was never the problem, and it is a
+     decoration that costs nothing when it does not run. */
+  var recentEnds = rail(recentRail, recentTrack,
+       document.getElementById('recent-back'), document.getElementById('recent-forward'));
+  dots(recentRail, recentTrack, recentEnds);
+  site.revealOnEntry('.recent-card');
 
-    var cards = Array.prototype.slice.call(track.children);
-    if (!cards.length) return false;
-    if (track.scrollWidth <= track.clientWidth + 1) return false;
+  /* The ticker that used to live here is gone, and with it the clone of
+     the whole set, the seam arithmetic that made the loop join, and the
+     hover-to-pause that a touchscreen could never reach. What replaced
+     it is smaller and does more: the browser's own scroll-snap, two
+     buttons and a row of dots.
 
-    var ticker = document.createElement('div');
-    ticker.className = 'recent-ticker';
-    cards.forEach(function (card) { ticker.appendChild(card); });
-
-    /* Exactly once. The pair is translated by half its own width, so one
-       copy is what makes the seam land where the first card began —
-       three copies, or one and a half, would not. */
-    var twin = ticker.cloneNode(true);
-    Array.prototype.forEach.call(twin.children, function (card) {
-      card.setAttribute('aria-hidden', 'true');
-      card.setAttribute('tabindex', '-1');
-    });
-    while (twin.firstChild) ticker.appendChild(twin.firstChild);
-
-    track.appendChild(ticker);
-
-    /* A constant speed rather than a constant duration: four cards and
-       twenty should drift past at the same pace, which means the time
-       has to come from the width. */
-    var PIXELS_PER_SECOND = 42;
-    var half = ticker.scrollWidth / 2;
-    if (!half) return false;
-    ticker.style.setProperty('--drift-seconds', Math.round(half / PIXELS_PER_SECOND) + 's');
-
-    /* The arrows and the manual scroll go together with it: a drag and an
-       animation cannot share one track, and an arrow that scrolls a track
-       whose contents are being translated underneath does nothing useful.
-       Hovering or tabbing into it pauses the drift instead — which is
-       also what is owed to anything that moves by itself. */
-    bar.setAttribute('data-ticker', 'on');
-    bar.removeAttribute('data-more-before');
-    bar.removeAttribute('data-more-after');
-    return true;
-  }
+     Worth knowing if it is ever missed: the drift was real motion on
+     something a reader had not asked to move, and the only way to read a
+     card was to wait for it to come round again.
 
   /* One listener for the whole library rather than one per row: the list
      is rebuilt whenever a category is chosen, and handlers attached to

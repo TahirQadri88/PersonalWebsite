@@ -894,6 +894,40 @@ alignment, exactly as these notes say. It is gone. This file warns
 against that rule specifically, since it outranks `align-left` wherever
 one is later wanted, and the warning was right.
 
+**A search box has to say that it is one.** It was white on cream behind
+a 1px `#b8beb5` border — three tones within six points of each other — so
+the one control on the page read as a faint rectangle, and it was
+reported as *mixed with the website*. It carries the gold rule at 2px and
+a shadow now, so it sits **on** the page rather than in it. No new
+colour: `--gold-rule` and `--paper-warm` were already here, which is why
+it still reads as the same site rather than a widget dropped onto it. On
+the fatāwā page the border is `--gold-on-dark` instead, the two-golds
+rule in one more place.
+
+**A placeholder that is cut off says less than a short one.** It read
+*Search titles, subjects, descriptions — Urdu, Arabic or English*, and a
+phone showed *…descriptio*. The part that was lost was the part worth
+knowing, so it moved out of the box and under it as `.search-hint`, where
+there is room, and the box says *Search the library*. The full sentence
+stays as the input's accessible name. `test/homepage.mjs` draws the
+placeholder in the input's own font and refuses one wider than the field
+— a character count would not have caught it across three scripts.
+
+**The fatāwā page has a search, and the argument for it changed.** Six
+rulings on a three-screen page is a list, not a haystack, and that was
+right until the author said more were coming; twenty is a haystack.
+`site.mountCardSearch` in `common.js` is the homepage's own matching —
+two passes, every typed word present, falling back to consonant skeletons
+only when nothing matched exactly **and saying so** rather than passing
+looser results off as what was asked for. It lives in `common.js` and not
+`script.js` because `script.js` is the homepage's file and that page does
+not load it; one implementation means the two pages cannot come to
+disagree about what a word finds. `buildFatawa` writes `data-search` and
+`data-skeleton` into each card, so the filter reads the file rather than
+fetching anything, and a crawler sees the words too. Wired from the
+markup — any page writing an input with `data-card-search` naming a
+container gets it.
+
 **Adding a work by hand means editing sitemap.xml too, and its page is
 missing until admin.html writes it.** `sitemap.xml` is the one file outside
 `content.js` that names a work, one `<url>` per id — the homepage list is
@@ -950,8 +984,8 @@ Its heading is sized well under a section's too: at 48px it looked like a
 peer of the library it sits above. `test/homepage.mjs` holds all of it to
 numbers so it cannot creep back.
 
-**The strip is in the file; only the clones are made in the browser.** It
-is generated into `index.html` by `indexRecent` at publish time like
+**The strip is in the file; only the controls are made in the browser.**
+It is generated into `index.html` by `indexRecent` at publish time like
 every other marked region, which is why `test/homepage.mjs` can turn
 JavaScript off and still find the cards with their titles in them — where
 the library below it renders nothing at all. Every part of a card comes
@@ -959,23 +993,65 @@ from the helper the library row uses for the same part — `titleMarkup`,
 `kindMarkup`, `metaMarkup`, `categoryIcon` — so a card cannot end up
 saying something different from the row it mirrors.
 
-`startTicker` in `script.js` clones the set once into `.recent-ticker`
-and translates the pair by −50%; with a `margin-right` on each card
-rather than a flex `gap`, half the pair's width is exactly one set and
-the loop has no seam (a flex gap leaves it half a gap short, which jumps
-every time round). The clones are **never written into `index.html`** —
-the cards are in the file so that a reader without JavaScript gets them,
-and baking the duplicates in would give that reader, and a crawler, every
-card twice. Each clone carries `aria-hidden` and `tabindex="-1"`, so a
-screen reader and the keyboard meet each card once. Hover and
-focus-within pause it, which is owed to anything that moves by itself.
-Fail any of the three cases above and there are no clones and no
-animation, and the strip stays the scrollable rail with arrows that it is
-otherwise.
+**It is a carousel, and it used to be a conveyor.** What was here drifted
+leftwards for ever: `startTicker` cloned the whole set, translated the
+pair by −50%, and — this is the part that mattered — **removed the very
+attributes the arrows are shown by**, because a drag and an animation
+cannot share one track. So the strip could not be scrolled, could not be
+stepped through, and could not be stopped at all on a phone, where the
+hover that paused it does not exist. Eight cards sliding past with no way
+back to one is what the author called *overloaded*, and it was the right
+word: the motion was the whole interface, and it offered nothing.
+
+What replaced it is smaller and does more. `scroll-snap-type: x
+mandatory` on the track with `scroll-snap-align: start` on the cards, so
+nothing ever comes to rest half off the edge; `rail()` steps by **one
+card**, measured off the card itself rather than 70% of the window, so
+the button and the snapping agree about what a step is; and `dots()`
+writes one dot per card under it, marked with `aria-current`, saying how
+many there are and how far along you are — the question the strip never
+answered. The dot follows the card nearest the track's **left edge**, not
+its middle: the cards snap on `start`, and measuring from the middle put
+the mark on the third card after a single press on a desktop.
+
+Everything added is a *control*, not content, so a reader without
+JavaScript loses none of the cards — they are in the file — and keeps the
+one thing that needs no script: a track they can still swipe.
+
+**The dots cost about 40px and the budget was raised to pay for it**,
+from 400 to 430, deliberately rather than by drift. Trim the margins
+before the 44px tap target if it ever has to come down again.
+
+**The last card snaps to `end`, and the track carries no right padding.**
+The padding was a gutter meant to let the last card clear the fade; what
+it left was a gutter of *nothing* after the last card — scrolled fully
+right at 390px, the card ended at 359 against an edge of 390. The fade is
+only shown while there is more that way, so at the end there is nothing
+to be clear of.
+
+Two warnings about how that was written up. The first version of both
+comments said the **end could not be reached**. It can, and could before
+— that state was one the change passed *through*, padding kept and the
+last card aligned to `end` together, which does strand the maximum 31px
+away. And the assertion written about it could not fail, because the
+maximum is reached either way: the padding is part of what is scrolled.
+Only restoring the padding and watching the test stay green moved the
+measurement onto the **gap after the last card**, which is the thing that
+actually differs. A false account of a fault is worse than none, because
+the next reader believes it.
 
 The cards rise as they arrive, and `card-rise` carries the movement
 **and** the state it moves from, together. Putting `opacity: 0` on `.recent-card`
 itself was tried and the tests caught it — the three cases again.
+
+**A scroll written in JavaScript is motion too.** `scrollBy` and
+`scrollTo` with `behavior: 'smooth'` are animation like any other, and
+they are the kind this site kept forgetting to ask about because they are
+not in the stylesheet: the reduced-motion block cannot reach them. Both
+the step buttons and the dots ask `matchMedia` themselves and fall back
+to `'auto'`, which keeps the navigation and drops the slide. Taking the
+carousel away from that reader instead would have left them with less
+than everybody else, which is not what the preference asks for.
 
 `rail()` in `script.js` is the category strip's own scrolling behaviour,
 extracted and used twice. It scrolls the *track*, never `scrollIntoView`
@@ -985,6 +1061,13 @@ The `app` icon is the twelfth drawing. A card's mark in the strip
 deliberately does **not** carry `.category-icon`: those draw themselves
 on as you reach them, and a mark sitting off the right-hand end of a rail
 would never come into view to be drawn.
+
+**A step button is a button, drawn as one.** `.category-arrow` was a bare
+character on no background, 34px wide: at the edge of a rail it read as
+part of whichever card sat under it, and on the strip it was taken away
+altogether while the cards drifted. It is a 44px circle with a border, a
+background and a shadow now — a control that moves the thing beside it
+has to look like one.
 
 **The rail marks the section you are in, and moves only itself.**
 `markPlace` in `script.js` sets `aria-current` on the matching pill —
@@ -1249,9 +1332,6 @@ a fault.
 ## Outstanding
 
 - Every work and fatwa has its files. Nothing is owed.
-- No search on the fatāwā page, deliberately — six rulings on a page
-  three screens tall is not a haystack, and it is the same argument as
-  the one below about a faceted library.
 - The twenty-two works still carry no `date`. Not cosmetic: the
   *Recently added and updated* strip is ordered by `updated || date`, so
   a work without either can never appear there however recently it is

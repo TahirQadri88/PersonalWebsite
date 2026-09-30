@@ -594,24 +594,35 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .category-bar[data-more-before="true"]::before,
 .category-bar[data-more-after="true"]::after { opacity: 1; }
 
+/* A step, drawn as a button rather than a glyph floating over the cards.
+   It was a bare character on no background: at 34px wide with nothing
+   behind it, it read as part of whatever card happened to be underneath,
+   and on the strip it was taken away entirely while the cards drifted.
+   A control that moves the thing next to it has to look like one. */
 .category-arrow {
   position: absolute;
-  top: 0;
-  bottom: 0;
+  top: 50%;
   z-index: 2;
   display: none;
   place-items: center;
-  width: 34px;
+  width: 44px;
+  height: 44px;
+  margin-top: -22px;
   padding: 0 0 3px;
-  border: 0;
-  background: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: 0 4px 14px rgba(24, 40, 34, 0.12);
   color: var(--gold-on-light);
-  font-size: 26px;
+  font-size: 24px;
   line-height: 1;
   cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
-.category-arrow-start { left: 0; }
-.category-arrow-end { right: 0; }
+.category-arrow:hover { border-color: var(--gold-rule); background: var(--paper-warm); }
+.category-arrow:active { transform: scale(0.94); }
+.category-arrow-start { left: 2px; }
+.category-arrow-end { right: 2px; }
 .category-bar[data-more-before="true"] .category-arrow-start,
 .category-bar[data-more-after="true"] .category-arrow-end { display: grid; }
 
@@ -851,7 +862,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .recent .section-label { margin-bottom: 6px; }
 .recent .section-note { font-size: 13px; }
 
-.recent-rail { position: relative; margin-top: 18px; }
+.recent-rail { position: relative; margin-top: 10px; }
 .recent-rail::before,
 .recent-rail::after {
   content: "";
@@ -876,59 +887,89 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .recent-rail[data-more-after="true"]::after { opacity: 1; }
 .recent-rail[data-more-before="true"] .category-arrow-start,
 .recent-rail[data-more-after="true"] .category-arrow-end { display: grid; }
-/* Under the ticker both fades stay on: cards arrive under one and leave
-   under the other, and a card cut off at a hard edge reads as a mistake
-   where the same card fading out reads as a shelf still moving. The
-   arrows do not — see below. */
-.recent-rail[data-ticker="on"]::before,
-.recent-rail[data-ticker="on"]::after { opacity: 1; }
-
 .recent-track {
   display: flex;
   gap: 16px;
-  /* The right-hand gutter as padding rather than margin, so the last
-     card can be scrolled fully clear of the fade. */
-  padding: 4px var(--gutter) 4px 0;
+  /* No right padding. It was a gutter put here so the last card could be
+     scrolled clear of the fade, and what it actually leaves is a gutter
+     of nothing after the last card: scrolled fully right at 390px, the
+     last card ended at 359 against a viewport edge of 390.
+
+     Be careful with the account of this one. The first version of this
+     comment said the end could not be *reached* — it can, and could
+     before. That state was one this change passed through: padding kept
+     *and* the last card aligned to `end`, which does strand the maximum
+     scroll position 31px away. Neither the old code nor the new one has
+     that fault, and claiming it did would leave a false warning here for
+     whoever reads it next.
+
+     Nothing is lost with the padding gone: the fade is shown only while
+     there is more that way, so at the end there is no fade for the last
+     card to be clear of. */
+  padding: 4px 0;
   overflow-x: auto;
   scroll-behavior: smooth;
-  scroll-snap-type: x proximity;
+  /* mandatory, not proximity. `proximity` lets the browser decide, and
+     what it decided on a phone was to leave a card half off the edge
+     about half the time — which is the look of a strip holding more than
+     it can, and is what the step buttons and the dots are then arguing
+     with. A carousel that comes to rest anywhere is not a carousel. */
+  scroll-snap-type: x mandatory;
   scrollbar-width: none;
 }
 .recent-track::-webkit-scrollbar { display: none; }
 
-/* ---- The ticker ----
+/* ---- Where you are in the carousel ----
 
-   The cards drift leftwards for ever. script.js clones the set once and
-   puts both copies in here; translating by half this element's own width
-   lands the second copy exactly where the first began, so the loop has no
-   seam to see.
+   One dot per card, the one in view filled. Written by script.js, so a
+   reader without JavaScript never sees an inert row of circles — they
+   get the cards and a track they can swipe, which is what the dots were
+   only ever describing.
 
-   The gap between cards is a margin and not the track's `gap` on purpose.
-   With a flex gap the pair measures 2N cards and 2N−1 gaps, and half of
-   that is half a gap short of a whole set — a small jump every time round.
-   A margin on each card makes it 2N × (card + gap), and half is exact.
-
-   Nothing here starts hidden or displaced: no JavaScript means no
-   .recent-ticker at all, and the cards sit in the track as they already
-   do. Same argument as the icons and the card-rise. */
-.recent-ticker {
+   Each is a 44px tap target with an 8px mark inside it: the thing you
+   aim at is not the thing you see, which is the one place on this site
+   where that is the right way round. A row of 44px circles would be a
+   second navigation competing with the cards above it. */
+.rail-dots {
   display: flex;
-  width: max-content;
-  animation: recent-drift var(--drift-seconds, 30s) linear infinite;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  /* 4px, not 10. The dots are a 44px row and the strip is held to a
+     height budget by test/homepage.mjs — it is a shelf on the way past,
+     not a screen — so the margin is the part that gives way, not the tap
+     target. */
+  margin: 4px 0 0;
 }
-.recent-ticker .recent-card { margin-right: 16px; }
-@keyframes recent-drift {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+.rail-dot {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
 }
-/* Paused while a reader is looking at it closely or has tabbed into it.
-   Owed to anything that moves by itself for more than a few seconds, and
-   the only way to read a card that is drifting away from you. */
-.recent-rail[data-ticker="on"]:hover .recent-ticker,
-.recent-rail[data-ticker="on"]:focus-within .recent-ticker { animation-play-state: paused; }
+.rail-dot::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #c8cfc6;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+.rail-dot:hover::before { background: var(--muted); }
+.rail-dot[aria-current]::before { background: var(--gold-on-light); transform: scale(1.35); }
+.rail-dot:active::before { transform: scale(1.1); }
 
-/* A drag and an animation cannot share one track. */
-.recent-rail[data-ticker="on"] .recent-track { overflow: hidden; padding-right: 0; }
+/* The last card snaps to the far edge, not to the near one, so that
+   scrolled fully right it sits flush against the end of the track rather
+   than one card-width short of it. `start` on every card means the last
+   resting place is the last card's own left edge, which on a phone —
+   where one card fills the view — is the same thing, but on a desktop
+   showing four it leaves three empty columns at the end. */
+.recent-track > .recent-card:last-child { scroll-snap-align: end; }
 
 .recent-card {
   flex: none;
@@ -1016,18 +1057,45 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .section-note-light { max-width: 44ch; margin: 14px 0 34px; color: #c3d0c9; font-size: 15px; }
 
 .search-row { margin-bottom: 30px; }
+/* It was white on cream behind a 1px #b8beb5 border — three tones inside
+   six points of each other, so the one control on the page read as a
+   faint rectangle and was reported as "mixed with the website". A search
+   box has to say that it is one before anybody will type in it.
+
+   What it takes is the gold rule the site already uses for the edge of
+   anything that matters, at 2px, and a shadow so the box sits *on* the
+   page rather than in it. No new colour: --gold-rule and --paper-warm
+   are both already here, which is why this reads as the same site and
+   not as a widget dropped onto it. */
 .search-box {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
+  gap: 12px;
+  padding: 12px 18px;
   background: #fff;
-  border: 1px solid #b8beb5;
-  border-radius: 4px;
+  border: 2px solid var(--gold-rule);
+  border-radius: 6px;
+  box-shadow: 0 3px 0 rgba(134, 96, 31, 0.10), 0 10px 24px rgba(24, 40, 34, 0.07);
   color: var(--gold-on-light);
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
-.search-box:focus-within { border-color: var(--gold-on-light); box-shadow: 0 8px 22px rgba(134, 96, 31, 0.12); }
+.search-box .icon { width: 21px; height: 21px; }
+.search-box:hover { border-color: var(--gold-on-light); }
+.search-box:focus-within {
+  border-color: var(--gold-on-light);
+  box-shadow: 0 3px 0 rgba(134, 96, 31, 0.18), 0 10px 26px rgba(134, 96, 31, 0.16);
+}
+/* The placeholder used to carry the whole sentence — "Search titles,
+   subjects, descriptions — Urdu, Arabic or English" — and a phone showed
+   "Search titles, subjects, descriptio". A placeholder that is cut off
+   tells a reader less than a short one, and the part that was lost is
+   the part worth knowing, so it moved out of the box and under it where
+   there is room for it. */
+.search-hint {
+  margin: 10px 2px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
 .search-box input {
   width: 100%;
   border: 0;
@@ -1335,6 +1403,16 @@ body.is-searching .rulings .section-note-light { display: none; }
 body.is-searching .rulings .section-label { margin-bottom: 6px; }
 body.is-searching .rulings h2 { margin-bottom: 26px; }
 .rulings .section-label { color: var(--gold-on-dark); }
+/* The search box on the fatāwā page sits on the dark panel. The border
+   is --gold-on-dark for the same reason the back link is: --gold-rule
+   is tuned for cream and goes muddy here. The field itself stays white,
+   which is what makes it read as somewhere to type. */
+.rulings .search-box { border-color: var(--gold-on-dark); }
+.rulings .search-box:hover,
+.rulings .search-box:focus-within { border-color: #fff; }
+.rulings .search-hint { color: #c3d0c9; }
+.rulings .search-count { color: #c3d0c9; }
+.rulings .search-row { margin-bottom: 26px; }
 /* A generated page's header carries four links and no category strip
    under it. Measured against a 141px wordmark they need 207px and fit
    from 390px up; at 320 the header clips them by 56. Below 390 the two

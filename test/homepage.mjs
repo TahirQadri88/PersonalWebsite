@@ -908,11 +908,11 @@ try {
      JavaScript turned off the cards are still on the page and still
      readable, where the library below renders nothing at all.
 
-     How they move is the other half. Left alone the strip is a rail you
-     scroll; where motion is allowed and there is more than fits, script
-     clones the set once and the pair drifts. The clones are made in the
-     browser and never written into the file — a reader without script,
-     and a crawler, must get each card once. */
+     How they move is the other half. It is a carousel: the browser snaps
+     the track to a card, a button steps it either way, and a row of dots
+     says how many there are and which is in view. Nothing is cloned and
+     nothing drifts — a reader without script, and a crawler, get each
+     card once, and get a track they can still swipe. */
   group('recently added and updated');
   {
     const { context, page } = await open(1440);
@@ -921,7 +921,16 @@ try {
        575px — 64% of a 900px viewport, against an author introduction of
        591px — and it pushed the library, which is the point of the site,
        down to y=2021. A number here so it cannot creep back, the same
-       way the page's weight has one. */
+       way the page's weight has one.
+
+       The budget moved once, from 400 to 430, and that is the whole of
+       what the dots cost: a 44px row plus its margin, less the 8px taken
+       back off the rail above it. It bought the thing the strip did not
+       have — how many cards there are, and which one you are looking at
+       — and it was paid for deliberately rather than crept into. 408px
+       is 45% of a 900px viewport, so the sentence at the top of this
+       comment is still true. Trim the margins before the tap target if
+       it ever has to come down again. */
     const size = await page.evaluate(() => {
       const r = document.querySelector('.recent').getBoundingClientRect();
       const card = document.querySelector('.recent-card').getBoundingClientRect();
@@ -930,11 +939,11 @@ try {
                share: r.height / window.innerHeight,
                libraryTop: Math.round(lib.top + window.scrollY) };
     });
-    t(`the strip is ${size.section}px, and stays under 400`, size.section < 400, JSON.stringify(size));
+    t(`the strip is ${size.section}px, and stays under 430`, size.section < 430, JSON.stringify(size));
     t(`  …under half the screen — ${Math.round(size.share * 100)}%`, size.share < 0.5, JSON.stringify(size));
     t(`  …a card is ${size.card}px, and stays under 190`, size.card < 190, JSON.stringify(size));
-    t(`  …and the library starts by ${size.libraryTop}px, within 1900`,
-      size.libraryTop < 1900, JSON.stringify(size));
+    t(`  …and the library starts by ${size.libraryTop}px, within 1940`,
+      size.libraryTop < 1940, JSON.stringify(size));
 
     const strip = await page.evaluate(() => {
       /* The real cards only. The clones repeat them by design. */
@@ -986,50 +995,90 @@ try {
     });
     t('  …newest first', order.every((d, i) => i === 0 || order[i - 1] >= d), JSON.stringify(order));
 
-    /* The ticker. The set is cloned once and both copies drift; half the
-       pair's own width is exactly one set, so the loop has no seam. */
-    const drift = await page.evaluate(() => {
-      const bar = document.getElementById('recent-rail');
-      const ticker = document.querySelector('.recent-ticker');
+    /* The carousel. What was here drifted on its own and took the arrows
+       away while it did — `startTicker` removed the very attributes the
+       arrows are shown by — so eight cards slid past with no way to step
+       back to one, and no way to stop them at all on a phone, where
+       there is no hover. */
+    const car = await page.evaluate(async () => {
+      const track = document.getElementById('recent-track');
       const cards = [...document.querySelectorAll('.recent-card')];
-      const at = () => {
-        const t = ticker && getComputedStyle(ticker).transform;
-        return t && t !== 'none' ? parseFloat(t.split(',')[4]) : null;
-      };
-      const first = at();
-      return new Promise((done) => setTimeout(() => done({
-        on: bar.getAttribute('data-ticker'),
-        real: cards.filter((c) => !c.hasAttribute('aria-hidden')).length,
+      const dots = [...document.querySelectorAll('.rail-dot')];
+      const shown = (el) => el && getComputedStyle(el).display !== 'none';
+      const forward = document.getElementById('recent-forward');
+      const first = cards[0].getBoundingClientRect();
+      const style = getComputedStyle(cards[0]);
+      const step = first.width + (parseFloat(style.marginRight) || 0) +
+        (parseFloat(track).gap || parseFloat(getComputedStyle(track).gap) || 0);
+      const before = track.scrollLeft;
+      forward.click();
+      await new Promise((r) => setTimeout(r, 800));
+      const after = track.scrollLeft;
+      return {
+        ticker: !!document.querySelector('.recent-ticker'),
         clones: cards.filter((c) => c.hasAttribute('aria-hidden')).length,
-        focusable: cards.filter((c) => c.getAttribute('tabindex') !== '-1').length,
-        name: ticker && getComputedStyle(ticker).animationName,
-        moved: first !== null && at() !== first,
-        /* No arrows while it drifts: a drag and an animation cannot share
-           one track. */
-        arrows: [...document.querySelectorAll('.recent-rail .category-arrow')]
-          .filter((a) => getComputedStyle(a).display !== 'none').length
-      }), 1200));
+        cards: cards.length,
+        dots: dots.length,
+        dotHeight: dots.length ? Math.round(dots[0].getBoundingClientRect().height) : 0,
+        marked: dots.filter((d) => d.hasAttribute('aria-current')).length,
+        at: dots.findIndex((d) => d.hasAttribute('aria-current')),
+        snap: getComputedStyle(track).scrollSnapType,
+        cardSnap: style.scrollSnapAlign,
+        forwardShown: shown(forward),
+        moved: Math.round(after - before),
+        step: Math.round(step)
+      };
     });
-    t('the cards drift on their own', drift.on === 'on' && drift.name === 'recent-drift' && drift.moved,
-      JSON.stringify(drift));
-    t('  …the set is cloned exactly once', drift.clones === drift.real, JSON.stringify(drift));
-    t('  …and every clone is hidden from a screen reader',
-      drift.clones > 0 && drift.focusable === drift.real, JSON.stringify(drift));
-    t('  …with no arrows to fight the animation', drift.arrows === 0, JSON.stringify(drift));
+    t('there is no conveyor any more', !car.ticker && car.clones === 0, JSON.stringify(car));
+    /* The whole complaint: a strip that moved by itself and offered
+       nothing to move it with. */
+    t('  …the step forward is there and works', car.forwardShown && car.moved > 0, JSON.stringify(car));
+    t('  …moving exactly one card, not a fraction of the window',
+      Math.abs(car.moved - car.step) <= 2, 'moved ' + car.moved + ' against a card of ' + car.step);
+    t('  …and the track snaps, so nothing comes to rest half off the edge',
+      car.snap === 'x mandatory' && car.cardSnap === 'start', JSON.stringify(car));
+    /* How many there are and how far along you have got — the thing the
+       strip never said. */
+    t('  …with one dot per card', car.dots === car.cards, JSON.stringify(car));
+    t('  …exactly one of them marked, and it moved with the press',
+      car.marked === 1 && car.at === 1, JSON.stringify(car));
+    t('  …each dot a 44px tap target', car.dotHeight >= 44, car.dotHeight + 'px');
 
-    /* Owed to anything that moves by itself: a way to stop it. */
-    const paused = await page.evaluate(() => {
-      const bar = document.getElementById('recent-rail');
-      const ticker = document.querySelector('.recent-ticker');
-      bar.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-      const css = [...document.styleSheets].some(() => true);
-      return { css, rule: getComputedStyle(ticker).animationPlayState };
-    });
-    const cssText = await readFile(join(ROOT, 'styles.css'), 'utf8');
-    t('  …and hovering or tabbing into it pauses it',
-      /\[data-ticker="on"\]:hover[\s\S]{0,120}animation-play-state:\s*paused/.test(cssText) &&
-      /:focus-within[\s\S]{0,120}animation-play-state:\s*paused/.test(cssText),
-      paused.rule);
+    /* Scrolled to the end, the last card should sit flush against the end
+       of the track. The rail carried a gutter of right padding, so it
+       stopped 31px short — a strip of nothing after the last card, which
+       reads as more to come when there is not.
+
+       This assertion is written about the *gap*, and the first version
+       was written about the scroll position instead — `scrollLeft`
+       reaching its own maximum. That could not fail: the maximum is
+       reached either way, padding or no padding, because the padding is
+       part of what is scrolled. It was only by restoring the padding and
+       watching the test stay green that the measurement moved onto the
+       thing that actually differs. */
+    {
+      const { context, page } = await open(390);
+      const far = await page.evaluate(async () => {
+        const bar = document.getElementById('recent-rail');
+        const track = document.getElementById('recent-track');
+        track.scrollLeft = track.scrollWidth;
+        await new Promise((r) => setTimeout(r, 900));
+        const cards = [...document.querySelectorAll('.recent-card')];
+        const last = cards[cards.length - 1].getBoundingClientRect();
+        const port = track.getBoundingClientRect();
+        return {
+          at: Math.round(track.scrollLeft),
+          max: Math.round(track.scrollWidth - track.clientWidth),
+          after: bar.getAttribute('data-more-after'),
+          deadSpace: Math.round(port.right - last.right)
+        };
+      });
+      t('  …and scrolls right to its end', far.at >= far.max - 1 && far.after === 'false',
+        'stopped at ' + far.at + ' of ' + far.max + ', forward arrow still showing: ' + far.after);
+      t('  …leaving no strip of nothing after the last card',
+        far.deadSpace <= 2, far.deadSpace + 'px of empty track beyond the last card');
+      await context.close();
+    }
     await context.close();
   }
 
@@ -1055,6 +1104,7 @@ try {
       r.count > 0 && !r.ticker && r.clones === 0 && r.risen === 0 && r.solid === r.count,
       JSON.stringify(r));
 
+
     /* And the rail still works by hand, which is the only way left to
        reach the far end of it. */
     const ends = await page.evaluate(() => {
@@ -1072,6 +1122,32 @@ try {
     t('  …and can still scroll it by hand, ends and all',
       !ends.scrolls || (ends.before === 'false' && ends.thenBefore === 'true' && ends.thenAfter === 'false'),
       JSON.stringify(ends));
+    /* Last in this block, deliberately: it presses the step button, and
+       the check above reads the rail from a standing start. Written
+       above it first, and it left `data-more-before` already true — a
+       probe that quietly moved the thing the next probe was measuring.
+
+       The carousel is still there and still steps — it is navigation, not
+       decoration, and taking it away would leave this reader with less
+       than everybody else. What goes is the *slide*: `scrollBy` with
+       `behavior: smooth` is motion like any other, and it is the kind
+       this site kept forgetting to ask about because it is written in
+       JavaScript rather than CSS. */
+    const quiet = await page.evaluate(async () => {
+      const track = document.getElementById('recent-track');
+      const forward = document.getElementById('recent-forward');
+      const dots = document.querySelectorAll('.rail-dot').length;
+      if (!forward || getComputedStyle(forward).display === 'none') return { skip: true, dots };
+      const before = track.scrollLeft;
+      forward.click();
+      /* Far too soon for a smooth scroll to have finished, and no time at
+         all for an instant one to need. */
+      await new Promise((r) => setTimeout(r, 60));
+      return { dots, jumped: Math.round(track.scrollLeft - before) };
+    });
+    t('  …and still gets the carousel, stepping without the slide',
+      quiet.skip || (quiet.dots > 0 && quiet.jumped > 0),
+      JSON.stringify(quiet));
     await context.close();
   }
 
@@ -1529,6 +1605,92 @@ try {
       m.every((f) => /^Read .* online$/.test(f.text)), m.map((f) => f.text).join(' | '));
     t('  …and opens in the browser rather than saving',
       m.every((f) => f.blank === '_blank' && !f.downloads), JSON.stringify(m));
+    await context.close();
+  }
+
+  /* ---- searching the fatawa ---- */
+  group('the fatawa page can be searched');
+  {
+    const { context, page } = await open(390, '/fatawa/index.html');
+    const type = (term) => page.evaluate((term) => {
+      const box = document.getElementById('fatawa-search');
+      box.value = term;
+      box.dispatchEvent(new Event('input', { bubbles: true }));
+      return {
+        shown: [...document.querySelectorAll('.ruling')].filter((c) => !c.hidden).length,
+        say: document.getElementById('fatawa-count').textContent
+      };
+    }, term);
+
+    const rest = await type('');
+    t('all the rulings are there before a word is typed', rest.shown === 6, JSON.stringify(rest));
+    const english = await type('commodity');
+    t('  …an English word finds its ruling', english.shown === 1, JSON.stringify(english));
+    /* The library is catalogued in Urdu, and a reader who types in it
+       must be answered. This is the half a search built on English
+       titles alone would have missed. */
+    const urdu = await type('زکوٰۃ');
+    t('  …and so does an Urdu one', urdu.shown === 1, JSON.stringify(urdu));
+    /* Transliteration never agrees about vowels, so the second pass
+       matches consonant skeletons — and says that it has, rather than
+       passing looser results off as what was asked for. */
+    const loose = await type('zakaat');
+    t('  …a misspelt transliteration still finds it', loose.shown === 1, JSON.stringify(loose));
+    t('  …and says so rather than pretending it matched',
+      /closest/.test(loose.say), loose.say);
+    const none = await type('qqqq');
+    t('  …nothing matching says nothing matched', none.shown === 0 && /Nothing/.test(none.say),
+      JSON.stringify(none));
+    const back = await type('');
+    t('  …and clearing it brings them all back', back.shown === 6, JSON.stringify(back));
+    await context.close();
+  }
+
+  /* ---- a control that cannot show what it is asking for ---- */
+  group('a search box says what it is');
+  for (const [path, id] of [['/index.html', 'work-search'], ['/fatawa/index.html', 'fatawa-search']]) {
+    const { context, page } = await open(390, path);
+    const m = await page.evaluate((id) => {
+      const input = document.getElementById(id);
+      const box = input.closest('.search-box');
+      const style = getComputedStyle(box);
+      /* Does the placeholder fit? Measured by drawing it in the input's
+         own font rather than trusting the string's length — the old one
+         was "Search titles, subjects, descriptions — Urdu, Arabic or
+         English" and a phone showed "…descriptio". */
+      const ctx = document.createElement('canvas').getContext('2d');
+      const f = getComputedStyle(input);
+      ctx.font = f.fontStyle + ' ' + f.fontWeight + ' ' + f.fontSize + ' ' + f.fontFamily;
+      return {
+        wants: Math.ceil(ctx.measureText(input.placeholder).width),
+        has: Math.floor(input.getBoundingClientRect().width),
+        border: parseFloat(style.borderTopWidth),
+        colour: style.borderTopColor,
+        page: (function () {
+          let n = box.parentElement;
+          while (n) {
+            const v = getComputedStyle(n).backgroundColor;
+            if (v && !/rgba\(0, 0, 0, 0\)/.test(v)) return v;
+            n = n.parentElement;
+          }
+          return '';
+        })()
+      };
+    }, id);
+    t(path + ' shows its placeholder whole', m.wants <= m.has,
+      'needs ' + m.wants + 'px of ' + m.has + 'px — it is cut off');
+    /* It was 1px of #b8beb5 around white on cream: three tones within
+       six points of each other, and the one control on the page read as
+       a faint rectangle. The author's words were "mixed with the
+       website". */
+    const far = (a, b) => {
+      const n = (c) => (c.match(/\d+/g) || []).slice(0, 3).map(Number);
+      const [x, y] = [n(a), n(b)];
+      return x.length === 3 && y.length === 3 &&
+        Math.max(...x.map((v, i) => Math.abs(v - y[i]))) > 40;
+    };
+    t('  …with an edge that stands off the page behind it',
+      m.border >= 2 && far(m.colour, m.page), m.border + 'px ' + m.colour + ' on ' + m.page);
     await context.close();
   }
 

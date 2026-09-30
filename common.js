@@ -1177,6 +1177,71 @@
     return box;
   }
 
+  /* ---- A search box on a page that is not the homepage --------------
+
+     The fatāwā page got one because more fatāwā are coming: "six on a
+     page three screens tall is not a haystack" was a fair argument about
+     six and stops being one at twenty, and a reader who arrives looking
+     for a ruling on a named subject should not have to read the list.
+
+     The matching is the homepage's, deliberately, and it is here rather
+     than in `script.js` because `script.js` is the homepage's own file
+     and this page does not load it. Two passes: every typed word must
+     appear somewhere in the entry, and only if that finds nothing
+     anywhere does it fall back to skeletons — consonant shapes, which
+     forgive the vowels Urdu transliteration never agrees about — and it
+     says when it has, rather than passing looser results off as what was
+     asked for.
+
+     Wired from the markup, not from a page: any page that writes an
+     input with `data-card-search` naming a container gets it. Nothing
+     starts hidden — with no script the cards are all simply there, which
+     is the state the filter returns them to anyway. */
+  function mountCardSearch() {
+    var input = document.querySelector('[data-card-search]');
+    if (!input) return;
+    var scope = document.getElementById(input.getAttribute('data-card-search'));
+    if (!scope) return;
+    var cards = Array.prototype.slice.call(scope.querySelectorAll('[data-search]'));
+    if (!cards.length) return;
+    var count = document.getElementById(input.getAttribute('data-card-count') || '');
+    var noun = input.getAttribute('data-card-noun') || 'item';
+    var plural = input.getAttribute('data-card-plural') || noun + 's';
+
+    var hits = function (card, attribute, needles) {
+      if (!needles.length) return false;
+      var hay = card.getAttribute(attribute) || '';
+      return needles.every(function (needle) { return hay.indexOf(needle) !== -1; });
+    };
+
+    var run = function () {
+      var words = fold(input.value).split(' ').filter(Boolean);
+      var term = words.length > 0;
+      var loose = words
+        .map(function (word) { return skeleton(word); })
+        .filter(function (word) { return word.length >= 2; });
+
+      var exact = term ? cards.filter(function (c) { return hits(c, 'data-search', words); }) : cards;
+      var approximate = false;
+      var keep = exact;
+      if (term && !exact.length && loose.length) {
+        keep = cards.filter(function (c) { return hits(c, 'data-skeleton', loose); });
+        approximate = keep.length > 0;
+      }
+
+      cards.forEach(function (card) { card.hidden = keep.indexOf(card) === -1; });
+
+      if (!count) return;
+      if (!term) { count.textContent = ''; return; }
+      if (!keep.length) { count.textContent = 'Nothing matches those words.'; return; }
+      count.textContent = keep.length + ' ' + (keep.length === 1 ? noun : plural) +
+        (approximate ? ' — nothing matched exactly, so these are the closest.' : '');
+    };
+
+    input.addEventListener('input', run);
+    run();
+  }
+
   /* ---- The way onward ------------------------------------------------
 
      Every record page was a dead end. You opened a ruling from the
@@ -1287,6 +1352,7 @@
     proseMarkup: proseMarkup,
     proseBlock: proseBlock,
     moreLike: moreLike,
+    mountCardSearch: mountCardSearch,
     tagMarkup: tagMarkup,
     allRecords: allRecords,
     findRecord: findRecord,
@@ -1347,6 +1413,8 @@
       if (onward && workHero) workHero.appendChild(onward);
     }
   }
+
+  mountCardSearch();
 
   /* The icon sprite, before anything that might reference it. */
   injectSprite();

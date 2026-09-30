@@ -2866,8 +2866,15 @@
        That has happened on this site before, with a kind and its English
        rendering each keeping their own copy of a default. */
     var cards = rulings.map(function (ruling) {
+      /* The same two indexes the homepage builds for its own search —
+         the words of the entry, and their consonant skeletons for a
+         reader who spells a transliteration differently. Written into
+         the file so the filter has something to read without fetching
+         anything, and so a crawler sees the words too. */
+      var words = site.searchText(ruling);
       return [
-        '          <a class="ruling" href="' + e('../works/' + ruling.id + '.html') + '">',
+        '          <a class="ruling" href="' + e('../works/' + ruling.id + '.html') + '"' +
+          ' data-search="' + e(words) + '" data-skeleton="' + e(site.skeleton(words)) + '">',
         '            <div class="ruling-body">',
         '              ' + site.titleMarkup(ruling, 'h3'),
         '              ' + site.proseBlock(ruling),
@@ -2902,7 +2909,23 @@
       '        <p class="section-label urdu align-left" lang="ur" dir="rtl">فتاویٰ</p>',
       '        <h1><span class="category-icon-slot" data-icon="seal" data-icon-class="category-icon" aria-hidden="true"></span>Islamic rulings</h1>',
       '        <p class="section-note-light">' + e(FATAWA_NOTE) + '</p>',
-      '        <div class="ruling-grid">',
+      /* More rulings are coming, which is what changed the answer here:
+         six on a page is a list, and twenty is a haystack. The filter
+         itself is site.mountCardSearch in common.js — the homepage's own
+         matching, so the two pages cannot come to disagree about what
+         a word finds. */
+      '        <div class="search-row">',
+      '          <label class="search-box" for="fatawa-search">',
+      '            <span class="search-icon" data-icon="search" aria-hidden="true"></span>',
+      '            <input id="fatawa-search" type="search" placeholder="Search the fatāwā"' +
+        ' aria-label="Search the fatāwā by subject or wording — in Urdu, Arabic or English"' +
+        ' autocomplete="off" data-card-search="fatawa-list" data-card-count="fatawa-count"' +
+        ' data-card-noun="fatwa" data-card-plural="fatāwā" />',
+      '          </label>',
+      '          <p class="search-hint">Subjects and wording — in Urdu, Arabic or English.</p>',
+      '          <p class="search-count" id="fatawa-count" role="status" aria-live="polite"></p>',
+      '        </div>',
+      '        <div class="ruling-grid" id="fatawa-list">',
       cards,
       '        </div>',
       '      </section>',
