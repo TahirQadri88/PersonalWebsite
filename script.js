@@ -68,7 +68,81 @@
     track.addEventListener('scroll', refreshEnds, { passive: true });
     window.addEventListener('resize', refreshEnds);
     refreshEnds();
-    return refreshEnds;
+    /* The step goes out with it: whatever else moves this track has to
+       move it by the same amount the buttons do, or the snapping and the
+       controls end up arguing about where a card begins. */
+    return { ends: refreshEnds, step: step, gently: gently };
+  }
+
+  /* ---- Moving on its own, without taking the wheel ----------------
+
+     The strip used to drift for ever and could not be steered; then it
+     was steerable and did not move at all, and read as a static row of
+     cards with no sign there were more. Both reports are the same
+     report: a shelf of recent things has to *say* it is a shelf, and
+     movement is how a row says that.
+
+     The difference from the conveyor is what it moves. That one animated
+     a CSS transform on a cloned track, which is why the arrows had to be
+     taken away — a transform and a drag cannot share one element. This
+     scrolls the real track by one real card, which is exactly what the
+     buttons do, so every control keeps working while it runs and the
+     dots follow it without being told.
+
+     It gives way immediately. Hovering or tabbing in pauses it; taking
+     hold of it at all — a button, a dot, a finger on the track — stops
+     it for good, because someone steering does not want to be steered.
+     It never runs under `prefers-reduced-motion`, never when everything
+     already fits, and never while the tab is in the background. */
+  var ADVANCE_MS = 4500;
+
+  function autoAdvance(section, bar, track, rails) {
+    if (!section || !bar || !track || !rails) return null;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return null;
+    /* Nothing to advance past, so nothing to say. */
+    if (track.scrollWidth <= track.clientWidth + 1) return null;
+
+    var timer = null;
+    var stopped = false;
+
+    var tick = function () {
+      var max = track.scrollWidth - track.clientWidth;
+      /* Round to the start rather than reversing. A shelf that walks
+         backwards reads as a fault; one that comes round again reads as
+         a loop, which is what it is. */
+      if (track.scrollLeft >= max - 1) track.scrollTo({ left: 0, behavior: rails.gently() });
+      else track.scrollBy({ left: rails.step(), behavior: rails.gently() });
+    };
+
+    var pause = function () { window.clearInterval(timer); timer = null; };
+    var start = function () {
+      if (stopped || timer || document.hidden) return;
+      timer = window.setInterval(tick, ADVANCE_MS);
+    };
+    var stop = function () {
+      stopped = true;
+      pause();
+      bar.removeAttribute('data-moving');
+    };
+
+    /* The section, not the rail: the dots are written in beside it, and a
+       tap on one is a reader taking hold as surely as a tap on an arrow. */
+    section.addEventListener('mouseenter', pause);
+    section.addEventListener('mouseleave', start);
+    section.addEventListener('focusin', pause);
+    section.addEventListener('focusout', start);
+    section.addEventListener('pointerdown', stop);
+    section.addEventListener('keydown', stop);
+    /* A wheel or a trackpad swipe over the track is steering too, and it
+       raises no pointer event. */
+    track.addEventListener('wheel', stop, { passive: true });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) pause(); else start();
+    });
+
+    bar.setAttribute('data-moving', 'on');
+    start();
+    return stop;
   }
 
   /* ---- Where you are in a carousel ----
@@ -83,7 +157,7 @@
      reader without JavaScript gets the cards and a track they can still
      swipe, which is the whole of what the dots were offering. Nothing
      starts invisible waiting for this to run. */
-  function dots(bar, track, refreshEnds) {
+  function dots(bar, track, refreshEnds, onTake) {
     if (!bar || !track) return;
     var cards = Array.prototype.slice.call(track.children);
     if (cards.length < 2) return;
@@ -104,6 +178,7 @@
       dot.setAttribute('aria-label',
         'Show ' + ((title && title.textContent.trim()) || 'item ' + (index + 1)));
       dot.addEventListener('click', function () {
+        if (onTake) onTake();
         track.scrollTo({
           left: card.offsetLeft - track.offsetLeft,
           behavior: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -168,8 +243,12 @@
        so it is CSS that decides how to show it. */
     var bar = document.getElementById('category-bar');
     if (bar) {
+      /* `.ends` — rail() hands back its step as well now, for the timer
+         that moves the strip below. Reading the object as though it were
+         still the bare function threw on every page load, which is what
+         the "nothing threw" guard is there to catch. */
       var refreshEnds = rail(bar, nav,
-        document.getElementById('cat-back'), document.getElementById('cat-forward'));
+        document.getElementById('cat-back'), document.getElementById('cat-forward')).ends;
 
       /* Which section you are actually in. The strip has listed all seven
          since it was written and never said which one you were reading;
@@ -420,9 +499,10 @@
      card saying how many there are and which one you are on. The cards
      still rise as they arrive; that was never the problem, and it is a
      decoration that costs nothing when it does not run. */
-  var recentEnds = rail(recentRail, recentTrack,
+  var recentRails = rail(recentRail, recentTrack,
        document.getElementById('recent-back'), document.getElementById('recent-forward'));
-  dots(recentRail, recentTrack, recentEnds);
+  var stopMoving = autoAdvance(document.getElementById('recent'), recentRail, recentTrack, recentRails);
+  dots(recentRail, recentTrack, recentRails && recentRails.ends, stopMoving);
   site.revealOnEntry('.recent-card');
 
   /* The ticker that used to live here is gone, and with it the clone of

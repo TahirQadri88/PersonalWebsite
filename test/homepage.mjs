@@ -112,6 +112,18 @@ async function open(width, path) {
   return { context, page };
 }
 
+/* The strip advances on its own every few seconds. Every measurement of
+   where it is sitting has to take hold of it first, or the number
+   depends on how long the page took to load — the sort of flake that
+   passes for weeks and then fails on a slow morning. A real pointerdown
+   is what a reader's finger raises, and it is what stops it for good. */
+async function stopAuto(page) {
+  await page.evaluate(() => {
+    const section = document.getElementById('recent');
+    if (section) section.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  });
+}
+
 try {
   /* ---- the fatawa grid ---- */
   group('the fatawa grid');
@@ -916,6 +928,7 @@ try {
   group('recently added and updated');
   {
     const { context, page } = await open(1440);
+    await stopAuto(page);
 
     /* A shelf on the way past, not a screen to scroll through. It was
        575px — 64% of a 900px viewport, against an author introduction of
@@ -1058,6 +1071,7 @@ try {
        thing that actually differs. */
     {
       const { context, page } = await open(390);
+      await stopAuto(page);
       const far = await page.evaluate(async () => {
         const bar = document.getElementById('recent-rail');
         const track = document.getElementById('recent-track');
@@ -1606,6 +1620,103 @@ try {
     t('  …and opens in the browser rather than saving',
       m.every((f) => f.blank === '_blank' && !f.downloads), JSON.stringify(m));
     await context.close();
+  }
+
+  /* ---- the shelf says it is a shelf ----
+
+     Two reports, months apart, that are the same report. First the strip
+     drifted for ever and could not be steered; then it could be steered
+     and did not move at all, and read as a static row with no sign there
+     were more. A shelf of recent things has to say it is a shelf, and a
+     row says that by moving and by showing the next thing along. */
+  group('the recent strip says there is more');
+  {
+    /* The peek. It used to be whatever was left over after the cards —
+       measured, 42px at 1280 with a 44px arrow sitting on top of it,
+       which is as good as nothing. It is derived from the card width
+       now, so it is the same at every width. */
+    for (const width of [390, 768, 1280, 1920]) {
+      const { context, page } = await open(width);
+      await stopAuto(page);
+      const m = await page.evaluate(() => {
+        const track = document.getElementById('recent-track');
+        const port = track.getBoundingClientRect();
+        let peek = 0;
+        [...document.querySelectorAll('.recent-card')].forEach((c) => {
+          const r = c.getBoundingClientRect();
+          if (r.right > port.right + 1 && r.left < port.right) {
+            peek = Math.max(peek, Math.round(port.right - r.left));
+          }
+        });
+        const fade = getComputedStyle(document.getElementById('recent-rail'), '::after');
+        return { peek, fade: Math.round(parseFloat(fade.width)), shown: fade.opacity };
+      });
+      t('at ' + width + 'px the next card shows past the edge', m.peek >= 60,
+        'only ' + m.peek + 'px of it');
+      /* And is not painted out by the thing that is meant to soften it.
+         The fade was written for the conveyor, where a card was supposed
+         to dissolve; on a carousel it was erasing the only hint there
+         was. */
+      t('  …and is not swallowed by the fade over it', m.fade < m.peek,
+        m.fade + 'px of gradient over ' + m.peek + 'px of card');
+      await context.close();
+    }
+
+    /* It moves again — and this time the controls survive it, which is
+       the whole difference from the conveyor. That animated a transform
+       on a cloned track, so the arrows had to be removed; this scrolls
+       the real track by the same step the buttons use. */
+    {
+      const { context, page } = await open(390);
+      const ran = await page.evaluate(async () => {
+        const track = document.getElementById('recent-track');
+        const bar = document.getElementById('recent-rail');
+        const first = track.scrollLeft;
+        await new Promise((r) => setTimeout(r, 5200));
+        const moved = track.scrollLeft;
+        /* Taking hold of it stops it — for good, not until the next tick. */
+        document.getElementById('recent').dispatchEvent(
+          new PointerEvent('pointerdown', { bubbles: true }));
+        const held = track.scrollLeft;
+        await new Promise((r) => setTimeout(r, 5200));
+        return {
+          marked: bar.getAttribute('data-moving'),
+          advanced: Math.round(moved - first),
+          afterHold: Math.round(track.scrollLeft - held),
+          stillMarked: bar.getAttribute('data-moving'),
+          arrowsAlive: [...document.querySelectorAll('.recent-rail .category-arrow')]
+            .filter((a) => getComputedStyle(a).display !== 'none').length,
+          dots: document.querySelectorAll('.rail-dot').length
+        };
+      });
+      t('the strip moves on its own again', ran.advanced > 100, JSON.stringify(ran));
+      /* The conveyor took these away. Nothing here does. */
+      t('  …without taking the controls away',
+        ran.arrowsAlive > 0 && ran.dots > 0, JSON.stringify(ran));
+      t('  …and stops for good the moment a reader takes hold',
+        ran.afterHold === 0 && ran.stillMarked === null, JSON.stringify(ran));
+      await context.close();
+    }
+
+    /* Motion written in JavaScript is still motion, and the stylesheet's
+       reduced-motion block cannot reach a timer. */
+    {
+      const context = await browser.newContext({ viewport: { width: 390, height: 900 }, reducedMotion: 'reduce' });
+      await context.route('https://fonts.g**', (r) => r.abort());
+      const page = await context.newPage();
+      await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => document.fonts.ready).catch(() => {});
+      const still = await page.evaluate(async () => {
+        const track = document.getElementById('recent-track');
+        const first = track.scrollLeft;
+        await new Promise((r) => setTimeout(r, 5200));
+        return { moved: Math.round(track.scrollLeft - first),
+                 marked: document.getElementById('recent-rail').getAttribute('data-moving') };
+      });
+      t('  …and never starts at all for a reader who asked for less motion',
+        still.moved === 0 && still.marked === null, JSON.stringify(still));
+      await context.close();
+    }
   }
 
   /* ---- searching the fatawa ---- */
