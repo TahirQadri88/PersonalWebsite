@@ -124,11 +124,32 @@
         var language = file.language || (isArabicScript(label) ? 'ur' : 'en');
         var rtl = language === 'ur' || language === 'ar';
         var url = escapeHtml(file.url);
+        /* This link has always opened the document in the browser —
+           target="_blank", no `download` attribute — and the one beside
+           it has always been the one that saves a copy. Nothing said so.
+           A reader looking at "Urdu PDF" next to "Download" has to guess
+           what the first one does, and the guess most people make is
+           that it does the same thing.
+
+           So the button says what it does. "Read Urdu PDF online" beside
+           "Download" is two different offers rather than a name and an
+           action.
+
+           Only where the label is Latin, and this is not tidiness. When
+           the label is one of the six Urdu chart names the whole anchor
+           carries dir="rtl", and English words placed inside it are laid
+           out by that direction — "Read" and "online" would be reordered
+           around the name rather than reading as a sentence. There the
+           name stands alone, which is what it already was, and the
+           sentence goes where it can be read in one script: the
+           accessible name, which a screen reader announces on its own. */
+        var says = 'Read ' + label + ' online';
         var open =
           '<a class="' + (className || 'document-link') + (rtl ? ' ' + scriptClass(language) : '') + '"' +
-          (rtl ? ' lang="' + language + '" dir="rtl"' : '') +
+          (rtl ? ' lang="' + language + '" dir="rtl" aria-label="' + escapeHtml(says) + '"' : '') +
+          ' title="' + escapeHtml(says) + '"' +
           ' href="' + url + '" target="_blank" rel="noopener">' +
-          escapeHtml(label) + ' ' + icon('open', 'icon-inline') + '</a>';
+          escapeHtml(rtl ? label : says) + ' ' + icon('open', 'icon-inline') + '</a>';
         if (OFFSITE.test(String(file.url || ''))) return '<span class="file-item">' + open + '</span>';
         return (
           '<span class="file-item">' + open +
@@ -1156,6 +1177,148 @@
     return box;
   }
 
+  /* ---- A search box on a page that is not the homepage --------------
+
+     The fatāwā page got one because more fatāwā are coming: "six on a
+     page three screens tall is not a haystack" was a fair argument about
+     six and stops being one at twenty, and a reader who arrives looking
+     for a ruling on a named subject should not have to read the list.
+
+     The matching is the homepage's, deliberately, and it is here rather
+     than in `script.js` because `script.js` is the homepage's own file
+     and this page does not load it. Two passes: every typed word must
+     appear somewhere in the entry, and only if that finds nothing
+     anywhere does it fall back to skeletons — consonant shapes, which
+     forgive the vowels Urdu transliteration never agrees about — and it
+     says when it has, rather than passing looser results off as what was
+     asked for.
+
+     Wired from the markup, not from a page: any page that writes an
+     input with `data-card-search` naming a container gets it. Nothing
+     starts hidden — with no script the cards are all simply there, which
+     is the state the filter returns them to anyway. */
+  function mountCardSearch() {
+    var input = document.querySelector('[data-card-search]');
+    if (!input) return;
+    var scope = document.getElementById(input.getAttribute('data-card-search'));
+    if (!scope) return;
+    var cards = Array.prototype.slice.call(scope.querySelectorAll('[data-search]'));
+    if (!cards.length) return;
+    var count = document.getElementById(input.getAttribute('data-card-count') || '');
+    var noun = input.getAttribute('data-card-noun') || 'item';
+    var plural = input.getAttribute('data-card-plural') || noun + 's';
+
+    var hits = function (card, attribute, needles) {
+      if (!needles.length) return false;
+      var hay = card.getAttribute(attribute) || '';
+      return needles.every(function (needle) { return hay.indexOf(needle) !== -1; });
+    };
+
+    var run = function () {
+      var words = fold(input.value).split(' ').filter(Boolean);
+      var term = words.length > 0;
+      var loose = words
+        .map(function (word) { return skeleton(word); })
+        .filter(function (word) { return word.length >= 2; });
+
+      var exact = term ? cards.filter(function (c) { return hits(c, 'data-search', words); }) : cards;
+      var approximate = false;
+      var keep = exact;
+      if (term && !exact.length && loose.length) {
+        keep = cards.filter(function (c) { return hits(c, 'data-skeleton', loose); });
+        approximate = keep.length > 0;
+      }
+
+      cards.forEach(function (card) { card.hidden = keep.indexOf(card) === -1; });
+
+      if (!count) return;
+      if (!term) { count.textContent = ''; return; }
+      if (!keep.length) { count.textContent = 'Nothing matches those words.'; return; }
+      count.textContent = keep.length + ' ' + (keep.length === 1 ? noun : plural) +
+        (approximate ? ' — nothing matched exactly, so these are the closest.' : '');
+    };
+
+    input.addEventListener('input', run);
+    run();
+  }
+
+  /* ---- The way onward ------------------------------------------------
+
+     Every record page was a dead end. You opened a ruling from the
+     homepage, read it, and the only ways out were the browser's Back
+     button and the header — nothing said there were five more rulings,
+     or three more booklets in the same category, and the library a
+     reader had just come from was two taps and a scroll away.
+
+     Mounted from here rather than written into the pages, for the same
+     reason Share and Print are: it reaches all twenty-four pages already
+     committed without regenerating one of them, and the next thing it
+     learns to do reaches them too.
+
+     Up to four siblings, taken from the one *after* this record and
+     wrapping round, so a record near the end of its category offers the
+     start of it rather than nothing. Self is never in the list. A
+     category holding nothing else writes no block at all — an empty
+     "More in …" heading is worse than no heading. */
+  var MORE_MAX = 4;
+
+  function moreLike(record) {
+    /* allRecords() here hands back flat records carrying a `category`
+       property — not the { record, category } entry admin.js builds.
+       The two shapes have always differed; this read the wrong one
+       first and every record page threw on load. */
+    var family = allRecords().filter(function (other) {
+      return other.category && record.category
+        ? other.category.id === record.category.id
+        : false;
+    });
+    if (family.length < 2) return null;
+    var group = record.category;
+
+    var start = 0;
+    for (var j = 0; j < family.length; j++) {
+      if (family[j].id === record.id) { start = j; break; }
+    }
+    var picked = [];
+    for (var k = 1; k < family.length && picked.length < MORE_MAX; k++) {
+      picked.push(family[(start + k) % family.length]);
+    }
+
+    var box = document.createElement('section');
+    box.className = 'more-like';
+
+    var head = document.createElement('h2');
+    head.textContent = 'More in ' + group.title;
+    box.appendChild(head);
+
+    var list = document.createElement('ul');
+    /* Every record page sits exactly one folder down — posts/, works/,
+       apps/ — so the way back to the site root is the same from all of
+       them. Not an absolute address: these pages have to keep working
+       opened straight off the file system, which is the rule the whole
+       site is built to. */
+    picked.forEach(function (other) {
+      var item = document.createElement('li');
+      var link = document.createElement('a');
+      link.href = '../' + recordHref(other);
+      link.innerHTML = titleMarkup(other, 'span') + kindMarkup(other, 'more-kind');
+      item.appendChild(link);
+      list.appendChild(item);
+    });
+    box.appendChild(list);
+
+    /* The fatawa have a page of their own now; every other category is
+       still a section of the homepage. */
+    var all = document.createElement('a');
+    all.className = 'text-link';
+    all.href = group.id === 'rulings' ? '../fatawa/index.html' : '../index.html#' + group.id;
+    all.innerHTML = 'All of ' + escapeHtml(group.title) + ' <span aria-hidden="true">\u2192</span>';
+    box.appendChild(all);
+
+    return box;
+  }
+
+
   window.site = {
     content: content,
     escapeHtml: escapeHtml,
@@ -1188,6 +1351,8 @@
     imageGallery: imageGallery,
     proseMarkup: proseMarkup,
     proseBlock: proseBlock,
+    moreLike: moreLike,
+    mountCardSearch: mountCardSearch,
     tagMarkup: tagMarkup,
     allRecords: allRecords,
     findRecord: findRecord,
@@ -1219,12 +1384,19 @@
     var address = (canonical && canonical.getAttribute('href')) || absoluteUrl(ownPage(mine));
     var tools = pageTools(mine, address);
 
+    /* Written once and used at both mount points below, so a post and a
+       work cannot end up offering different things. */
+    var onward = moreLike(mine);
+
     var postBody = document.getElementById('post-body');
     if (postBody) {
       var article = postBody.closest('article');
       if (article) {
         var foot = article.querySelector('.post-foot');
         foot ? article.insertBefore(tools, foot) : article.appendChild(tools);
+        /* After the whole article, including whatever foot it has — this
+           is where a reader who has finished is looking. */
+        if (onward) article.appendChild(onward);
       }
     } else {
       /* A work page: right after the download buttons, or the "not
@@ -1237,8 +1409,12 @@
         var hero = document.querySelector('.work-hero');
         if (hero) hero.appendChild(tools);
       }
+      var workHero = document.querySelector('.work-hero');
+      if (onward && workHero) workHero.appendChild(onward);
     }
   }
+
+  mountCardSearch();
 
   /* The icon sprite, before anything that might reference it. */
   injectSprite();
