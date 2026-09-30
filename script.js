@@ -188,41 +188,6 @@
     );
   }
 
-  /* Both descriptions, the record's own language first. A work written
-     in Urdu leads with the Urdu; an English fatwa leads with the English. */
-  function prose(record) {
-    var rtl = site.direction(record.language) === 'rtl';
-    /* Both descriptions on the one axis the record itself reads from —
-       the same rule the row above them already follows. Without it the
-       panel set its Urdu flush right and its English flush left, two
-       paragraphs of the same thing at opposite edges of one box. The
-       summary was fixed for this long ago; the panel under it was not,
-       and nothing said so until every stacked pair on the site was
-       measured.
-
-       `.align-left` and `.align-right` are declared after `.urdu` in
-       styles.css, so they win over the alignment the script class
-       carries — which is the only reason one class can settle both. */
-    /* `own-edge` belongs to the paragraph that reads the other way, and
-       to no other. A paragraph of Urdu pinned left has every line
-       *beginning* in a different place, because an Urdu line begins on
-       its right — so the Urdu one in a left-reading panel takes it. The
-       English one alongside it must not: `.own-edge` is scoped to
-       `.urdu`/`.arabic` and cannot match Latin, so writing it there put
-       a class with no rule behind it on fourteen paragraphs. Decided per
-       string, not per record, because a panel holds one of each. */
-    var edge = function (lang) {
-      if (rtl) return 'align-right';
-      return site.direction(lang) === 'rtl' ? 'align-left own-edge' : 'align-left';
-    };
-    return (rtl
-      ? [[record.descriptionUr, 'ur'], [record.description, record.language]]
-      : [[record.description, record.language], [record.descriptionUr, 'ur']])
-      .filter(function (pair) { return pair[0]; })
-      .map(function (pair) { return site.proseMarkup(pair[0], edge(pair[1]), pair[1]); })
-      .join('');
-  }
-
   function workMarkup(work) {
     /* A post has no file and needs none — the writing is the page. Only a
        record that is waiting for a document says so. */
@@ -250,7 +215,7 @@
       '<div class="work-detail ' + reads + '">' +
       /* The date used to be repeated here. It is on the row itself now,
          where it can be read without opening anything. */
-      prose(work) +
+      site.proseBlock(work) +
       status +
       '<div class="work-actions">' +
       /* An app is opened, and the point of its row is to open it — so the
@@ -425,14 +390,20 @@
     rulingsGrid.innerHTML = (content.rulings || [])
       .map(function (ruling) {
         return (
-          '<a class="ruling" href="work.html?work=' + encodeURIComponent(ruling.id) + '"' + searchAttr(ruling.id) + '>' +
+          /* The ruling's own page. This said work.html?work=<id> — the
+             redirect kept for links already shared — so every fatwa on
+             the homepage went out through a redirect while every work
+             beside it went straight to its page. recordHref is what the
+             library rows have always used; the fatawa were simply
+             missed when works gained pages of their own. */
+          '<a class="ruling" href="' + site.escapeHtml(site.recordHref(ruling)) + '"' + searchAttr(ruling.id) + '>' +
           /* div, not span: these hold an h3 and paragraphs, which a span
              may not carry. The card is an <a>, whose content model is
              whatever surrounds it — flow content here — so a div inside
              one is right where a span would not be. */
           '<div class="ruling-body">' +
           site.titleMarkup(ruling, 'h3') +
-          prose(ruling) +
+          site.proseBlock(ruling) +
           '</div>' +
           '<div class="ruling-foot">' +
           site.metaMarkup(ruling) +
@@ -599,7 +570,11 @@
         inLanguage: record.language || 'en',
         genre: record.kind || undefined,
         description: record.description || undefined,
-        url: site.absoluteUrl('work.html?work=' + encodeURIComponent(record.id))
+        /* The record's own page, not the redirect. This told a crawler
+           that the address of every one of the twenty-four records was
+           work.html?work=<id>, each of which redirects to a page whose
+           own canonical tag says something else. */
+        url: site.absoluteUrl(site.recordHref(record))
       };
     })
   });

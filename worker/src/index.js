@@ -34,7 +34,7 @@ const GITHUB = 'https://api.github.com';
    writes any, which at least means nothing lands half done. The editor
    asks /version on load now, so the drift is said before anything is
    sent rather than after. */
-const WORKER_VERSION = '2026-09-12.1';
+const WORKER_VERSION = '2026-09-30.1';
 
 /* The token here can write to the repository, so this endpoint must not
    become a way to write anything anywhere. Only what the editor
@@ -73,6 +73,12 @@ const WRITABLE = [
   /* An app's own page. Built from fields rather than written, so it is
      regenerated in full on every publish the way a work's page is. */
   /^apps\/[A-Za-z0-9-]+\.html$/,
+  /* The two landing pages, both generated whole from content.js. Named
+     exactly, not by a pattern: these are the only two files either
+     folder may ever hold, and a pattern would let the editor write a
+     third nobody asked for. */
+  /^fatawa\/index\.html$/,
+  /^author\/index\.html$/,
   /^files\/cards\/[A-Za-z0-9-]+\.jpg$/
 ];
 

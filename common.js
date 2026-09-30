@@ -609,6 +609,48 @@
     );
   }
 
+  /* The description(s) under a title in a row or on a card, both scripts,
+     each on the axis the record itself reads from.
+
+     It lived in script.js while the homepage was the only place a card
+     was drawn. The fatawa index generates the same card into a file, so
+     the rule about which edge each paragraph takes now has two callers
+     and belongs where neither of them owns it. A card on /fatawa/ that
+     disagreed with the same card on the homepage is exactly the drift
+     this file exists to prevent. */
+  function proseBlock(record) {
+    var rtl = direction(record.language) === 'rtl';
+    /* Both descriptions on the one axis the record itself reads from —
+       the same rule the row above them already follows. Without it the
+       panel set its Urdu flush right and its English flush left, two
+       paragraphs of the same thing at opposite edges of one box. The
+       summary was fixed for this long ago; the panel under it was not,
+       and nothing said so until every stacked pair on the site was
+       measured.
+
+       `.align-left` and `.align-right` are declared after `.urdu` in
+       styles.css, so they win over the alignment the script class
+       carries — which is the only reason one class can settle both. */
+    /* `own-edge` belongs to the paragraph that reads the other way, and
+       to no other. A paragraph of Urdu pinned left has every line
+       *beginning* in a different place, because an Urdu line begins on
+       its right — so the Urdu one in a left-reading panel takes it. The
+       English one alongside it must not: `.own-edge` is scoped to
+       `.urdu`/`.arabic` and cannot match Latin, so writing it there put
+       a class with no rule behind it on fourteen paragraphs. Decided per
+       string, not per record, because a panel holds one of each. */
+    var edge = function (lang) {
+      if (rtl) return 'align-right';
+      return direction(lang) === 'rtl' ? 'align-left own-edge' : 'align-left';
+    };
+    return (rtl
+      ? [[record.descriptionUr, 'ur'], [record.description, record.language]]
+      : [[record.description, record.language], [record.descriptionUr, 'ur']])
+      .filter(function (pair) { return pair[0]; })
+      .map(function (pair) { return proseMarkup(pair[0], edge(pair[1]), pair[1]); })
+      .join('');
+  }
+
   /* A paragraph of prose from content.js, in whatever script it is
      written in. Descriptions and blurbs were assumed to be English —
      every one of them was — so an Urdu description came out in whatever
@@ -1145,6 +1187,7 @@
     isImage: isImage,
     imageGallery: imageGallery,
     proseMarkup: proseMarkup,
+    proseBlock: proseBlock,
     tagMarkup: tagMarkup,
     allRecords: allRecords,
     findRecord: findRecord,
