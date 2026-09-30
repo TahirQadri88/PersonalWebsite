@@ -993,15 +993,23 @@ from the helper the library row uses for the same part — `titleMarkup`,
 `kindMarkup`, `metaMarkup`, `categoryIcon` — so a card cannot end up
 saying something different from the row it mirrors.
 
+**Two reports, and they are the same report.** First the strip drifted
+for ever and could not be steered — *overloaded*. Then it could be
+steered and did not move at all, and read as a static row with no sign
+there was more — *weird, not moving, no hint it contains more*. Both say
+the same thing: **a shelf of recent things has to say it is a shelf**,
+and a row says that by moving and by showing the next thing along. The
+first version had movement and no controls; the second had controls and
+no movement; it needs both, and they are not in tension once the right
+thing is moved.
+
 **It is a carousel, and it used to be a conveyor.** What was here drifted
 leftwards for ever: `startTicker` cloned the whole set, translated the
 pair by −50%, and — this is the part that mattered — **removed the very
 attributes the arrows are shown by**, because a drag and an animation
 cannot share one track. So the strip could not be scrolled, could not be
 stepped through, and could not be stopped at all on a phone, where the
-hover that paused it does not exist. Eight cards sliding past with no way
-back to one is what the author called *overloaded*, and it was the right
-word: the motion was the whole interface, and it offered nothing.
+hover that paused it does not exist.
 
 What replaced it is smaller and does more. `scroll-snap-type: x
 mandatory` on the track with `scroll-snap-align: start` on the cards, so
@@ -1021,6 +1029,43 @@ one thing that needs no script: a track they can still swipe.
 **The dots cost about 40px and the budget was raised to pay for it**,
 from 400 to 430, deliberately rather than by drift. Trim the margins
 before the 44px tap target if it ever has to come down again.
+
+**It advances on its own again, and `autoAdvance` moves the scroll
+position — not a transform.** That is the whole difference from the
+conveyor, and it is why nothing has to be taken away for it to run: one
+card every 4.5s by the same `step()` the buttons use, so the arrows, the
+dots, the snapping and a finger on the track all keep working while it
+goes. At the end it comes round to the start rather than reversing; a
+shelf that walks backwards reads as a fault.
+
+It gives way at once. Hovering or tabbing in pauses it; **taking hold of
+it at all stops it for good** — a `pointerdown` anywhere in the section,
+a key, a wheel over the track — because someone steering does not want to
+be steered. The listeners are on the *section*, not the rail, since the
+dots are written in beside the rail and a tap on one is a reader taking
+hold as surely as a tap on an arrow. It never starts under
+`prefers-reduced-motion`, never when everything already fits, and pauses
+while the tab is in the background.
+
+**The peek is derived, not left over.** `.recent-card`'s comment said all
+along that it was "narrow enough that a second card is always showing —
+which is what says the rail scrolls before any arrow does", and
+`min(268px, 74vw)` only delivered that on a phone. Everywhere else the
+peek was the remainder after the cards: measured, **42px at 1280 with a
+44px arrow sitting exactly on it**. The width is now whatever makes
+`--per` cards and one `--peek` fit the track, so the same 88px of the
+next card shows at every width from 390 to 1920, and the cards stay
+255–293px — within a few pixels of the 268 they have always been. Only
+`--per` moves with the breakpoints.
+
+**The fade was erasing the hint it was meant to soften.** 64px wide with
+its outer 40% solid page colour — written for the conveyor, where a card
+was *supposed* to dissolve as it drifted off. On a carousel the peeking
+card is the whole signal, and the gradient was wider than the peek at
+every width. It is 28px now with no solid run. The guard is `fade <
+peek`, and note what proving it took: with the peek fixed at 88px a 64px
+fade no longer swallows it, so the two faults only fail the test
+**together**. Restoring one at a time is how that was found.
 
 **The last card snaps to `end`, and the track carries no right padding.**
 The padding was a gutter meant to let the last card clear the fade; what
@@ -1047,15 +1092,24 @@ itself was tried and the tests caught it — the three cases again.
 **A scroll written in JavaScript is motion too.** `scrollBy` and
 `scrollTo` with `behavior: 'smooth'` are animation like any other, and
 they are the kind this site kept forgetting to ask about because they are
-not in the stylesheet: the reduced-motion block cannot reach them. Both
-the step buttons and the dots ask `matchMedia` themselves and fall back
-to `'auto'`, which keeps the navigation and drops the slide. Taking the
-carousel away from that reader instead would have left them with less
-than everybody else, which is not what the preference asks for.
+not in the stylesheet: the reduced-motion block cannot reach them, and
+neither can it reach a `setInterval`. The step buttons and the dots ask
+`matchMedia` themselves and fall back to `'auto'`, which keeps the
+navigation and drops the slide; `autoAdvance` asks the same question and
+simply never starts. Taking the *carousel* away from that reader would
+have left them with less than everybody else, which is not what the
+preference asks for — taking the **unasked-for movement** away is exactly
+what it asks for. The two are different, and the line between them is
+whether the reader chose it.
 
 `rail()` in `script.js` is the category strip's own scrolling behaviour,
 extracted and used twice. It scrolls the *track*, never `scrollIntoView`
-— same reason as the rail that marks your place.
+— same reason as the rail that marks your place. It hands back
+`{ ends, step, gently }` rather than the bare `refreshEnds` it used to,
+so the timer above steps by exactly what the buttons step by. **The
+category strip reads that return value too** — changing its shape threw
+on every page load until the second call site was updated, and the
+"nothing threw along the way" assertion is the only thing that said so.
 
 The `app` icon is the twelfth drawing. A card's mark in the strip
 deliberately does **not** carry `.category-icon`: those draw themselves

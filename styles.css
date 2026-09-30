@@ -863,13 +863,26 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .recent .section-note { font-size: 13px; }
 
 .recent-rail { position: relative; margin-top: 10px; }
+/* The fade was written for the conveyor, where a card was *meant* to
+   dissolve as it drifted off — 64px wide with its outer 40% solid page
+   colour, so 26px of whatever sat under it was simply painted out.
+
+   On a carousel that is the opposite of what is wanted. The one thing
+   saying "there is more this way" is the next card showing at the edge,
+   and measured, the fade was wider than the peek at every width: 42px of
+   card under 64px of gradient at 1280, 64 under 64 at 1920. It was
+   erasing the only hint it had.
+
+   28px now, and no solid run — a pure ramp to transparent, which softens
+   the cut without hiding the card being cut. Judge this by looking at
+   the peeking card, not by reading the rule. */
 .recent-rail::before,
 .recent-rail::after {
   content: "";
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 64px;
+  width: 28px;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.18s ease;
@@ -877,19 +890,27 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 }
 .recent-rail::before {
   left: 0;
-  background: linear-gradient(to right, var(--paper) 40%, rgba(255, 253, 248, 0));
+  background: linear-gradient(to right, var(--paper), rgba(255, 253, 248, 0));
 }
 .recent-rail::after {
   right: 0;
-  background: linear-gradient(to left, var(--paper) 40%, rgba(255, 253, 248, 0));
+  background: linear-gradient(to left, var(--paper), rgba(255, 253, 248, 0));
 }
 .recent-rail[data-more-before="true"]::before,
 .recent-rail[data-more-after="true"]::after { opacity: 1; }
 .recent-rail[data-more-before="true"] .category-arrow-start,
 .recent-rail[data-more-after="true"] .category-arrow-end { display: grid; }
 .recent-track {
+  /* How many cards are in view, and how much of the next one shows past
+     them. The card width is worked out from these two, so the peek is a
+     decision rather than a remainder. Only `--per` changes with the
+     width; the peek stays 88px, which is enough of a card to read as a
+     card rather than as an edge. */
+  --gap: 16px;
+  --peek: 88px;
+  --per: 1;
   display: flex;
-  gap: 16px;
+  gap: var(--gap);
   /* No right padding. It was a gutter put here so the last card could be
      scrolled clear of the fade, and what it actually leaves is a gutter
      of nothing after the last card: scrolled fully right at 390px, the
@@ -918,6 +939,13 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   scrollbar-width: none;
 }
 .recent-track::-webkit-scrollbar { display: none; }
+/* Chosen so the card never strays far from the 268px it has always been:
+   260px at 1280, 267 at 1920, 271 on a phone. */
+@media (min-width: 620px)  { .recent-track { --per: 2; } }
+@media (min-width: 900px)  { .recent-track { --per: 3; } }
+@media (min-width: 1150px) { .recent-track { --per: 4; } }
+@media (min-width: 1450px) { .recent-track { --per: 5; } }
+@media (min-width: 1750px) { .recent-track { --per: 6; } }
 
 /* ---- Where you are in the carousel ----
 
@@ -979,8 +1007,18 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   gap: 12px;
   /* Wide enough for a long Urdu title to take two lines rather than
      five, narrow enough that a second card is always showing — which is
-     what says the rail scrolls before any arrow does. */
-  width: min(268px, 74vw);
+     what says the rail scrolls before any arrow does.
+
+     That was the intent all along and `min(268px, 74vw)` only delivered
+     it on a phone. Everywhere else the peek was whatever happened to be
+     left over after the cards: measured, **42px at 1280** against a 44px
+     arrow sitting exactly on top of it, which is as good as no peek at
+     all. It is derived now rather than left to chance — the width is
+     what makes `--per` cards and one `--peek` fit the track exactly — so
+     the same slice of the next card shows at every width, 88px from 390
+     to 1920. The cards land at 260–301px, within a few pixels of the 268
+     they have always been. */
+  width: calc((100% - var(--peek) - var(--gap) * var(--per)) / var(--per));
   padding: 15px 16px;
   background: var(--card);
   border: 1px solid var(--line);
