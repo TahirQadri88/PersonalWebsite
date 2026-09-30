@@ -247,14 +247,22 @@ console.log('\nwhat the editor writes, against what is committed');
   await page.waitForSelector('#out-pages section', { timeout: 30000 });
   await page.waitForTimeout(800);
   const made = await page.evaluate(() => {
-    const home = [...document.querySelectorAll('#out-pages section')]
-      .find((x) => x.querySelector('h3').textContent.trim() === 'index.html');
+    const at = (path) => {
+      const s = [...document.querySelectorAll('#out-pages section')]
+        .find((x) => x.querySelector('h3').textContent.trim() === path);
+      return s ? s.querySelector('textarea').value : null;
+    };
     return { content: document.getElementById('out-content').value,
-             home: home ? home.querySelector('textarea').value : null };
+             home: at('index.html'),
+             fatawa: at('fatawa/index.html'),
+             author: at('author/index.html'),
+             sitemap: document.getElementById('out-sitemap').value };
   });
   const onDisk = {
     content: await readFile(join(ROOT, 'content.js'), 'utf8'),
-    home: await readFile(join(ROOT, 'index.html'), 'utf8')
+    home: await readFile(join(ROOT, 'index.html'), 'utf8'),
+    fatawa: await readFile(join(ROOT, 'fatawa/index.html'), 'utf8'),
+    author: await readFile(join(ROOT, 'author/index.html'), 'utf8')
   };
   t('the content.js it writes is the content.js in the branch',
     made.content === onDisk.content,
@@ -262,6 +270,33 @@ console.log('\nwhat the editor writes, against what is committed');
   t('the index.html it writes is the index.html in the branch',
     made.home === onDisk.home,
     made.home === onDisk.home ? '' : firstDifference(onDisk.home, made.home || ''));
+  /* The two landing pages, generated whole from content.js the way a
+     work's page is. The same guard as the two above and for the same
+     reason: the builder and the committed file are two copies of one
+     thing, and nothing else would say when they parted.
+
+     They are checked *here*, in the Files… dialog, deliberately. That
+     dialog and filesToCommit are two separate lists of what a publish
+     writes, and the landing pages were added to the second and not the
+     first — so wherever there is no Worker to publish through, which is
+     every address but one, the editor handed over everything except the
+     two new pages. Reading them from the dialog is what makes that
+     divergence fail rather than pass quietly. */
+  t('the fatawa page is offered at all', made.fatawa !== null,
+    'Files… did not offer fatawa/index.html — a publish writes it and this dialog does not');
+  t('  …and is the fatawa page in the branch', made.fatawa === onDisk.fatawa,
+    made.fatawa === onDisk.fatawa ? '' : firstDifference(onDisk.fatawa, made.fatawa || ''));
+  t('the author page is offered at all', made.author !== null,
+    'Files… did not offer author/index.html — a publish writes it and this dialog does not');
+  t('  …and is the author page in the branch', made.author === onDisk.author,
+    made.author === onDisk.author ? '' : firstDifference(onDisk.author, made.author || ''));
+  /* A page in neither the sitemap nor a link from the homepage is
+     published and unfindable — the one fault this file has always said
+     is worse than an ugly page. */
+  t('both landing pages are in the sitemap it writes',
+    made.sitemap.includes('<loc>https://tahirqadri.com.pk/fatawa/</loc>') &&
+    made.sitemap.includes('<loc>https://tahirqadri.com.pk/author/</loc>'),
+    'a landing page is missing its sitemap line');
   /* The two language versions of one essay, joined by `alsoIn`. What
      matters is that the crossing holds from *both* ends: a reader who
      follows the link and finds no way back is worse served than one who

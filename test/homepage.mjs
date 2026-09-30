@@ -285,7 +285,15 @@ try {
                       the Latin cases above had ever covered. */
                    '/posts/the-strong-and-the-trustworthy.html',
                    '/posts/qawi-aur-ameen.html',
-                   '/works/saa-ki-tahqeeq.html'];
+                   '/works/saa-ki-tahqeeq.html',
+                   /* Both landing pages. The fatawa page stacks an Urdu
+                      description against its English one inside every
+                      card — six of them, the arrangement this group was
+                      written for — and the author page is a column of
+                      Urdu prose under English headings. Neither had ever
+                      been measured, because neither existed. */
+                   '/fatawa/index.html',
+                   '/author/index.html'];
     const measure = () => {
       const ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
       const own = (el) => [...el.childNodes].filter((n) => n.nodeType === 3)
@@ -476,7 +484,9 @@ try {
                    '/posts/reservations-shariah-screening-stocks.html',
                    '/posts/log-barabar-kyun-nahin.html',
                    '/posts/the-strong-and-the-trustworthy.html',
-                   '/posts/qawi-aur-ameen.html'];
+                   '/posts/qawi-aur-ameen.html',
+                   '/fatawa/index.html',
+                   '/author/index.html'];
     const measure = () => {
       const ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
       const out = [];
@@ -1241,6 +1251,98 @@ try {
     t(`there are footnotes to measure — ${seen} of them`, seen >= 3, String(seen));
     t('every one is set smaller than the prose it annotates',
       louder.length === 0, JSON.stringify(louder.slice(0, 6), null, 1));
+  }
+
+  /* ---- the two landing pages ----
+
+     They are the site's only navigational surfaces other than the
+     homepage, and the three things that would quietly break them are all
+     invisible in the source: a header that clips on a phone, a link the
+     homepage stopped writing, and an address that goes through the old
+     redirect. */
+  group('the two landing pages');
+  {
+    /* The header on a generated page carries four links and has no
+       category strip under it to repeat any of them. Four need 207px
+       beside a 141px wordmark: measured, that fits from 390px up and
+       clips by 56px at 320, which is why two of them stand down below
+       390. What must never happen at any width is the header clipping —
+       a link half off the edge of the screen is not a link. */
+    for (const width of [320, 360, 375, 390, 414, 1280]) {
+      const { context, page } = await open(width, '/fatawa/index.html');
+      const nav = await page.evaluate(() => {
+        const n = document.querySelector('.header-nav');
+        const shown = [...n.querySelectorAll('a')]
+          .filter((a) => a.getBoundingClientRect().width > 0)
+          .map((a) => a.textContent.trim());
+        return { over: Math.round(n.scrollWidth - n.clientWidth), shown };
+      });
+      t('the header does not clip at ' + width + 'px', nav.over <= 0,
+        'overflows by ' + nav.over + 'px, showing ' + nav.shown.join(', '));
+      /* Whatever else is dropped, the two that are pages of their own
+         stay: nothing else on the site links to them. */
+      t('  …and still offers Author and Fatawa at ' + width + 'px',
+        nav.shown.includes('Author') && nav.shown.includes('Fatawa'),
+        nav.shown.join(', '));
+      await context.close();
+    }
+
+    /* A page in the sitemap that nothing links to is an orphan, and both
+       of these were built to be arrived at. The homepage is the only
+       place a reader stands, so the homepage has to carry both links —
+       and index.html is generated, so a builder that stopped writing one
+       would take it away silently. */
+    {
+      const { context, page } = await open(1280);
+      const links = await page.evaluate(() =>
+        [...document.querySelectorAll('a[href]')].map((a) => a.getAttribute('href')));
+      t('the homepage links to the fatawa page', links.includes('fatawa/index.html'),
+        'no link to it — it is in the sitemap and reachable from nowhere');
+      t('the homepage links to the author page', links.includes('author/index.html'),
+        'no link to it — it is in the sitemap and reachable from nowhere');
+      await context.close();
+    }
+
+    /* Every fatwa on the homepage used to be linked as
+       work.html?work=<id> — the redirect kept for addresses already
+       shared — while every work beside it went straight to its own page.
+       The same address was handed to a crawler as the canonical one for
+       all twenty-four records, each of which redirects to a page whose
+       own canonical tag says something else. Both are fixed; this is
+       what says so. Asserted against the filesystem, because a href that
+       resolves is not the same as a href that is the right one. */
+    {
+      const { context, page } = await open(1280);
+      const found = await page.evaluate(() => ({
+        cards: [...document.querySelectorAll('.ruling')].map((a) => a.getAttribute('href')),
+        parts: (JSON.parse([...document.querySelectorAll('script[type="application/ld+json"]')]
+          .map((s) => s.textContent)
+          .find((text) => text.includes('CollectionPage'))).hasPart || []).map((p) => p.url)
+      }));
+      const redirects = found.cards.concat(found.parts).filter((u) => /work\.html\?/.test(u));
+      t('there were fatawa and records to check',
+        found.cards.length === 6 && found.parts.length > 20,
+        found.cards.length + ' cards, ' + found.parts.length + ' records');
+      t('no fatwa is linked through the old redirect', redirects.length === 0,
+        redirects.slice(0, 3).join(' | '));
+      const missing = found.cards
+        .filter((href) => !existsSync(join(ROOT, href.replace(/^\//, ''))));
+      t('  …and every one of them points at a page that exists',
+        missing.length === 0, missing.join(' | '));
+      await context.close();
+    }
+
+    /* The same again on the fatawa page itself, whose six cards are
+       generated by a different function from the homepage's six. */
+    {
+      const { context, page } = await open(1280, '/fatawa/index.html');
+      const hrefs = await page.evaluate(() =>
+        [...document.querySelectorAll('.ruling')].map((a) => a.getAttribute('href')));
+      t('the fatawa page carries every ruling', hrefs.length === 6, hrefs.length + ' cards');
+      const bad = hrefs.filter((h) => !existsSync(join(ROOT, h.replace(/^\.\.\//, ''))));
+      t('  …each pointing at the ruling’s own page', bad.length === 0, bad.join(' | '));
+      await context.close();
+    }
   }
 
   group('nothing pushes the page sideways');

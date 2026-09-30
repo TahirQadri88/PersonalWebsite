@@ -39,6 +39,8 @@ test/          the browser suites — see "The suites" under Working on this
 posts/         one HTML file per post — the writing is the page, not a download
 works/         one HTML file per work and fatwa — written by admin.html
 apps/          one HTML file per app — built from fields, not written
+fatawa/        index.html — the six rulings on one page, generated
+author/        index.html — the author's introduction on a page of its own
 styles.css     all design, in 13 numbered sections
 404.html robots.txt sitemap.xml share-card.png CNAME
 files/images/   the seal used as favicon and header mark, and the calligraphed name
@@ -699,6 +701,80 @@ before the icons still carries the old `↗`/`↓` characters in its own HTML,
 and will until the editor writes that page again. The rule stays in
 `styles.css` for exactly that reason.
 
+**The site has three navigational surfaces, and two of them are new.**
+`fatawa/index.html` and `author/index.html` are generated whole from
+`content.js` on every publish, the way a work's page and an app's page
+are — the six rulings on one, the `about` block on the other. There is no
+writing to read back and therefore no "has this changed" question, which
+is why neither is spliced between markers the way `index.html` is.
+
+They exist because the site had **one** surface. Every record already had
+a permanent page and a sitemap line; what there was no way to do was ask
+for *the fatāwā*, or link a reader to the author's profile on its own.
+Both were a scroll down the homepage and nothing else.
+
+Neither page introduces a class of its own, and that is the measure of
+whether a new page belongs. `.intro` and `.rulings` are whole sections
+carrying their own full-bleed padding, so each page is a `<main>` with
+one of them inside it and the design is already right. What did need
+saying in CSS: the back link on the dark panel is `--gold-on-dark`
+(`--moss` is unreadable there — the two golds exist for this and must
+never be collapsed), `.intro h1` beside `.intro h2` and `.bio-heading h2`
+beside its `h3`, because the same block is a *section* of the homepage
+and the *whole* of its own page, and a heading must not change size for
+that reason.
+
+**A page in the sitemap that nothing links to is an orphan.** Both are
+linked from the homepage — `author/index.html` from inside the generated
+`editor:about` region, `fatawa/index.html` from the hand-written rulings
+section. `test/homepage.mjs` asserts both links, because `index.html` is
+generated and a builder that quietly stopped writing one would take it
+away with nothing to show for it.
+
+**The header is one function now, and `nav-echo` is not what a generated
+page wants.** `pageNav` in `admin.js` writes the banner for every
+generated page; there were three identical copies of it, which is three
+chances for one to go on pointing at the old place the day Author and
+Fatawa stopped being anchors.
+
+On the homepage `nav-echo` hides Library and Fatawa on a phone because
+the category strip underneath repeats them. No generated page has that
+strip, so the class there would hide the one link reachable no other way.
+What those pages carry instead is `nav-anchor`, and which two wear it was
+**measured, not chosen**: four links need 207px beside a 141px wordmark,
+which fits from 390px up and clips by **56px at 320** — so below 390 the
+two that stand down are the two that are *anchors on the homepage*, which
+the wordmark beside them already links to. Author and Fatawa are pages
+that exist nowhere else and stay at every width. A work page used to show
+Author and Contact on every phone, so no width loses a link it had. The
+guess before measuring was that all four would fit; they do not.
+
+**Two lists name what a publish writes, and a page added to one is
+missing from the other.** `filesToCommit` is the publish; the `Files…`
+dialog builds its own. The landing pages went into the first and not the
+second — and `Files…` is the fallback at every address but one, so
+wherever there is no Worker the editor handed over everything except the
+two new pages. `test/editor.mjs` now reads both landing pages **out of
+that dialog** and holds them against the committed files, which is what
+makes the divergence fail rather than pass quietly.
+
+**A fatwa was linked through a redirect, and so was every record in the
+homepage's structured data.** `script.js` built the fatāwā cards as
+`work.html?work=<id>` while every work beside them used `recordHref` —
+the fatāwā were simply missed when works gained pages of their own — and
+the `CollectionPage` JSON-LD gave that same address as the canonical one
+for all twenty-four records, each of which redirects to a page whose own
+canonical tag says something else. Both read `site.recordHref` now, and
+`test/homepage.mjs` asserts no `work.html?` survives in either place and
+that every card points at a file that exists.
+
+**`site.proseBlock` is in `common.js` because it has two callers.** The
+description pair under a title — which edge each of the two scripts takes
+— lived in `script.js` while the homepage was the only place a card was
+drawn. The fatāwā page generates the same card into a file. A card on
+`/fatawa/` disagreeing with the same card on `/` is exactly the drift
+this codebase has already been bitten by once.
+
 **Adding a work by hand means editing sitemap.xml too, and its page is
 missing until admin.html writes it.** `sitemap.xml` is the one file outside
 `content.js` that names a work, one `<url>` per id — the homepage list is
@@ -1054,6 +1130,16 @@ a fault.
 ## Outstanding
 
 - Every work and fatwa has its files. Nothing is owed.
+- There is no `/library/` page and no filter UI, deliberately. At
+  twenty-four records a faceted library is overhead the corpus does not
+  yet earn; the homepage catalogue is the library. Revisit when it grows.
+- The bio is on two pages now — the homepage's collapsed `editor:about`
+  region and `author/index.html`. Both are generated from the same
+  `about` block so they cannot disagree, and `/author/` is the one
+  carrying `ProfilePage`. If the duplication ever matters, the move is to
+  cut the homepage's copy down to the summary and let it link on; that
+  costs the front door its most-read prose, which is why it was not done
+  first.
 - The `apps` category holds one app, the Zakat calculator, at
   `apps/zakat-calculator.html`. Adding another is a form: **+ Add an app**
   in the editor, then the address, the version, the platforms and what is

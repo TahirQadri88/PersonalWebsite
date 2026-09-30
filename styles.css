@@ -717,6 +717,11 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   /* black ink -> exactly --moss, the colour of the headings beside it */
   filter: invert(8%) sepia(74%) saturate(974%) hue-rotate(123deg) brightness(186%) contrast(65%);
 }
+/* h1 as well as h2: the same block is a section of the homepage, where
+   the page's h1 is the hero, and the whole of author/index.html, where
+   it is the h1 itself. One size either way — a heading should not change
+   size because of which page it was put on. */
+.intro h1,
 .intro h2 { font-size: clamp(30px, 3.6vw, 46px); margin-bottom: 16px; }
 /* The name in the author's own calligraphy, above the same name set in
    type. Decorative, so the heading below it stays the real text. */
@@ -745,6 +750,10 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 
 .bio-body { padding: 34px 0 8px; }
 .bio-heading { margin-bottom: 30px; }
+/* h2 on author/index.html, h3 inside the homepage's introduction: the
+   heading level follows the outline of the page it is on, and the look
+   does not follow the level. */
+.bio-heading h2,
 .bio-heading h3 { color: var(--moss-deep); font-size: inherit; }
 .bio-byline { color: var(--muted); font-size: clamp(15px, 1.4vw, 19px); margin: 10px 0 0; }
 .bio-prose p { margin: 0 0 26px; color: #36443f; }
@@ -791,6 +800,9 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .bio-panels details > div { margin: 0; padding: 0 22px 20px 0; color: #3d4b45; }
 .bio-panels li { margin: 0 0 10px; }
 .bio-source { margin: 26px 0 0; }
+/* Where to go from the author's page. Two links, wrapping to one each on
+   a phone rather than being squeezed onto a line together. */
+.author-onward { display: flex; flex-wrap: wrap; gap: 14px 28px; margin: 30px 0 0; }
 
 /* 6a ── Recently added ─────────────────────────────────────── */
 
@@ -1298,6 +1310,23 @@ body.is-searching .rulings .section-note-light { display: none; }
 body.is-searching .rulings .section-label { margin-bottom: 6px; }
 body.is-searching .rulings h2 { margin-bottom: 26px; }
 .rulings .section-label { color: var(--gold-on-dark); }
+/* A generated page's header carries four links and no category strip
+   under it. Measured against a 141px wordmark they need 207px and fit
+   from 390px up; at 320 the header clips them by 56. Below 390 the two
+   marked `nav-anchor` stand down — they are anchors on the homepage,
+   which the wordmark beside them already links to, while Author and
+   Fatawa are pages that exist nowhere else. */
+@media (max-width: 389px) {
+  .header-nav .nav-anchor { display: none; }
+}
+
+/* The back link and the link on to the fatawa page are both --moss,
+   which is a dark green and unreadable on this panel. --gold-on-dark is
+   the value that exists for exactly this, and is why the two golds must
+   never be collapsed into one. */
+.rulings .back-link,
+.rulings .text-link { color: var(--gold-on-dark); }
+.rulings-onward { margin: 30px 0 0; }
 
 /* The cards used to be the same green as the panel behind them, divided
    by hairlines — five rectangles that read as one flat slab, which is

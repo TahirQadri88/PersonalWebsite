@@ -126,8 +126,23 @@ t('index.html is a file the editor may write', r.status===200, JSON.stringify(r)
 r = await post([{path:'content.js',text:GOOD},{path:'apps/zakat-calculator.html',text:'<!doctype html><title>x</title>'}], JWT);
 t('an app page is a file the editor may write', r.status===200, JSON.stringify(r).slice(0,200));
 
+/* The two landing pages, both generated whole from content.js. Named
+   exactly rather than by a pattern: index.html is the only file either
+   folder may ever hold, so a pattern would be handing the editor a
+   folder it could fill. */
+for (const path of ['fatawa/index.html', 'author/index.html']) {
+  r = await post([{path:'content.js',text:GOOD},{path,text:'<!doctype html><title>x</title>'}], JWT);
+  t(`${path} is a file the editor may write`, r.status===200, JSON.stringify(r).slice(0,200));
+}
+
 for (const path of ['404.html', 'about/index.html', '../index.html', 'index.htm',
-                    'apps/../evil.html', 'apps/deep/one.html', 'apps/one.htm']) {
+                    'apps/../evil.html', 'apps/deep/one.html', 'apps/one.htm',
+                    /* Everything the two named entries must *not* let
+                       through: any other file in either folder, and
+                       either folder's name reused a level down. */
+                    'fatawa/anything.html', 'author/anything.html',
+                    'fatawa/index.htm', 'author/../index.html',
+                    'works/fatawa/index.html']) {
   r = await post([{path,text:'x'}], JWT);
   t(`  …but ${path} is not`, r.status===400 && /not a file the editor may write/.test(r.body.message), JSON.stringify(r));
 }
@@ -262,7 +277,7 @@ const ver = await worker.fetch(new Request('https://admin.tahirqadri.com.pk/vers
 const verBody = await ver.json();
 t('GET /version answers without signing in', ver.status===200, JSON.stringify(verBody));
 t('  …with a version', typeof verBody.version==='string' && verBody.version.length>0);
-t('  …and every path the editor publishes', ['content.js','sitemap.xml','index.html','posts/a.html','works/a.html','apps/a.html','files/cards/a.jpg']
+t('  …and every path the editor publishes', ['content.js','sitemap.xml','index.html','posts/a.html','works/a.html','apps/a.html','fatawa/index.html','author/index.html','files/cards/a.jpg']
   .every(p => verBody.writable.some(src => new RegExp(src).test(p))), JSON.stringify(verBody.writable));
 t('  …and the limits it enforces', verBody.maxFiles===1000 && verBody.maxFileBytes===512*1024, JSON.stringify(verBody));
 t('  …and is not cached', /no-store/.test(ver.headers.get('cache-control')||''));

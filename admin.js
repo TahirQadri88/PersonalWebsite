@@ -1626,6 +1626,64 @@
       .join('\n');
   }
 
+  /* ---- The header every generated page wears -------------------------
+
+     One copy, because there were three identical ones and Author and
+     Fatawa have just stopped being anchors on the homepage and become
+     pages of their own. Three copies is three chances for one of them to
+     go on pointing at the old place.
+
+     Every generated page lives one folder down — posts/, works/, apps/,
+     fatawa/, author/ — so every address here climbs out with `../`.
+
+     `nav-echo` is deliberately not written here. On the homepage it
+     hides Library and Fatawa on a phone because the category strip
+     underneath repeats them; no generated page has that strip, so the
+     class would hide the one link that is not reachable any other way.
+
+     What these pages use instead is `nav-anchor`, and the two it marks
+     were chosen by measuring: four links need 207px beside a 141px
+     wordmark, which fits from 390px up and is clipped by 56px at 320.
+     Something has to go below that, and the two that go are the two that
+     are *anchors on the homepage* — which the wordmark beside them
+     already links to. Author and Fatawa are pages that exist nowhere
+     else, so they stay at every width. A work page used to show Author
+     and Contact on every phone; it now shows Author and Fatawa below
+     390px and all four above, so no width loses a link it had.
+
+     aria-current marks the page you are already on — the attribute
+     rather than a class of our own, the same choice markPlace makes in
+     script.js, so a screen reader is told too. */
+  function pageNav(here) {
+    var links = [
+      { text: 'Author', href: '../author/index.html', at: 'author' },
+      { text: 'Library', href: '../index.html#library', anchor: true },
+      { text: 'Fatawa', href: '../fatawa/index.html', at: 'fatawa' },
+      { text: 'Contact', href: '../index.html#contact', anchor: true }
+    ];
+    return ['      <nav class="header-nav" aria-label="Sections">']
+      .concat(links.map(function (link) {
+        var current = here && link.at === here;
+        return '        <a' + (link.anchor ? ' class="nav-anchor"' : '') +
+          (current ? ' aria-current="page"' : '') +
+          ' href="' + site.escapeHtml(link.href) + '">' + site.escapeHtml(link.text) + '</a>';
+      }))
+      .concat(['      </nav>'])
+      .join('\n');
+  }
+
+  /* The brand, the nav and the closing header tag: the whole banner. */
+  function pageHeader(here) {
+    return [
+      '    <header class="site-header">',
+      '      <a class="brand" href="../index.html"><img class="brand-mark" ' +
+        'src="../files/images/logo-circle-180.png" alt="" width="180" height="180" /> ' +
+        'Scholarly Works and Research</a>',
+      pageNav(here),
+      '    </header>'
+    ].join('\n');
+  }
+
   /* A whole post page. Everything a reader or a crawler needs is written
      into the file — that is the point of a post having its own page
      rather than being assembled by script. */
@@ -1712,15 +1770,7 @@
       '  </head>',
       '',
       '  <body class="work-page">',
-      '    <header class="site-header">',
-      '      <a class="brand" href="../index.html"><img class="brand-mark" src="../files/images/logo-circle-180.png" alt="" width="180" height="180" /> Scholarly Works and Research</a>',
-      '      <nav class="header-nav" aria-label="Sections">',
-      '        <a href="../index.html#about">Author</a>',
-      '        <a class="nav-echo" href="../index.html#library">Library</a>',
-      '        <a class="nav-echo" href="../index.html#rulings">Fatawa</a>',
-      '        <a href="../index.html#contact">Contact</a>',
-      '      </nav>',
-      '    </header>',
+      pageHeader(),
       '',
       '    <main class="work-page-main">',
       /* Without dir="rtl" here, an Urdu or Arabic post still reads right
@@ -1968,15 +2018,7 @@
       '  </head>',
       '',
       '  <body class="work-page">',
-      '    <header class="site-header">',
-      '      <a class="brand" href="../index.html"><img class="brand-mark" src="../files/images/logo-circle-180.png" alt="" width="180" height="180" /> Scholarly Works and Research</a>',
-      '      <nav class="header-nav" aria-label="Sections">',
-      '        <a href="../index.html#about">Author</a>',
-      '        <a class="nav-echo" href="../index.html#library">Library</a>',
-      '        <a class="nav-echo" href="../index.html#rulings">Fatawa</a>',
-      '        <a href="../index.html#contact">Contact</a>',
-      '      </nav>',
-      '    </header>',
+      pageHeader(),
       '',
       '    <main class="work-page-main">',
       '      <article class="work-hero app-page"' + (rtl ? ' dir="rtl"' : '') + '>',
@@ -2669,15 +2711,7 @@
       '  </head>',
       '',
       '  <body class="work-page">',
-      '    <header class="site-header">',
-      '      <a class="brand" href="../index.html"><img class="brand-mark" src="../files/images/logo-circle-180.png" alt="" width="180" height="180" /> Scholarly Works and Research</a>',
-      '      <nav class="header-nav" aria-label="Sections">',
-      '        <a href="../index.html#about">Author</a>',
-      '        <a class="nav-echo" href="../index.html#library">Library</a>',
-      '        <a class="nav-echo" href="../index.html#rulings">Fatawa</a>',
-      '        <a href="../index.html#contact">Contact</a>',
-      '      </nav>',
-      '    </header>',
+      pageHeader(),
       '',
       '    <main class="work-page-main">',
       '      <article class="work-hero"' + (rtl ? ' dir="rtl"' : '') + '>',
@@ -2713,6 +2747,298 @@
     ]
       .filter(function (line) { return line !== null; })
       .join('\n');
+  }
+
+  /* ---- The two landing pages ------------------------------------------
+
+     Everything on either page comes out of content.js — the six rulings
+     on one, the author's introduction on the other — so both are
+     regenerated in full on every publish, the way a work's page and an
+     app's page are. There is no writing to read back and therefore no
+     "has this changed" question to get wrong.
+
+     They exist because the site had exactly one navigational surface.
+     Every record already had a permanent page of its own, and a sitemap
+     naming all of them; what there was no way to do was ask for *the
+     fatawa*, or link a reader to the author's profile on its own. Both
+     were a scroll down the homepage and nothing else.
+
+     Neither page introduces a class of its own. `.intro` and `.rulings`
+     are whole sections with their own full-bleed padding, so a standalone
+     page is a <main> with one of them inside it and the design is already
+     right. The one thing that had to be said in CSS is the back link's
+     colour on the dark panel — --gold-on-dark, the value that exists for
+     exactly this and must never be collapsed into --gold-on-light. */
+
+  /* The head every standalone page shares. `here` is the folder it sits
+     in, which is also the nav entry to mark as current. */
+  function landingHead(settings) {
+    var e = site.escapeHtml;
+    return [
+      '<!doctype html>',
+      '<html lang="en">',
+      '  <head>',
+      '    <meta charset="UTF-8" />',
+      '    <meta name="viewport" content="width=device-width, initial-scale=1.0" />',
+      '    <title>' + e(settings.title) + '</title>',
+      '    <meta name="description" content="' + e(settings.description) + '" />',
+      '    <meta name="author" content="' + e(settings.author) + '" />',
+      '    <link rel="canonical" href="' + e(settings.url) + '" />',
+      '',
+      '    <meta property="og:type" content="website" />',
+      '    <meta property="og:title" content="' + e(settings.ogTitle || settings.title) + '" />',
+      '    <meta property="og:description" content="' + e(settings.description) + '" />',
+      '    <meta property="og:url" content="' + e(settings.url) + '" />',
+      '    <meta property="og:image" content="' + e(settings.base + 'share-card.png') + '" />',
+      '    <meta name="twitter:card" content="summary_large_image" />',
+      '',
+      '    <link rel="icon" type="image/png" sizes="32x32" href="../files/images/logo-circle-32.png" />',
+      '    <link rel="apple-touch-icon" href="../files/images/logo-circle-180.png" />',
+      '    <link rel="preconnect" href="https://fonts.googleapis.com" />',
+      '    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />',
+      '    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" rel="stylesheet" />',
+      '    <link rel="stylesheet" href="../styles.css" />',
+      '    <script type="application/ld+json">' + settings.jsonLd + '</scr' + 'ipt>',
+      '  </head>'
+    ].join('\n');
+  }
+
+  function landingFoot(author) {
+    return [
+      '',
+      '    <footer>',
+      '      <span>&copy; <span id="year"></span> ' + site.escapeHtml(author) + '</span>',
+      '      <a href="../index.html">All works</a>',
+      '    </footer>',
+      '',
+      '    <script src="../content.js"></scr' + 'ipt>',
+      '    <script src="../common.js"></scr' + 'ipt>',
+      '  </body>',
+      '</html>',
+      ''
+    ].join('\n');
+  }
+
+  /* The sentence under the heading on the fatawa page. index.html carries
+     the same one, typed into the rulings section by hand — the two are
+     the same words about the same six rulings and have to change
+     together. It is not in content.js because `rulings` is a bare array
+     with nowhere to put a heading; giving it one is a field, a form
+     control and a writeRecord line, and is worth doing the day a second
+     sentence needs editing rather than today. */
+  var FATAWA_NOTE = 'Answers issued on questions put to Darul Ifta An Noor.';
+
+  function buildFatawa() {
+    var e = site.escapeHtml;
+    var base = String((model.site && model.site.baseUrl) || '').replace(/\/+$/, '') + '/';
+    var author = (model.site && model.site.name) || '';
+    var rulings = model.rulings || [];
+    var url = base + 'fatawa/';
+
+    var jsonLd = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      name: 'Fatawa — Islamic rulings',
+      url: url,
+      inLanguage: ['ur', 'ar', 'en'],
+      description: FATAWA_NOTE,
+      author: site.author(),
+      /* The ruling's own page, not this one and not the old
+         work.html?work= redirect. A crawler handed a redirect for the
+         canonical address of a record follows it to find the same page
+         with a different address on it, which is the confusion this
+         field exists to prevent. */
+      hasPart: rulings.map(function (ruling) {
+        return {
+          '@type': 'CreativeWork',
+          name: ruling.title,
+          inLanguage: ruling.language || 'en',
+          genre: site.recordKind(ruling) || undefined,
+          description: ruling.description || undefined,
+          url: base + 'works/' + ruling.id + '.html'
+        };
+      })
+    });
+
+    /* Every part of a card comes from the helper the homepage's own card
+       uses for the same part — titleMarkup, proseBlock, metaMarkup — so
+       the two cannot end up saying different things about one ruling.
+       That has happened on this site before, with a kind and its English
+       rendering each keeping their own copy of a default. */
+    var cards = rulings.map(function (ruling) {
+      return [
+        '          <a class="ruling" href="' + e('../works/' + ruling.id + '.html') + '">',
+        '            <div class="ruling-body">',
+        '              ' + site.titleMarkup(ruling, 'h3'),
+        '              ' + site.proseBlock(ruling),
+        '            </div>',
+        '            <div class="ruling-foot">',
+        '              ' + site.metaMarkup(ruling),
+        '              <span class="ruling-open">Read →</span>',
+        '            </div>',
+        '          </a>'
+      ].join('\n');
+    }).join('\n');
+
+    return [
+      landingHead({
+        title: 'Fatawa — Islamic rulings — ' + author,
+        ogTitle: 'Fatawa — Islamic rulings',
+        description: FATAWA_NOTE,
+        author: author, url: url, base: base, jsonLd: jsonLd
+      }),
+      '',
+      '  <body>',
+      pageHeader('fatawa'),
+      '',
+      '    <main>',
+      '      <section class="rulings" id="rulings">',
+      '        <a class="back-link" href="../index.html"><span aria-hidden="true">←</span> All works</a>',
+      /* align-left for the reason written into CLAUDE.md and broken ten
+         times before this one: `.urdu` sets text-align right and the
+         label inherits nothing that says otherwise, so above an English
+         heading it lands at the far edge of the column, away from the
+         words it introduces. */
+      '        <p class="section-label urdu align-left" lang="ur" dir="rtl">فتاویٰ</p>',
+      '        <h1><span class="category-icon-slot" data-icon="seal" data-icon-class="category-icon" aria-hidden="true"></span>Islamic rulings</h1>',
+      '        <p class="section-note-light">' + e(FATAWA_NOTE) + '</p>',
+      '        <div class="ruling-grid">',
+      cards,
+      '        </div>',
+      '      </section>',
+      '    </main>',
+      landingFoot(author)
+    ].join('\n');
+  }
+
+  function buildAuthor() {
+    var e = site.escapeHtml;
+    var base = String((model.site && model.site.baseUrl) || '').replace(/\/+$/, '') + '/';
+    var author = (model.site && model.site.name) || '';
+    var about = model.about || {};
+    var bio = about.bio || {};
+    var url = base + 'author/';
+
+    var person = Object.assign({}, site.author(), {
+      description: about.summary || undefined,
+      mainEntityOfPage: url
+    });
+    var jsonLd = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'ProfilePage',
+      name: about.heading || author,
+      url: url,
+      description: about.summary || undefined,
+      inLanguage: ['en', 'ur'],
+      mainEntity: person
+    });
+
+    var facts = (bio.facts || []).map(function (fact) {
+      return '            <div><dt>' + e(fact.term) + '</dt><dd>' + e(fact.value) + '</dd></div>';
+    }).join('\n');
+
+    /* Open, every one of them. On the homepage these are an accordion
+       inside an accordion — the introduction is one section of a long
+       page and a reader chooses whether to expand it. This page *is* the
+       introduction; somebody who has arrived here has already chosen.
+       Still <details>, so the markup and every rule already written for
+       it are reused exactly and a reader can still fold one away. */
+    var panels = (bio.panels || []).map(function (panel) {
+      var tag = panel.kind === 'ol' ? 'ol' : panel.kind === 'ul' ? 'ul' : 'div';
+      var items = (panel.items || []).map(function (item) {
+        return '              ' + (tag === 'div' ? '<p>' + e(item) + '</p>' : '<li>' + e(item) + '</li>');
+      }).join('\n');
+      return [
+        '            <details open>',
+        '              <summary class="urdu"' + langAttrs(panel.title) + '>' + e(panel.title) +
+          ' <span class="toggle" aria-hidden="true">+</span></summary>',
+        '              <' + tag + ' class="urdu"' + langAttrs(panel.title) + '>',
+        items,
+        '              </' + tag + '>',
+        '            </details>'
+      ].join('\n');
+    }).join('\n\n');
+
+    /* A path in content.js is written from the site root, and this page
+       sits one folder down. Offsite addresses are left alone — the same
+       rule buildWork follows for a work's files. */
+    var pdfHref = bio.pdf && bio.pdf.url
+      ? (site.isOffsite(bio.pdf.url) ? bio.pdf.url : '../' + bio.pdf.url)
+      : '';
+
+    return [
+      landingHead({
+        title: (about.heading || author) + ' — teacher of dars-e-niẓāmī, Jamia tun Noor',
+        ogTitle: about.heading || author,
+        description: about.summary || '',
+        author: author, url: url, base: base, jsonLd: jsonLd
+      }),
+      '',
+      '  <body>',
+      pageHeader('author'),
+      '',
+      '    <main>',
+      '      <section class="intro">',
+      '        ' + introMark('../'),
+      '        <div class="intro-body">',
+      '          <a class="back-link" href="../index.html"><span aria-hidden="true">←</span> All works</a>',
+      about.label
+        ? '          <p class="section-label urdu align-left"' + langAttrs(about.label) + '>' +
+          e(about.label) + '</p>'
+        : null,
+      '          <h1>' + e(about.heading || author) + '</h1>',
+      about.summary ? '          <p' + langAttrs(about.summary) + '>' + e(about.summary) + '</p>' : null,
+      '',
+      /* .bio is a single border-top and nothing else, which is the rule
+         between the summary above and the introduction proper. On the
+         homepage it is a <details>; here there is nothing to open, so it
+         is the same class on a plain element and every rule under
+         `.bio > summary` simply finds no summary to match. */
+      '          <div class="bio">',
+      '            <div class="bio-body">',
+      '              <div class="bio-heading">',
+      '                ' + bioCalligraphy('../'),
+      bio.nameUr
+        ? '                <h2 class="urdu"' + langAttrs(bio.nameUr) + '>' + e(bio.nameUr) + '</h2>'
+        : null,
+      bio.byline
+        ? '                <p class="bio-byline urdu"' + langAttrs(bio.byline) + '>' + e(bio.byline) + '</p>'
+        : null,
+      '              </div>',
+      (bio.prose || []).length
+        ? ['              <div class="bio-prose urdu"' + langAttrs((bio.prose || []).join(' ')) + '>',
+           (bio.prose || []).map(function (line) {
+             return '                <p>' + e(line) + '</p>';
+           }).join('\n'),
+           '              </div>'].join('\n')
+        : null,
+      facts
+        ? ['              <dl class="bio-facts urdu"' +
+             langAttrs((bio.facts || []).map(function (f) { return f.term; }).join(' ')) + '>',
+           facts,
+           '              </dl>'].join('\n')
+        : null,
+      panels ? ['              <div class="bio-panels">', panels, '              </div>'].join('\n') : null,
+      pdfHref
+        ? ['              <p class="bio-source">',
+           '                <a class="document-link" href="' + e(pdfHref) + '" target="_blank" rel="noopener">',
+           '                  ' + e((bio.pdf && bio.pdf.label) || 'Open the PDF') +
+             ' <span data-icon="open" aria-hidden="true"></span>',
+           '                </a>',
+           '              </p>'].join('\n')
+        : null,
+      '            </div>',
+      '          </div>',
+      '',
+      '          <p class="author-onward">',
+      '            <a class="text-link" href="../fatawa/index.html">The fatāwā <span aria-hidden="true">→</span></a>',
+      '            <a class="text-link" href="../index.html#library">The library <span aria-hidden="true">→</span></a>',
+      '          </p>',
+      '        </div>',
+      '      </section>',
+      '    </main>',
+      landingFoot(author)
+    ].filter(function (line) { return line !== null; }).join('\n');
   }
 
   /* ---- The homepage ---------------------------------------------------
@@ -2798,14 +3124,21 @@
   /* The seal and the calligraphed name are the two pictures inside the
      introduction. They are not words and there is nothing to edit about
      them, so they are written out as they stand. */
-  var INTRO_MARK =
-    '<img class="intro-mark" src="files/images/logo-circle-180.png" ' +
-    'srcset="files/images/logo-circle-180.png 180w, files/images/logo-circle-512.png 512w, ' +
-    'files/images/logo-circle-1024.png 1024w" sizes="60px" ' +
-    'alt="Calligraphic seal reading Abu al-Layth Muhammad Tahir al-Qadri" width="180" height="180" />';
-  var BIO_CALLIGRAPHY =
-    '<img class="bio-calligraphy" src="files/images/name-calligraphy.png" alt="" ' +
-    'width="840" height="219" loading="lazy" />';
+  /* Both take the prefix the page needs to reach files/ from where it
+     sits: '' on the homepage, '../' on the author page one folder down.
+     They were two constants with the site root baked into them, which is
+     the quiet way a picture goes missing on the second page to use it. */
+  function introMark(prefix) {
+    var f = (prefix || '') + 'files/images/';
+    return '<img class="intro-mark" src="' + f + 'logo-circle-180.png" ' +
+      'srcset="' + f + 'logo-circle-180.png 180w, ' + f + 'logo-circle-512.png 512w, ' +
+      f + 'logo-circle-1024.png 1024w" sizes="60px" ' +
+      'alt="Calligraphic seal reading Abu al-Layth Muhammad Tahir al-Qadri" width="180" height="180" />';
+  }
+  function bioCalligraphy(prefix) {
+    return '<img class="bio-calligraphy" src="' + (prefix || '') +
+      'files/images/name-calligraphy.png" alt="" width="840" height="219" loading="lazy" />';
+  }
 
   function indexAbout(indent) {
     var e = site.escapeHtml;
@@ -2862,7 +3195,7 @@
       : '';
 
     return [
-      pad(i) + INTRO_MARK,
+      pad(i) + introMark(''),
       pad(i) + '<div class="intro-body">',
       head,
       '',
@@ -2880,7 +3213,7 @@
       '',
       pad(i + 4) + '<div class="bio-body">',
       pad(i + 6) + '<div class="bio-heading">',
-      pad(i + 8) + BIO_CALLIGRAPHY,
+      pad(i + 8) + bioCalligraphy(''),
       bio.nameUr ? pad(i + 8) + '<h3 class="urdu"' + langAttrs(bio.nameUr) + '>' + e(bio.nameUr) + '</h3>' : '',
       bio.byline ? pad(i + 8) + '<p class="bio-byline urdu"' + langAttrs(bio.byline) + '>' + e(bio.byline) + '</p>' : '',
       pad(i + 6) + '</div>',
@@ -2900,6 +3233,13 @@
       pdf,
       pad(i + 4) + '</div>',
       pad(i + 2) + '</details>',
+      /* The same introduction has a page of its own now. Without a link
+         to it from here the page is an orphan — reachable from the
+         sitemap and from nowhere a reader is standing. */
+      pad(i + 2) + '<p class="author-onward">',
+      pad(i + 4) + '<a class="text-link" href="author/index.html">The full profile ' +
+        '<span aria-hidden="true">→</span></a>',
+      pad(i + 2) + '</p>',
       pad(i) + '</div>'
     ].filter(function (part) { return part !== ''; }).join('\n');
   }
@@ -4493,13 +4833,17 @@
        redirect kept only for links already shared, and offering that
        address to a crawler instead of the real page would just have it
        follow a redirect to find the same thing, for no benefit. */
+    /* The two landing pages first, then one line per record. Miss a page
+       out here and it is published but unfindable — which is the whole
+       reason this file is generated beside content.js rather than kept
+       by hand. */
     var paths = [];
     eachRecord(function (record) {
       paths.push(record.page ? record.page : 'works/' + record.id + '.html');
     });
     return (
       '<?xml version="1.0" encoding="UTF-8"?>\n' +
-      '<!-- The homepage plus one entry per work and fatwa.\n\n' +
+      '<!-- The homepage, the two landing pages, and one entry per work and fatwa.\n\n' +
       '     THIS LIST IS THE ONE PLACE OUTSIDE content.js THAT NAMES A WORK.\n' +
       '     When you add or remove an entry in content.js, add or remove its line\n' +
       '     here too, or the new work will not be offered to search engines.\n' +
@@ -4509,6 +4853,14 @@
       '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
       '  <url>\n    <loc>' + base + '</loc>\n    <lastmod>' + today + '</lastmod>\n' +
       '    <changefreq>monthly</changefreq>\n    <priority>1.0</priority>\n  </url>\n' +
+      /* The two landing pages sit with the homepage rather than with the
+         records: each one changes whenever a record under it does, which
+         is what changefreq is asking about. */
+      ['fatawa/', 'author/'].map(function (path) {
+        return '  <url>\n    <loc>' + base + path + '</loc>\n' +
+          '    <lastmod>' + today + '</lastmod>\n' +
+          '    <changefreq>monthly</changefreq>\n    <priority>0.9</priority>\n  </url>\n';
+      }).join('') +
       paths
         .map(function (path) {
           return (
@@ -4616,6 +4968,16 @@
       var home = buildIndex(indexHtml);
       if (home.text) offerFile('index.html', home.text);
     }
+
+    /* The two landing pages. This list and the one filesToCommit builds
+       have to name the same files: Files… is what the editor falls back
+       to wherever there is no Worker to publish through, and a page
+       missing from here is a page that never reaches the repository at
+       all when it is used. test/editor.mjs holds the two against each
+       other rather than trusting that whoever adds the next page
+       remembers both. */
+    offerFile('fatawa/index.html', buildFatawa());
+    offerFile('author/index.html', buildAuthor());
 
     allRecords().forEach(function (entry) {
       if (isApp(entry)) {
@@ -4733,7 +5095,7 @@
      The paths catch one they changed and did not: whatever the version
      claims, a Worker that will not take a work page cannot publish this
      library, and it is better to hear that on load. */
-  var WORKER_EXPECTS = '2026-09-12.1';
+  var WORKER_EXPECTS = '2026-09-30.1';
 
   /* This editor's own version, bumped whenever admin.js changes in a way
      a publish depends on. It exists because a tab left open goes on
@@ -4743,7 +5105,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-09-25.1';
+  var EDITOR_VERSION = '2026-09-30.1';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */
@@ -5083,6 +5445,13 @@
       var home = buildIndex(indexHtml);
       if (home.text) out.push({ path: 'index.html', text: home.text });
     }
+    /* The two landing pages. Written whole from content.js every time,
+       like a work's page — nothing about either lives anywhere else, so
+       there is never a reason not to regenerate one. Unlike index.html
+       they need nothing read back first, which is why they are not
+       conditional on anything. */
+    out.push({ path: 'fatawa/index.html', text: buildFatawa() });
+    out.push({ path: 'author/index.html', text: buildAuthor() });
     allRecords().forEach(function (entry) {
       if (isApp(entry)) {
         /* Regenerated in full every publish, like a work's own page:
