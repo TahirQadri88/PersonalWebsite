@@ -77,7 +77,16 @@
 /* 2 ── Base ───────────────────────────────────────────────── */
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; scroll-padding-top: 128px; }
+/* Two bars are sticky — the header and the category strip — so a jump
+   to a section has to clear both or the heading lands underneath them.
+   Swept every width from 320 to 1920: the stack is 142px on a desktop
+   and 148px between 480 and 620, where the wordmark wraps and the header
+   grows to 78. Both values were already short before the pills were made
+   tappable — 128 against 142 — so a deep link has always landed a little
+   under the strip; the taller strip only made it obvious. 10px of air on
+   the worst case of each band, and test/homepage.mjs jumps to a section
+   at six widths and checks it can actually be seen. */
+html { scroll-behavior: smooth; scroll-padding-top: 152px; }
 
 body {
   margin: 0;
@@ -386,7 +395,10 @@ button.text-link {
 .document-link::after {
   content: "";
   position: absolute;
-  inset: -11px -8px;
+  /* -11 was written against a 21px link and gives 43. The smallest of
+     these is 19px, which came to 41 — measured, not assumed. -13 clears
+     the floor for both. */
+  inset: -13px -8px;
 }
 .text-link:hover,
 .document-link:hover { color: var(--gold-on-light); }
@@ -621,7 +633,13 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .category-nav::-webkit-scrollbar { display: none; }
 .category-nav a {
   flex: none;
-  padding: 6px 12px;
+  /* 6px gave a 35px pill. These are how a reader moves around the
+     library on a phone — the most-tapped thing on the site — and they
+     were the smallest. Padding rather than an invisible pad, because a
+     pill is a drawn button: the thing you aim at should be the thing
+     that is there. This makes the strip taller, so `scroll-padding-top`
+     moves with it. */
+  padding: 12px 14px;
   border: 1px solid transparent;
   border-radius: 999px;
   color: #45534d;
@@ -1018,6 +1036,13 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   color: var(--ink);
   font: inherit;
   font-size: 15px;
+  /* The box around this is 50px tall and the field inside it was 27 —
+     so half of what looks like the search box was not the search box,
+     and a tap landing there did nothing at all. The field now fills its
+     container's inner height; the negative margin takes back the space
+     the padding adds, so nothing moves. */
+  padding-block: 12px;
+  margin-block: -12px;
 }
 .search-box input::placeholder { color: #7b857d; }
 .search-count { margin: 10px 2px 0; min-height: 20px; color: var(--muted); font-size: 13px; }
@@ -1490,7 +1515,13 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .work-page-files .button { background: var(--moss-deep); color: #f6f1e4; }
 /* Here the pair stacks: the button reads it, the line under it saves it.
    Side by side, six charts would have made twelve things in a row. */
-.work-page-files .file-item { flex-direction: column; align-items: stretch; gap: 9px; }
+/* Read-online and Download stack here, and each carries a pad 13px
+   deep, so at a 9px gap the two hit areas overlapped by 17px. They still
+   touch at 16 — clearing it outright would need a 26px gap, which is a
+   hole in the middle of one file's own two buttons — but a tap in the
+   overlap now lands on one of two things to do with the same document
+   rather than deep inside its neighbour. */
+.work-page-files .file-item { flex-direction: column; align-items: stretch; gap: 16px; }
 .work-page-files .file-download { border-bottom: 0; text-align: center; }
 .work-page-files .file-download::after { inset: -12px -6px; }
 
@@ -2217,7 +2248,7 @@ footer {
 /* 12 ── Responsive & motion ───────────────────────────────── */
 
 @media (max-width: 820px) {
-  html { scroll-padding-top: 116px; }
+  html { scroll-padding-top: 158px; }
   .intro { grid-template-columns: 1fr; gap: 18px; }
   .section-heading { display: block; }
   .section-note { margin-top: 12px; max-width: none; }
@@ -2275,10 +2306,142 @@ footer {
     min-width: 0;
     overflow-x: auto;
     scrollbar-width: none;
+    /* `overflow-x: auto` computes `overflow-y` to auto as well — the two
+       axes cannot disagree — so this became a scroll box that CLIPS, and
+       what it clipped was the invisible 44px pad on each link. Measured:
+       the pad works at 620px and gives 46px; here the same link was
+       **29px**, barely more than its own text. A rule written to let the
+       strip scroll sideways had quietly halved every tap target in the
+       header, on the only screens where that matters.
+
+       The padding gives the scroll box room to hold the pad; the equal
+       negative margin gives the space straight back, so the header is
+       the height it always was. */
+    padding-block: 9px;
+    margin-block: -9px;
   }
   .header-nav::-webkit-scrollbar { display: none; }
   .header-nav a { flex: none; font-size: 12px; }
 }
+
+/* ---- More in this category ----
+
+   Mounted by common.js at the foot of every record page. Quiet on
+   purpose: a reader who has finished a ruling is being offered the next
+   one, not sold it, so this is a list of names under a rule rather than
+   a grid of cards competing with the piece above it.
+
+   Each row is a whole tap target at 52px, which is where the rest of
+   this file now sits. */
+.more-like {
+  margin: 46px 0 0;
+  padding: 26px 0 0;
+  border-top: 1px solid var(--line);
+}
+.more-like h2 {
+  margin: 0 0 6px;
+  color: var(--moss-deep);
+  font-size: 15px;
+  font-weight: 700;
+  font-family: var(--font-ui);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.more-like ul { margin: 0 0 18px; padding: 0; list-style: none; }
+.more-like li { border-bottom: 1px solid var(--line); }
+.more-like li a {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 52px;
+  padding: 11px 0;
+  color: var(--ink);
+  text-decoration: none;
+}
+.more-like li a:hover { color: var(--gold-on-light); }
+.more-like li a:active { color: var(--gold-on-light); }
+/* The record's own title face and script, the same helper the library
+   row and the share card use — so a work cannot be named one way here
+   and another way one page up. */
+.more-like .record-title { font-size: 16px; line-height: 1.45; }
+.more-like .record-title.urdu { font-size: 18px; line-height: 1.95; }
+.more-like .record-title.arabic { font-size: 19px; line-height: 1.6; }
+/* No `text-align: right` here, and it was written once and taken out
+   again. The worry was real — this container is settled LTR and a title
+   that takes two lines would have both pinned left, so each line would
+   *begin*, on the right where the script begins, in a different place.
+   But `.urdu` already carries the alignment, as these notes say it does,
+   and removing the rule on its own left the guard below green: three
+   wrapping titles at 390px, all starting together. Adding it "for
+   safety" is the thing this file warns against, since it outranks
+   `align-left` wherever one is later wanted. */
+.more-kind {
+  flex: none;
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+/* The kind comes out in whatever script the word is written in, and an
+   Urdu one at 11px with tracking is unreadable — the same lesson
+   .bio-facts dt learned. Nastaliq gets its own size and no tracking. */
+.more-kind.urdu,
+.more-kind.arabic {
+  font-family: var(--font-urdu);
+  font-size: 15px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+/* Set in Latin whatever the piece is — the same decision `.record-meta`
+   already makes, and for the same reason: the heading and the link are
+   the site's own words about the library, not the author's words in the
+   piece, and they are English on every page.
+
+   Written because the first version inherited the page. On an Urdu
+   fatwa the whole block flipped: an English heading flush right, the
+   kind labels driven to the far side of their own titles, and — the
+   tell — the arrow in "All of Islamic rulings →" mirrored to the front
+   of the phrase, pointing back at the words it was meant to lead away
+   from. The Urdu titles inside keep their own direction regardless;
+   `titleMarkup` writes `dir` on each one, which is what makes it safe
+   to settle the container this way. */
+.more-like {
+  direction: ltr;
+  text-align: left;
+}
+
+/* ---- Being pressed ----
+
+   A phone never sees a hover. The lift on a card and the colour change
+   on a link are the whole of this site's "you hit it" feedback, and a
+   touchscreen got none of it: a tap either navigated, or — if it missed,
+   which the measurements above say it often did — did nothing, and the
+   two felt exactly the same while the page thought about it.
+
+   `:active` lasts as long as the finger is down, which is the moment the
+   feedback is for.
+
+   It is written here, after the responsive rules, because `.ruling:hover`
+   sets a transform of its own at the same specificity: on a touchscreen
+   both states apply at once and the later rule is the one that wins.
+
+   It passes the three cases without being asked to. There is no script
+   and no observer — it is one pseudo-class — and under reduced motion
+   the block below collapses the transition so the state simply applies
+   at once, which is what feedback on a press should do anyway. */
+.button:active { transform: translateY(1px); }
+.ruling:active,
+.recent-card:active { transform: scale(0.985); }
+.work > summary:active { background: var(--paper-warm); }
+.category-nav a:active { background: var(--paper-warm); border-color: #d5c29e; }
+.text-link:active,
+.document-link:active,
+.file-download:active,
+.back-link:active { color: var(--gold-on-light); }
+.rulings .text-link:active,
+.rulings .back-link:active { color: #fff; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

@@ -1345,6 +1345,193 @@ try {
     }
   }
 
+  /* ---- what a finger actually lands on ----
+
+     Measured by tapping, not by reading a box. Three of these carry an
+     invisible pad — an `::after` stretched past the text — so the box a
+     bounding rect reports is nothing like the area that answers a tap.
+     The first version of this measurement read the box, called four
+     healthy controls broken, and missed the one that really was: the
+     header links, whose pad is CLIPPED because `overflow-x: auto` on
+     their container makes `overflow-y` auto as well. 46px at 620, 29 at
+     390, and nothing in the source says so. */
+  group('a tap lands on the thing it looks like');
+  {
+    const FLOOR = 44;
+    const WANTED = ['.header-nav a', '.category-nav a', '.search-box input',
+                    '.text-link', '.button'];
+    for (const width of [390, 620]) {
+      const { context, page } = await open(width);
+      const found = await page.evaluate((WANTED) => {
+        /* scroll-behavior is smooth here, so scrollIntoView does not
+           finish before the next line reads the rect. */
+        document.documentElement.style.scrollBehavior = 'auto';
+        const hit = (el) => {
+          el.scrollIntoView({ block: 'center', inline: 'center' });
+          const r = el.getBoundingClientRect();
+          const x = Math.round(r.left + r.width / 2);
+          const cy = Math.round(r.top + r.height / 2);
+          /* Off the edge of the window, or scrolled out of a rail that
+             does not scroll far enough — nothing to probe, not a fault. */
+          if (x < 1 || x > innerWidth - 2 || cy < 1 || cy > innerHeight - 2) return null;
+          const owns = (n) => n && (n === el || el.contains(n));
+          if (!owns(document.elementFromPoint(x, cy))) return null;
+          let up = cy, down = cy;
+          while (up > 0 && owns(document.elementFromPoint(x, up - 1))) up--;
+          while (down < innerHeight - 1 && owns(document.elementFromPoint(x, down + 1))) down++;
+          return down - up + 1;
+        };
+        const out = {};
+        for (const sel of WANTED) {
+          const hs = [...document.querySelectorAll(sel)]
+            .filter((e) => e.getBoundingClientRect().width > 0)
+            .map(hit).filter((h) => h !== null);
+          if (hs.length) out[sel] = { n: hs.length, min: Math.min(...hs) };
+        }
+        return out;
+      }, WANTED);
+      const names = Object.keys(found);
+      t('there were controls to probe at ' + width + 'px', names.length >= 4,
+        'only found ' + names.join(', '));
+      const short = names.filter((k) => found[k].min < FLOOR);
+      t('  …and every one answers a tap ' + FLOOR + 'px tall at ' + width + 'px',
+        short.length === 0,
+        short.map((k) => k + ' ' + found[k].min + 'px').join(' | '));
+      await context.close();
+    }
+  }
+
+  /* ---- a jump to a section can be seen ----
+
+     Two bars are sticky — the header and the category strip — and
+     `scroll-padding-top` is a number typed in by hand that has to clear
+     both. It did not: 128 against a 142px stack on a desktop, 116
+     against 148 between 480 and 620 where the wordmark wraps and the
+     header grows. So every deep link, and every tap on a category pill,
+     put the heading it aimed at *underneath* the strip. Nothing about
+     the source says the two are related, which is why this is measured
+     on the rendered page at the widths where the stack changes height. */
+  group('a jump to a section lands where it can be read');
+  for (const width of [390, 480, 620, 768, 1024, 1440]) {
+    const { context, page } = await open(width);
+    const m = await page.evaluate(() => {
+      document.documentElement.style.scrollBehavior = 'auto';
+      const stack = Math.round(
+        document.querySelector('.site-header').getBoundingClientRect().height +
+        document.querySelector('.category-bar').getBoundingClientRect().height);
+      location.hash = '';
+      location.hash = '#rulings';
+      return { stack, top: Math.round(document.getElementById('rulings').getBoundingClientRect().top) };
+    });
+    t('at ' + width + 'px the section clears the two sticky bars', m.top >= m.stack,
+      'section top ' + m.top + 'px, bars ' + m.stack + 'px — hidden by ' + (m.stack - m.top) + 'px');
+    await context.close();
+  }
+
+  /* ---- the way onward ---- */
+  group('a record page offers somewhere to go next');
+  {
+    const PAGES = ['/works/nfts.html', '/works/otherthan-falaq-nas-dam.html',
+                   '/posts/qawi-aur-ameen.html'];
+    for (const path of PAGES) {
+      const { context, page } = await open(390, path);
+      const m = await page.evaluate(() => {
+        const box = document.querySelector('.more-like');
+        if (!box) return { none: true };
+        const rows = [...box.querySelectorAll('li a')];
+        /* A Range, not the element: getClientRects on a block returns one
+           rect for the whole box, which is how an earlier check of this
+           kind skipped every element it was written for. */
+        const ragged = [];
+        box.querySelectorAll('.record-title').forEach((e) => {
+          const rng = document.createRange();
+          rng.selectNodeContents(e);
+          const rects = [...rng.getClientRects()].filter((r) => r.width > 1);
+          if (rects.length < 2) return;
+          const rtl = getComputedStyle(e).direction === 'rtl';
+          const starts = rects.slice(0, -1).map((r) => Math.round(rtl ? r.right : r.left));
+          if (new Set(starts).size > 1) ragged.push(e.textContent.trim().slice(0, 20) + ' [' + starts + ']');
+        });
+        return {
+          rows: rows.map((a) => ({ href: a.getAttribute('href'), h: Math.round(a.getBoundingClientRect().height) })),
+          dir: getComputedStyle(box).direction,
+          /* Where the arrow LANDS, not where it sits in the markup.
+             Asserting the text ended in → could not fail: textContent is
+             source order, and direction changes only what is painted. A
+             restored fault sailed past it. */
+          arrow: (function () {
+            const link = box.querySelector('.text-link');
+            const mark = link.querySelector('span[aria-hidden]');
+            if (!mark) return null;
+            const l = link.getBoundingClientRect(), m = mark.getBoundingClientRect();
+            return { past: Math.round(m.left - l.left), half: Math.round(l.width / 2) };
+          })(),
+          ragged
+        };
+      });
+      t(path + ' offers more in its category', !m.none && m.rows.length > 0,
+        'no .more-like block — the page is a dead end');
+      if (m.none) { await context.close(); continue; }
+      const missing = m.rows.filter((r) => !existsSync(join(ROOT, r.href.replace(/^\.\.\//, ''))));
+      t('  …every one pointing at a page that exists', missing.length === 0,
+        missing.map((r) => r.href).join(' | '));
+      t('  …each a row a finger can land on', m.rows.every((r) => r.h >= 44),
+        m.rows.map((r) => r.h).join(', '));
+      /* The block is the site's own English words about the library, so
+         it is set in Latin whatever the piece is — exactly the decision
+         .record-meta already makes. Inheriting the page flipped an
+         English heading flush right and mirrored the arrow to the front
+         of the phrase it was meant to lead away from. */
+      t('  …set in Latin whatever the piece is', m.dir === 'ltr', m.dir);
+      t('  …with the arrow drawn after the words, not before',
+        m.arrow && m.arrow.past > m.arrow.half,
+        'arrow starts ' + (m.arrow && m.arrow.past) + 'px into a ' +
+        (m.arrow && m.arrow.half * 2) + 'px link — it is in front of the phrase');
+      t('  …and a title that wraps still starts on one edge',
+        m.ragged.length === 0, m.ragged.join(' | '));
+      await context.close();
+    }
+    /* One app, alone in its category. An empty "More in …" heading is
+       worse than no heading, so the block is not written at all. */
+    const { context, page } = await open(390, '/apps/zakat-calculator.html');
+    const alone = await page.evaluate(() => !document.querySelector('.more-like'));
+    t('a record alone in its category writes no empty block', alone,
+      'the app page wrote a More-in block with nothing to put in it');
+    await context.close();
+  }
+
+  /* ---- what a file button says it will do ---- */
+  group('a file button says whether it opens or saves');
+  {
+    const { context, page } = await open(1280, '/works/commodity-exchange.html');
+    const m = await page.evaluate(() => {
+      /* The first link in each file-item is the one that opens; the
+         second saves. Not `.document-link` — a work page asks fileLinks
+         for the class `button` instead, so that selector found nothing
+         and the two assertions under it passed over an empty list. The
+         count above is the only reason that showed. */
+      const open = [...document.querySelectorAll('#work-page-files .file-item')]
+        .map((item) => item.querySelector('a'))
+        .filter(Boolean);
+      return open.map((a) => ({
+        text: a.textContent.trim().replace(/\s+/g, ' '),
+        name: (a.getAttribute('aria-label') || a.textContent).trim().replace(/\s+/g, ' '),
+        blank: a.getAttribute('target'),
+        downloads: a.hasAttribute('download')
+      }));
+    });
+    t('the work has file buttons to read', m.length === 2, m.length + ' found');
+    /* It has always opened in the browser and the one beside it has
+       always saved. Nothing said so, and "Urdu PDF" next to "Download"
+       reads as a name beside an action rather than two different
+       offers. */
+    t('  …the reading one says it reads, and online',
+      m.every((f) => /^Read .* online$/.test(f.text)), m.map((f) => f.text).join(' | '));
+    t('  …and opens in the browser rather than saving',
+      m.every((f) => f.blank === '_blank' && !f.downloads), JSON.stringify(m));
+    await context.close();
+  }
+
   group('nothing pushes the page sideways');
   for (const width of [1920, 1440, 1280, 1024, 900, 768, 620, 420, 380]) {
     const { context, page } = await open(width);
