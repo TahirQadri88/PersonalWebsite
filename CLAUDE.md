@@ -39,7 +39,7 @@ test/          the browser suites — see "The suites" under Working on this
 posts/         one HTML file per post — the writing is the page, not a download
 works/         one HTML file per work and fatwa — written by admin.html
 apps/          one HTML file per app — built from fields, not written
-fatawa/        index.html — the six rulings on one page, generated
+fatawa/        index.html — every ruling on one page, generated
 author/        index.html — the author's introduction on a page of its own
 styles.css     all design, in 13 numbered sections
 404.html robots.txt sitemap.xml share-card.png CNAME
@@ -753,7 +753,7 @@ and will until the editor writes that page again. The rule stays in
 **The site has three navigational surfaces, and two of them are new.**
 `fatawa/index.html` and `author/index.html` are generated whole from
 `content.js` on every publish, the way a work's page and an app's page
-are — the six rulings on one, the `about` block on the other. There is no
+are — every ruling on one, the `about` block on the other. There is no
 writing to read back and therefore no "has this changed" question, which
 is why neither is spliced between markers the way `index.html` is.
 

@@ -2781,7 +2781,7 @@
 
   /* ---- The two landing pages ------------------------------------------
 
-     Everything on either page comes out of content.js — the six rulings
+     Everything on either page comes out of content.js — every ruling
      on one, the author's introduction on the other — so both are
      regenerated in full on every publish, the way a work's page and an
      app's page are. There is no writing to read back and therefore no
@@ -2851,7 +2851,7 @@
 
   /* The sentence under the heading on the fatawa page. index.html carries
      the same one, typed into the rulings section by hand — the two are
-     the same words about the same six rulings and have to change
+     the same words about the same rulings and have to change
      together. It is not in content.js because `rulings` is a bare array
      with nowhere to put a heading; giving it one is a field, a form
      control and a writeRecord line, and is worth doing the day a second
