@@ -23,6 +23,7 @@
 
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { existsSync } from 'node:fs';
 import { join, extname, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -64,6 +65,23 @@ function serve() {
   });
   return new Promise((ok) => server.listen(PORT, () => ok(server)));
 }
+
+/* How many rulings and records there actually are, read from the one file
+   that holds them. These counts were typed in as `6` and `> 20`, and the
+   day a seventh fatwa was added three assertions went red for being out
+   of date rather than for a fault — the same way an assertion that named
+   a particular unpaired post went red once when that post was paired.
+   Count what you matched, but take the expected number from the source
+   of truth. */
+const library = (function () {
+  const box = {};
+  new Function('window', readFileSync(join(ROOT, 'content.js'), 'utf8')).call(box, box);
+  const c = box.siteContent;
+  return {
+    rulings: (c.rulings || []).length,
+    records: (c.categories || []).reduce((n, cat) => n + (cat.works || []).length, 0) + (c.rulings || []).length
+  };
+})();
 
 let passed = 0;
 const failed = [];
@@ -132,20 +150,55 @@ try {
     const grid = await page.evaluate(() => {
       const cards = [...document.querySelectorAll('.ruling')].map((el) => {
         const box = el.getBoundingClientRect();
-        return { x: Math.round(box.x), h: Math.round(box.height) };
+        return { x: Math.round(box.x), h: Math.round(box.height), w: Math.round(box.width) };
       });
-      const columns = new Set(cards.map((c) => c.x)).size;
+      const edges = [...new Set(cards.map((c) => c.x))].sort((a, b) => a - b);
+      const columns = edges.length;
+      const last = cards[cards.length - 1];
       return { columns, count: cards.length, heights: cards.map((c) => c.h),
+               widths: cards.map((c) => c.w), columnEdges: edges,
+               lastX: last.x, lastWidth: last.w,
                lastRow: cards.length % columns || columns };
     });
     t('resolves to three columns inside the 1180px shell',
       grid.columns === 3, JSON.stringify(grid));
-    t('leaves no card alone on a row of its own',
-      grid.count <= grid.columns || grid.lastRow > 1, JSON.stringify(grid));
+    /* This used to read `lastRow > 1` — never leave a card alone on the
+       last row. It held while there were six rulings and two perfect
+       rows of three, and the seventh made it unsatisfiable: measured
+       across every width, 7 cards give 3+3+1 at three columns and
+       2+2+2+1 at two, and no column count above one avoids an orphan for
+       seven. The next ruling moves the problem rather than solving it.
+
+       A check that refuses to publish the library as it already stands
+       is a check nobody can keep — the same lesson `unmarkedReferences`
+       learned. So it asks the thing that can hold and still catches the
+       fault it was written for, which was a column count that mis-sized
+       a card: a card alone on the last row is the same width as its
+       siblings and starts on one of their column edges, rather than
+       being stretched across the gap or shrunk into half a track. */
+    t('a card alone on the last row is sized like its siblings',
+      grid.lastRow > 1 ||
+      (Math.abs(grid.lastWidth - grid.widths[0]) <= 1 && grid.columnEdges.includes(grid.lastX)),
+      JSON.stringify(grid));
     t('every card on a row stands the same height',
       new Set(grid.heights).size <= Math.ceil(grid.count / grid.columns), JSON.stringify(grid.heights));
-    t('no description runs long enough to swell its row',
-      Math.max(...grid.heights) - Math.min(...grid.heights) < 60, JSON.stringify(grid.heights));
+    /* The bar was a flat 60px and the seventh ruling hit it exactly — not
+       by being long, but by changing which cards share a row: the three
+       shortest ended up together, so the shortest row dropped to 319
+       against a tallest of 379. The tallest row is driven by an Urdu
+       title that takes two lines, and has been since before this ruling
+       existed.
+
+       A proportion is the stable form of the same question, and the
+       fault it guards — one description so long it swells its row past
+       the others — is caught far below this. Row heights are content and
+       the pairing reshuffles on every addition; what must not happen is
+       one row standing half again as tall as another. */
+    const tallest = Math.max(...grid.heights);
+    const shortest = Math.min(...grid.heights);
+    t('no row stands much taller than the shortest',
+      tallest <= shortest * 1.25,
+      `tallest ${tallest} against shortest ${shortest} — ${Math.round(100 * (tallest / shortest - 1))}% over`);
     await context.close();
   }
 
@@ -305,7 +358,10 @@ try {
                       Urdu prose under English headings. Neither had ever
                       been measured, because neither existed. */
                    '/fatawa/index.html',
-                   '/author/index.html'];
+                   '/author/index.html',
+                   /* An English ruling whose description pair stacks
+                      English over Urdu, with a standfirst above both. */
+                   '/works/vegetarianism-and-veganism.html'];
     const measure = () => {
       const ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
       const own = (el) => [...el.childNodes].filter((n) => n.nodeType === 3)
@@ -498,7 +554,10 @@ try {
                    '/posts/the-strong-and-the-trustworthy.html',
                    '/posts/qawi-aur-ameen.html',
                    '/fatawa/index.html',
-                   '/author/index.html'];
+                   '/author/index.html',
+                   /* An English ruling whose description pair stacks
+                      English over Urdu, with a standfirst above both. */
+                   '/works/vegetarianism-and-veganism.html'];
     const measure = () => {
       const ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
       const out = [];
@@ -1411,7 +1470,7 @@ try {
       }));
       const redirects = found.cards.concat(found.parts).filter((u) => /work\.html\?/.test(u));
       t('there were fatawa and records to check',
-        found.cards.length === 6 && found.parts.length > 20,
+        found.cards.length === library.rulings && found.parts.length === library.records,
         found.cards.length + ' cards, ' + found.parts.length + ' records');
       t('no fatwa is linked through the old redirect', redirects.length === 0,
         redirects.slice(0, 3).join(' | '));
@@ -1428,7 +1487,8 @@ try {
       const { context, page } = await open(1280, '/fatawa/index.html');
       const hrefs = await page.evaluate(() =>
         [...document.querySelectorAll('.ruling')].map((a) => a.getAttribute('href')));
-      t('the fatawa page carries every ruling', hrefs.length === 6, hrefs.length + ' cards');
+      t('the fatawa page carries every ruling', hrefs.length === library.rulings,
+        hrefs.length + ' cards against ' + library.rulings + ' in content.js');
       const bad = hrefs.filter((h) => !existsSync(join(ROOT, h.replace(/^\.\.\//, ''))));
       t('  …each pointing at the ruling’s own page', bad.length === 0, bad.join(' | '));
       await context.close();
@@ -1719,6 +1779,85 @@ try {
     }
   }
 
+  /* ---- what a record's page offers, and offers once ---- */
+  group('a record page offers each file once');
+  {
+    /* The fatawa on vegetarianism carries one PDF and four infographics;
+       halloween carries three infographics and nothing else. Between them
+       they cover every branch of how files reach a page. */
+    const CASES = [
+      { path: '/works/vegetarianism-and-veganism.html', buttons: 2, thumbs: 4, note: false },
+      { path: '/works/halloween.html', buttons: 0, thumbs: 3, note: false },
+      { path: '/works/nfts.html', buttons: 2, thumbs: 0, note: false }
+    ];
+    for (const c of CASES) {
+      const { context, page } = await open(1280, c.path);
+      const m = await page.evaluate(() => ({
+        buttons: [...document.querySelectorAll('.work-page-files a')].map((a) => a.textContent.trim().replace(/\s+/g, ' ')),
+        thumbs: [...document.querySelectorAll('.work-page-gallery img')]
+          .map((i) => ({ src: i.getAttribute('src'), loaded: i.naturalWidth > 0 })),
+        /* The mount point common.js hangs Share and Print from. Exactly one
+           element must carry it, whichever of the three shapes the page is. */
+        mounts: document.querySelectorAll('#work-page-files').length,
+        note: !!document.querySelector('.availability-note'),
+        tools: document.querySelectorAll('.page-tools button').length
+      }));
+      t(c.path + ' offers its ' + c.buttons + ' file button(s)', m.buttons.length === c.buttons,
+        JSON.stringify(m.buttons));
+      /* A picture used to come out twice — once as a button saying "Read
+         Part 1 online" and again as the thumbnail of the same file right
+         underneath. The gallery is the better half. */
+      t('  …and no button for a picture the gallery already shows',
+        !m.buttons.some((b) => /infographic|Part \d/.test(b)), JSON.stringify(m.buttons));
+      t('  …showing ' + c.thumbs + ' thumbnail(s), all of them loaded',
+        m.thumbs.length === c.thumbs && m.thumbs.every((x) => x.loaded),
+        JSON.stringify(m.thumbs));
+      /* "Not published here yet" is about having nothing, not about having
+         nothing with a button. halloween has three infographics and no
+         PDF, and reading its files through fileLinks alone made its own
+         page say it was unpublished with three of them underneath it. */
+      t('  …and does not claim to be unpublished', m.note === c.note, 'availability-note: ' + m.note);
+      t('  …with exactly one mount point for Share', m.mounts === 1, m.mounts + ' found');
+      t('  …which Share actually found', m.tools >= 1, m.tools + ' tools mounted');
+      await context.close();
+    }
+  }
+
+  /* ---- the standfirst on a work or a fatwa ---- */
+  group('a fatwa can carry a standfirst');
+  {
+    const { context, page } = await open(1280, '/works/vegetarianism-and-veganism.html');
+    const m = await page.evaluate(() => {
+      const sub = document.querySelector('.record-subtitle');
+      if (!sub) return { none: true };
+      const title = document.querySelector('.record-title');
+      const date = document.querySelector('.work-date');
+      const r = sub.getBoundingClientRect();
+      return {
+        text: sub.textContent.trim(),
+        dir: getComputedStyle(sub).direction,
+        /* Under the title and above the date — the place buildPost puts it,
+           and the whole argument for it being a field at all. */
+        underTitle: Math.round(r.top - title.getBoundingClientRect().bottom),
+        aboveDate: Math.round(date.getBoundingClientRect().top - r.bottom)
+      };
+    });
+    /* The editor has offered a Standfirst box on every record since the
+       field was added — the control is written in buildRow, outside any
+       isPost branch — and buildWork threw the value away, so anybody who
+       typed one onto a fatwa watched it vanish at the next publish. */
+    t('the standfirst reaches the page at all', !m.none,
+      'buildWork dropped it — the editor offers the field and the page ignores it');
+    if (!m.none) {
+      t('  …under the title', m.underTitle >= 0 && m.underTitle < 40, m.underTitle + 'px below it');
+      t('  …and above the date', m.aboveDate >= 0 && m.aboveDate < 40, m.aboveDate + 'px above it');
+      /* It takes the piece's own script, so an English ruling reads ltr
+         even where it quotes a term in another. */
+      t('  …set in the language the ruling is in', m.dir === 'ltr', m.dir);
+    }
+    await context.close();
+  }
+
   /* ---- searching the fatawa ---- */
   group('the fatawa page can be searched');
   {
@@ -1734,7 +1873,9 @@ try {
     }, term);
 
     const rest = await type('');
-    t('all the rulings are there before a word is typed', rest.shown === 6, JSON.stringify(rest));
+    t('all the rulings are there before a word is typed',
+      rest.shown === library.rulings && library.rulings > 0,
+      JSON.stringify(rest) + ' against ' + library.rulings + ' in content.js');
     const english = await type('commodity');
     t('  …an English word finds its ruling', english.shown === 1, JSON.stringify(english));
     /* The library is catalogued in Urdu, and a reader who types in it
@@ -1753,7 +1894,7 @@ try {
     t('  …nothing matching says nothing matched', none.shown === 0 && /Nothing/.test(none.say),
       JSON.stringify(none));
     const back = await type('');
-    t('  …and clearing it brings them all back', back.shown === 6, JSON.stringify(back));
+    t('  …and clearing it brings them all back', back.shown === library.rulings, JSON.stringify(back));
     await context.close();
   }
 

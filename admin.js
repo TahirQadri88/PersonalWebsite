@@ -2664,7 +2664,14 @@
       });
     }
     var files = site.fileLinks(forPage, 'button');
-    var gallery = site.imageGallery(forPage);
+    /* The gallery takes the mount point when there are no buttons to
+       carry it — see imageGallery. */
+    var gallery = site.imageGallery(forPage, files ? '' : 'work-page-files');
+    /* "Not published here yet" is about having nothing, not about having
+       nothing with a *button*. halloween is three infographics and no
+       PDF, and reading its files through fileLinks alone made its page
+       say it was unpublished while three of them sat underneath. */
+    var hasFiles = (record.files || []).length > 0;
     var tags = (record.tags || []).length ? site.tagMarkup(record) : '';
 
     var jsonLd = JSON.stringify({
@@ -2721,6 +2728,26 @@
         ? '        ' + site.kindMarkup(record, 'section-label' + (rtl ? '' : ' align-left'), 'p')
         : null,
       '        ' + site.titleMarkup(record, 'h1'),
+      /* The standfirst, directly under the title and above the date, the
+         same place buildPost puts it. The editor has offered a Standfirst
+         box on **every** record since the field was added — the control is
+         written in buildRow, outside any isPost branch — and this builder
+         threw the value away, so anybody who typed one onto a work or a
+         fatwa watched it vanish at the next publish with nothing to say
+         why. A field the form offers and the page ignores is the same
+         fault as a button that does not do what it says.
+
+         It takes the piece's own script rather than scriptOf of its own
+         words, for the reason written up with the field: a standfirst is
+         the author's sentence about their own ruling, so it reads in the
+         language the ruling is in even when it quotes a term in another.
+         And an Urdu one on an English page takes align-left — the trap
+         this file keeps walking into, in one more place. */
+      record.subtitle
+        ? '        <p class="record-subtitle ' + scriptClass + (rtl ? '' : ' align-left') +
+          '" lang="' + e(record.language || 'en') + '" dir="' + (rtl ? 'rtl' : 'ltr') + '">' +
+          e(record.subtitle) + '</p>'
+        : null,
       /* Same reasoning as buildPost: formatDate's month name is always
          English, so this needs its own dir="ltr" or an RTL article
          reorders "3 August 2026" into "August 2026 3". */
@@ -2728,8 +2755,11 @@
       prose ? '        ' + prose : null,
       files
         ? '        <div class="work-page-files" id="work-page-files">' + files + '</div>'
-        : '        <p class="availability-note" id="work-page-files">This one isn’t published here yet. Write to the author if you need it.</p>',
+        : null,
       gallery ? '        ' + gallery : null,
+      !hasFiles
+        ? '        <p class="availability-note" id="work-page-files">This one isn’t published here yet. Write to the author if you need it.</p>'
+        : null,
       tags ? '        ' + tags : null,
       '      </article>',
       '    </main>',
