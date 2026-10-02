@@ -175,6 +175,74 @@ refuses more than one distinct URL — and it earned itself immediately, by
 failing on `share-card.html`, which a `grep` over the four pages I
 thought existed had missed.
 
+**`ch` is the width of the font's own zero, so a measure pegged to it
+moves when the face does.** This is the bill for the change above, and it
+arrived as *the subtitle wraps despite space* and *use the full
+horizontal width*. Both were one cause: `1ch` is **11px in DM Sans at
+16px and 8px in Gentium at 17px**, so every `ch` cap on the site shrank
+by about 27% the moment the face changed. The body column went **744px →
+496px**, the standfirst **408 → 272** — and 272px is just under what
+*"For a Muslim, that power is an amanah."* needs, so it broke to two
+lines at **every width from 390 to 1680**, which is why it looked like a
+bug rather than a cap.
+
+Measured, pooling every English paragraph of the technology post: the old
+744px column was **70 characters a line**, which is right; 496px was 62
+and read cramped inside an 1100px page. The caps are in **`em`** now —
+`em = ch × 0.70`, which reproduces every old width within a few pixels
+and cannot move again unless the size does. `.post-body` is `43em`
+(731px, 70 characters) and the standfirst `24em` (408px, one line).
+
+Left in `ch` deliberately: `.hero-urdu`, `.post-body.arabic`,
+`.app-tagline.urdu`, `.app-about p.arabic` and `.brand`, because those
+are measured in Mehr's, Amiri's and DM Sans's digits and none of those
+faces changed. `.work-hero h1` keeps its `22ch` too — the comment beside
+it says it is Aslam's digit width, and a Latin title still fits one line
+at every width swept.
+
+**English is justified from 760px up, and that bound is the gap not the
+fill** — the third time that lesson has been paid for here, after
+`CARD_STRETCH` and `CARD_FILL`. Worst word gap against the face's own
+space, measured on the longest English paragraph with the inline Arabic
+runs excluded, because a gap beside an RTL run is a bidi artefact of the
+measurement and not a hole in the setting:
+
+```
+ 360px → 302px column → 4.07x      620px → 521px → 2.27x
+ 390px → 328px        → 3.53x      820px → 689px → 1.59x
+ 480px → 403px        → 3.15x     1280px → 731px → 1.34x
+```
+
+Four times a space is a bar of white with a word at each end. The 2× bar
+is crossed at a column of about 600px, so the rule starts at 760px and a
+phone keeps its ragged edge, which is what a 328px column wants anyway.
+`hyphens: auto` is kept for where it helps and is **unverified**:
+headless Chromium here ships no hyphenation dictionary, so `auto` and
+`none` render identically. Do not write a number for it without a real
+browser.
+
+An English block inside an Urdu post is **not** justified: those are
+bibliography entries, and a justified numbered reference list is a state
+this site has never been in.
+
+**The mixed-script alignment was audited and is sound — and the
+hand-rolled probe that said otherwise was the thing that was wrong.** It
+reported 284 of 525 blocks misaligned. `getClientRects()` over a range
+returns a rect per **inline fragment**, not per line, so every paragraph
+holding a link or an `<i>` reported mid-line starts as line starts. The
+honest check was to run the suite's own two vetted groups — *Urdu stacked
+against english* (89 pairs) and *Urdu sets flush on the edge it reads
+from* (64 blocks) — with the real fonts served instead of turned away.
+All 206 assertions passed. **Prefer re-running a vetted assertion over
+writing a new probe**, and when a fresh probe reports a fault rate that
+large, suspect the probe.
+
+That run is also the recipe when a face changes: copy `test/homepage.mjs`,
+pin `ROOT` to the repository, and fulfil `fonts.googleapis.com` from a
+local bundle of the real woff2 files rather than aborting it. Worth doing
+once per font change; not worth making the default, which would tie the
+suite to someone else's uptime for assertions that are about geometry.
+
 **The cards were being drawn without their fonts.** `drawCard` asks for
 `700 34px "DM Sans"` for the byline, and every committed card had it in a
 fallback serif — the font had not loaded when the card was drawn. Only

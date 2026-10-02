@@ -618,7 +618,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   align-items: center;
   /* Widened with the mark. At 22ch a larger seal pushed the four words
      onto three lines and made the header taller than the nav beside it. */
-  max-width: 26ch;
+  max-width: 18em;
   font-size: 14px;
   font-weight: 700;
   line-height: 1.3;
@@ -795,14 +795,14 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .hero > * { position: relative; z-index: 1; }
 
 .hero h1 {
-  max-width: 15ch;
+  max-width: 10.5em;
   font-size: clamp(42px, 6.6vw, 84px);
   letter-spacing: -0.035em;
 }
 .hero h1 em { color: #ecd9b0; font-style: italic; }
 
 .hero-copy {
-  max-width: 52ch;
+  max-width: 36em;
   margin: 26px 0 14px;
   color: #d3ddd7;
   font-size: 17px;
@@ -1186,8 +1186,8 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .section-heading h2,
 .rulings h2,
 .contact h2 { font-size: clamp(30px, 3.6vw, 48px); }
-.section-note { max-width: 26ch; margin: 0; color: var(--muted); font-size: 14px; }
-.section-note-light { max-width: 44ch; margin: 14px 0 34px; color: #c3d0c9; font-size: 15px; }
+.section-note { max-width: 18em; margin: 0; color: var(--muted); font-size: 14px; }
+.section-note-light { max-width: 31em; margin: 14px 0 34px; color: #c3d0c9; font-size: 15px; }
 
 .search-row { margin-bottom: 30px; }
 /* It was white on cream behind a 1px #b8beb5 border — three tones inside
@@ -1391,7 +1391,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
    The title starts at the row's own edge now, so the detail does too —
    and follows it to the other side when the record reads rightwards,
    rather than sitting across the card from the title it belongs to. */
-.work-detail { padding: 0 0 22px; max-width: 78ch; color: var(--muted); }
+.work-detail { padding: 0 0 22px; max-width: 55em; color: var(--muted); }
 .work-detail.reads-rtl { margin-left: auto; }
 .work-detail p { margin: 0 0 12px; }
 
@@ -1645,7 +1645,7 @@ body.is-searching .rulings h2 { margin-bottom: 26px; }
   background: var(--paper-warm);
 }
 .contact h2 { margin-bottom: 14px; }
-.contact p { max-width: 52ch; margin: 0; color: #4c5651; }
+.contact p { max-width: 36em; margin: 0; color: #4c5651; }
 
 /* 10 ── Footer ────────────────────────────────────────────── */
 
@@ -1696,7 +1696,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    leaving a single trailing word alone on its own line. */
 .work-hero h1.urdu { max-width: 18em; font-size: clamp(24px, 3.3vw, 44px); line-height: 1.95; }
 .work-hero h1.arabic { font-size: clamp(30px, 4vw, 54px); line-height: 1.6; }
-.work-page-description { max-width: 62ch; margin: 24px 0 18px; color: #4b5852; font-size: 17px; }
+.work-page-description { max-width: 43em; margin: 24px 0 18px; color: #4b5852; font-size: 17px; }
 /* A paragraph in the other language, on either kind of page.
 
    Two things have to be true at once. The words must read the way their
@@ -1811,7 +1811,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    title and over the date, and it is not a heading: no bold, because the
    title above it is already the loud thing. */
 .record-subtitle {
-  max-width: 34ch;
+  max-width: 24em;
   margin: 12px 0 0;
   color: #55635c;
   font-size: 17px;
@@ -1840,7 +1840,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    narrower than the page — prose wants 60-odd characters a line, and
    Nastaliq wants the leading it always wants. */
 .post-body {
-  max-width: 62ch;
+  max-width: 43em;
   margin: 34px 0 0;
   color: #38443f;
   font-size: 17px;
@@ -1921,6 +1921,53 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    the default stays visible in the selector that sets it. */
 .post-body.urdu p:not(.latin):not(.align-left):not(.align-center):not(.align-right):not(.align-justify),
 .post-body.arabic p:not(.latin):not(.align-left):not(.align-center):not(.align-right):not(.align-justify) { text-align: justify; }
+
+/* The English was set ragged-right while the Urdu beside it was justified,
+   which is the two halves of one library set by different rules. It is
+   justified now — but only from 760px up, and that is the whole of what
+   was learned here.
+
+   The gap, not the fill, is what bounds a hole: the same lesson
+   CARD_STRETCH taught on the share cards. Measured on the longest English
+   paragraph of the technology post, excluding the inline Arabic runs,
+   worst word gap against the face's own space:
+
+       360px viewport → 302px column → 4.07×      median 1.35
+       390px          → 328px        → 3.53×      median 1.45
+       480px          → 403px        → 3.15×      median 1.31
+       620px          → 521px        → 2.27×      median 1.14
+       820px          → 689px        → 1.59×      median 1.14
+      1280px          → 731px        → 1.34×      median 1.07
+
+   Four times a normal space is a bar of white with a word at each end,
+   which is precisely the fault `CARD_STRETCH` was added to stop. The 2×
+   bar is crossed at a column of about 600px, so the rule starts at a
+   760px viewport, where the column is ~630px and the worst gap is under
+   1.6×. Below that English reads better ragged, which is what a narrow
+   column wants anyway.
+
+   `hyphens: auto` is kept because it helps exactly the narrow case where
+   this cannot go — but it is **not** what makes this safe, and its effect
+   is unmeasured: headless Chromium here ships no hyphenation dictionary,
+   so `auto` and `none` render identically and no number could be taken.
+   Do not write one down without checking in a real browser first.
+
+   The four align classes are excused by name, the same as the rule above
+   and for the same reason: the writing box must not offer a choice the
+   page then ignores.
+
+   Only a wholly English piece's own paragraphs. An English block inside
+   an Urdu post is a bibliography entry — fourteen of them on one post —
+   and a justified numbered reference list is a state this site has never
+   been in; `.post-body .latin` keeps its ragged edge deliberately. */
+@media (min-width: 760px) {
+  .post-body.latin p:not(.align-left):not(.align-center):not(.align-right):not(.align-justify),
+  .intro-body p:not(.urdu):not(.arabic),
+  .app-about p:not(.urdu):not(.arabic) {
+    text-align: justify;
+    hyphens: auto;
+  }
+}
 /* "Left" on a paragraph of Urdu means *put the block at the left of the
    column* — it cannot sensibly mean "rag the edge the script begins
    from", which is what the literal reading gives: honouring it literally
@@ -2215,7 +2262,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    throughout — which is what this was — the button read as the start of
    the next section rather than the end of the first. */
 .app-tagline {
-  max-width: 46ch;
+  max-width: 32em;
   margin: 12px 0 0;
   color: #4c5651;
   font-size: 19px;
@@ -2259,7 +2306,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    the tagline above it — it is an instruction, not a description. */
 .app-cta {
   margin: 12px 0 0;
-  max-width: 42ch;
+  max-width: 29em;
   color: var(--gold-on-light);
   font-size: clamp(17px, 1.7vw, 20px);
   line-height: 1.9;
@@ -2397,7 +2444,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    says what they hold. 15px was below the floor the site keeps. */
 .app-attest-title {
   margin: 3px 0 0;
-  max-width: 56ch;
+  max-width: 39em;
   font-family: var(--font-urdu);
   word-spacing: normal;
   font-size: clamp(15px, 1.4vw, 19px);
@@ -2407,7 +2454,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .app-attest-title + .app-attest-name { margin-top: 16px; }
 
 .app-about { margin: 40px 0 0; }
-.app-about p { margin: 0 0 14px; color: #45534d; max-width: 62ch; }
+.app-about p { margin: 0 0 14px; color: #45534d; max-width: 43em; }
 /* 62ch of Nastaliq at 20-27px is most of a desktop; the measure a reader
    can follow is far shorter in this script than in Latin, and the line
    was running the full column. */
