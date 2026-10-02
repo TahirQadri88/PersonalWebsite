@@ -1764,7 +1764,7 @@
       '    <link rel="apple-touch-icon" href="../files/images/logo-circle-180.png" />',
       '    <link rel="preconnect" href="https://fonts.googleapis.com" />',
       '    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />',
-      '    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" rel="stylesheet" />',
+      '    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" rel="stylesheet" />',
       '    <link rel="stylesheet" href="../styles.css" />',
       '    <script type="application/ld+json">' + jsonLd + '</scr' + 'ipt>',
       '  </head>',
@@ -2012,7 +2012,7 @@
       '    <link rel="apple-touch-icon" href="../files/images/logo-circle-180.png" />',
       '    <link rel="preconnect" href="https://fonts.googleapis.com" />',
       '    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />',
-      '    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" rel="stylesheet" />',
+      '    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" rel="stylesheet" />',
       '    <link rel="stylesheet" href="../styles.css" />',
       '    <script type="application/ld+json">' + jsonLd + '</scr' + 'ipt>',
       '  </head>',
@@ -2182,10 +2182,16 @@
      already uses, and it is Naskh: its counters stay open when a phone
      shrinks this card to about a fifth of its size, where Nastaliq's
      hairlines close up and the word turns into a smudge. */
+  /* The English title is Gentium Book Plus with the ayn patch behind it,
+     the same pair the pages are set in — and the card is the one place
+     the pair genuinely has to be named, because a canvas has no CSS
+     stack to fall through. `Sharīʿah` on this card drew its ayn from
+     whatever serif the browser drawing it happened to have; the card for
+     the vegetarianism fatwa shipped that way. */
   function cardTitleFont(language, px) {
     if (language === 'ur') return '400 ' + px + 'px "Aslam"';
     if (language === 'ar') return '700 ' + px + 'px "Amiri"';
-    return '600 ' + px + 'px "Newsreader"';
+    return '600 ' + px + 'px "Gentium Book Plus", "Ayn and hamza"';
   }
 
   /* The kind label, and the byline under it. Arabic script whatever the
@@ -2213,7 +2219,7 @@
      it will later be drawn rather than trusting the two to agree. */
   function spacedWidth(ctx, text, gap) {
     /* No gap asked for means the face has a usable space of its own —
-       Newsreader, Amiri, DM Sans all do. Measure the line whole, or the
+       Gentium, Amiri, DM Sans all do. Measure the line whole, or the
        word-by-word path below would drop the space rather than widen it,
        and an English title came out as TheBooksThatAren'tComingBack. */
     if (!gap) return ctx.measureText(text).width;
@@ -2242,7 +2248,13 @@
      recovering from the same race never lets a reader see. */
   function ensureCardFonts() {
     return Promise.all([
-      document.fonts.load('600 100px "Newsreader"'),
+      document.fonts.load('600 100px "Gentium Book Plus"'),
+      /* The two marks Gentium has no glyph for. Self-hosted beside Aslam
+         and Mehr, and named here for the same reason they are: a canvas
+         draws with whatever is loaded at the moment it draws, and an
+         unloaded face is silently a fallback. */
+      document.fonts.load('400 100px "Ayn and hamza"'),
+      document.fonts.load('700 100px "Ayn and hamza"'),
       /* Aslam and Mehr are self-hosted, declared by the @font-face rules
          in styles.css, which admin.html loads — so naming them here is
          enough wherever the editor is opened. The Worker proxies every
@@ -2459,7 +2471,7 @@
 
        A one-word line cannot be justified — there is nowhere to put the
        space — and an Arabic or English title arrives here with titleGap
-       at 0, because Amiri and Newsreader have a usable space of their own
+       at 0, because Amiri and Gentium have a usable space of their own
        and fillSpaced draws those lines whole. A justified line has to
        take the word-by-word path whatever the script, since the gap
        computed here replaces the natural space rather than widening it. */
@@ -2712,7 +2724,7 @@
       '    <link rel="apple-touch-icon" href="../files/images/logo-circle-180.png" />',
       '    <link rel="preconnect" href="https://fonts.googleapis.com" />',
       '    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />',
-      '    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" rel="stylesheet" />',
+      '    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" rel="stylesheet" />',
       '    <link rel="stylesheet" href="../styles.css" />',
       '    <script type="application/ld+json">' + jsonLd + '</scr' + 'ipt>',
       '  </head>',
@@ -2826,7 +2838,7 @@
       '    <link rel="apple-touch-icon" href="../files/images/logo-circle-180.png" />',
       '    <link rel="preconnect" href="https://fonts.googleapis.com" />',
       '    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />',
-      '    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" rel="stylesheet" />',
+      '    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" rel="stylesheet" />',
       '    <link rel="stylesheet" href="../styles.css" />',
       '    <script type="application/ld+json">' + settings.jsonLd + '</scr' + 'ipt>',
       '  </head>'
@@ -5158,7 +5170,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-09-30.1';
+  var EDITOR_VERSION = '2026-10-02.1';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */

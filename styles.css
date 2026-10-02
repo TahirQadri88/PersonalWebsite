@@ -24,7 +24,27 @@
   --gold-on-dark: #e8c882;
   --gold-rule: #b8863a;
 
-  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
+  /* Gentium Book Plus sets the English and, which is the point of it,
+     the Arabic transliteration this library is full of. Newsreader was
+     here and had no glyph for eight of the characters that transliteration
+     needs — `ʿ ḍ Ḥ ḥ Ṣ ṣ ṭ ẓ`, used 353 times across the site — so each
+     of them was drawn by whatever serif the reader's device happened to
+     have, mid-word, while `ā ī ū` beside them came from Newsreader. The
+     trap is that Newsreader's latin-ext subset *declares* the range it
+     does not hold (`U+1E00-1E9F`, `U+02BD-02C5`), so nothing in the CSS
+     or the HTML says anything is wrong. Gentium covers all eight.
+
+     `Ayn and hamza` behind it is the two marks Gentium itself lacks in
+     Google's build — see its @font-face below. It is reached for exactly
+     two codepoints and can draw nothing else.
+
+     Playfair Display and EB Garamond were both measured and rejected:
+     Playfair Display is missing the same eight, and EB Garamond has them
+     but sets the macron of `ī` into the `ʿ` beside it, which collides in
+     `Sharīʿah` — the single most-used term here. Cardo was the runner-up
+     and is what the patch above is cut from; it reads a touch small at
+     this body size and took an English post's h1 to a fourth line. */
+  --font-display: "Gentium Book Plus", "Ayn and hamza", Georgia, "Times New Roman", serif;
   --font-ui: "DM Sans", system-ui, -apple-system, sans-serif;
   /* Mehr first — closer to traditional Nastaliq calligraphy than Noto's
      own, which is why it's here at all — but Noto Nastaliq Urdu, already
@@ -88,14 +108,58 @@
    at six widths and checks it can actually be seen. */
 html { scroll-behavior: smooth; scroll-padding-top: 152px; }
 
+/* Prose is the serif; the chrome is the sans. `body` carries the serif
+   because prose is what inherits from it — descriptions, a post's English
+   paragraphs, the introduction, a ruling's body. The chrome is pinned back
+   to --font-ui in the rule below, and that rule is necessary rather than
+   tidy: the wordmark, the nav, the eyebrows, the dates and the buttons all
+   inherited from `body` and had no --font-ui of their own, so setting this
+   alone swept them into the serif and grew the header from 68px to 83px.
+
+   17px, not 16: Gentium's x-height is 454 against DM Sans's 526, so the
+   same number is 14% smaller to read. Measured off the font files, then
+   checked on the page. */
 body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font-family: var(--font-ui);
-  font-size: 16px;
+  font-family: var(--font-display);
+  font-size: 17px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+}
+
+/* The chrome stays sans: the site's own furniture — the wordmark, the
+   navigation, the eyebrows and labels, the buttons, the counts. Prose is
+   the author's words and takes the serif by inheriting from `body`.
+
+   This rule is necessary, not tidy. Every selector here owns its text and
+   had no --font-ui of its own, so it inherited from `body` and the serif
+   swept it up: setting `body` alone put the wordmark into Gentium and grew
+   the header from 68px to 83px. The ones that already declare --font-ui
+   for themselves — .record-meta, .work-date, .document-link, .file-download,
+   .tag.latin, .toggle, .more-like — are deliberately not repeated here.
+
+   The list was measured rather than guessed: every text-owning element on
+   five pages was walked with this block lifted, and these are the ones
+   that changed family and should not have. .category-arrow is deliberately
+   absent — a <button> does not inherit font-family, so it has always drawn
+   its arrow in the UA default, and naming it here would have changed a
+   glyph this change has no business touching. */
+.skip-link,
+.brand,
+.header-nav a,
+.category-nav a,
+.eyebrow,
+.section-label,
+.button,
+.button span,
+.search-hint,
+.work-category-count,
+.ruling-open,
+.back-link,
+footer {
+  font-family: var(--font-ui);
 }
 
 a { color: inherit; }
@@ -205,6 +269,37 @@ img { max-width: 100%; }
        local("Liberation Sans"), local("DejaVu Sans");
   size-adjust: 71%;
   unicode-range: U+0041-005A, U+0061-007A, U+00C0-024F;
+}
+
+/* The ayn and the hamza, and nothing else — the same shape as the face
+   above, for the same kind of reason: one face cannot draw everything a
+   line needs, so the gap is named and filled deliberately rather than
+   left to the device.
+
+   Gentium is a linguist's typeface and the build Google serves still has
+   no `ʿ` (U+02BF) or `ʾ` (U+02BE). Measured, because its reputation says
+   otherwise: both Gentium families carry five glyphs from the whole
+   U+02B0-02FF block and neither mark is among them. Cardo carries 76 of
+   them, so these two are cut from Cardo — 672 and 664 bytes, which is
+   less than the icon sprite, and self-hosted so it is no extra request
+   to a CDN. See files/fonts/ayn-and-hamza-NOTICE.txt for the licence.
+
+   Two codepoints in the range, so it can never draw anything else: an
+   `ī` or an `ḥ` stays Gentium's. The ayn alone appears 118 times here,
+   and before this it was drawn by whatever serif the reader had. */
+@font-face {
+  font-family: "Ayn and hamza";
+  src: url("files/fonts/ayn-and-hamza-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+02BE-02BF;
+}
+@font-face {
+  font-family: "Ayn and hamza";
+  src: url("files/fonts/ayn-and-hamza-700.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+  unicode-range: U+02BE-02BF;
 }
 
 h1, h2, h3 {

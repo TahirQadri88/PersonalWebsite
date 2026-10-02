@@ -1,0 +1,25 @@
+Ayn and hamza
+
+A two-glyph subset of Cardo, carrying U+02BF (ʿ, ayn) and U+02BE
+(ʾ, hamza) and nothing else.
+
+Cardo is copyright (c) 2002-2011, David J. Perry
+(hospes02@scholarsfonts.net), licensed under the SIL Open Font
+License, Version 1.1: https://scripts.sil.org/OFL
+
+The copyright notice carries no Reserved Font Name, so subsetting and
+redistribution are permitted. The family has still been renamed from
+"Cardo" to "Ayn and hamza" inside the font, because this is a modified
+subset and must not be mistaken for Cardo entire.
+
+Why it exists: Gentium Book Plus, which sets this site's English and
+its Arabic transliteration, has no glyph for either mark in the build
+Google Fonts serves — measured, not assumed: both Gentium families
+carry only five glyphs from the whole U+02B0-02FF block and neither of
+these two is among them. Without this file the ayn in "Sharīʿah" and
+the hamza in "Qurʾān" fall through to whatever serif the reader's
+device happens to have, which is the fault this change was made to fix.
+The ayn alone appears 118 times across the site.
+
+It is scoped by unicode-range in styles.css so it can only ever draw
+those two marks. Everything else is Gentium's.

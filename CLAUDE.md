@@ -42,7 +42,13 @@ apps/          one HTML file per app — built from fields, not written
 fatawa/        index.html — every ruling on one page, generated
 author/        index.html — the author's introduction on a page of its own
 styles.css     all design, in 13 numbered sections
-404.html robots.txt sitemap.xml share-card.png CNAME
+404.html robots.txt sitemap.xml CNAME
+share-card.html share-card.png   the one card for a link to the site itself,
+                  not to a record. The .html is its source: it is shot at
+                  1200×630 and saved over the .png, and nothing reads it.
+                  Re-shoot it whenever the display face or its wording changes
+                  — it was left on Newsreader for a while after the rest moved,
+                  and the fonts guard in test/homepage.mjs is what found that.
 files/images/   the seal used as favicon and header mark, and the calligraphed name
 files/cards/    one link-preview picture per post/work/fatwa, drawn by admin.js
 files/fonts/    Mehr Nastaliq Web (CC BY-SA, credited in the footer) and Aslam
@@ -50,6 +56,9 @@ files/fonts/    Mehr Nastaliq Web (CC BY-SA, credited in the footer) and Aslam
                   Each ships as .woff2 with the .ttf behind it as a fallback.
                   Neither is on Google's CDN, so each gets its own @font-face
                   in styles.css instead of a <link> in every page's <head>.
+                  Also ayn-and-hamza-400/700.woff2 — two glyphs, 672 and 664
+                  bytes, cut from Cardo under the OFL because Gentium has
+                  neither. See its NOTICE.txt and the rule below.
 ```
 
 ## Rules that matter
@@ -79,6 +88,101 @@ no bold cut of its own to set a heading apart from the body under it. Both
 fall back to Noto Nastaliq Urdu, already loaded regardless, if their own file
 is ever slow or unreachable. `.record-title` in `common.js` is the class that
 carries the heading font, on every title the site renders, wherever shown.
+
+**A font stack is a claim about coverage, and a claim is worth
+measuring.** The English and the Arabic transliteration are
+**Gentium Book Plus**. Newsreader was here, and it had no glyph for
+eight of the characters this library is written in — `ʿ ḍ Ḥ ḥ Ṣ ṣ ṭ ẓ`,
+**353 uses** across the site — so each one was drawn by whatever serif
+the reader's device happened to have, in the middle of a word, while
+`ā ī ū` beside them came from Newsreader. In `Ṣaḥīḥ` three of six
+letters were a different typeface.
+
+Nothing in the source said so, and this is the part worth remembering:
+Newsreader's `latin-ext` subset **declares** `U+1E00-1E9F` and
+`U+02BD-02C5` and holds neither. A declared `unicode-range` is a
+statement about which file to fetch, not a promise that the glyph is
+in it. So the CSS looked right, the HTML looked right, and the whole
+test suite passed. The author reported it by eye, from a phone.
+
+**Check a candidate by reading its cmap, not its reputation.** Twelve
+serifs and twelve sans were pulled from Google and their character maps
+read directly. The results overturned three plausible answers in a row:
+
+- **Playfair Display** is missing the same eight. **Playfair** (the
+  variable family) has them but is a Didone, and its hairlines break up
+  at the 265px WhatsApp size — the same argument that put Aslam rather
+  than Nastaliq on the cards.
+- **EB Garamond** has all of them and sets the macron of `ī` into the
+  `ʿ` beside it, so `Sharīʿah` — the most-used term here — collides into
+  a blob. Found by looking, not by measuring.
+- **Gentium**, the face designed for exactly this, is missing the **ayn**
+  and the **hamza** in the build Google serves. Both Gentium families
+  carry five glyphs from the whole `U+02B0-02FF` block. Three of the six
+  words offered as its strength — `Qurʾān`, `ʿilm`, `muʿāmalāt` — fell
+  back. Reputation is not coverage.
+- **Cardo** was the only candidate with no gap at all (76 glyphs from
+  that block), and is what the patch below is cut from. It lost on looks:
+  it reads small at this body size and took an English post's h1 to a
+  fourth line.
+
+So Gentium is used **with its gap filled deliberately**: `Ayn and hamza`
+in `styles.css` is two glyphs cut from Cardo, self-hosted, scoped by
+`unicode-range: U+02BE-02BF` so it can draw nothing else. 1.3KB for both
+weights — less than the icon sprite — and no extra CDN request. The
+order in the stack matters and is guarded: Gentium first, the patch
+behind it.
+
+**Prose is the serif; the chrome is the sans.** `body` carries
+`--font-display` and `--font-ui` is pinned back onto the wordmark, the
+nav, the eyebrows, the labels, the buttons, the counts and the footer.
+That pin list is necessary rather than tidy, and it was **measured**:
+every text-owning element on five pages was walked with the block lifted,
+and these are the ones that changed family and should not have. Setting
+`body` alone swept the wordmark into the serif and grew the header from
+**68px to 83px**. `.category-arrow` is deliberately *not* in the list — a
+`<button>` does not inherit `font-family`, so it has always drawn its
+arrow in the UA default, and naming it would change a glyph this had no
+business touching.
+
+Body is **17px**, not 16: Gentium's x-height is 454 against DM Sans's
+526, so the same number reads 14% smaller. Exact parity would be 18.5px,
+which is a larger body than this page wants; 17 is a deliberate middle.
+
+**The hero costs 27px and the budget moved for it.** Gentium is wider
+than DM Sans, so the hero's paragraph takes four lines where it took
+three — measured at 16, 16.5 and 17px, where the hero is 752px at all
+three, so it is the face and not the size. The library-top budget in
+`test/homepage.mjs` went 1940 → 1970 for that, deliberately, the way the
+strip's own budget moved once before. The strip did not move: it is still
+408px.
+
+**The suite could not have caught any of this, and still cannot see
+Gentium.** `open()` in `test/homepage.mjs` turns Google's CDN away, so
+every one of its assertions has always been measured on fallback faces.
+That is right for the rest of the suite — what it asserts is which side
+of a box something landed on — and it is why the fault lived here for
+months. What *can* be guarded is the committed half, and is: the ayn is
+self-hosted, so the browser really draws it in the suite, and CDP's
+`getPlatformFontsForNode` is asked which face did it. Take the patch out
+of the stack and that assertion reports `drawn by Liberation Serif` and
+fails. The run proving that is the only reason it is worth having.
+
+**Every page asks for its fonts with one URL now.** There were five
+variants, two disagreeing about a weight and one on a page nobody had
+looked at in a while. The guard reads every `.html` in the repository and
+refuses more than one distinct URL — and it earned itself immediately, by
+failing on `share-card.html`, which a `grep` over the four pages I
+thought existed had missed.
+
+**The cards were being drawn without their fonts.** `drawCard` asks for
+`700 34px "DM Sans"` for the byline, and every committed card had it in a
+fallback serif — the font had not loaded when the card was drawn. Only
+visible by comparing the regenerated card against the old one. Whatever
+regenerates the cards has to **prove the faces are loaded before
+drawing**, because a canvas bakes in whatever is there and says nothing.
+`document.fonts.check()` is not that proof: it answers `true` for a
+family that was never loaded, which is how this was missed twice.
 
 **A line can be marked inside, not only as a whole.** Bold, italic,
 underline and two size steps apply to the words picked out. They are kept

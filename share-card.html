@@ -10,7 +10,7 @@
      page — it is the card's source, kept beside it so the next change
      does not have to be guessed at in an image editor. -->
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,700&family=Newsreader:opsz,wght@6..72,400&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" />
 <style>
   * { box-sizing: border-box; margin: 0; }
   html, body { width: 1200px; height: 630px; }
@@ -40,7 +40,11 @@
   h1 {
     margin-top: 24px;
     max-width: 800px;
-    font-family: "Newsreader", Georgia, serif;
+    /* No "Ayn and hamza" behind it: that face is declared in styles.css,
+       which this page does not load, and this card's words hold neither
+       mark. A stack naming a face that is not declared here would be a
+       reference to nothing. */
+    font-family: "Gentium Book Plus", Georgia, serif;
     font-weight: 400;
     font-size: 84px;
     line-height: 1.1;

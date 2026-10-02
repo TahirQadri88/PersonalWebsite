@@ -24,7 +24,7 @@
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { join, extname, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
@@ -849,6 +849,84 @@ try {
     t(`the calligraphy is ${callig}KB, under 40`, callig < 40, String(callig));
   }
 
+  /* ---- the characters this library is actually written in ----
+
+     Newsreader was here and had no glyph for eight of them — `ʿ ḍ Ḥ ḥ Ṣ
+     ṣ ṭ ẓ`, 353 uses across the site — so each was drawn by whatever
+     serif the reader's device had, mid-word, while `ā ī ū` beside them
+     came from Newsreader. Nothing said so: its latin-ext subset
+     *declares* `U+1E00-1E9F` and `U+02BD-02C5` and holds neither, so the
+     CSS, the HTML and this whole suite looked right while `Ṣaḥīḥ` came
+     out in two faces. A font stack is a claim about coverage, and a
+     claim is worth a measurement.
+
+     Gentium itself cannot be weighed from inside this run — Google's CDN
+     is turned away at `open()`, which is stated there and is right for
+     the rest of the suite. What can be checked is the half that is
+     committed: Gentium's own build has no ayn or hamza either, so those
+     two marks are self-hosted, which means the browser really does draw
+     them here and CDP will say which face did it. Remove the patch from
+     the stack, delete its file, or narrow its unicode-range, and the
+     first assertion fails. */
+  group('the ayn is drawn by a face that has one');
+  {
+    const { context, page } = await open(1280, '/works/vegetarianism-and-veganism.html');
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('DOM.enable');
+    await cdp.send('CSS.enable');
+    const { root } = await cdp.send('DOM.getDocument');
+    const { nodeId } = await cdp.send('DOM.querySelector',
+      { nodeId: root.nodeId, selector: '.work-hero h1' });
+    t('the fatwa page has a title to measure', !!nodeId, String(nodeId));
+    const title = await page.evaluate(() =>
+      document.querySelector('.work-hero h1').textContent);
+    t('…and it carries an ayn to draw', /ʿ/.test(title), title);
+    const { fonts } = nodeId
+      ? await cdp.send('CSS.getPlatformFontsForNode', { nodeId })
+      : { fonts: [] };
+    const drew = fonts.map((f) => f.familyName);
+    t(`…drawn by ${drew.join(' + ') || 'nothing'}, which includes the patch`,
+      drew.includes('Ayn and hamza'), JSON.stringify(fonts));
+    await context.close();
+
+    /* Two glyphs, not a whole family quietly swapped in behind the name. */
+    for (const w of ['400', '700']) {
+      const kb = (await stat(join(ROOT, `files/fonts/ayn-and-hamza-${w}.woff2`))).size;
+      t(`the ${w} patch is ${kb} bytes, under 2048`, kb < 2048, String(kb));
+    }
+    const css = await readFile(join(ROOT, 'styles.css'), 'utf8');
+    t('…and the stack reaches it after Gentium, not before',
+      /--font-display:\s*"Gentium Book Plus",\s*"Ayn and hamza"/.test(css));
+
+    /* Every page asked for its fonts with a slightly different URL once —
+       four variants, two of them disagreeing about a weight. One canonical
+       string now, and a page that drifts off it fails here. */
+    const pages = [];
+    const walk = (dir) => {
+      for (const name of readdirSync(join(ROOT, dir), { withFileTypes: true })) {
+        if (name.isDirectory() && !/^(\.git|test|worker|node_modules|files)$/.test(name.name)) {
+          walk(dir ? `${dir}/${name.name}` : name.name);
+        } else if (name.isFile() && name.name.endsWith('.html')) {
+          pages.push(dir ? `${dir}/${name.name}` : name.name);
+        }
+      }
+    };
+    walk('');
+    const urls = new Set();
+    for (const p of pages) {
+      const html = await readFile(join(ROOT, p), 'utf8');
+      for (const m of html.matchAll(/https:\/\/fonts\.googleapis\.com\/css2\?[^"']*/g)) {
+        urls.add(m[0]);
+      }
+    }
+    t(`${pages.length} pages ask for fonts, with ${urls.size} distinct URL`,
+      urls.size === 1, [...urls].join('\n'));
+    t('…and it names Gentium Book Plus',
+      [...urls].every((u) => u.includes('Gentium+Book+Plus')), [...urls].join('\n'));
+    t('…and no longer names Newsreader',
+      [...urls].every((u) => !u.includes('Newsreader')), [...urls].join('\n'));
+  }
+
   /* ---- the rhythm between sections ---- */
   group('the page breathes without falling apart');
   {
@@ -1016,8 +1094,21 @@ try {
     t(`the strip is ${size.section}px, and stays under 430`, size.section < 430, JSON.stringify(size));
     t(`  …under half the screen — ${Math.round(size.share * 100)}%`, size.share < 0.5, JSON.stringify(size));
     t(`  …a card is ${size.card}px, and stays under 190`, size.card < 190, JSON.stringify(size));
-    t(`  …and the library starts by ${size.libraryTop}px, within 1940`,
-      size.libraryTop < 1940, JSON.stringify(size));
+    /* 1940 → 1970. The strip did not move: it is still 408px, and the
+       assertion above still holds it under 430. What moved is the hero,
+       by 27px, and the cause is the body face rather than this section —
+       Gentium Book Plus is wider than DM Sans, so the hero's paragraph
+       takes four lines where it took three. Measured at 16, 16.5 and
+       17px body: the hero is 752px at all three, so this is the face and
+       not the size. The library sits at 1947 and this keeps the usual
+       air above the worst case.
+
+       Raised deliberately, like the strip's own budget before it. If it
+       is ever reached again, check which block grew before touching the
+       number — this one says "the library starts by", and three
+       different sections sit above it. */
+    t(`  …and the library starts by ${size.libraryTop}px, within 1970`,
+      size.libraryTop < 1970, JSON.stringify(size));
 
     const strip = await page.evaluate(() => {
       /* The real cards only. The clones repeat them by design. */
