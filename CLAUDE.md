@@ -225,6 +225,77 @@ An English block inside an Urdu post is **not** justified: those are
 bibliography entries, and a justified numbered reference list is a state
 this site has never been in.
 
+**`own-edge` had a mirror and it was missing for years.** The rule above
+it in `styles.css` said so in as many words — *"it also mirrors the case
+where an English paragraph sits in a right-reading column, which this
+does not"* — and `proseBlock` is where that bit. For an Urdu record it
+handed **both** halves of the description panel a flat `align-right`,
+which is correct for the Urdu and rags the edge English begins from. The
+falaq/nas ruling's English description started its ten lines at
+`[511, 618, 529, 493, 526, 543, 517, 502, 575, 674]`, a spread of 181px;
+the qaṭʿ-e-taʿalluq one at `[874, 1101]`. Reported as *the cards look
+misaligned*.
+
+Two faults, not one, and the first hid the second: the rtl row of
+`proseBlock` handed `record.description` — the **English** one — the
+*record's* language, which is `ur`. So `edge()` was told the English
+paragraph read right-to-left, and a new branch for it could not fire
+until the pair was labelled by what each half is written in.
+
+`.own-edge-latin` is the mirror, and **all three of its declarations do
+work, depending on whether the text wraps**. It was nearly shipped as
+`text-align` alone on a measurement taken only on a wrapping block:
+there `fit-content` collapses to the available width and the margin has
+nothing to distribute. On **one line** it shrinks the box to the words
+and `margin-left: auto` puts the ink on the column's right, which is the
+edge its Urdu sibling begins on — and the stacked-pairs guard compares
+ink when a block is one line and treats opposite edges as the fault
+itself. Simplifying the rule failed that guard on the Farewell Sermon
+row. `margin-left` is physical so it cannot be read two ways.
+
+**Three things in that guard had to learn the difference, and each was
+caught by running it.** Which edge a *placed* box sits against was
+inferred from the parent's direction; that held while the only placed box
+was Urdu in an LTR panel, and broke when an English box was placed right
+inside a container still `ltr` — six correct work rows reported 161 to
+619px apart. It measures the edge now. A box that **spans** the column is
+placed against both and cannot disagree with its sibling; the first
+version of that tie-break called every LTR row a fault. And the ink
+comparison only means anything when **both** blocks hug their words — one
+line of Urdu beside four lines of English whose right edge reached the
+same pixel was reported as pulled apart.
+
+**The group that should have caught this did not exist.** *urdu sets
+flush on the edge it reads from* measures Urdu blocks, so a ragged
+**English** one was invisible to it — "a guard that inspects only what is
+marked cannot see what is not", again. *english sets flush on the edge it
+reads from* is the mirror: 200 multi-line Latin blocks, lines grouped
+with a tolerance on `top` so an inline Arabic run on its own baseline is
+not mistaken for a line of its own. Restoring the fault reports
+`spread: 596`. Note what it took to know the guard was worth having:
+with the fault put back, the **stacked-pairs** group still passed, 206
+green. It asks where a block *begins*, and in the faulty state both
+blocks did begin on the same edge.
+
+It also found the only other ragged English on the site: `.record-meta`
+inherited `right` under an Urdu title and wrapped on a phone, two-line
+labels beginning 45px and 192px apart. It is `direction: ltr` now, the
+same argument `.more-like` already makes — the site's own words about a
+record, set in the site's own direction as well as its own face.
+
+**A control is not a prose block.** The pairing guard was comparing the
+Urdu call to action on the app page against the **Open the app** button
+below it, which has no answer: a button is sized by what it does. It
+passed only because the old parent-direction shortcut called both
+"left". Excluded by name now.
+
+**The share cards are not byte-identical between runs.** Regenerating
+moved the two whose titles carry an ayn by a pixel or two vertically —
+same size, same breaks, same glyphs. Nothing had changed about them, so
+they were left out of the commit rather than churning two binaries. If
+cards appear in a diff after an unrelated change, check whether anything
+actually differs before committing them.
+
 **The mixed-script alignment was audited and is sound — and the
 hand-rolled probe that said otherwise was the thing that was wrong.** It
 reported 284 of 525 blocks misaligned. `getClientRects()` over a range

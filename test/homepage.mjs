@@ -420,6 +420,16 @@ try {
              — a paragraph holding a single link still counts. */
           const sibText = own(sib) || (sib.children.length === 1 ? sib.textContent.trim() : '');
           if (script(sibText) !== 'ltr' || !isBlock(sib)) continue;
+          /* Prose against prose. A control is sized and placed by what it
+             does, not by the column it sits in, so asking whether a button
+             begins where the paragraph above it begins has no answer —
+             "Open the app" on the app page was being paired with the Urdu
+             call to action above it. It passed only because the old
+             parent-direction shortcut called both of them "left"; the
+             moment the edge was measured rather than assumed, three
+             meaningless pairs surfaced. */
+          if (sib.matches('.button, .text-link, .file-download, .document-link') ||
+              sib.closest('.app-open, .page-tools, .work-page-files, .ruling-foot')) continue;
           const a = ink(el), b = ink(sib);
           if (!a || !b) continue;
           /* Stacked, not side by side. Two things on one line of a flex
@@ -442,9 +452,40 @@ try {
              so this has to be asked before anything below it. */
           if (fits(el) || fits(sib)) {
             const ab = el.getBoundingClientRect(), bb = sib.getBoundingClientRect();
-            const side = ps.direction === 'rtl' ? 'right' : 'left';
-            pairs.push({ ...one, edge: 'box-' + side,
-              apart: Math.round(side === 'right' ? ab.right - bb.right : ab.left - bb.left) });
+            const pb = parent.getBoundingClientRect();
+            /* Which edge a placed box is placed *against* is a fact about
+               the box, and it used to be inferred from the parent's
+               direction instead. That held while the only placed box on
+               the site was `own-edge` — Urdu in a left-reading panel,
+               placed left, parent `ltr`. It broke the day the mirror
+               arrived: `own-edge-latin` places an English box against the
+               *right* of a panel whose container is still `ltr`, because
+               the thing that reads right-to-left there is the record, not
+               the column. The guard then compared left edges and reported
+               six work rows 161 to 619px apart, all of them correct.
+               So measure it: the edge a box sits nearer is the edge it
+               was placed against, and the pair must agree about which.
+               Disagreeing is the fault itself, as below — one block
+               against the left and its sibling against the right is the
+               panel pulled apart, whatever the distance. */
+            /* A box that spans the column is placed against both edges
+               and so cannot disagree with its sibling about which — it
+               takes whichever edge the sibling was placed against. Only
+               two *shrunk* boxes on opposite edges are the panel pulled
+               apart. Getting this wrong the first time reported every
+               LTR-record row as a fault, because the English half spans
+               the column and the tie-break called that "right" while its
+               `own-edge` Urdu sibling was placed left. */
+            const spans = (b) =>
+              Math.abs(b.left - pb.left) <= 1 && Math.abs(b.right - pb.right) <= 1;
+            const sideOf = (b) => spans(b) ? null
+              : (Math.abs(b.right - pb.right) <= Math.abs(b.left - pb.left) ? 'right' : 'left');
+            const sa = sideOf(ab), sb = sideOf(bb);
+            const side = sa || sb || 'left';
+            const split = sa && sb && sa !== sb;
+            pairs.push({ ...one, edge: 'box-' + (split ? sa + '/' + sb : side),
+              apart: split ? 9999
+                : Math.round(side === 'right' ? ab.right - bb.right : ab.left - bb.left) });
             continue;
           }
 
@@ -459,15 +500,23 @@ try {
              — the hero's did, by 234px, and nothing else found it. On
              several lines the ink is legitimately ragged on that side,
              so the block's own edge is the honest measure. */
-          const lines = (() => {
+          const linesIn = (node) => {
             const rows = [];
             const rr = document.createRange();
-            rr.selectNodeContents(el);
+            rr.selectNodeContents(node);
             for (const x of [...rr.getClientRects()].filter((v) => v.width > 0.5 && v.height > 0.5)) {
               if (!rows.some((y) => Math.abs(y - x.top) < Math.max(4, x.height * 0.5))) rows.push(x.top);
             }
             return rows.length;
-          })();
+          };
+          /* Both blocks, not just the Urdu one. The ink comparison below
+             only means something when each block hugs its own words; a
+             block that wraps fills the column and its ink reaches both
+             edges, so it cannot be said to sit on one of them. Asking
+             only about the Urdu reported the az-Zukhruf row as pulled
+             apart — one line of Urdu on the right beside four lines of
+             English whose right edge reached the same pixel. */
+          const lines = Math.max(linesIn(el), linesIn(sib));
           if (lines > 1) {
             /* The edge the block *begins* on, which is the right one in a
                right-reading column — not the left one always.
@@ -641,6 +690,103 @@ try {
     t(`there are multi-line urdu blocks to measure — ${seen} of them`, seen >= 8, String(seen));
     t('every one of them is flush where its script begins, ragged on the far side',
       ragged.length === 0, JSON.stringify(ragged.slice(0, 6), null, 1));
+  }
+
+  /* ---- and the same question asked of the english ----
+
+     The group above measures Urdu blocks, so a ragged *English* one was
+     invisible to it — "a guard that inspects only what is marked cannot
+     see what is not", in one more place. `proseBlock` handed both halves
+     of an Urdu record's panel a flat `align-right`, which rags the edge
+     English begins from: ten lines of the falaq/nas description started
+     at [511, 618, 529, 493, 526, 543, 517, 502, 575, 674]. The reader's
+     word for it was that the cards looked misaligned.
+
+     Neither of the two groups above could fail on it. The stacked-pairs
+     one asks where a block *begins* and both blocks did begin on the same
+     edge; this asks whether the lines *inside* one block begin together,
+     which is the actual fault. Proved by restoring it. */
+  group('english sets flush on the edge it reads from');
+  {
+    /* The same pages the Urdu group walks, plus the technology post,
+       which is the longest run of English prose on the site and the one
+       the reader was looking at. */
+    const PAGES = ['/index.html', '/apps/zakat-calculator.html',
+                   '/works/vegetarianism-and-veganism.html',
+                   '/works/otherthan-falaq-nas-dam.html',
+                   '/posts/technology-shapes-people.html',
+                   '/posts/the-strong-and-the-trustworthy.html',
+                   '/posts/reservations-shariah-screening-stocks.html',
+                   '/fatawa/index.html',
+                   '/author/index.html'];
+    const measureLatin = () => {
+      const out = [];
+      for (const el of document.querySelectorAll('p, h1, h2, h3, li, blockquote, span, div')) {
+        const text = [...el.childNodes]
+          .filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').trim();
+        if (text.length < 24) continue;
+        /* Latin blocks only — the group above owns the other script. A
+           passage may carry an inline Arabic phrase and still be English
+           prose, so this asks what the majority of the letters are. */
+        const arabic = (text.match(/[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/g) || []).length;
+        const latin = (text.match(/[A-Za-z]/g) || []).length;
+        if (latin === 0 || arabic > latin) continue;
+        const cs = getComputedStyle(el);
+        if (cs.display.indexOf('inline') === 0) continue;
+        let align = cs.textAlign;
+        if (align === 'start' || align === '') align = cs.direction === 'rtl' ? 'right' : 'left';
+        if (align === 'end') align = cs.direction === 'rtl' ? 'left' : 'right';
+        /* Centre is a decision and justify is flush on both edges by
+           definition; neither can be ragged on the side this measures. */
+        if (align === 'center' || align === 'justify') continue;
+
+        const r = document.createRange();
+        r.selectNodeContents(el);
+        const rects = [...r.getClientRects()].filter((x) => x.width > 0.5 && x.height > 0.5);
+        /* Grouped with a tolerance on `top`, because an inline Arabic run
+           sits on its own baseline and comes back as a rect of its own.
+           Without the tolerance a correct paragraph reports one line out
+           of place — which is exactly how a hand-rolled probe for this
+           once claimed 284 faults out of 525 blocks. */
+        const lines = [];
+        for (const x of rects) {
+          const line = lines.find((l) => Math.abs(l.top - x.top) < Math.max(4, x.height * 0.5));
+          if (line) { line.left = Math.min(line.left, x.left); line.right = Math.max(line.right, x.right); }
+          else lines.push({ top: x.top, left: x.left, right: x.right });
+        }
+        if (lines.length < 2) continue;
+
+        /* Flush on the reading edge — the left, for these. */
+        const lefts = lines.map((l) => l.left);
+        out.push({ tag: el.tagName.toLowerCase(), cls: String(el.className).slice(0, 40),
+                   text: text.replace(/\s+/g, ' ').slice(0, 26), align, lines: lines.length,
+                   spread: Math.round(Math.max(...lefts) - Math.min(...lefts)) });
+      }
+      return out;
+    };
+
+    let seenLatin = 0;
+    const raggedLatin = [];
+    for (const width of [1440, 380]) {
+      const context = await browser.newContext({ viewport: { width, height: 1000 } });
+      await context.route('https://fonts.g**', (r) => r.abort());
+      const page = await context.newPage();
+      page.on('pageerror', (e) => threw.push(width + 'px: ' + e.message));
+      for (const path of PAGES) {
+        await page.goto(`http://127.0.0.1:${PORT}${path}`, { waitUntil: 'domcontentloaded' });
+        await page.evaluate(() => document.fonts.ready);
+        await page.evaluate(() => document.querySelectorAll('details').forEach((d) => { d.open = true; }));
+        await page.waitForTimeout(120);
+        const rows = await page.evaluate(measureLatin);
+        seenLatin += rows.length;
+        rows.filter((x) => x.spread > 3).forEach((x) => raggedLatin.push({ width, path, ...x }));
+      }
+      await context.close();
+    }
+    t(`there are multi-line english blocks to measure — ${seenLatin} of them`,
+      seenLatin >= 20, String(seenLatin));
+    t('every one of them begins its lines together',
+      raggedLatin.length === 0, JSON.stringify(raggedLatin.slice(0, 6), null, 1));
   }
 
   /* ---- a category head ---- */

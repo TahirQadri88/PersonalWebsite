@@ -679,12 +679,34 @@
        `.urdu`/`.arabic` and cannot match Latin, so writing it there put
        a class with no rule behind it on fourteen paragraphs. Decided per
        string, not per record, because a panel holds one of each. */
+    /* Both branches are the same rule, reflected: the paragraph that
+       reads the *other* way from the record gets its box shrunk to its
+       own longest line and placed on the record's reading edge, with its
+       words set on the edge they begin from inside it.
+
+       The `rtl` half used to be a flat `align-right`, which is right for
+       the Urdu and wrong for the English beside it — an English paragraph
+       pinned right rags the edge English begins from, and that is what a
+       reader sees as the block looking centred. Two fatāwā cards shipped
+       that way; see `.own-edge-latin` in styles.css for the measurements. */
     var edge = function (lang) {
-      if (rtl) return 'align-right';
+      if (rtl) {
+        return direction(lang) === 'rtl' ? 'align-right' : 'align-right own-edge-latin';
+      }
       return direction(lang) === 'rtl' ? 'align-left own-edge' : 'align-left';
     };
+    /* Which language each half is written in, not which language the
+       record is. `description` is the English one and `descriptionUr` the
+       Urdu one whichever way the record reads — the same assumption
+       `og:description` and `shareCaption` already make.
+
+       The rtl row used to hand `record.description` the *record's*
+       language, which is `ur`, so `edge()` was told the English paragraph
+       read right-to-left and gave it `align-right`. That is the whole
+       reason the mirror below could not fire: the fault was not only a
+       missing branch, it was a pair labelled wrong. */
     return (rtl
-      ? [[record.descriptionUr, 'ur'], [record.description, record.language]]
+      ? [[record.descriptionUr, record.language], [record.description, 'en']]
       : [[record.description, record.language], [record.descriptionUr, 'ur']])
       .filter(function (pair) { return pair[0]; })
       .map(function (pair) { return proseMarkup(pair[0], edge(pair[1]), pair[1]); })

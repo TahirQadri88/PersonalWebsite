@@ -1326,8 +1326,23 @@ details[open] > summary .toggle { transform: rotate(45deg); }
    languages, the date where there is one — built by site.metaMarkup from
    what content.js already holds. Always ltr, so the parts keep their
    order under a right-to-left title. */
+/* Set in the site's own direction as well as its own face. This line is
+   `READ HERE · URDU · 25 SEPTEMBER 2026` — the site's words about the
+   record, never the author's words in it — and the same argument that
+   already puts it in Latin at 12px puts it left: `.more-like` settles its
+   own container for exactly this reason, and the comment there explains
+   what inheriting an Urdu page did to it.
+
+   Found by measuring rather than by eye. Under an Urdu title the line
+   inherited `right`, and on a phone it wraps: at 380px the recent-strip
+   cards had two-line meta labels whose lines began **45px and 192px**
+   apart. Nothing else in English on the whole site is ragged on the edge
+   it begins from — the new group in test/homepage.mjs measures 200
+   blocks and these six were the only ones. */
 .record-meta {
   color: var(--muted);
+  direction: ltr;
+  text-align: left;
   font-family: var(--font-ui);
   font-size: 12px;
   font-weight: 700;
@@ -1788,6 +1803,65 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   width: fit-content;
   max-width: 100%;
   text-align: right;
+}
+
+/* The mirror of the rule above, which the comment above says in as many
+   words was missing: "it also mirrors the case where an English paragraph
+   sits in a right-reading column, which this does not."
+
+   An English paragraph pinned right has every line *beginning* in a
+   different place — the same fault as Urdu pinned left, reflected.
+   `proseBlock` handed both halves of an Urdu record's panel a flat
+   `align-right`, which is correct for the Urdu and wrong for the English
+   beside it. Measured on the fatāwā cards before this: the English
+   description on the falaq/nas ruling began its ten lines at
+   [511, 618, 529, 493, 526, 543, 517, 502, 575, 674] — a spread of
+   181px — and the one on the qaṭʿ-e-taʿalluq ruling at [874, 1101], 227px
+   apart on two lines. It was reported as the text looking centred, and
+   ragged-left is what it was.
+
+   All three declarations do work, and which one does it depends on
+   whether the text wraps. This was nearly shipped as `text-align` alone,
+   on a measurement taken only on a wrapping block, and the stacked-pairs
+   guard caught it:
+
+   - **Wrapping text.** `fit-content` is `min(max-content, available)`,
+     and max-content is the whole paragraph on one line, so the box
+     collapses to the available width and `margin-left` has nothing to
+     distribute — measured 299.7px in a 299.7px column, margin 0. Here
+     the `text-align: left` is the whole of the effect, and it is what
+     stops ten lines of English beginning in ten different places.
+   - **One line.** Now `fit-content` really does shrink the box to the
+     words, `margin-left: auto` puts it on the column's right, and the
+     ink hugs the right edge — the same edge its Urdu sibling begins on.
+     `text-align` is irrelevant to a single line.
+
+   That second half is not decoration. *urdu stacked against english
+   starts on the same edge* compares the **ink** when the block is one
+   line, and treats pulling to opposite edges as the fault itself rather
+   than a distance — there is no tolerance that makes it acceptable. With
+   `text-align: left` alone, a one-line English description in an Urdu
+   record's panel hugged the left while its Urdu hugged the right, and the
+   guard failed it at 1440px on the Farewell Sermon row. Which is the
+   whole argument for the rule: the block begins where its sibling
+   begins, and the words still read from their own edge inside it.
+
+   `margin-left` is physical on purpose. The container is `ltr`, so a
+   shrunk box lands on the left and has to be pushed; `margin-inline-start:
+   auto` is the trap this file records twice — in an RTL context it pushes
+   away from the very edge the box must sit on. A physical margin cannot
+   be read two ways.
+
+   Scoped away from the script classes rather than onto a `latin` one,
+   because `proseMarkup` deliberately writes no class for Latin text — so
+   if the text turns out to be Arabic-script after all, this stops
+   matching and the `align-right` beside it is still right. Same
+   defensiveness as `.own-edge.urdu`, inverted. */
+.own-edge-latin:not(.urdu):not(.arabic) {
+  width: fit-content;
+  max-width: 100%;
+  margin-left: auto;
+  text-align: left;
 }
 
 .align-left { text-align: left; }
