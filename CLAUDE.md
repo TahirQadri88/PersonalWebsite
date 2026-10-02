@@ -928,6 +928,73 @@ fetching anything, and a crawler sees the words too. Wired from the
 markup — any page writing an input with `data-card-search` naming a
 container gets it.
 
+**A standfirst reaches a work and a fatwa too, and for months it did
+not.** The field was built for posts and `buildPost` was taught to write
+it — but the *control* is written in `buildRow`, outside any `isPost`
+branch, so the editor has offered a Standfirst box on **every** record
+since the day it was added, and `buildWork` threw the value away. Anybody
+who typed one onto a work or a ruling watched it vanish at the next
+publish with nothing to say why. Same fault as a button that does not do
+what it says, and it only surfaced because a fatwa finally wanted one.
+
+**A picture is the gallery's, not the button row's.** `fileLinks` mapped
+over every file including images, so an infographic came out twice —
+once as a button reading *Read Part 1 online* and again as the thumbnail
+of the same file directly underneath it. The halloween ruling has shipped
+three of those for months. The gallery is the better half of the pair: it
+shows the thing rather than naming it, and its thumbnail already links to
+the full-size original.
+
+Two consequences had to be handled, and the first was nearly shipped
+broken. **"Not published here yet" is about having nothing, not about
+having nothing with a button** — halloween is three infographics and no
+PDF, so reading its files through `fileLinks` alone made its own page
+claim it was unpublished with three of them sitting underneath. And
+`#work-page-files` is where `common.js` mounts Share and Print, so
+exactly one element must carry it whichever of the three shapes a page
+is: the button row when there are buttons, the **gallery** when the
+pictures are all there is (`imageGallery` takes an `id` for that case,
+which also puts Share after the pictures rather than before them), and
+the availability note when there is genuinely nothing.
+
+**A guard tuned to the size of the library stops being a guard.** Adding
+a seventh ruling failed two assertions on the fatāwā grid, and neither
+was about the new ruling.
+
+*leaves no card alone on a row of its own* held while six rulings made
+two clean rows of three. Measured at every width, seven give **3+3+1** at
+three columns and **2+2+2+1** at two, and no column count above one
+avoids an orphan for seven; the eighth moves the problem rather than
+solving it. A check that refuses to publish the library as it already
+stands is a check nobody can keep — the lesson `unmarkedReferences`
+learned, in a second place. It asks the thing that can hold and still
+catches the fault it was written for, which was a column count that
+*mis-sized* a card: the lone card is the same width as its siblings and
+starts on one of their column edges.
+
+*no description runs long enough to swell its row* was a flat 60px, and
+the seventh ruling hit it **exactly** — not by being long but by changing
+which cards share a row, so the three shortest ended up together and the
+shortest row fell to 319 against a tallest of 379. That tallest row is
+driven by an Urdu title taking two lines and has been since before this
+ruling existed. It is a proportion now. **Check which card is actually
+driving a height before believing the assertion's name**: this one says
+"its row" and compares the tallest card on the page with the shortest.
+
+Three counts came out of the same addition — the fatāwā page's card
+count, the homepage's record count, the search's — all typed in as `6`
+and `> 20`. They read `content.js` now. Count what you matched, but take
+the number you expect from the file that holds the answer.
+
+**Restoring a fault only proves something if it lands in the right
+function.** `buildPost` and `buildWork` write the standfirst with
+deliberately identical markup, so a patch anchored on that markup removed
+**buildPost's** copy and left `buildWork` alone — the fatwa page kept its
+standfirst, the test stayed green, and the fault looked guarded. The same
+shape as the one-line patch that hit `.header-nav a` instead of
+`.recent-track`. Anchor a restoration on something unique to the function
+you mean, and assert on what you removed before writing it back.
+
 **Adding a work by hand means editing sitemap.xml too, and its page is
 missing until admin.html writes it.** `sitemap.xml` is the one file outside
 `content.js` that names a work, one `<url>` per id — the homepage list is

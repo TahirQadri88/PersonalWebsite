@@ -544,6 +544,23 @@ window.siteContent = {
   /* Fatāwā. Same fields as a work — id, title, language, description, files. */
   rulings: [
     {
+      id: "vegetarianism-and-veganism",
+      title: "The Sharīʿah ruling on vegetarianism and veganism",
+      language: "en",
+      subtitle: "Can a Muslim give up meat permanently? The short answer is that it depends on why.",
+      date: "2026-09-28",
+      description: "Four distinctions the Sharīʿah draws about giving up meat: refraining from market meat that is not ḥalāl is farḍ; not eating meat for a personal reason — temperament, taste, health, a doctor's advice, hardship — is permitted; abandoning it for ever as an act of worship is the monasticism the Prophet ﷺ forbade; and calling meat ḥarām, or lawful slaughter a cruelty, rejects a definitive ruling. With the rulings on mercy to animals and on qurbānī for someone who does not eat meat. Endorsed by Dr. Muftī Muhammad ʿAṭāʾullāh al-Naʿīmī and the muftīs of Dār al-Iftāʾ al-Nūr, Karachi.",
+      descriptionUr: "کیا مسلمان ہمیشہ کے لیے گوشت چھوڑ سکتا ہے؟ مختصر جواب: یہ اس کی وجہ پر منحصر ہے۔ چار بنیادی احکام: غیر شرعی ذبیحہ سے بچنا فرض ہے؛ طبیعت، ذائقہ، صحت، ڈاکٹر کے مشورے یا تنگ دستی کی وجہ سے گوشت نہ کھانا مباح ہے؛ ثواب سمجھ کر ہمیشہ کے لیے چھوڑ دینا وہی رہبانیت ہے جس سے رسول اللہ ﷺ نے منع فرمایا؛ اور گوشت کو حرام یا ذبح کو ظلم کہنا حرام ہے۔ نیز جانوروں کے ساتھ رحم کا حکم اور سبزی خور پر قربانی کا بیان۔ تصدیق: ڈاکٹر مفتی محمد عطاء اللہ نعیمی و مفتیانِ دارالافتاء النّور، کراچی۔",
+      tags: ["سبزی خوری", "ویگنزم", "گوشت", "حلال", "ذبیحہ", "قربانی", "رہبانیت", "جانوروں کے حقوق"],
+      files: [
+        { label: "Urdu PDF", url: "files/my-fatawa/vegetarianism-and-veganism-urdu.pdf" },
+        { label: "English infographic, part 1", url: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-1.jpg", preview: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-1-preview.jpg" },
+        { label: "English infographic, part 2", url: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-2.jpg", preview: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-2-preview.jpg" },
+        { label: "Urdu infographic, part 1", url: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-1.jpg", preview: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-1-preview.jpg" },
+        { label: "Urdu infographic, part 2", url: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-2.jpg", preview: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-2-preview.jpg" }
+      ]
+    },
+    {
       id: "otherthan-falaq-nas-dam",
       title: "کیا سورۂ فلق اور ناس کے علاوہ دوسرے اَورَاد اور دَم ناجائز ہیں؟",
       language: "ur",

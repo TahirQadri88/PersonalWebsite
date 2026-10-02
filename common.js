@@ -117,6 +117,17 @@
   function fileLinks(record, className) {
     if (!record.files || !record.files.length) return '';
     return record.files
+      /* A picture is left to imageGallery, which shows it and links the
+         thumbnail to the full-size original. It used to come out twice —
+         once as a button reading "Read Part 1 online" and again as the
+         thumbnail of the very same file directly underneath. The
+         halloween ruling has shipped three of those for months; this
+         fatwa would have added four more.
+
+         The gallery is the better half of the pair: it shows what the
+         thing is instead of naming it, and a reader who wants the file
+         itself opens it from there. */
+      .filter(function (file) { return !isImage(file.url); })
       .map(function (file) {
         var label = file.label || 'Open';
         /* file.language wins if the author set it; otherwise the script is
@@ -610,13 +621,21 @@
      to download three files to find out what they say. Each thumbnail is
      a link to the full-size original; `preview` names a lighter copy to
      display, and falls back to the file itself when there is none. */
-  function imageGallery(record) {
+  /* `id` is for the one case where the gallery is the *only* thing a
+     record offers: halloween is three infographics and nothing else, so
+     with pictures no longer doubling as buttons there is no
+     `.work-page-files` div to carry `#work-page-files` — and that id is
+     where common.js mounts Share and Print. Exactly one element on the
+     page has to have it, and when the pictures are all there is, the
+     pictures are that element. It also puts the buttons *after* them,
+     which is where a reader who has just looked at three charts is. */
+  function imageGallery(record, id) {
     var images = (record.files || []).filter(function (file) {
       return isImage(file.url);
     });
     if (!images.length) return '';
     return (
-      '<ul class="work-page-gallery">' +
+      '<ul class="work-page-gallery"' + (id ? ' id="' + escapeHtml(id) + '"' : '') + '>' +
       images
         .map(function (file) {
           return (
