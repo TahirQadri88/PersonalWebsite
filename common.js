@@ -1254,7 +1254,7 @@
       if (!term) { count.textContent = ''; return; }
       if (!keep.length) { count.textContent = 'Nothing matches those words.'; return; }
       count.textContent = keep.length + ' ' + (keep.length === 1 ? noun : plural) +
-        (approximate ? ' — nothing matched exactly, so these are the closest.' : '');
+        (approximate ? '. Nothing matched exactly, so these are the closest.' : '');
     };
 
     input.addEventListener('input', run);

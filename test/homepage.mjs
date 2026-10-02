@@ -77,9 +77,11 @@ const library = (function () {
   const box = {};
   new Function('window', readFileSync(join(ROOT, 'content.js'), 'utf8')).call(box, box);
   const c = box.siteContent;
+  const every = (c.categories || []).flatMap((cat) => cat.works || []).concat(c.rulings || []);
   return {
     rulings: (c.rulings || []).length,
-    records: (c.categories || []).reduce((n, cat) => n + (cat.works || []).length, 0) + (c.rulings || []).length
+    records: every.length,
+    record: (id) => every.find((r) => r.id === id)
   };
 })();
 
@@ -1785,11 +1787,22 @@ try {
     /* The fatawa on vegetarianism carries one PDF and four infographics;
        halloween carries three infographics and nothing else. Between them
        they cover every branch of how files reach a page. */
-    const CASES = [
-      { path: '/works/vegetarianism-and-veganism.html', buttons: 2, thumbs: 4, note: false },
-      { path: '/works/halloween.html', buttons: 0, thumbs: 3, note: false },
-      { path: '/works/nfts.html', buttons: 2, thumbs: 0, note: false }
-    ];
+    /* Counted off content.js, not typed in: a second PDF on the fatwa took
+       the expected number from 2 to 4 the moment the English one arrived,
+       and a number typed here would have gone red for being out of date
+       rather than for a fault. Each file that is not a picture gets two
+       buttons, one to read it and one to save it; a picture gets a
+       thumbnail and no button. */
+    const expected = (id) => {
+      const r = library.record(id);
+      const pic = (f) => /\.(png|jpe?g|gif|webp|svg)$/i.test(f.url);
+      const files = r.files || [];
+      return { buttons: files.filter((f) => !pic(f)).length * 2,
+               thumbs: files.filter(pic).length,
+               note: files.length === 0 };
+    };
+    const CASES = ['vegetarianism-and-veganism', 'halloween', 'nfts']
+      .map((id) => ({ path: '/works/' + id + '.html', ...expected(id) }));
     for (const c of CASES) {
       const { context, page } = await open(1280, c.path);
       const m = await page.evaluate(() => ({

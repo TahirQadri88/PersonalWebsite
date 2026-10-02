@@ -203,6 +203,55 @@ picks the font, `lang`, `dir` and the `urdu`/`latin` class off the script
 the word actually came out in. Translations are renderings, not the
 author's own English: change them in that one table.
 
+**How a description is written, and it is not how a summary is written.**
+The author asked for this in as many words — *they should not seem
+typical AI words and style; humanize texts in a proper flow and manner
+every time* — and he was right about the ones that were there. Prefer
+**his own words** wherever he has written any: he had already posted a
+caption for the vegetarianism fatwa, *"Can a Muslim give up meat
+permanently? Short answer: it depends on why"*, and it was better than
+the paragraph that had replaced it. Ask for the caption before writing
+a description.
+
+The tells, every one of them taken out of this repository rather than
+from a list:
+
+- **A prefix that explains the record to whoever maintains the site.**
+  Three Urdu posts opened with *"The Urdu version: …"*. A reader meeting
+  that in a search result or a WhatsApp preview learns nothing; it was a
+  note to self, published.
+- **Em-dash asides, stacked.** *"…shapes them — and Imām al-Ghazālī's
+  five aims of the Sharīʿah are the measure for anyone who builds it:
+  does this protect faith, life, mind, family and wealth, or damage
+  them?"* Three clauses and a rhetorical question in one breath. Two
+  plain sentences say it.
+- **The "N things drawn from X" formula**, and the trailing three-item
+  list that always follows it: *"Eight principles of employment drawn
+  from … — judging character before hiring, deciding on evidence, and
+  the employer's own duty of clear terms and gentle treatment."*
+- **A semicolon catalogue.** The first version of the vegetarianism
+  description put all four rulings, the animal-welfare section, the
+  qurbānī section and the endorsements into one sentence. That is a
+  table of contents, not a description.
+- **Padding for the sake of a search engine.** A short true sentence
+  outranks a long complete one.
+
+What to do instead: short sentences, a full stop where a dash was
+reached for, a colon only where a list is genuinely the point, and the
+concrete thing named — the sūrah and the verse, the two qualities, the
+one question the piece answers. The older descriptions in `content.js`
+are the model, not the newer ones: *"Establishes the weight of a ṣāʿ in
+modern units from Fatāwā Raḍawiyya, working through the tola and bhar to
+a figure in grams"* says exactly what the booklet does and reads like a
+teacher describing his own work.
+
+Leave the **Urdu** alone unless the change is certain. Most of the Urdu
+descriptions carry the author's own phrasing out of the articles
+themselves, and a stylistic improvement made in a language you cannot
+hear is a risk taken with somebody else's voice. Rewrite the English,
+say plainly which Urdu was left as it stood, and let him point at any he
+wants changed.
+
 **A description shown to a reader follows the piece, not the site.**
 `og:description` in `buildPost` and `buildWork`, and `shareCaption` in
 `common.js`, all take `descriptionUr` first for an Urdu or Arabic record
