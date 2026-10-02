@@ -2948,11 +2948,11 @@
       '          <label class="search-box" for="fatawa-search">',
       '            <span class="search-icon" data-icon="search" aria-hidden="true"></span>',
       '            <input id="fatawa-search" type="search" placeholder="Search the fatāwā"' +
-        ' aria-label="Search the fatāwā by subject or wording — in Urdu, Arabic or English"' +
+        ' aria-label="Search the fatāwā in Urdu, Arabic or English"' +
         ' autocomplete="off" data-card-search="fatawa-list" data-card-count="fatawa-count"' +
         ' data-card-noun="fatwa" data-card-plural="fatāwā" />',
       '          </label>',
-      '          <p class="search-hint">Subjects and wording — in Urdu, Arabic or English.</p>',
+      '          <p class="search-hint">You can search in Urdu, Arabic or English.</p>',
       '          <p class="search-count" id="fatawa-count" role="status" aria-live="polite"></p>',
       '        </div>',
       '        <div class="ruling-grid" id="fatawa-list">',
