@@ -160,7 +160,7 @@ Download button that does nothing on paper. The PDF already prints itself.
 ```
 مضمون
 The Books That Aren’t Coming Back
-by Abul Laith Muhammad Tahir Qadri An-Naeemi
+by Abul Laith Muḥammad Ṭāhir Qādrī An-Naʿīmī
 
 Books are being bought and shredded to feed machines — what the court
 allowed, what it cost, and why a printed copy still matters.

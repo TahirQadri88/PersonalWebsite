@@ -550,6 +550,7 @@ window.siteContent = {
       language: "en",
       subtitle: "Four cases, and the ruling is different in each.",
       date: "2026-09-28",
+      updated: "2026-10-05",
       description: "Can a Muslim give up meat permanently? Short answer: it depends on why.",
       descriptionUr: "کیا مسلمان ہمیشہ کے لیے گوشت چھوڑ سکتا ہے؟ مختصر جواب: یہ اس کی وجہ پر منحصر ہے۔",
       tags: ["سبزی خوری", "ویگنزم", "گوشت", "حلال", "ذبیحہ", "قربانی", "رہبانیت", "جانوروں کے حقوق"],
