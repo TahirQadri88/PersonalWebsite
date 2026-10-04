@@ -345,6 +345,24 @@
       'M9.4 9.3l1.8 1.8 3.4-3.4',
       'M8.7 14.8L7 20.5l5-2.2 5 2.2-1.7-5.7'
     ],
+    /* Three nodes and the two lines between them. Not an arrow: the
+       comment in `pageTools` rules out a *third arrow*, because ↗ and ↓
+       already each say one specific thing and a vague third would weaken
+       both. A drawing of the action says what the action is, which is the
+       opposite problem, so it is allowed where an arrow was not. */
+    share: [
+      'M18 2.6a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z',
+      'M6 9.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z',
+      'M18 16.4a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z',
+      'M8.2 10.9l7.6-4.3',
+      'M8.2 13.1l7.6 4.3'
+    ],
+    /* A sheet going in, the body, and the sheet coming out. */
+    print: [
+      'M7.5 9.5V4.5h9v5',
+      'M7.5 15.5h-2A1.5 1.5 0 0 1 4 14v-3A1.5 1.5 0 0 1 5.5 9.5h13A1.5 1.5 0 0 1 20 11v3a1.5 1.5 0 0 1-1.5 1.5h-2',
+      'M7.5 13.5h9v6h-9z'
+    ],
     search: [
       'M10.8 4.5a6.3 6.3 0 1 1 0 12.6 6.3 6.3 0 0 1 0-12.6z',
       'M15.4 15.4l4.6 4.6'
@@ -1171,15 +1189,28 @@
        stopped being the whole test once apps arrived. */
     var printable = !!record.page && !record.app;
 
-    /* No arrows on these two. The glyphs elsewhere on the site say two
-       specific things — ↗ opens something away from here, ↓ puts a file
-       on the device — and neither of these does either. A third arrow
-       meaning nothing in particular would only weaken the two that do.
-       The words are unambiguous on their own. */
+    /* No *arrow* on these two, and that is still the rule: ↗ says "away
+       from here" and ↓ says "onto the device", each one specific, and a
+       vague third would weaken both. A drawing of the action is the
+       opposite case — it says what the action is — so these two get the
+       `share` and `print` marks from the sprite instead.
+
+       They are here because the words alone were measured and found
+       wanting, not on taste. Every control on the site passes WCAG AA —
+       Share is 7.69:1, the worst anywhere is 5.03 — so contrast was
+       never the fault. What the measurement showed is that at the foot
+       of a post the *tag pills* above these two carry a filled
+       background while the only two things a reader can actually do are
+       bare 14px words: the decoration outranked the action. An icon and
+       a 2px rule put that back the right way up.
+
+       Decorative, like every other icon here — the word beside it says
+       the same thing — so `icon()` writes `aria-hidden` and the button's
+       accessible name stays the word. */
     var share = document.createElement('button');
     share.type = 'button';
     share.className = 'text-link';
-    share.textContent = 'Share';
+    share.innerHTML = icon('share', 'icon-inline') + ' Share';
 
     /* Spoken when it changes, so the copy is confirmed to a reader who
        cannot see the line appear. */
@@ -1198,7 +1229,7 @@
       var print = document.createElement('button');
       print.type = 'button';
       print.className = 'text-link';
-      print.textContent = 'Print';
+      print.innerHTML = icon('print', 'icon-inline') + ' Print';
       print.addEventListener('click', function () { window.print(); });
       box.appendChild(print);
     }

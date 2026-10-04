@@ -1041,8 +1041,23 @@ try {
       t(`the ${w} patch is ${kb} bytes, under 2048`, kb < 2048, String(kb));
     }
     const css = await readFile(join(ROOT, 'styles.css'), 'utf8');
-    t('…and the stack reaches it after Gentium, not before',
-      /--font-display:\s*"Gentium Book Plus",\s*"Ayn and hamza"/.test(css));
+    /* Order is the whole of this. The ayn patch must sit AFTER Gentium so
+       it only catches what Gentium has not got; the superscript patch
+       must sit BEFORE it, because Gentium does have ¹ ² ³ ⁴ and would
+       otherwise keep them and leave the list in two faces. A
+       unicode-range limits a face, it does not promote one. */
+    const stack = (/--font-display:([^;]*);/.exec(css) || [, ''])[1];
+    const at = (name) => stack.indexOf(name);
+    t('the display stack names all four faces',
+      ['Superscript digits', 'Gentium Book Plus', 'Ayn and hamza', 'Amiri']
+        .every((n) => at(n) > -1), stack.trim());
+    t('…with the ayn patch after Gentium, not before',
+      at('Ayn and hamza') > at('Gentium Book Plus'), stack.trim());
+    t('…and the superscript patch before it, not after',
+      at('Superscript digits') < at('Gentium Book Plus'), stack.trim());
+    t('…and Amiri behind the Latin faces, so it is never reached for Latin',
+      at('Amiri') > at('Gentium Book Plus') && at('Amiri') > at('Ayn and hamza'),
+      stack.trim());
 
     /* Every page asked for its fonts with a slightly different URL once —
        four variants, two of them disagreeing about a weight. One canonical
@@ -1071,6 +1086,128 @@ try {
       [...urls].every((u) => u.includes('Gentium+Book+Plus')), [...urls].join('\n'));
     t('…and no longer names Newsreader',
       [...urls].every((u) => !u.includes('Newsreader')), [...urls].join('\n'));
+  }
+
+  /* ---- the other two gaps, and why a stack is not evidence ----
+
+     The ayn group above guards the one gap that was known. Two more were
+     found the same way and only the same way — by asking the browser
+     which face actually painted a character, never by reading the CSS,
+     which looked right in both cases:
+
+     - DM Sans draws the whole chrome, and the author's name sits in it
+       twice (the hero, the footer). Its latin-ext DECLARES U+1E00-1E9F
+       and holds none of it, so the ḥ of Muḥammad, the Ṭ of Ṭāhir and the
+       ʿ of An-Naʿīmī came from the device while the ā and ī beside them
+       came from DM Sans. Same fault as Newsreader's, same shape, in the
+       sans nobody had re-checked.
+     - Gentium has ¹ ² ³ ⁴ and not ⁰ ⁵ ⁶ ⁷ ⁸ ⁹, so a post numbering its
+       references past four set the markers in two faces down one list.
+
+     Both patches are self-hosted, which is the only reason this can be
+     asserted at all: `open()` turns Google's CDN away, so DM Sans and
+     Gentium are never loaded here and every other assertion in this file
+     is measured on fallback faces. These two files really are fetched,
+     so the browser really does draw with them and really does say so. */
+  group('the marks the named faces lack are drawn by the patches');
+  {
+    const { context, page } = await open(1280);
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('DOM.enable');
+    await cdp.send('CSS.enable');
+    const faces = async (selector) => {
+      const { root } = await cdp.send('DOM.getDocument');
+      const { nodeId } = await cdp.send('DOM.querySelector',
+        { nodeId: root.nodeId, selector });
+      if (!nodeId) return null;
+      const { fonts } = await cdp.send('CSS.getPlatformFontsForNode', { nodeId });
+      return fonts.map((f) => f.familyName);
+    };
+
+    const name = await page.evaluate(() => {
+      const el = document.querySelector('.hero .eyebrow');
+      return el && el.textContent.trim();
+    });
+    t('the hero carries the author\'s name', !!name, String(name));
+    t('…spelt with the marks, not flattened to ASCII',
+      /Muḥammad/.test(name) && /Ṭāhir/.test(name) &&
+      /An-Naʿīmī/.test(name), String(name));
+    const drewName = await faces('.hero .eyebrow');
+    t(`…and its ḥ, Ṭ and ʿ drawn by ${(drewName || []).join(' + ') || 'nothing'}`,
+      !!drewName && drewName.includes('Latin marks sans'), JSON.stringify(drewName));
+
+    /* The kunya and the nisba are set a step under the name proper, which
+       is what brings it onto one line at 390px. What is asserted is the
+       structure, not the line count: the width that decides the wrap is
+       DM Sans's, `open()` turns Google's CDN away, and a line count taken
+       in the fallback face would be measuring a different name. It would
+       pass or fail for a reason unrelated to the thing it names. The
+       widths are in styles.css beside the step, measured with the real
+       face served. */
+    const graded = await page.evaluate(() => {
+      const el = document.querySelector('.hero .eyebrow');
+      const parts = [...el.querySelectorAll('.name-quiet')].map((s) => s.textContent);
+      return { parts, whole: el.textContent.replace(/\s+/g, ' ').trim() };
+    });
+    t('the name is cut into a kunya and a nisba to grade',
+      graded.parts.length === 2, JSON.stringify(graded.parts));
+    t('…which are the two outer parts, not the middle',
+      graded.whole.startsWith(graded.parts[0] || '\u0000') &&
+      graded.whole.endsWith(graded.parts[1] || '\u0000'), JSON.stringify(graded));
+    t('…and the step is a ratio, so it holds at both ends of the clamp',
+      /\.eyebrow \.name-quiet \{ font-size: 0\.\d+em; \}/
+        .test(await readFile(join(ROOT, 'styles.css'), 'utf8')));
+
+    /* What this proves is that the file is fetched and really draws all
+       ten — not that it is ordered correctly, and the difference was
+       found by restoring the fault. Moved behind Gentium in the stack,
+       this assertion stays green: `open()` turns Google's CDN away, so
+       Gentium is not loaded here and cannot keep ¹ ² ³ ⁴ whichever side
+       of it the patch sits. The ordering is guarded by reading the stack
+       in the group above, which does fail. Do not read this one as
+       covering it. */
+    const probeStack = await page.evaluate(async () => {
+      const p = document.createElement('p');
+      p.id = 'superscript-probe';
+      p.textContent = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+      document.querySelector('.hero').appendChild(p);
+      /* A unicode-range'd face is fetched only when something needs it,
+         and `fonts.ready` settles for what was already in flight — ask
+         for it by name AND by a character inside its range, or the
+         measurement below reads a face that had not arrived yet. The
+         default probe string load() assumes holds no superscript. */
+      await document.fonts.load('400 17px "Superscript digits"', '⁵');
+      await document.fonts.ready;
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      return getComputedStyle(p).fontFamily;
+    });
+    t('the probe inherits the display stack',
+      /Superscript digits/.test(probeStack) && /Gentium/.test(probeStack), probeStack);
+    const drewDigits = await faces('#superscript-probe');
+    t(`the ten reference numerals are drawn by ${(drewDigits || []).join(' + ')}`,
+      !!drewDigits && drewDigits.length === 1 &&
+      drewDigits[0] === 'Superscript digits', JSON.stringify(drewDigits));
+    await context.close();
+
+    /* Patches, not families smuggled in behind a name. */
+    const sizes = {
+      'latin-marks-sans-400.woff2': 8192,
+      'latin-marks-sans-700.woff2': 8192,
+      'superscript-digits-400.woff2': 2048
+    };
+    for (const [file, cap] of Object.entries(sizes)) {
+      const n = (await stat(join(ROOT, 'files/fonts/' + file))).size;
+      t(`${file} is ${n} bytes, under ${cap}`, n < cap, String(n));
+    }
+
+    const css = await readFile(join(ROOT, 'styles.css'), 'utf8');
+    t('the chrome stack reaches the sans patch after DM Sans',
+      /--font-ui:\s*"DM Sans",\s*"Latin marks sans"/.test(css));
+    /* A range that overstates what is in the file is the fault this whole
+       investigation began with, so each patch declares exactly its own. */
+    t('…and each patch declares only the range its file holds',
+      /font-family:\s*"Latin marks sans";[\s\S]{0,220}?unicode-range:\s*U\+02BE-02BF,\s*U\+1E00-1E9F;/.test(css) &&
+      /font-family:\s*"Superscript digits";[\s\S]{0,220}?unicode-range:\s*U\+00B2-00B3,\s*U\+00B9,\s*U\+2070-2079;/.test(css));
   }
 
   /* ---- the rhythm between sections ---- */
@@ -1669,8 +1806,12 @@ try {
         'overflows by ' + nav.over + 'px, showing ' + nav.shown.join(', '));
       /* Whatever else is dropped, the two that are pages of their own
          stay: nothing else on the site links to them. */
-      t('  …and still offers Author and Fatawa at ' + width + 'px',
-        nav.shown.includes('Author') && nav.shown.includes('Fatawa'),
+      /* Named from content.js now, not from a second copy in pageNav —
+         which is how this link read "Fatāwā" on the homepage and
+         "Fatawa" here for as long as both existed. Matched on the stem
+         so the guard is about the link being present, not its spelling. */
+      t('  …and still offers Author and Fatāwā at ' + width + 'px',
+        nav.shown.includes('Author') && nav.shown.some((s) => /^Fat[aā]w/.test(s)),
         nav.shown.join(', '));
       await context.close();
     }

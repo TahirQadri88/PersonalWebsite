@@ -1655,11 +1655,21 @@
      rather than a class of our own, the same choice markPlace makes in
      script.js, so a screen reader is told too. */
   function pageNav(here) {
+    /* The href is structure and belongs here — a generated page sits one
+       folder down and climbs out with ../, which the homepage does not.
+       The *text* is content and belongs in content.js, and keeping a
+       second copy of it here is how the same link came to be called
+       "Fatāwā" on the homepage and "Fatawa" on every generated page.
+       Matched by the anchor each one answers to on the homepage; a nav
+       edited down to fewer entries falls back to the word below rather
+       than writing a link with no name. */
+    var named = {};
+    (model.nav || []).forEach(function (link) { named[link.href] = link.text; });
     var links = [
-      { text: 'Author', href: '../author/index.html', at: 'author' },
-      { text: 'Library', href: '../index.html#library', anchor: true },
-      { text: 'Fatawa', href: '../fatawa/index.html', at: 'fatawa' },
-      { text: 'Contact', href: '../index.html#contact', anchor: true }
+      { text: named['#about'] || 'Author', href: '../author/index.html', at: 'author' },
+      { text: named['#library'] || 'Library', href: '../index.html#library', anchor: true },
+      { text: named['#rulings'] || 'Fatawa', href: '../fatawa/index.html', at: 'fatawa' },
+      { text: named['#contact'] || 'Contact', href: '../index.html#contact', anchor: true }
     ];
     return ['      <nav class="header-nav" aria-label="Sections">']
       .concat(links.map(function (link) {
@@ -2205,7 +2215,11 @@
   function cardLabelFont(text, px) {
     return CARD_ARABIC.test(String(text || ''))
       ? '500 ' + px + 'px "Mehr"'
-      : '700 ' + px + 'px "DM Sans"';
+      /* The patch behind it for the same reason the byline carries it.
+         No kind in KIND_IN_ENGLISH holds a mark today; one added later
+         would be drawn by the device's own sans and baked into the PNG
+         before anybody saw it. */
+      : '700 ' + px + 'px "DM Sans", "Latin marks sans"';
   }
 
   /* Aslam draws a space one pixel wide — the trap styles.css names as
@@ -2252,9 +2266,22 @@
       /* The two marks Gentium has no glyph for. Self-hosted beside Aslam
          and Mehr, and named here for the same reason they are: a canvas
          draws with whatever is loaded at the moment it draws, and an
-         unloaded face is silently a fallback. */
-      document.fonts.load('400 100px "Ayn and hamza"'),
-      document.fonts.load('700 100px "Ayn and hamza"'),
+         unloaded face is silently a fallback.
+
+         The second argument is not decoration and these two calls were
+         wrong without it. `document.fonts.load` only fetches the faces
+         that the text it is given actually needs, and the text it
+         assumes when you leave it out is "BESbswy" — which holds no
+         codepoint inside this font's `unicode-range`, so the face was
+         never fetched and every card was drawn with it missing. It went
+         unnoticed because `document.fonts.check` answered true, which
+         this file already records as something it does for a family that
+         was never loaded. Ask for the marks the font is actually for. */
+      document.fonts.load('400 100px "Ayn and hamza"', 'ʿʾ'),
+      document.fonts.load('700 100px "Ayn and hamza"', 'ʿʾ'),
+      /* Same again for the chrome's patch, which the byline draws with:
+         none of "BESbswy" is in U+1E00-1E9F either. */
+      document.fonts.load('700 34px "Latin marks sans"', 'ḥṬṣʿ'),
       /* Aslam and Mehr are self-hosted, declared by the @font-face rules
          in styles.css, which admin.html loads — so naming them here is
          enough wherever the editor is opened. The Worker proxies every
@@ -2262,8 +2289,22 @@
          admin.tahirqadri.com.pk as readily as from the site itself. */
       document.fonts.load('400 100px "Aslam"'),
       document.fonts.load('500 34px "Mehr"'),
-      document.fonts.load('700 100px "Amiri"'),
-      document.fonts.load('400 34px "Amiri"'),
+      /* Amiri needs its text for the same reason the two patches above
+         do, and this one had the furthest to fall. It comes from Google,
+         which serves it cut into subsets by `unicode-range`, so asking
+         for it with the assumed "BESbswy" fetches its **latin** file and
+         nothing else — and then every Arabic title on a card is drawn
+         with Amiri reported as loaded and no Arabic glyph in it. The
+         three Arabic works came out in the browser's own Arabic face,
+         bold and geometric where Amiri is a fine traditional Naskh, and
+         it was visible only by putting the old card beside the new one.
+
+         Aslam and Mehr directly above need no text: they are self-hosted
+         as one file each, with no unicode-range to split them, so any
+         load at all fetches the whole face. The difference is the
+         subsetting, not the script. */
+      document.fonts.load('700 100px "Amiri"', 'سعى الإفهام'),
+      document.fonts.load('400 34px "Amiri"', 'سعى الإفهام'),
       document.fonts.load('700 25px "DM Sans"'),
       document.fonts.load('700 34px "DM Sans"')
     ]).then(function () { return document.fonts.ready; });
@@ -2517,7 +2558,11 @@
       ctx.font = cardTitleFont('ur', 36);
       fillSpaced(ctx, byline, x, CARD_H - 52, 36 * 0.22, rtl);
     } else {
-      ctx.font = '700 34px "DM Sans"';
+      /* The patch behind DM Sans, exactly as --font-ui names it: this
+         byline is the author's name, and DM Sans has no ḥ, Ṭ or ʿ. A
+         canvas bakes in what it draws, so a fallback here is permanent
+         in the PNG — unlike a page, which a later stylesheet fixes. */
+      ctx.font = '700 34px "DM Sans", "Latin marks sans"';
       ctx.fillText(byline, x, CARD_H - 52);
     }
 
@@ -2880,7 +2925,7 @@
     var jsonLd = JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'CollectionPage',
-      name: 'Fatawa — Islamic rulings',
+      name: 'Fatāwā — Islamic rulings',
       url: url,
       inLanguage: ['ur', 'ar', 'en'],
       description: FATAWA_NOTE,
@@ -2931,8 +2976,8 @@
 
     return [
       landingHead({
-        title: 'Fatawa — Islamic rulings — ' + author,
-        ogTitle: 'Fatawa — Islamic rulings',
+        title: 'Fatāwā — Islamic rulings — ' + author,
+        ogTitle: 'Fatāwā — Islamic rulings',
         description: FATAWA_NOTE,
         author: author, url: url, base: base, jsonLd: jsonLd
       }),
@@ -3163,11 +3208,46 @@
     }));
   }
 
+  /* The author's name above the headline, with the kunya and the nisba
+     set a step smaller than the name proper.
+
+     Asked for as a way to get the name onto one line on a phone, and it
+     does that from 390px up: the plain name is 355px at 15px against a
+     328px hero column, and the graded one is 322.
+
+     The first set of numbers said the opposite — that no step could fit
+     — and they were wrong because they were taken with Google's CDN
+     turned away, so every width was the fallback face's rather than DM
+     Sans's. That is the same blind spot test/homepage.mjs has by
+     design, and it is worth naming here: a width measured without the
+     real font is not a width. Re-measured with DM Sans served, the name
+     is 47px narrower than the fallback made it look.
+
+     Below 390px it stays two lines and no step mends that: the middle
+     name and its spaces are 209px alone against 302px at 360px, so the
+     flanks would have to drop under 0.64em — a 9.6px name. The step is
+     in styles.css, with the ladder it was chosen off.
+
+     Written from `eyebrowParts`, which must spell `eyebrow` exactly;
+     anything else and the plain string is written instead, so a name
+     edited in the editor cannot publish a hero that disagrees with the
+     byline, the card and the introduction. */
+  function heroName(hero) {
+    var e = site.escapeHtml;
+    var parts = hero.eyebrowParts;
+    if (!parts || parts.length !== 3 || parts.join(' ') !== hero.eyebrow) {
+      return e(hero.eyebrow);
+    }
+    return '<span class="name-quiet">' + e(parts[0]) + '</span> ' +
+      e(parts[1]) +
+      ' <span class="name-quiet">' + e(parts[2]) + '</span>';
+  }
+
   function indexHero(indent) {
     var e = site.escapeHtml;
     var hero = model.hero || {};
     return stack(indent, [
-      hero.eyebrow ? '<p class="eyebrow"' + langAttrs(hero.eyebrow) + '>' + e(hero.eyebrow) + '</p>' : '',
+      hero.eyebrow ? '<p class="eyebrow"' + langAttrs(hero.eyebrow) + '>' + heroName(hero) + '</p>' : '',
       '<h1>' + e(hero.headline || '') +
         (hero.headlineEm ? '<em>' + e(hero.headlineEm) + '</em>' : '') + '</h1>',
       hero.copy ? '<p class="hero-copy"' + langAttrs(hero.copy) + '>' + e(hero.copy) + '</p>' : '',
@@ -4477,7 +4557,7 @@
     });
     if (rulings.length) {
       var group = el('section', 'admin-group');
-      var heading = el('h2', null, 'Fatawa');
+      var heading = el('h2', null, 'Fatāwā');
       heading.appendChild(el('span', 'admin-count', rulings.length + ' of ' + (model.rulings || []).length));
       group.appendChild(heading);
       rulings.forEach(function (entry) {
@@ -4605,7 +4685,7 @@
     var found = [];
     var seen = {};
     eachRecord(function (record, list, index, category) {
-      var where = (category ? category.title : 'Fatawa') + ' → ' + (record.title || record.id || 'untitled');
+      var where = (category ? category.title : 'Fatāwā') + ' → ' + (record.title || record.id || 'untitled');
       if (!record.id) found.push(where + ': needs an id.');
       else if (!/^[a-z0-9-]+$/.test(record.id)) found.push(where + ': the id "' + record.id + '" may use only lowercase letters, numbers and hyphens.');
       else if (seen[record.id]) found.push('Two entries share the id "' + record.id + '". Ids must be unique.');
@@ -5170,7 +5250,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-10-02.1';
+  var EDITOR_VERSION = '2026-10-04.1';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */

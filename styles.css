@@ -44,8 +44,40 @@
      `Sharīʿah` — the single most-used term here. Cardo was the runner-up
      and is what the patch above is cut from; it reads a touch small at
      this body size and took an English post's h1 to a fourth line. */
-  --font-display: "Gentium Book Plus", "Ayn and hamza", Georgia, "Times New Roman", serif;
-  --font-ui: "DM Sans", system-ui, -apple-system, sans-serif;
+  /* `Superscript digits` comes FIRST, and that is deliberate — see its
+     @font-face below. Gentium has ¹ ² ³ ⁴ and not ⁰ ⁵ ⁶ ⁷ ⁸ ⁹, so a
+     reference list numbered past four was set in two faces at once. A
+     unicode-range limits what a face may draw; it does not give it
+     priority. Behind Gentium this patch would change nothing.
+
+     `Amiri` at the end catches Arabic set inside an English sentence —
+     the honorifics, (رضي الله عنه) and its kin — which carry no .arabic
+     class because they are a few words inside a Latin paragraph, and so
+     inherited this stack and fell out of it to the device's own sans.
+     It sits after Gentium and the two patches, so it is never reached
+     for Latin. */
+  --font-display: "Superscript digits", "Gentium Book Plus", "Ayn and hamza", "Amiri", Georgia, "Times New Roman", serif;
+  /* `Latin marks sans` behind DM Sans is the same patch as the one above
+     it, in the face that draws the chrome — and it was found the same
+     way, by rendering each character with the real file served and
+     asking which face drew it rather than reading the declaration.
+
+     DM Sans's latin-ext DECLARES U+1E00-1E9F and U+02BD-02C5 and holds
+     neither, exactly as Newsreader's did. It has the macrons: ā ī ū come
+     out of DM Sans itself. It has none of the dots below. So the one
+     personal name on the site — in the hero above the headline, in the
+     footer beside the copyright, and baked into all thirty share cards —
+     had the ḥ of Muḥammad, the Ṭ of Ṭāhir and the ʿ of An-Naʿīmī drawn
+     by whatever sans the reader's device happened to have, with the ā
+     and ī beside them coming from DM Sans. Three letters of a name in a
+     second typeface, which is the Ṣaḥīḥ fault in one more place.
+
+     It carries the whole U+1E00-1E9F block, not the ten characters used
+     today, so it covers exactly what Gentium covers on the display side
+     and a word in a label cannot come out in a different face from the
+     same word in the prose. 12KB for both weights; the ten-character cut
+     was measured at 4.6KB and the difference buys that parity. */
+  --font-ui: "DM Sans", "Latin marks sans", system-ui, -apple-system, sans-serif;
   /* Mehr first — closer to traditional Nastaliq calligraphy than Noto's
      own, which is why it's here at all — but Noto Nastaliq Urdu, already
      loaded for this same fallback role, catches it if Mehr's file (self-
@@ -302,6 +334,51 @@ img { max-width: 100%; }
   unicode-range: U+02BE-02BF;
 }
 
+/* The reference numerals, all ten from one face. Gentium has ¹ ² ³ ⁴
+   and not ⁰ ⁵ ⁶ ⁷ ⁸ ⁹ — read off its cmap, and confirmed by asking the
+   browser which face painted each one — so the posts that number their
+   references past four had markers 1 to 4 in Gentium and 5, 6 and 7 in
+   a system serif, side by side down the same list.
+
+   It is named first in --font-display, which is the part to be careful
+   with: a unicode-range says what a face is *allowed* to draw, not that
+   it is preferred. Named after Gentium this file would be fetched and
+   then never used for ¹ ² ³ ⁴, and the list would still be mixed.
+   See files/fonts/superscript-digits-NOTICE.txt for the licence. */
+@font-face {
+  font-family: "Superscript digits";
+  src: url("files/fonts/superscript-digits-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+00B2-00B3, U+00B9, U+2070-2079;
+}
+
+/* The same patch for the chrome, cut from Noto Sans, and the reason it
+   exists is above on --font-ui: DM Sans declares U+1E00-1E9F and
+   U+02BD-02C5 and holds neither, so the author's name lost three
+   letters to the device's own sans wherever the chrome drew it.
+
+   This one carries the whole block rather than two codepoints, which is
+   the one way it differs from the patch above. The range declared here
+   is exactly what the files hold — 162 of 162, checked by reading the
+   cmap — because this file's own lesson is that a declaration which
+   overstates what is inside is worse than no declaration at all.
+   See files/fonts/latin-marks-sans-NOTICE.txt for the licence. */
+@font-face {
+  font-family: "Latin marks sans";
+  src: url("files/fonts/latin-marks-sans-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+02BE-02BF, U+1E00-1E9F;
+}
+@font-face {
+  font-family: "Latin marks sans";
+  src: url("files/fonts/latin-marks-sans-700.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+  unicode-range: U+02BE-02BF, U+1E00-1E9F;
+}
+
 h1, h2, h3 {
   font-family: var(--font-display);
   font-weight: 600;
@@ -336,6 +413,25 @@ h1, h2, h3 {
   font-size: clamp(15px, 1.5vw, 18px);
   margin-bottom: 14px;
 }
+/* The kunya and the nisba, a step under the name proper. `em`, not px,
+   so the step holds at both ends of the clamp above — 11.7px against 15
+   on a phone, 14px against 18 on a desktop — and the 0.04em tracking
+   scales with it rather than opening the smaller words up.
+
+   0.78 was measured, and measured twice, because the first figures were
+   taken with Google's CDN turned away and were therefore the fallback
+   face's, not DM Sans's. In DM Sans the name is 355px at 15px, and the
+   hero column is 328px at 390px. The flanking two names are only 146px
+   of that 355, so the ladder is shallow: 0.82 gives 328 — a fit by
+   exactly nothing — and 0.74 gives 317. 0.78 is 322, six pixels clear,
+   which is the reason to prefer it over the nearer step.
+
+   What it buys, precisely: one line from 390px up, where the plain name
+   needs 430. Below 390 it is two lines and no step fixes that — the
+   middle name and its spaces are 209px on their own against 302px at
+   360px, so the flanks would have to go under 0.64, which is a 9.6px
+   name. Two lines there, deliberately. */
+.eyebrow .name-quiet { font-size: 0.78em; }
 
 /* Urdu and Arabic need their own size and leading, everywhere. Mehr's
    x-height reads smaller than Noto Nastaliq Urdu's did at the same
@@ -454,16 +550,41 @@ h1, h2, h3 {
 .button:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(0, 0, 0, 0.16); }
 .button-dark { background: var(--moss-deep); color: #f6f1e4; }
 
+/* 2px, not 1. The search box was reported as *mixed with the website*
+   when it sat behind a 1px border, and the answer there was a 2px rule —
+   same reasoning here, for the same reader. A text link is the only thing
+   marking these as controls at all, and 1px of it against a filled tag
+   pill two lines above lost that argument. Contrast was never the
+   problem: measured by sampling the rendered pixels, every control on the
+   site passes WCAG AA and Share sits at 7.69:1. What was weak was the
+   *affordance*, which no contrast ratio reports. */
 .text-link,
 .document-link {
   position: relative;
   color: var(--moss);
   font-family: var(--font-ui);
   font-weight: 700;
-  font-size: 14px;
+  font-size: 15px;
   text-decoration: none;
-  border-bottom: 1px solid currentColor;
+  border-bottom: 2px solid currentColor;
   padding-bottom: 2px;
+}
+
+/* The mark leads the word on these two, where `.icon-inline`'s own
+   margin is written for an icon that follows one. A flex gap rather than
+   a margin because this row sits on Urdu pages too and a gap cannot be
+   read two ways; `align-items: center` then does what the -0.16em
+   baseline nudge does for a trailing icon. */
+.page-tools .text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34em;
+}
+.page-tools .text-link .icon-inline {
+  margin-inline-start: 0;
+  width: 1.12em;
+  height: 1.12em;
+  vertical-align: baseline;
 }
 /* `.text-link` was written for an `<a>`, which has no chrome of its own to
    strip. Share and Print are `<button>`s — nothing to navigate to, only
@@ -473,13 +594,17 @@ h1, h2, h3 {
 button.text-link {
   background: none;
   border: 0;
-  border-bottom: 1px solid currentColor;
+  border-bottom: 2px solid currentColor;
   cursor: pointer;
   padding: 0 0 2px;
   font: inherit;
   font-family: var(--font-ui);
   font-weight: 700;
-  font-size: 14px;
+  /* 15, matching `.text-link` above — this selector is `button.text-link`,
+     which outbids it, so leaving 14 here made the size change above a
+     no-op. Chromium's own matched-rule list is what said so; a grep for
+     `.text-link` does not show you which rule wins. */
+  font-size: 15px;
 }
 
 /* These links are the point of the site and they are only 21px tall.
@@ -643,7 +768,12 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .header-nav { display: flex; gap: 22px; }
 .header-nav a {
   position: relative;
-  font-size: 14px;
+  /* The body went to 17px with the face change and the chrome did not
+     follow, so the navigation was reading at 0.82 of the prose and at
+     0.71 on a phone, where it steps down twice. Raised a step at each
+     band — and the narrow bands are the ones that had to be measured,
+     because four links at 207px already clipped by 56px at 320. */
+  font-size: 15px;
   color: var(--muted);
   text-decoration: none;
   padding: 4px 0;
@@ -1154,7 +1284,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
    beside the date rather than above it. */
 .recent-card-body .work-line { gap: 2px 8px; margin-top: 2px; }
 .recent-card-body .work-kind { font-size: 13px; line-height: 1.7; }
-.recent-card-body .record-meta { font-size: 11px; letter-spacing: 0.05em; }
+.recent-card-body .record-meta { font-size: 12px; letter-spacing: 0.05em; }
 
 /* Arriving as you reach them. The class carries the movement and the
    state it moves from, both — so a card with no JavaScript, no observer
@@ -1646,7 +1776,7 @@ body.is-searching .rulings h2 { margin-bottom: 26px; }
 .ruling p.urdu,
 .ruling p.arabic { -webkit-line-clamp: 2; line-clamp: 2; }
 
-.ruling-open { color: var(--gold-on-light); font-size: 13px; font-weight: 700; }
+.ruling-open { color: var(--gold-on-light); font-size: 14px; font-weight: 700; }
 
 /* 9 ── Contact ────────────────────────────────────────────── */
 
@@ -1689,10 +1819,13 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   display: inline-block;
   margin-bottom: 34px;
   color: var(--moss);
-  font-size: 14px;
+  /* Its own size and rule, not `.text-link`'s — so both had to be raised
+     here too, or the one control at the top of every record page stayed
+     a step quieter than the two at the foot. */
+  font-size: 15px;
   font-weight: 700;
   text-decoration: none;
-  border-bottom: 1px solid currentColor;
+  border-bottom: 2px solid currentColor;
 }
 /* balance shares the words evenly between however many lines a title
    takes, instead of filling the first and leaving whatever is left on
@@ -2590,7 +2723,7 @@ footer {
 @media (max-width: 620px) {
   .site-header { height: auto; min-height: 62px; padding-block: 10px; }
   .header-nav { gap: 14px; }
-  .header-nav a { font-size: 13px; }
+  .header-nav a { font-size: 14px; }
   /* Library and Fatawa are both in the category strip directly below, so
      on a phone the header keeps only what the strip does not repeat and
      gives the width back to the wordmark. */
@@ -2634,7 +2767,24 @@ footer {
   .brand { font-size: 12px; }
   .brand-mark { font-size: 17px; margin-right: 5px; }
   .header-nav {
-    gap: 12px;
+    /* 10, not 12, and the two pixels were bought rather than saved. At
+       390px — the width where all four links first appear — the header's
+       content box is 358px and the three claims on it are exact: a
+       wordmark of 125 at its 15ch cap, the row's own 12px gap, and four
+       links. Raising the links to 13px took them from 207 to 222, so the
+       sum came to 359 and Contact sat one pixel off the edge. Dropping
+       this gap gives 6px back (three gaps), which lands the nav at 216 of
+       221 and leaves five to spare.
+
+       Nothing is taken away for it: the invisible tap pad is
+       `inset: -8px 0`, vertical only, so a narrower gap cannot make two
+       targets overlap — the warning above is about widening the links
+       sideways, which is a different thing. The three alternatives were
+       measured and each costs something: the row gap gives only 2px, a
+       14ch wordmark risks the wrap that drives header height at 480–620,
+       and keeping the links at 12px gives up the readability on the one
+       screen the raise was for. */
+    gap: 10px;
     min-width: 0;
     overflow-x: auto;
     scrollbar-width: none;
@@ -2653,7 +2803,7 @@ footer {
     margin-block: -9px;
   }
   .header-nav::-webkit-scrollbar { display: none; }
-  .header-nav a { flex: none; font-size: 12px; }
+  .header-nav a { flex: none; font-size: 13px; }
 }
 
 /* ---- More in this category ----

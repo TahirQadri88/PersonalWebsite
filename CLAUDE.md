@@ -168,6 +168,154 @@ self-hosted, so the browser really draws it in the suite, and CDP's
 of the stack and that assertion reports `drawn by Liberation Serif` and
 fails. The run proving that is the only reason it is worth having.
 
+**The same gap was in the sans all along, and nobody had re-checked
+it.** The Gentium work above fixed the serif and stopped there.
+**DM Sans** — which draws the whole chrome, and with it the one personal
+name on the site — has `ā ī ū` and has **none** of `ḥ Ḥ ṭ Ṭ ṣ Ṣ ḍ ẓ`,
+nor the ayn. Its `latin-ext` **declares** `U+1E00-1E9F` and `U+02BD-02C5`
+and holds neither: Newsreader's fault exactly, in the face sitting beside
+it the whole time. So *Abul Laith Muḥammad Ṭāhir Qādrī An-Naʿīmī* —
+in the hero above the headline, in the footer beside the copyright, and
+baked into the byline of all thirty share cards — had the **ḥ**, the
+**Ṭ** and the **ʿ** drawn by the device while the `ā` and `ī` next to
+them came from DM Sans. Three letters of a name in another typeface.
+
+`Latin marks sans` in `styles.css` is the answer, cut from **Noto Sans**,
+the only sans measured that had all fifteen. It carries the whole
+`U+1E00-1E9F` block rather than the ten characters used today — 12KB for
+both weights, against 4.6KB for the ten, measured — because that makes it
+cover **exactly what Gentium covers** on the display side, so a word in a
+label can never come out in a different face from the same word in the
+prose beside it. A `unicode-range` is only ever as honest as the file: it
+declares 162 code points and the file holds 162, read off the cmap.
+
+**Order in a stack is not the same as a `unicode-range`, and the
+superscripts are where that bites.** Gentium has `¹ ² ³ ⁴` and does
+**not** have `⁰ ⁵ ⁶ ⁷ ⁸ ⁹`. The posts number their references `¹` to
+`⁷`, so markers 1–4 were Gentium and 5, 6, 7 a system serif — twelve
+characters down two lists, in the one place a reader compares two marks
+directly. `Superscript digits` (1.4KB, cut from Noto Serif, which is the
+only serif measured that has all ten) is named **before** Gentium in
+`--font-display`, and that is the whole point: a `unicode-range` says
+what a face is *allowed* to draw, never that it is preferred. Behind
+Gentium the file would be fetched and then never used for `¹ ² ³ ⁴`, and
+the list would still be set in two faces. Noto Serif had to be built from
+**two** of Google's subsets — `¹ ² ³` are in `latin` and the rest in
+`latin-ext`, so no single file it serves holds all ten.
+
+**Arabic inside an English sentence had no face at all.** The honorifics
+— `(رضي الله عنه)`, `(عليه السلام)` — are a few words inside a Latin
+paragraph, so they carry no `.arabic` class, inherit `--font-display`,
+and fell out of it to DejaVu Sans. `Amiri` is last in that stack now. It
+sits after Gentium and both patches, so it is never reached for Latin.
+
+**`document.fonts.load()` without its second argument is the subtlest
+trap here, and it had caught three faces.** It fetches only the files the
+text it is given needs, and the text it assumes is `BESbswy`. So
+`ensureCardFonts` named `Ayn and hamza` and never loaded it; it named
+`Latin marks sans` and would not have; and — the one that had actually
+shipped — it named **Amiri**, fetched Amiri's *latin* file, and drew
+every Arabic card title with no Arabic glyph in the family it had just
+"loaded". `document.fonts.check` answered `true` throughout, which this
+file already records as what it does for a family that was never loaded.
+
+**`files/cards/bustan-bani-amir.jpg` was published that way**, in the
+browser's own Arabic face — heavy and geometric where Amiri is a fine
+traditional Naskh — and a card is a PNG, so it stayed wrong. It was
+visible only by putting the old card beside the new one and **looking**;
+no measurement of the card said anything. The other two Arabic cards come
+back byte-identical once Amiri is asked for properly, which is what
+proves the fix rather than a third opinion about the shapes.
+
+Aslam and Mehr need no text and that is not because they are Arabic: they
+are self-hosted as one file each, with no `unicode-range` to split them,
+so any load fetches the whole face. **The difference is the subsetting,
+not the script** — which means every face Google serves needs asking in
+the script it will draw.
+
+The regeneration harness had the same bug in its own proof, and that is
+why this survived: it checked `amiri` with the default probe and printed
+`true` while writing cards drawn without it. A proof that asks the wrong
+question is worse than no proof, because the run looks verified.
+
+**How all of this was found, and the probe that had to be thrown away
+twice.** Not by reading stacks — every one of them *looked* right. The
+sweep wraps nothing and asks `CSS.getPlatformFontsForNode` of the element
+that **owns** the text, then fails on any family the site does not name.
+Three earlier versions were wrong, each in a way that reads exactly like
+a fault:
+
+- `(none)` from that call means *no glyphs were painted*, which is a
+  hidden element, not a fallback. The library rows are shut `<details>`
+  and `.print-credit` exists only in `@media print`. Open the first;
+  emulate print for the second — in a **separate pass**, because print
+  media hides the library you just opened.
+- `scrollIntoView` is defeated here: the page scrolls smoothly, which is
+  asynchronous, and the category rail listens on scroll. `window.scrollTo`
+  on the document, then two frames.
+- Wrapping each mark in its own `<span>` **splits the shaping run**, and
+  Chromium then reports the glyphs against the parent — so a span sitting
+  mid-word answers "no fonts" on text that is drawn perfectly well. This
+  one reported 284 false faults and is the same mistake as the
+  `getClientRects()` probe above: when a fresh probe reports a large fault
+  rate, suspect the probe.
+
+**A width measured without the real font is not a width, and this cost a
+wrong comment before it cost anything else.** The hero name was measured
+with Google's CDN turned away — the suite's own default — and the numbers
+said the name needed 402px against a 328px column and that *no* step
+could bring it onto one line. With DM Sans actually served it is
+**355px**, and the graded form is 322. The first account was written into
+two comments as fact before the second measurement contradicted it. The
+suite cannot be used for this: what decides the wrap is DM Sans's width,
+and `open()` never loads DM Sans.
+
+**The hero name is graded, and 0.78 is a measurement not a taste.** The
+kunya and the nisba are `0.78em` of the name proper — one line from
+**390px** up, where the plain name needs 430. The ladder is shallow,
+because the two outer names are only 146px of the 355: `0.82` gives 328
+against a 328px column, which is a fit by exactly nothing, and `0.74`
+gives 317. `0.78` is 322, six pixels clear. Below 390px it is two lines
+and no step mends it — the middle name and its spaces are 209px alone
+against 302px at 360px, so the flanks would have to go under `0.64em`, a
+9.6px name.
+
+Written from `eyebrowParts` in `content.js`, which must spell `eyebrow`
+exactly or `heroName` writes the plain string instead — so a name edited
+in the editor cannot publish a hero that disagrees with the byline, the
+card and the introduction. The guard asserts the **structure**, never the
+line count, for the reason above.
+
+**The nav had two copies of its own words.** `indexNav` reads
+`model.nav`; `pageNav` held its own list — so the same link was `Fatāwā`
+on the homepage and `Fatawa` on all thirty-three generated pages, and on
+the fatāwā page's own `<title>`. `pageNav` takes the text from
+`content.js` now, matched by the anchor each link answers to on the
+homepage, and keeps only the hrefs, which really are structure: a
+generated page sits one folder down and climbs out with `../`.
+
+**The chrome was reading at 0.71 of the prose on a phone.** The body went
+to 17px with the face change and the chrome did not follow. Raised a step
+at each band — and the narrow bands had to be measured, because at
+**390px**, the width where all four nav links first appear, the three
+claims on the header's 358px content box are exact: a 125px wordmark at
+its `15ch` cap, the row's own 12px gap, and the links. At 13px the links
+want 222, so the sum came to 359 and Contact sat **one pixel** off the
+edge. The nav's own gap went 12 → 10px, which gives 6px back across three
+gaps and lands it at 216 of 221. Nothing is lost for it: the invisible tap
+pad is `inset: -8px 0`, vertical only, so a narrower gap cannot make two
+targets overlap — the warning beside it is about widening the links
+sideways, which is a different thing. The three alternatives were measured
+and each costs something: the row gap gives only 2px, a `14ch` wordmark
+risks the wrap that drives header height at 480–620, and leaving the links
+at 12px gives up the readability on the one screen the raise was for.
+
+**Share and Print are drawn now, and the rule under them is 2px.** They
+were two words with a 1px hairline, which at 15px on cream read as text
+rather than as controls. Both icons are in the same sprite as the rest —
+no new request — and the rule doubled, which is the same argument the
+search box's own 2px gold edge already makes.
+
 **Every page asks for its fonts with one URL now.** There were five
 variants, two disagreeing about a weight and one on a page nobody had
 looked at in a while. The guard reads every `.html` in the repository and
@@ -1581,6 +1729,18 @@ measured), and the calligraphy is written at 840px and 64 colours, which is
 creep back. The full-resolution `*-source.*` files are **kept**: nothing
 serves them, they cost a visitor nothing, and after the downsample above
 they are the only originals left.
+
+The three patch faces are the only things added to that since, and what
+each page actually fetches was **counted off the wire**, not reasoned
+from the stacks — the first version of this paragraph guessed and got it
+wrong. The homepage pulls `latin-marks-sans` at both weights (11.9KB, for
+the hero name at 700 and the footer at 400) **and** both weights of `ayn
+and hamza` (1.3KB), and does **not** pull `superscript-digits`: 13.2KB of
+patch in all. A post pulls `latin-marks-sans` at 400 only, the ayn patch,
+and `superscript-digits` (1.4KB) — 9.2KB. That asymmetry is the
+`unicode-range` doing its job, and it is why one of these cannot be
+weighed by its size on disk. Each has its own cap in `test/homepage.mjs`
+beside the reason it exists.
 
 **Space between sections is a ratio, not a number.** `--block` sets the
 vertical padding on the four full-bleed sections; `--block-tight`

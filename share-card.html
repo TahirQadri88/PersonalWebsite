@@ -41,9 +41,10 @@
     margin-top: 24px;
     max-width: 800px;
     /* No "Ayn and hamza" behind it: that face is declared in styles.css,
-       which this page does not load, and this card's words hold neither
-       mark. A stack naming a face that is not declared here would be a
-       reference to nothing. */
+       which this page does not load, and this heading's own words hold
+       neither mark. A stack naming a face that is not declared here
+       would be a reference to nothing. The name below is a different
+       case and declares what it needs. */
     font-family: "Gentium Book Plus", Georgia, serif;
     font-weight: 400;
     font-size: 84px;
@@ -52,7 +53,24 @@
     color: #f7f4ec;
   }
   h1 em { font-style: normal; color: #ecd9b0; }
-  .name { margin-top: 52px; color: #dfe8e2; font-size: 30px; }
+  /* The author's name, and the one line on this card that holds marks
+     DM Sans does not have: the ḥ of Muḥammad, the Ṭ of Ṭāhir and the ʿ
+     of An-Naʿīmī all fall through to the system sans without this.
+     Declared here rather than inherited, because this page does not
+     load styles.css — and unlike a page, a card is a screenshot, so a
+     fallback is baked in for good. Same file the site serves. */
+  @font-face {
+    font-family: "Latin marks sans";
+    src: url("files/fonts/latin-marks-sans-400.woff2") format("woff2");
+    font-weight: 400;
+    unicode-range: U+02BE-02BF, U+1E00-1E9F;
+  }
+  .name {
+    margin-top: 52px;
+    color: #dfe8e2;
+    font-size: 30px;
+    font-family: "DM Sans", "Latin marks sans", sans-serif;
+  }
   .meta { margin-top: 12px; color: #9fb3a8; font-size: 30px; }
   .meta span { padding: 0 10px; color: #6f8a7d; }
 </style></head>
@@ -61,6 +79,6 @@
   <div class="rule"></div>
   <p class="eyebrow">Scholarly Works and Research</p>
   <h1>A library of<br /><em>useful knowledge.</em></h1>
-  <p class="name">Abul Laith Muhammad Tahir Qadri An-Naeemi</p>
-  <p class="meta">Booklets<span>·</span>Manuscripts<span>·</span>Charts<span>·</span>Fatawa</p>
+  <p class="name">Abul Laith Muḥammad Ṭāhir Qādrī An-Naʿīmī</p>
+  <p class="meta">Booklets<span>·</span>Manuscripts<span>·</span>Charts<span>·</span>Fatāwā</p>
 </body></html>

@@ -1,0 +1,39 @@
+Latin marks sans
+
+A subset of Noto Sans carrying U+1E00-1E9F (Latin Extended Additional —
+the letters with a dot below, among them ḥ ṣ ṭ ẓ ḍ and their capitals)
+and U+02BE-02BF (ʾ hamza, ʿ ayn), and nothing else. 162 code points,
+5.8KB at 400 and 6.2KB at 700.
+
+Noto Sans is licensed under the SIL Open Font License, Version 1.1:
+https://scripts.sil.org/OFL — the copyright carries no Reserved Font
+Name, so subsetting and redistribution are permitted. The family has
+been renamed from "Noto Sans" to "Latin marks sans" inside the font,
+because this is a modified subset and must not be mistaken for Noto
+Sans entire. Instanced from the variable file at wght 400 and 700,
+which are the two weights the site's chrome actually draws.
+
+Why it exists, and it is the same fault as the ayn patch beside it in
+one more face. DM Sans sets this site's chrome — the wordmark, the
+navigation, the labels, the buttons, the footer, and the author's name
+above the headline. Its latin-ext subset DECLARES U+1E00-1E9F and
+U+02BD-02C5 and holds neither, exactly as Newsreader's did. Measured
+by rendering each character with the real file served and asking the
+browser which face drew it: ā ī ū come from DM Sans, while ḥ Ḥ ṭ Ṭ ṣ Ṣ
+ḍ ẓ ʾ ʿ all fall through to whatever sans the device has.
+
+So "Abul Laith Muḥammad Ṭāhir Qādrī An-Naʿīmī" — the one personal name
+on the site, set in the hero above the headline, in the footer beside
+the copyright, and as the byline baked into all thirty share cards —
+had three of its letters drawn by a different typeface from the rest.
+A declared unicode-range is a statement about which file to fetch, not
+a promise that the glyph is inside it.
+
+Scoped by unicode-range in styles.css so it can only ever draw those
+marks; everything else is DM Sans's. The whole U+1E00-1E9F block is
+carried rather than only the ten characters the site uses today, so
+this matches Gentium's coverage on the display side exactly — a word
+in a label and the same word in the prose beside it cannot come out in
+different faces. The ten-character subset was built and measured at
+4.6KB; the extra 7.4KB buys that parity and a unicode-range that stays
+truthful as the library grows.

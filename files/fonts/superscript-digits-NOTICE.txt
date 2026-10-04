@@ -1,0 +1,33 @@
+Superscript digits
+
+A thirteen-glyph subset carrying ⁰ ¹ ² ³ ⁴ ⁵ ⁶ ⁷ ⁸ ⁹ (U+2070-2079,
+U+00B2-00B3, U+00B9) and nothing else. 1.4KB, one weight.
+
+Cut from Noto Serif, licensed under the SIL Open Font License, Version
+1.1: https://scripts.sil.org/OFL — no Reserved Font Name, so subsetting
+and redistribution are permitted. Renamed inside the font from "Noto
+Serif" to "Superscript digits", because this is a modified subset and
+must not be mistaken for Noto Serif entire.
+
+Built by merging two of Google's own subsets: Google splits ¹ ² ³ into
+the `latin` file and ⁰ ⁴ ⁵ ⁶ ⁷ ⁸ ⁹ into `latin-ext`, so no single file
+it serves holds all ten.
+
+Why it exists: Gentium Book Plus has ¹ ² ³ ⁴ and does NOT have
+⁰ ⁵ ⁶ ⁷ ⁸ ⁹. The site's posts number their references ¹ to ⁷, so in one
+footnote list markers 1 to 4 were drawn by Gentium and 5, 6 and 7 by
+whatever serif the reader's device supplied — twelve characters across
+two posts, in the one place a reader compares two marks directly
+against each other. Found by asking the browser which face painted each
+character, not by reading the stack.
+
+The ordering in styles.css is the whole point and is easy to get wrong.
+This face is named BEFORE Gentium in --font-display, not after it. A
+unicode-range does not grant priority: it only limits what a face may
+draw. Put this one second and Gentium would keep ¹ ² ³ ⁴ and the list
+would still be set in two faces — which is the fault, not a smaller
+version of it.
+
+One weight only. These are body-prose footnote markers, which are 400;
+a marker inside a bold run gets the browser's synthesised bold, and at
+the size a superscript is drawn that is not worth a second file.
