@@ -1720,6 +1720,27 @@ are put back. The band matters: the byline and the domain share a row
 at opposite ends of the card, so measuring their row reports a hole on
 every card.
 
+**An infographic is flat colour and sharp type, which is the one case
+JPEG loses twice.** The charts in `files/social-media-posts-and-pamphlets/`
+ship as **256-colour PNG at the author's native export size**, and every
+part of that was measured rather than assumed:
+
+- At 2160×2700, JPEG q86 is **436KB** against the source PNG's **325**,
+  and it rings around the type. Quantised to 256 colours the same image
+  is **137KB at a mean shift of 0.00/255** — the design has few distinct
+  colours, so quantising costs nothing at all. Checked by eye as well, on
+  the seal and on the smallest caption line, where nothing moved.
+- **Downscaling makes it bigger.** Resized to the 1600px width the old
+  files used, the same 256-colour PNG is **237KB** — resampling invents
+  thousands of intermediate colours at every edge and PNG stops
+  compressing. It costs fidelity too (0.17/255). So these do not get the
+  downsample the calligraphy got; the rule there was about a photograph,
+  and it does not generalise to flat artwork.
+
+Twelve files at 1.41MB replaced eight at 2.33MB, with half as much again
+in content. `IMAGE_FILE` in `common.js` already matched `png`, so the
+gallery needed no telling.
+
 **Weight is a design decision, and the test measures it.** The homepage was
 961KB: a decorative 518KB PNG inside the collapsed bio, and two fonts
 shipped as TTF. It is ~320KB now — the fonts are woff2 (58% smaller,
