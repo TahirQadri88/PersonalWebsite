@@ -841,7 +841,199 @@ try {
     await page.waitForTimeout(200);
     t('clearing it brings everything back',
       (await page.evaluate(() => [...document.querySelectorAll('.work')].filter((e) => !e.hidden).length)) === total);
+    const badges = await page.evaluate(() =>
+      [...document.querySelectorAll('.work-category-count')].map((b) => b.textContent));
+    t('…and the category counts go back to counting the category',
+      badges.length > 0 && badges.every((b) => / works?$/.test(b) && b.indexOf(' of ') === -1),
+      JSON.stringify(badges));
     await context.close();
+  }
+
+  /* ---- a search brings the reader to the results ----------------------
+
+     Reported as *I search commodities it filters the page but mobile
+     screens have the fatwa scrolled down*. Measured at 390px before the
+     fix: the box sits 2040px down the page and a term matching one work
+     and one fatwa put them at 2363 and 2734 — so the filter ran, the count
+     said "1 work and 1 fatwa", and neither was anywhere on the screen.
+     Nothing scrolled, so what a reader saw depended entirely on where they
+     happened to be standing.
+
+     This measures the result, not the mechanism: where the surviving cards
+     land in the viewport. There are three ways to break it — never
+     anchoring, anchoring to the wrong line, and letting the furniture
+     between the sections grow again — and all three come out here. */
+  group('a search brings the results onto the screen');
+  {
+    const phone = async (path) => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      await context.route('https://fonts.g**', (r) => r.abort());
+      const page = await context.newPage();
+      page.on('pageerror', (e) => threw.push('search ux: ' + e.message));
+      await page.goto(`http://127.0.0.1:${PORT}${path}`, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => document.fonts.ready);
+      await page.waitForTimeout(150);
+      /* The strip advances on its own; a measurement taken while it is
+         moving depends on how long the load took. */
+      await page.evaluate(() => {
+        const s = document.getElementById('recent');
+        if (s) s.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+      });
+      return { context, page };
+    };
+    /* Where things are, after the smooth scroll has had time to land.
+       `scroll-padding-top` is read from the page rather than written in
+       here: it is 152px and 158 in the band where the wordmark wraps, and
+       both numbers have moved before. */
+    const settled = (page, selector) => page.evaluate((sel) => {
+      const row = document.querySelector(sel);
+      const vh = window.innerHeight;
+      return {
+        rowTop: Math.round(row.getBoundingClientRect().top),
+        clear: Math.round(parseFloat(
+          getComputedStyle(document.documentElement).scrollPaddingTop) || 0),
+        y: Math.round(window.scrollY),
+        most: Math.round(document.documentElement.scrollHeight - vh),
+        vh,
+        cards: [...document.querySelectorAll('.work:not([hidden]), .ruling:not([hidden])')]
+          .map((el) => {
+            /* The card's own title, not the card's top edge. A card whose
+               first two pixels have cleared the fold is not a result a
+               reader can see — what has to be on the screen is the words
+               saying what was found. It is also the better measurement:
+               the title is 51px into a ruling's card, so it leaves the
+               assertion failing by 61px when the furniture between the two
+               sections grows back, where the card's top edge failed by 10
+               and would have let half a regression through. */
+            const title = el.querySelector('.record-title');
+            const box = (title || el).getBoundingClientRect();
+            return {
+              kind: el.classList.contains('work') ? 'work' : 'ruling',
+              id: el.getAttribute('data-id'),
+              top: Math.round(el.getBoundingClientRect().top),
+              titleEnds: Math.round(box.bottom),
+              titled: !!title
+            };
+          })
+      };
+    }, selector);
+
+    const { context, page } = await phone('/index.html');
+    /* Typed, not filled: a tap scrolls the box into view the way a reader's
+       tap does, and the anchoring is then the only thing left that can move
+       the page. */
+    await page.locator('#work-search').click();
+    await page.keyboard.type('commodities');
+    await page.waitForTimeout(900);
+    const hit = await settled(page, '.library .search-row');
+
+    t('typing brings the search box to the top of the screen',
+      Math.abs(hit.rowTop - hit.clear) <= 12 || hit.y >= hit.most - 1,
+      JSON.stringify({ rowTop: hit.rowTop, clear: hit.clear, y: hit.y, most: hit.most }));
+
+    /* Count what was matched. "commodities" is one of the few words in the
+       library that lands in both sections at once, which is the whole case
+       this group is about — if an edit ever stops it doing that, this fails
+       as out of date rather than quietly measuring one card. */
+    t('the term still matches a work and a fatwa, which is the case measured',
+      hit.cards.filter((c) => c.kind === 'work').length >= 1 &&
+      hit.cards.filter((c) => c.kind === 'ruling').length >= 1,
+      JSON.stringify(hit.cards));
+
+    t('every card the search kept can be read without scrolling',
+      hit.cards.length > 0 &&
+      hit.cards.every((c) => c.titled && c.top > 0 && c.titleEnds < hit.vh),
+      JSON.stringify({ vh: hit.vh, cards: hit.cards }));
+
+    /* The badge over a category counts the category. Over a filtered one
+       it read "2 works" above a single row, which says the library lost
+       something rather than that the search hid it. */
+    const badge = await page.evaluate(() => {
+      const open = [...document.querySelectorAll('.work-category')].filter((c) => !c.hidden);
+      return open.map((c) => ({
+        said: c.querySelector('.work-category-count').textContent,
+        shown: [...c.querySelectorAll('.work')].filter((w) => !w.hidden).length
+      }));
+    });
+    t('a filtered category says how many of its works matched',
+      badge.length > 0 && badge.every((b) => b.said.indexOf(b.shown + ' of ') === 0),
+      JSON.stringify(badge));
+
+    /* Only on the way in. A reader correcting a query has usually scrolled
+       down into the results, and anchoring on every keystroke would haul
+       them back to the box on each letter.
+
+       This one cannot be measured with real keystrokes, which is worth
+       writing down: scroll down past the box, press a key, and Chromium
+       scrolls the caret back into view by itself — and it honours
+       `scroll-padding-top` doing it, so it lands on 1890, within two pixels
+       of where our own anchor would have put it. The first version of this
+       assertion failed on exactly that and read as our fault. It is the
+       browser's, it is correct (you cannot type into a box you cannot see),
+       and it is not what is under test. So the input event is raised
+       directly: that is all the handler ever sees. */
+    await page.evaluate(() => window.scrollBy({ top: 420, behavior: 'instant' }));
+    await page.waitForTimeout(120);
+    const parked = await page.evaluate(() => Math.round(window.scrollY));
+    await page.evaluate(() => {
+      const box = document.getElementById('work-search');
+      box.value = 'commodities exchange';
+      box.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.waitForTimeout(600);
+    const after = await page.evaluate(() => ({
+      y: Math.round(window.scrollY),
+      most: Math.round(document.documentElement.scrollHeight - window.innerHeight)
+    }));
+    /* Not exact: a narrower term keeps fewer cards, so the document gets
+       shorter and the browser clamps a scroll position that is now past
+       its end. Measured, that is 8px here — against the 420 the reader
+       would lose if this anchored on every keystroke. */
+    t('correcting a query leaves the reader where they were reading',
+      Math.abs(after.y - parked) <= 40,
+      JSON.stringify({ parked, after: after.y, most: after.most }));
+    await context.close();
+
+    /* No `behavior` is passed, so the scroll takes the root's own
+       `scroll-behavior` — smooth normally, and `auto` under the
+       reduced-motion block in styles.css. That is the one way a scripted
+       scroll can be reached by the stylesheet, and writing 'smooth' would
+       have put it beyond it. Measured by arriving at once. */
+    {
+      const context2 = await browser.newContext({
+        viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+      await context2.route('https://fonts.g**', (r) => r.abort());
+      const quiet = await context2.newPage();
+      await quiet.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'domcontentloaded' });
+      await quiet.evaluate(() => document.fonts.ready);
+      await quiet.waitForTimeout(150);
+      await quiet.locator('#work-search').click();
+      await quiet.keyboard.type('commodities');
+      await quiet.waitForTimeout(80);
+      const at = await settled(quiet, '.library .search-row');
+      t('a reader who asked for less motion is there at once',
+        Math.abs(at.rowTop - at.clear) <= 12 || at.y >= at.most - 1,
+        JSON.stringify({ rowTop: at.rowTop, clear: at.clear, y: at.y, most: at.most }));
+      await context2.close();
+    }
+
+    /* The fatawa page runs the same filter through the same helper. Its
+       page is short enough today that it cannot scroll the full clearance,
+       so what is asserted is that the box moved up at all. */
+    {
+      const { context: c3, page: p3 } = await phone('/fatawa/index.html');
+      const before = await p3.evaluate(() =>
+        Math.round(document.querySelector('.search-row').getBoundingClientRect().top));
+      await p3.locator('#fatawa-search').click();
+      await p3.keyboard.type('commodities');
+      await p3.waitForTimeout(900);
+      const now = await settled(p3, '.search-row');
+      t('the fatawa page moves its box up too',
+        now.rowTop < before - 40 &&
+        (Math.abs(now.rowTop - now.clear) <= 12 || now.y >= now.most - 1),
+        JSON.stringify({ before, rowTop: now.rowTop, clear: now.clear, y: now.y, most: now.most }));
+      await c3.close();
+    }
   }
 
   /* ---- opening a row ---- */

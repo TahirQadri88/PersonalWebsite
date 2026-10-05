@@ -1282,6 +1282,46 @@
     return box;
   }
 
+  /* ---- Searching takes you to the results ----------------------------
+
+     A search that filters a page you cannot see reads as a search that
+     did nothing. The homepage's box sits 2040px down at 390px — the hero,
+     the introduction and the recent strip are above it — and the fatawa
+     are a section below the library, so `commodities`, which matches one
+     work and one fatwa, filtered the page and left both matches below the
+     fold with only a count to say they existed. Reported as *it filters
+     the page but mobile screens have the fatwa scrolled down*.
+
+     So typing brings the box to the top of the screen, which puts the
+     whole viewport under it for results to land in. Two things about how:
+
+     `window.scrollTo` on the document, never `scrollIntoView` — this file
+     already records what that costs, since it scrolls every scrollable
+     ancestor and the header's nav is one of them under 420px.
+
+     And **no `behavior` at all**, which is the one case where the
+     stylesheet can reach a scripted scroll. `behavior: 'auto'` is defined
+     as "use the scrolling box's own `scroll-behavior`", and `html` carries
+     `scroll-behavior: smooth` with the reduced-motion block setting it
+     back to `auto`. So this is smooth for a reader who wants motion and
+     instant for one who does not, with nothing here asking the question.
+     Writing `'smooth'` would have put it beyond the stylesheet's reach,
+     which is the trap the carousel's own scrolls had to ask `matchMedia`
+     about. */
+  function anchorSearch(input) {
+    var row = input.closest ? input.closest('.search-row') : null;
+    var box = (row || input).getBoundingClientRect();
+    /* The one number that already knows how tall the two sticky bars are:
+       `scroll-padding-top` on the root, 152px and 158 in the band where
+       the wordmark wraps. Read rather than copied, so a change to the
+       header or the category strip cannot leave this behind — those
+       numbers have been wrong here once already. */
+    var clear = parseFloat(
+      getComputedStyle(document.documentElement).scrollPaddingTop
+    ) || 0;
+    window.scrollTo({ top: Math.max(0, box.top + window.scrollY - clear) });
+  }
+
   /* ---- A search box on a page that is not the homepage --------------
 
      The fatāwā page got one because more fatāwā are coming: "six on a
@@ -1319,9 +1359,17 @@
       return needles.every(function (needle) { return hay.indexOf(needle) !== -1; });
     };
 
-    var run = function () {
+    /* Only on the way in: once per search, not once per keystroke, and
+       never when the box is cleared. A reader correcting a query has
+       usually scrolled down into the results, and hauling them back to
+       the box on every letter is the opposite of helping. */
+    var searching = fold(input.value).split(' ').filter(Boolean).length > 0;
+
+    var run = function (event) {
       var words = fold(input.value).split(' ').filter(Boolean);
       var term = words.length > 0;
+      if (event && term && !searching) anchorSearch(input);
+      searching = term;
       var loose = words
         .map(function (word) { return skeleton(word); })
         .filter(function (word) { return word.length >= 2; });
@@ -1458,6 +1506,7 @@
     proseBlock: proseBlock,
     moreLike: moreLike,
     mountCardSearch: mountCardSearch,
+    anchorSearch: anchorSearch,
     tagMarkup: tagMarkup,
     allRecords: allRecords,
     findRecord: findRecord,

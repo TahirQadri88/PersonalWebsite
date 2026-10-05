@@ -1443,6 +1443,69 @@ fetching anything, and a crawler sees the words too. Wired from the
 markup — any page writing an input with `data-card-search` naming a
 container gets it.
 
+**A search that filters a page you cannot see has done nothing.**
+Reported as *I search commodities it filters the page but mobile screens
+have the fatwa scrolled down*. Measured at 390px: the box sits **2040px**
+down the homepage — the hero, the introduction and the recent strip are
+above it — and the fatāwā are a section *below* the library, so a term
+matching one work and one fatwa put them at **2363 and 2734**. The filter
+ran, the count said *1 work and 1 fatwa*, and neither was on the screen.
+Nothing scrolled, so what a reader saw depended entirely on where they
+were standing when they typed.
+
+`site.anchorSearch` brings the box to the top of the screen on the way
+*into* a search — once, not once per keystroke, and never when the box is
+cleared, because a reader correcting a query has usually scrolled down
+into the results. `window.scrollTo` on the document, never
+`scrollIntoView`, for the reason already recorded about the rail.
+
+**It passes no `behavior`, and that is the one case where the stylesheet
+can reach a scripted scroll.** `behavior: 'auto'` is defined as *use the
+scrolling box's own `scroll-behavior`*, and `html` carries
+`scroll-behavior: smooth` with the reduced-motion block setting it back to
+`auto`. So it is smooth for a reader who wants motion and instant for one
+who does not, with nothing in the script asking the question. Writing
+`'smooth'` would have put it beyond the stylesheet's reach — the trap the
+carousel's own scrolls had to ask `matchMedia` about. The guard fails on
+that one line alone.
+
+The clearance is **read**, not copied: `scroll-padding-top` off the root,
+which is the one number that already knows how tall the two sticky bars
+are. Both of its values have moved once already.
+
+**Anchoring was not enough on its own, and the rest was furniture.** With
+the box at the top, the ruling still landed one pixel off the bottom of an
+844px screen. `body.is-searching` compressions existed for exactly this and
+covered only `.library.is-empty` — which reads as right and is half the
+case: the hole is between the last result and the fatāwā heading, and it
+is there whether the library matched nothing or matched one work. That,
+plus hiding `.category-blurb` — a sentence explaining what a chapter of
+the page collects is of no use to someone who has already named what they
+want — takes the ruling to **745** on an 844px screen.
+
+**The guard measures the title, not the card's top edge**, and the
+difference is the point. A card whose first two pixels have cleared the
+fold is not a result anybody can see; the title is 51px into a ruling's
+card, so the assertion fails by **61px** when the furniture grows back
+where the top edge failed by **10** and would have let half a regression
+through.
+
+**This one could not be proved with real keystrokes.** Scroll down past
+the box, press a key, and Chromium scrolls the caret back into view by
+itself — honouring `scroll-padding-top` doing it, so it lands within two
+pixels of where our own anchor would have put it. The first version of
+*correcting a query leaves the reader where they were reading* failed on
+exactly that and read as our fault. It is the browser's, it is right (you
+cannot type into a box you cannot see), and it is not what is under test;
+the input event is raised directly instead, since that is all the handler
+ever sees.
+
+**A count over a filtered list must count the list.** Looking at the
+fixed page — screenshotting it, which is what found this — the category
+head read **2 works** above one row, which says the library lost something
+rather than that the search hid it. It reads `1 of 2 works` during a
+search and goes back to `2 works` when the box is cleared.
+
 **A standfirst reaches a work and a fatwa too, and for months it did
 not.** The field was built for posts and `buildPost` was taught to write
 it — but the *control* is written in `buildRow`, outside any `isPost`

@@ -277,9 +277,13 @@
     var watched = [];
     var current = null;
 
-    /* The header is 72px and this strip about 55 — the same 128 that
-       `scroll-padding-top` already reserves, plus a little, so a section
-       counts as reached once its heading has cleared the chrome. */
+    /* Measured at 390px the header is 68 and this strip 69, and
+       `scroll-padding-top` reserves 152 for the pair — so a section counts
+       as reached once its heading has cleared the chrome, at roughly the
+       same line a jump to it would put it. (Those numbers were 72 and 55
+       when this was written, and 128 was the reservation; the comment said
+       so long after all three had moved. The number below is the only one
+       of them that does anything.) */
     var LINE = 150;
 
     var settle = function () {
@@ -326,9 +330,6 @@
       if (refreshEnds) refreshEnds();
     };
 
-    /* 128px is what `scroll-padding-top` already reserves for the sticky
-       header and this strip — one number for the same thing, rather than
-       a second one that could drift from it. */
     var watcher = new IntersectionObserver(settle, { threshold: [0, 0.02, 0.5, 1] });
 
     Array.prototype.forEach.call(
@@ -568,12 +569,22 @@
     var rulingsSection = document.getElementById('rulings');
     var librarySection = document.getElementById('library');
 
+    /* Whether a search is already running, so the box is brought to the
+       top of the screen on the way into one and not on every keystroke.
+       `site.anchorSearch` says why, and the fatawa page's own filter calls
+       the same helper — a search on one page that moves the reader and a
+       search on the other that does not is exactly the drift this file
+       and `common.js` have already been bitten by. */
+    var searching = false;
+
     searchInput.addEventListener('input', function () {
       /* Every word has to appear, but not in the order given and not next
          to each other. "zakat tax", "tax zakat" and "fatwa zakat" all find
          the same ruling, which one long substring could not. */
       var words = site.fold(searchInput.value).split(' ').filter(Boolean);
       var term = words.length > 0;
+      if (term && !searching) site.anchorSearch(searchInput);
+      searching = term;
 
       /* Skeletons of the words typed, kept only where they are long enough
          to mean something. "saa" leaves "s", which would match half the
@@ -646,6 +657,19 @@
         });
         category.hidden = visibleHere === 0;
         works += visibleHere;
+
+        /* The badge counts the category, and during a search the category
+           is not what is on the screen. Looking at the filtered page, the
+           head read "2 works" over one row — which says the library lost
+           something rather than that the search hid it. "1 of 2 works"
+           says both: how many matched, and that the rest are still there.
+           The whole count is kept on the element, since the markup it came
+           from is written once and the search runs on every keystroke. */
+        var badge = category.querySelector('.work-category-count');
+        if (!badge) return;
+        if (!badge.hasAttribute('data-all')) badge.setAttribute('data-all', badge.textContent);
+        var all = badge.getAttribute('data-all');
+        badge.textContent = term ? visibleHere + ' of ' + all : all;
       });
 
       /* The fatawa are part of the library too — they used to sit below

@@ -1671,9 +1671,21 @@ details[open] > summary .toggle { transform: rotate(45deg); }
    118px again over the fatawa — then becomes a hole: a search matching
    one fatwa and no works showed the count, then nothing, and the fatwa
    itself sat below the fold. */
-body.is-searching .library.is-empty { padding-bottom: 0; }
+body.is-searching .library { padding-bottom: 0; }
 body.is-searching .library.is-empty .section-heading { margin-bottom: 18px; }
 body.is-searching .rulings { padding-top: 34px; }
+/* `.is-empty` was the only state this compression covered, which read as
+   right and is half the case: the hole it closes is between the last
+   result and the fatawa heading, and that hole is there whether the
+   library matched nothing or matched one work. Measured at 390px, a
+   search matching one of each put the fatwa's own card at y=2734 against
+   a search box at 2040 — 694px apart, so bringing the box to the top of
+   the screen still left the ruling a pixel off the bottom of it.
+   A category's blurb goes for the same reason the fatawa's note does: it
+   explains what a chapter of the page collects, which is of no use to
+   somebody who has already named what they are looking for. The heading
+   and the Urdu name stay — those say which category the hit is in. */
+body.is-searching .category-blurb { display: none; }
 /* The heading still says these are fatawa — that is the signpost and it
    stays. The sentence explaining where they come from is for someone
    reading the page, not for someone who has already typed a word. */
