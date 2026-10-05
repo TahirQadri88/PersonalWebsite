@@ -650,6 +650,64 @@ and `description` first otherwise. An Urdu article carried an English
 sentence under its Urdu title for months because the meta tags read
 `record.description` and nothing else.
 
+**A passage is set in the face its own words want, and for years the
+record chose instead.** `proseMarkup`'s comment said it already — *"a
+hint, not an instruction — the text itself decides"* — and the text
+decided only the **direction**. The `language` hint still picked the
+*face*, and the four Arabic-language works carry **Urdu** descriptions:
+`bay-al-hayawan`, `bustan-bani-amir`, `al-ithaf-fazail-tawaf`,
+`sai-ul-ifham`. So `descriptionUr` on each came out `class="arabic"
+lang="ar"` — Amiri at **29px** where Mehr Nastaliq at **19** was wanted,
+and Amiri is served, so that is what a reader saw. Reported from a
+screenshot of the library row.
+
+The same sentence was already right on the work's own page, because
+`buildWork` passes `'ur'` by hand while `proseBlock` passed the record's
+language. One sentence, two faces, depending on which page you read it
+on — and the two pages share `proseMarkup`, which is where it is fixed
+now, so a builder cannot be taught it and a renderer left behind.
+
+**`scriptOf` lives in `common.js` now, and that is the actual repair.**
+Telling Urdu from Arabic needs the letters Urdu added, and that function
+was in `admin.js` alone — so the site's own renderers had *no way* to ask
+a passage what it was, and had to ask the record. `common.js` could only
+answer Arabic-script-or-Latin, which settles direction and nothing else.
+`admin.js` keeps the name as an alias; a second copy is the drift this
+repository has paid for twice.
+
+The hint is still consulted, and must be: a line of ا, د and و belongs to
+both alphabets, and nothing but the record can say which. So a genuinely
+Arabic description on an Arabic work still gets Naskh — it is the words
+that are asked, not the field's name.
+
+`lang` is written from the same answer as the class. They were both from
+the hint, so they could not disagree; the moment one was derived they
+could, and a paragraph telling a screen reader one language and a
+typeface another is a worse fault than the one being fixed.
+
+The guard reads the **rendered** text, not `content.js`: a block counts as
+Urdu when it holds more of the letters Urdu added than the ones Arabic
+uses in their place. So it covers records added later and cannot be
+satisfied by a field being spelt right. With the fault restored it names
+all four and the count it reports does not move, which is what says the
+selector still found everything.
+
+**Mehr has no em-dash, and the patch was measured, looked at and not
+shipped.** Reading its cmap: 211 glyphs, and neither `—` (U+2014) nor `–`
+(U+2013). **73** of them sit inside Urdu text across `content.js`, the
+posts and the works, every one drawn by whatever serif the device has —
+the same shape as the superscript digits, which got a 1.4KB patch for
+twelve characters.
+
+A two-glyph subset of Aslam is 752 bytes and would have slotted in behind
+Mehr the way `Ayn and hamza` sits behind Gentium. It is not here, because
+rendering the same Urdu line with and without it at 19px and **looking**
+shows no difference worth a file: a dash is a horizontal bar in every
+serif, where a missing `ḥ` is a different letterform mid-word. The
+measurement and the eye disagreed and the eye won, which is the same
+lesson as `pretty` beating `balance` on paper and losing on screen — in
+the direction that saves a font file rather than spending one.
+
 **Urdu in a left-reading column.** This one rule has been broken eight
 times, so it is stated once here rather than told as eight stories.
 
@@ -1505,6 +1563,64 @@ fixed page — screenshotting it, which is what found this — the category
 head read **2 works** above one row, which says the library lost something
 rather than that the search hid it. It reads `1 of 2 works` during a
 search and goes back to `2 works` when the box is cleared.
+
+**The box opens a list of what it found, and the list decides nothing.**
+Asked for as *the search bar should open a drop-down type thing listing
+things* — and it is the better answer to the fault above, because
+filtering the page says "here is everything about X" while a reader on a
+phone is asking "which one is it".
+
+`site.suggestionBox` is handed **the cards the filter has just kept**, in
+the order it kept them, and builds a row from each. It matches nothing
+itself, so a list disagreeing with the page beneath it is not a state it
+can reach — the same argument that put `mountCardSearch` in `common.js`
+rather than in `script.js`. Each part of a row comes from the helper the
+library row uses for the same part, so a row cannot say something the
+record's own row does not.
+
+**It is handed the cards, not their ids, and the href is why.**
+`recordHref` is relative to the site root; the fatāwā page sits a folder
+down and its own cards already climb out with `../`. Building the address
+from the record sent every row on that page to `/fatawa/works/…`. Taking
+the href the card already carries needs no arithmetic about how deep the
+page is — which would have been wrong again the moment `index.html` was
+opened from a file system, as it must keep working. The guard **clicks**
+the row, the same lesson as the cross-language link: the broken href was
+perfectly well-formed and a string assertion would have had to know what
+wrong looked like.
+
+The fatāwā cards needed `data-id` for this, which the homepage's own
+`.ruling` has always had. `buildFatawa` writes it and the page was
+regenerated; *the fatawa page is the fatawa page in the branch* in
+`test/editor.mjs` is what would have said so if it had not been.
+
+**The kind was in a row and had to come out.** `recordKind` answers in the
+language the record reads in, which is right — and the row's second line
+is 12px, uppercase and letter-spaced, where an Urdu word has its joined
+letters pulled apart. `.bio-facts dt` learned this about نام and کنیت.
+Rendering it in English instead would have been a second answer to a
+question `recordKind` already settles, so the line does not ask it: it
+names the category, which calls a chart a chart anyway.
+
+**Escape is two steps, and the second one is the browser's.** A
+`type="search"` field clears itself on Escape — measured: the first press
+emptied the box and un-filtered the whole page when all the reader wanted
+was the list out of the way. While the list is open Escape is prevented
+and only shuts it; pressing it again, with nothing to shut, lets the
+native clear through.
+
+Eight rows, then a line saying how many more are in the library below.
+Past that the **panel** scrolls, never the document. Nothing animates, so
+the reduced-motion case needs no asking — this file already records that
+a list re-filtering on every keystroke must not fade.
+
+**A pointer left where it was clicked is not a bug in the page.** The
+first screenshots showed the third row highlighted with nothing marked. A
+click leaves the virtual mouse where it landed, the search then anchors
+and scrolls the page under it, and a row drifts beneath the stationary
+pointer. The guard parks the mouse in a corner before it measures
+anything; a harness artefact that looks exactly like a fault is worth the
+two lines.
 
 **A standfirst reaches a work and a fatwa too, and for months it did
 not.** The field was built for posts and `buildPost` was taught to write

@@ -1036,6 +1036,189 @@ try {
     }
   }
 
+  /* ---- the list the box opens ----------------------------------------
+
+     Asked for as *the search bar should open a drop-down type thing
+     listing things*. What matters most about it is not that it appears:
+     it is that it can never say something different from the page it sits
+     over, which is why it is handed the ids the filter kept rather than
+     matching anything itself. So that is the first thing measured. */
+  group('the search box opens a list of what it found');
+  {
+    const phone = async (path, width, height) => {
+      const context = await browser.newContext({ viewport: { width, height: height || 844 } });
+      await context.route('https://fonts.g**', (r) => r.abort());
+      const page = await context.newPage();
+      page.on('pageerror', (e) => threw.push('suggestions: ' + e.message));
+      await page.goto(`http://127.0.0.1:${PORT}${path}`, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => document.fonts.ready);
+      await page.waitForTimeout(150);
+      await page.evaluate(() => {
+        const s = document.getElementById('recent');
+        if (s) s.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+      });
+      return { context, page };
+    };
+    /* The pointer is parked in a corner before anything is measured. A
+       click leaves Playwright's mouse where it landed, the page then
+       scrolls under it when the search anchors, and a row drifts beneath
+       the stationary pointer — which reads in a screenshot exactly like
+       the keyboard having marked the wrong row. It had, for about ten
+       minutes. */
+    const type = async (page, sel, term) => {
+      await page.locator(sel).click();
+      await page.keyboard.type(term);
+      await page.mouse.move(2, 2);
+      await page.waitForTimeout(700);
+    };
+
+    {
+      const { context, page } = await phone('/index.html', 390);
+      await type(page, '#work-search', 'commodities');
+      const seen = await page.evaluate(() => {
+        const panel = document.querySelector('.suggestions');
+        const cards = [...document.querySelectorAll('.work:not([hidden]), .ruling:not([hidden])')]
+          .map((c) => c.getAttribute('data-id'));
+        const r = panel && !panel.hidden ? panel.getBoundingClientRect() : null;
+        return {
+          open: !!(panel && !panel.hidden),
+          expanded: document.getElementById('work-search').getAttribute('aria-expanded'),
+          rows: panel ? [...panel.querySelectorAll('.suggestion')]
+            .map((a) => a.getAttribute('href')) : [],
+          titles: panel ? [...panel.querySelectorAll('.suggestion .record-title')]
+            .map((s) => s.textContent) : [],
+          cards,
+          /* An Urdu word in this line would be set in the Latin UI face at
+             12px with letter-spacing, which pulls joined letters apart —
+             the kind used to be here and that is why it is not. */
+          metaHasArabic: panel ? [...panel.querySelectorAll('.suggestion-meta')]
+            .some((s) => /[؀-ۿ]/.test(s.textContent)) : false,
+          box: r ? { top: Math.round(r.top), bottom: Math.round(r.bottom) } : null,
+          vh: window.innerHeight
+        };
+      });
+      t('typing opens it', seen.open && seen.expanded === 'true', JSON.stringify(seen));
+      /* Each row against the card it stands for, in order. Not against a
+         path built here: a post's page is `posts/<id>.html` and a work's
+         is `works/<id>.html`, and a test that spelt that rule out a second
+         time would be a second place for it to be wrong. */
+      t('it lists exactly what the filter kept, in the same order',
+        seen.rows.length > 0 && seen.rows.length === seen.cards.length &&
+        seen.rows.every((href, i) => href.endsWith('/' + seen.cards[i] + '.html')),
+        JSON.stringify({ rows: seen.rows, cards: seen.cards }));
+      t('the whole list is on the screen', !!seen.box && seen.box.bottom <= seen.vh,
+        JSON.stringify(seen.box) + ' of ' + seen.vh);
+      t('no row names a record in the Latin line it cannot be read in',
+        seen.metaHasArabic === false,
+        'an Arabic-script word is set in the 12px tracked UI face');
+
+      /* Clicked, never read off the href. A string assertion about a link
+         has to know what wrong looks like; following it only has to know
+         where right is — which is the lesson the cross-language link's own
+         guard was written from, after `href="undefined"` shipped. */
+      await page.locator('.suggestions .suggestion').first().click();
+      await page.waitForLoadState('domcontentloaded');
+      t('a row goes to the record it names',
+        /\/posts\/reservations-shariah-screening-stocks\.html$/.test(page.url()),
+        page.url());
+      await context.close();
+    }
+
+    {
+      const { context, page } = await phone('/index.html', 390);
+      await type(page, '#work-search', 'a');
+      const many = await page.evaluate(() => {
+        const panel = document.querySelector('.suggestions');
+        const r = panel.getBoundingClientRect();
+        return {
+          rows: panel.querySelectorAll('.suggestion').length,
+          rest: (panel.querySelector('.suggestion-rest') || {}).textContent || '',
+          kept: document.querySelectorAll('.work:not([hidden]), .ruling:not([hidden])').length,
+          /* It scrolls itself rather than running off the screen, and the
+             document is not what moves. */
+          scrolls: panel.scrollHeight > panel.clientHeight + 1,
+          bottom: Math.round(r.bottom),
+          vh: window.innerHeight
+        };
+      });
+      t('a term that matches most of the library still fits the screen',
+        many.rows === 8 && many.scrolls && many.bottom <= many.vh, JSON.stringify(many));
+      t('…and says how many it is not showing',
+        many.rest.indexOf(String(many.kept - 8)) === 0, JSON.stringify(many));
+
+      /* The keyboard. Arrowing is how this is used on a desktop, and
+         `aria-activedescendant` is the half a screen reader hears. */
+      await page.keyboard.press('ArrowDown');
+      await page.waitForTimeout(80);
+      const first = await page.evaluate(() => ({
+        active: document.getElementById('work-search').getAttribute('aria-activedescendant'),
+        marked: [...document.querySelectorAll('.suggestion')]
+          .map((a) => a.classList.contains('is-active')).indexOf(true)
+      }));
+      t('the first press of Down marks the first row',
+        first.marked === 0 && !!first.active && first.active.endsWith('-0'),
+        JSON.stringify(first));
+
+      /* Two steps, and the second one is the browser's. A `type="search"`
+         field clears itself on Escape, so the first version of this shut
+         the list AND emptied the box — the reader loses the query they
+         were correcting just for wanting the list out of the way. */
+      const state = () => page.evaluate(() => ({
+        hidden: document.querySelector('.suggestions').hidden,
+        expanded: document.getElementById('work-search').getAttribute('aria-expanded'),
+        value: document.getElementById('work-search').value
+      }));
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(80);
+      const shut = await state();
+      t('Escape shuts it and keeps what was typed',
+        shut.hidden && shut.expanded === 'false' && shut.value === 'a', JSON.stringify(shut));
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(120);
+      const cleared = await state();
+      t('…and Escape again clears the box, as a search field does',
+        cleared.value === '', JSON.stringify(cleared));
+      await context.close();
+    }
+
+    /* The fatawa page runs the same list off the same helper, and its
+       cards had to learn `data-id` for it — so this is also what says the
+       committed page was regenerated after that change. */
+    {
+      const { context, page } = await phone('/fatawa/index.html', 390);
+      await type(page, '#fatawa-search', 'zakat');
+      const there = await page.evaluate(() => {
+        const panel = document.querySelector('.suggestions');
+        return {
+          rows: panel && !panel.hidden ? [...panel.querySelectorAll('.suggestion')]
+            .map((a) => a.getAttribute('href')) : [],
+          kept: [...document.querySelectorAll('.ruling:not([hidden])')]
+            .map((c) => c.getAttribute('data-id')),
+          /* The card's own href, which climbs out of /fatawa/ with `../`.
+             A row that rebuilt the address from the record pointed at
+             /fatawa/works/… and 404ed, which is the whole reason the list
+             is handed the cards rather than their ids. */
+          hrefs: [...document.querySelectorAll('.ruling:not([hidden])')]
+            .map((c) => c.getAttribute('href'))
+        };
+      });
+      t('the fatawa page opens the same list',
+        there.rows.length > 0 && there.kept.every(Boolean) &&
+        there.rows.join('|') === there.hrefs.join('|'),
+        JSON.stringify(there));
+      /* Followed, not read: the fault this replaced produced an href that
+         looked perfectly well-formed. */
+      await page.locator('.suggestions .suggestion').first().click();
+      await page.waitForLoadState('domcontentloaded');
+      t('…and its rows land on a page that exists',
+        /\/works\/zakat-tax-credit\.html$/.test(page.url()) &&
+        (await page.title()).length > 0 &&
+        !(await page.evaluate(() => document.body.textContent.trim() === 'not here')),
+        page.url());
+      await context.close();
+    }
+  }
+
   /* ---- opening a row ---- */
   group('opening a row');
   {
@@ -1930,6 +2113,72 @@ try {
      asserts the rule rather than a number: whatever script a footnote is
      in, and whatever the piece around it, it is smaller than the prose it
      sits in. There is no selector list to keep current. */
+  /* ---- a passage is set in the face its own words want ---------------
+
+     The four Arabic-language works carry Urdu descriptions, and
+     `proseMarkup` took the face from the record's `language` while taking
+     the direction from the text. So `descriptionUr` on `bay-al-hayawan`
+     was `class="arabic" lang="ar"` — Amiri at 29px where Mehr Nastaliq at
+     19 was wanted — while the same sentence on the work's own page was
+     `urdu`, because `buildWork` passes `'ur'` by hand. One sentence, two
+     faces, depending on which page you read it on.
+
+     Asserted on the rendered text rather than on `content.js`: a block is
+     counted Urdu when it holds more of the letters Urdu added than the
+     ones Arabic uses in their place, which is the same question
+     `site.scriptOf` asks. That way it covers every record, including ones
+     added later, and it cannot be satisfied by a field being spelt right. */
+  group('a passage is set in the face its own words want');
+  {
+    const PAGES = ['/index.html', '/fatawa/index.html',
+                   '/works/bay-al-hayawan.html', '/works/bustan-bani-amir.html',
+                   '/works/al-ithaf-fazail-tawaf.html', '/works/sai-ul-ifham.html'];
+    let counted = 0;
+    const wrong = [];
+    for (const path of PAGES) {
+      const { context, page } = await open(1440, path);
+      /* The library rows are shut `<details>`; a description inside a shut
+         one is still in the DOM and still carries its class, which is what
+         is being read — but opening them keeps this honest about what a
+         reader actually meets. */
+      await page.evaluate(() => {
+        document.querySelectorAll('.work').forEach((w) => { w.open = true; });
+      });
+      const found = await page.evaluate(() => {
+        const URDU = /[ٹپچڈڑژکگںھہۂۃیےۓ]/g;
+        const ARAB = /[أإةكي]/g;
+        return [...document.querySelectorAll('p.urdu, p.arabic')].map((p) => {
+          const t = p.textContent || '';
+          const u = (t.match(URDU) || []).length;
+          const a = (t.match(ARAB) || []).length;
+          return {
+            marked: p.classList.contains('arabic') ? 'ar' : 'ur',
+            lang: p.getAttribute('lang'),
+            /* Silent either way — a line of ا, د and و belongs to both —
+               so the record's own hint is the only answer and nothing can
+               be asserted about it. */
+            words: u > a ? 'ur' : a > u ? 'ar' : '',
+            text: t.slice(0, 40)
+          };
+        });
+      });
+      await context.close();
+      for (const block of found) {
+        if (!block.words) continue;
+        counted += 1;
+        if (block.marked !== block.words || block.lang !== block.words) {
+          wrong.push(path + ' ' + JSON.stringify(block));
+        }
+      }
+    }
+    /* Count what was matched: with the fault restored this group still
+       reads the same blocks, so a count that collapsed would mean the
+       selector had stopped finding them rather than that they were right. */
+    t('there are prose blocks in both scripts to measure', counted >= 25, 'counted ' + counted);
+    t('no passage is marked as the script it is not written in',
+      wrong.length === 0, wrong.slice(0, 4).join('\n      '));
+  }
+
   group('a footnote is quieter than the prose it annotates');
   {
     const PAGES = ['/posts/log-barabar-kyun-nahin.html',

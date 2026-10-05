@@ -1009,40 +1009,13 @@
      with nothing on screen saying why, because the block looked empty
      when it was marked.
 
-     Urdu is told from Arabic by the letters Urdu added and Arabic does
-     not use — ٹ ڈ ڑ ں ھ ہ ے ژ گ چ پ. A Qur'anic verse has none of them
-     and stays Arabic, which is what a verse quoted inside an Urdu piece
-     needs. Counting, not detecting: a line is whichever script most of
-     its letters belong to, so an Urdu sentence with one English term in
-     it stays Urdu. */
-  var ARABIC_SCRIPT = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
-
-  /* The two alphabets overlap almost entirely, so telling them apart is
-     done on the letters where they differ — and the decisive pair is the
-     commonest letters in both. Urdu writes ی and ک where Arabic writes
-     ي and ك; they look nearly the same and are different characters.
-     Leaving those two out was enough to call "ایک دو تین" Arabic and set
-     three ordinary Urdu words in Amiri.
-
-     Counted rather than tested for, since a piece of Urdu quoting Arabic
-     has some of both and should come out as whichever it mostly is. */
-  var URDU_LETTERS = /[\u0679\u067E\u0686\u0688\u0691\u0698\u06A9\u06AF\u06BA\u06BE\u06C1\u06C2\u06C3\u06CC\u06D2\u06D3]/g;
-  var ARABIC_LETTERS = /[\u0623\u0625\u0629\u0643\u064A]/g;
-
-  function scriptOf(text, prefer) {
-    var body = String(text || '');
-    var rtl = (body.match(ARABIC_SCRIPT) || []).length;
-    var latin = (body.match(/[A-Za-z]/g) || []).length;
-    if (!rtl && !latin) return '';
-    if (rtl < latin) return 'en';
-    var urdu = (body.match(URDU_LETTERS) || []).length;
-    var arabic = (body.match(ARABIC_LETTERS) || []).length;
-    if (urdu > arabic) return 'ur';
-    if (arabic > urdu) return 'ar';
-    /* Neither said anything — a line of ا, د, و and the like belongs to
-       both. The piece's own language is the best answer available. */
-    return prefer === 'ar' ? 'ar' : 'ur';
-  }
+     It lives in `common.js` now, with the letter tables and the reasoning
+     beside it. The site's own renderers needed it too — `proseMarkup`
+     could tell Arabic script from Latin and had no way to tell Urdu from
+     Arabic, so a description took its face from the record rather than
+     from its own words. A second copy here is the drift this repository
+     has already paid for twice; this is the one function, aliased.  */
+  var scriptOf = site.scriptOf;
 
   /* ---- references that were never marked as footnotes -----------------
 
@@ -3071,7 +3044,14 @@
          anything, and so a crawler sees the words too. */
       var words = site.searchText(ruling);
       return [
+        /* `data-id` for the same reason the homepage's own `.ruling`
+           carries one: it is how the filter hands a matched card back to
+           `site.findRecord`, which is what the list under the search box
+           builds its rows from. Without it the page would have to be read
+           back out of the markup, and a list built from rendered HTML is
+           a second opinion about what a record says. */
         '          <a class="ruling" href="' + e('../works/' + ruling.id + '.html') + '"' +
+          ' data-id="' + e(ruling.id) + '"' +
           ' data-search="' + e(words) + '" data-skeleton="' + e(site.skeleton(words)) + '">',
         '            <div class="ruling-body">',
         '              ' + site.titleMarkup(ruling, 'h3'),
@@ -5421,7 +5401,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-10-05.2';
+  var EDITOR_VERSION = '2026-10-05.3';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */

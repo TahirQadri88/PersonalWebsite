@@ -1378,6 +1378,83 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .search-box input::placeholder { color: #7b857d; }
 .search-count { margin: 10px 2px 0; min-height: 20px; color: var(--muted); font-size: 13px; }
 
+/* The list the box opens under itself. It is laid *over* the page rather
+   than pushed into it: a panel that reflowed the page on every keystroke
+   would move the results the reader is trying to read, and on a phone it
+   would push the first match back off the screen — which is the fault the
+   anchoring above was added to fix.
+
+   `.search-row` is the positioning context and carries no `overflow`, so
+   nothing clips the panel; the row's own 30px bottom margin is what keeps
+   the hint and the count from sitting under its shadow when it is shut. */
+.search-row { position: relative; }
+.suggestions {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  right: 0;
+  margin-top: 6px;
+  padding: 4px;
+  background: #fff;
+  border: 2px solid var(--gold-rule);
+  border-radius: 6px;
+  /* The same shadow the box above it carries, so the two read as one
+     control rather than as a box with a card dropped under it. */
+  box-shadow: 0 3px 0 rgba(134, 96, 31, 0.10), 0 10px 24px rgba(24, 40, 34, 0.07);
+  /* Eight rows is about 420px, and a phone with a keyboard up has roughly
+     450 of content under the box. Past that it scrolls rather than running
+     off the screen — and the row that scrolls is this one, never the
+     document. */
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.suggestion {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 4px;
+  color: var(--ink);
+  text-decoration: none;
+}
+/* Hover and the keyboard's own place are the same state drawn the same
+   way — a reader arrowing down and a reader with a pointer are asking the
+   same question, and two different highlights on one list is how you end
+   up not knowing which one Enter will take. */
+.suggestion:hover,
+.suggestion.is-active { background: var(--paper-warm); }
+.suggestion:focus-visible { outline: 2px solid var(--gold-on-light); outline-offset: -2px; }
+.suggestion .record-title { display: block; font-size: 17px; line-height: 1.35; }
+.suggestion .record-title.urdu,
+.suggestion .record-title.arabic { font-size: 19px; line-height: 1.9; }
+/* The site's own words about the record, not the author's — Latin
+   whatever the record is, the same decision `.record-meta` makes, since
+   12px tracked Nastaliq cannot be read. */
+.suggestion-meta {
+  display: block;
+  direction: ltr;
+  margin-top: 2px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+/* No rule for the highlight: a row's title carries `.record-title`, so
+   `.record-title mark` above already draws it, and a second declaration
+   here is how the same word ends up marked two ways on one page. */
+.suggestion-rest {
+  direction: ltr;
+  margin: 4px 0 2px;
+  padding: 0 12px 6px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--muted);
+}
+/* On the dark panel the box takes the other gold, and so must this —
+   --gold-rule is tuned for cream and goes muddy here. The list itself
+   stays white, which is what makes it read as somewhere to look. */
+.rulings .suggestions { border-color: var(--gold-on-dark); }
+
 .work-category {
   padding: 22px 24px 6px;
   margin-bottom: 30px;

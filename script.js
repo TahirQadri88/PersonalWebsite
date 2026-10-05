@@ -576,6 +576,10 @@
        search on the other that does not is exactly the drift this file
        and `common.js` have already been bitten by. */
     var searching = false;
+    /* The list under the box. It is handed the ids this filter has just
+       decided to keep — it matches nothing of its own, so it cannot come
+       to disagree with the page beneath it. */
+    var suggest = site.suggestionBox(searchInput);
 
     searchInput.addEventListener('input', function () {
       /* Every word has to appear, but not in the order given and not next
@@ -691,6 +695,17 @@
          it was there — so the page read as empty. */
       document.body.classList.toggle('is-searching', term);
       if (librarySection) librarySection.classList.toggle('is-empty', term && works === 0);
+
+      /* Works first and then rulings, which is the order they are on the
+         page — a list whose order disagreed with the page under it would
+         be a second answer to "which one is it". */
+      suggest(
+        term
+          ? Array.prototype.slice
+              .call(document.querySelectorAll('.work:not([hidden]), .ruling:not([hidden])'))
+          : [],
+        words, approximate
+      );
 
       if (!searchCount) return;
       if (!term) {

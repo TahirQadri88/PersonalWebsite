@@ -64,6 +64,48 @@
     return arabic >= (text.match(LATIN_CHARS) || []).length ? 'arabic' : 'latin';
   }
 
+  /* `dominantScript` answers Arabic-script or Latin, which settles the
+     *direction*. It cannot settle the *face*, because Urdu and Arabic are
+     the same script and want different ones — Nastaliq and Naskh. This is
+     what tells them apart, and it lived in `admin.js` alone, which is why
+     the site's own renderers could only ever ask the record what language
+     a passage was in. See `proseMarkup`.
+
+     Urdu is told from Arabic by the letters Urdu added and Arabic does
+     not use — ٹ ڈ ڑ ں ھ ہ ے ژ گ چ پ. A Qur'anic verse has none of them
+     and stays Arabic, which is what a verse quoted inside an Urdu piece
+     needs. Counting, not detecting: a line is whichever script most of
+     its letters belong to, so an Urdu sentence with one English term in
+     it stays Urdu. */
+  var SCRIPT_RANGE = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/g;
+
+  /* The two alphabets overlap almost entirely, so telling them apart is
+     done on the letters where they differ — and the decisive pair is the
+     commonest letters in both. Urdu writes ی and ک where Arabic writes
+     ي and ك; they look nearly the same and are different characters.
+     Leaving those two out was enough to call "ایک دو تین" Arabic and set
+     three ordinary Urdu words in Amiri.
+
+     Counted rather than tested for, since a piece of Urdu quoting Arabic
+     has some of both and should come out as whichever it mostly is. */
+  var URDU_LETTERS = /[ٹپچڈڑژکگںھہۂۃیےۓ]/g;
+  var ARABIC_LETTERS = /[أإةكي]/g;
+
+  function scriptOf(text, prefer) {
+    var body = String(text || '');
+    var rtl = (body.match(SCRIPT_RANGE) || []).length;
+    var latin = (body.match(/[A-Za-z]/g) || []).length;
+    if (!rtl && !latin) return '';
+    if (rtl < latin) return 'en';
+    var urdu = (body.match(URDU_LETTERS) || []).length;
+    var arabic = (body.match(ARABIC_LETTERS) || []).length;
+    if (urdu > arabic) return 'ur';
+    if (arabic > urdu) return 'ar';
+    /* Neither said anything — a line of ا, د, و and the like belongs to
+       both. The piece's own language is the best answer available. */
+    return prefer === 'ar' ? 'ar' : 'ur';
+  }
+
   /* Escapes a passage, wrapping each Arabic-script run in a span so it
      takes an Arabic face. Neither Newsreader nor DM Sans has any Arabic
      in it, so a phrase quoted inside an English line fell to whatever
@@ -769,13 +811,30 @@
      every one of them was — so an Urdu description came out in whatever
      the system happened to substitute rather than in Nastaliq.
 
-     `language` says which Arabic-script face to reach for when the
-     passage turns out to be right-to-left: "ar" gives Naskh, anything
-     else Nastaliq. It is a hint, not a instruction — the text itself
-     decides the direction. */
+     `language` is a hint, not an instruction — the text decides, and for
+     a long time it decided only the *direction* while the hint still
+     chose the **face**. That is the fault this paragraph used to carry:
+     the four Arabic-language works have Urdu descriptions, so
+     `descriptionUr` was handed `language: "ar"` and came out in Amiri at
+     the Arabic size instead of Mehr Nastaliq at the Urdu one. The same
+     sentence read as Nastaliq on the work's own page and as Naskh in the
+     homepage row beside it, because `buildWork` passes `'ur'` by hand and
+     `proseBlock` passed the record's language.
+
+     `scriptOf` counts the letters Urdu added and Arabic has not, and the
+     hint is consulted only when the letters are silent — a line of ا, د
+     and و belongs to both alphabets and nothing but the record can say
+     which. So a genuinely Arabic description on an Arabic work still gets
+     Naskh; it is the words that are asked, not the field's name. */
   function proseMarkup(text, className, language) {
     var rtl = dominantScript(text) === 'arabic';
-    var script = rtl ? (language === 'ar' ? 'arabic' : 'urdu') : '';
+    /* One answer, used for the class and for `lang` both. They were
+       written from two different things — the class from the hint and the
+       attribute from the hint as well — and the moment the class started
+       being derived they could have disagreed, which is a paragraph
+       telling a screen reader one language and a typeface another. */
+    var tongue = rtl ? (scriptOf(text, language) === 'ar' ? 'ar' : 'ur') : '';
+    var script = rtl ? (tongue === 'ar' ? 'arabic' : 'urdu') : '';
     var classes = [className, script].filter(Boolean).join(' ');
     /* dir is always written out, never left to be inherited. The work
        page sets itself right to left for an Urdu work, and an English
@@ -783,7 +842,7 @@
        coming out reversed. */
     return (
       '<p' + (classes ? ' class="' + classes + '"' : '') +
-      (rtl ? ' lang="' + (language === 'ar' ? 'ar' : 'ur') + '" dir="rtl"' : ' dir="ltr"') + '>' +
+      (rtl ? ' lang="' + tongue + '" dir="rtl"' : ' dir="ltr"') + '>' +
       (rtl ? escapeHtml(text) : mixedMarkup(text)) +
       '</p>'
     );
@@ -1322,6 +1381,189 @@
     window.scrollTo({ top: Math.max(0, box.top + window.scrollY - clear) });
   }
 
+  /* ---- The list under the box ----------------------------------------
+
+     Asked for in as many words: *the search bar should open a drop-down
+     type thing listing things*. Filtering the page answers "show me
+     everything about X"; it does not answer "which one is it" without a
+     scroll, and on a phone the second question is the one being asked.
+
+     **It lists what the filter matched — it does not match anything
+     itself.** Both searches hand it the ids they have just decided to
+     keep, in the order they kept them, so a list that disagreed with the
+     page underneath it is not a state this can reach. That is the same
+     argument that put `mountCardSearch` in this file rather than in
+     `script.js`, and it is why this takes ids rather than a query.
+
+     Every part of a row comes from the helper the library row uses for
+     the same part — `titleMarkup` for the title with its own face and
+     direction, `highlightText` for the words typed inside it. A row cannot
+     end up saying something the record's own row does not.
+
+     Nothing here is content: a reader with no JavaScript gets no panel
+     and loses nothing, because the library is the page. Nothing animates,
+     so the reduced-motion case needs no asking — a list that re-filters
+     on every keystroke must not fade, which this file already records. */
+  var SUGGEST_MAX = 8;
+
+  function suggestionBox(input) {
+    var row = input.closest ? input.closest('.search-row') : null;
+    var box = row && row.querySelector('.search-box');
+    if (!row || !box) return function () {};
+
+    var panel = document.createElement('div');
+    panel.className = 'suggestions';
+    panel.id = (input.id || 'search') + '-suggestions';
+    panel.setAttribute('role', 'listbox');
+    panel.setAttribute('aria-label', 'Matches');
+    panel.hidden = true;
+    box.insertAdjacentElement('afterend', panel);
+
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-expanded', 'false');
+    input.setAttribute('aria-controls', panel.id);
+    input.setAttribute('aria-autocomplete', 'list');
+
+    var options = [];
+    var at = -1;
+
+    var mark = function () {
+      options.forEach(function (option, i) {
+        if (i === at) option.setAttribute('aria-selected', 'true');
+        else option.removeAttribute('aria-selected');
+        option.classList.toggle('is-active', i === at);
+      });
+      if (at >= 0 && options[at]) {
+        input.setAttribute('aria-activedescendant', options[at].id);
+        /* The panel scrolls when there are more rows than fit, so a row
+           reached by the keyboard has to be brought into it — and into it
+           alone. `scrollIntoView` would take the document with it, which
+           is the fault the category rail already records. */
+        var option = options[at];
+        var top = option.offsetTop;
+        var bottom = top + option.offsetHeight;
+        if (top < panel.scrollTop) panel.scrollTop = top;
+        else if (bottom > panel.scrollTop + panel.clientHeight) {
+          panel.scrollTop = bottom - panel.clientHeight;
+        }
+      } else {
+        input.removeAttribute('aria-activedescendant');
+      }
+    };
+
+    var close = function () {
+      panel.hidden = true;
+      input.setAttribute('aria-expanded', 'false');
+      at = -1;
+      mark();
+    };
+
+    input.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') {
+        /* A `type="search"` field clears itself on Escape — that is the
+           browser, not us, and measured: the first press emptied the box
+           and un-filtered the page when all the reader wanted was the list
+           out of the way. So while the list is open Escape shuts it and
+           the query stands; pressing it again, with nothing to shut, lets
+           the native clear through. Two steps, which is what a reader
+           dismissing something expects. */
+        if (!panel.hidden) event.preventDefault();
+        close();
+        return;
+      }
+      if (panel.hidden || !options.length) return;
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        at = at + 1 >= options.length ? 0 : at + 1;
+        mark();
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        at = at <= 0 ? options.length - 1 : at - 1;
+        mark();
+      } else if (event.key === 'Enter' && at >= 0) {
+        /* Only when a row has been reached deliberately. Enter on a plain
+           query is the reader saying "that is my search", and the page
+           below is already filtered to it — jumping them into the first
+           match would take a decision they did not make. */
+        event.preventDefault();
+        options[at].click();
+      }
+    });
+
+    /* A tap on a row must not blur the box before the link is followed,
+       which on a phone is what a plain blur handler costs. */
+    panel.addEventListener('pointerdown', function (event) { event.preventDefault(); });
+    document.addEventListener('pointerdown', function (event) {
+      if (!row.contains(event.target)) close();
+    });
+    input.addEventListener('blur', function () {
+      if (!row.contains(document.activeElement)) close();
+    });
+
+    return function (cards, words, approximate) {
+      options = [];
+      at = -1;
+      if (!cards || !cards.length) { close(); return; }
+      var shown = cards.slice(0, SUGGEST_MAX);
+      var rest = cards.length - shown.length;
+      panel.innerHTML =
+        shown
+          .map(function (card, i) {
+            var record = findRecord(card.getAttribute('data-id'));
+            if (!record) return '';
+            /* The card's own address wherever it has one, and only then
+               `recordHref`, which is relative to the site root. The fatāwā
+               page sits a folder down and its cards already climb out with
+               `../`; building the href here instead sent every row on that
+               page to `/fatawa/works/…`. Taking what the page has already
+               decided is the same rule the ids follow, and it needs no
+               arithmetic about how deep the page is — which would have been
+               wrong again the moment `index.html` was opened from a file
+               system, as it must keep working. */
+            var href = card.getAttribute('href') || recordHref(record);
+            var language = record.language || 'en';
+            /* The same two decisions the library row makes, for the same
+               reasons: the title is the author's words and keeps its own
+               face and direction; the line under it is the site's words
+               about the record and is set in Latin whatever the record is
+               — 12px tracked Nastaliq cannot be read. */
+            var title =
+              '<span class="record-title ' + scriptClass(language) + '"' +
+              ' lang="' + language + '" dir="' + direction(language) + '">' +
+              (approximate ? escapeHtml(record.title) : highlightText(record.title, words)) +
+              '</span>';
+            /* The category and nothing else. The kind was here first and
+               had to come out: `recordKind` answers in the language the
+               record reads in, which is right and is why the library row
+               shows `مضمون` in Mehr — but this line is 12px, uppercase and
+               letter-spaced, and an Urdu word set that way has its joined
+               letters pulled apart. `.bio-facts dt` learned the same thing
+               about نام and کنیت. Rendering it in English instead would
+               have been a second answer to a question `recordKind` already
+               settles, so the line simply does not ask it; the category
+               names a chart a chart and a ruling a ruling anyway. */
+            var where = record.category && record.category.title;
+            return (
+              '<a class="suggestion" role="option" id="' + panel.id + '-' + i + '"' +
+              ' href="' + escapeHtml(href) + '">' +
+              title +
+              (where ? '<span class="suggestion-meta">' + escapeHtml(where) + '</span>' : '') +
+              '</a>'
+            );
+          })
+          .join('') +
+        (rest > 0
+          ? '<p class="suggestion-rest">' + rest +
+            (rest === 1 ? ' more match' : ' more matches') + ' in the library below</p>'
+          : '');
+      options = Array.prototype.slice.call(panel.querySelectorAll('.suggestion'));
+      panel.hidden = false;
+      panel.scrollTop = 0;
+      input.setAttribute('aria-expanded', 'true');
+      mark();
+    };
+  }
+
   /* ---- A search box on a page that is not the homepage --------------
 
      The fatāwā page got one because more fatāwā are coming: "six on a
@@ -1364,6 +1606,7 @@
        usually scrolled down into the results, and hauling them back to
        the box on every letter is the opposite of helping. */
     var searching = fold(input.value).split(' ').filter(Boolean).length > 0;
+    var suggest = suggestionBox(input);
 
     var run = function (event) {
       var words = fold(input.value).split(' ').filter(Boolean);
@@ -1383,6 +1626,11 @@
       }
 
       cards.forEach(function (card) { card.hidden = keep.indexOf(card) === -1; });
+
+      /* The list is given the cards that were kept, in the order they were
+         kept — it decides nothing of its own, down to the address each row
+         points at. */
+      suggest(term ? keep : [], words, approximate);
 
       if (!count) return;
       if (!term) { count.textContent = ''; return; }
@@ -1505,7 +1753,9 @@
     proseMarkup: proseMarkup,
     proseBlock: proseBlock,
     moreLike: moreLike,
+    scriptOf: scriptOf,
     mountCardSearch: mountCardSearch,
+    suggestionBox: suggestionBox,
     anchorSearch: anchorSearch,
     tagMarkup: tagMarkup,
     allRecords: allRecords,
