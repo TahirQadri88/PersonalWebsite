@@ -285,6 +285,24 @@ window.siteContent = {
             { label: "Part 2", url: "files/social-media-posts-and-pamphlets/halloween-part-2.jpg", preview: "files/social-media-posts-and-pamphlets/halloween-part-2-preview.jpg" },
             { label: "Part 3", url: "files/social-media-posts-and-pamphlets/halloween-part-3.jpg", preview: "files/social-media-posts-and-pamphlets/halloween-part-3-preview.jpg" }
           ]
+        },
+        {
+          id: "vegetarianism-infographic",
+          title: "Vegetarianism and veganism: the four cases",
+          language: "en",
+          kind: "معلوماتی پمفلٹ",
+          date: "2026-10-05",
+          description: "Abstaining from ḥalāl meat is one thing. Considering it ḥarām is quite another. Four cases follow from that difference.",
+          descriptionUr: "گوشت سے پرہیز کرنا اور بات ہے، اور اسے حرام سمجھنا اور بات۔ اسی فرق سے چار صورتیں بنتی ہیں۔",
+          tags: ["سبزی خوری", "ویگنزم", "گوشت", "حلال"],
+          files: [
+            { label: "English, part 1", url: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-1.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-1-preview.png" },
+            { label: "English, part 2", url: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-2.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-2-preview.png" },
+            { label: "English, part 3", url: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-3.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-3-preview.png" },
+            { label: "Urdu, part 1", url: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-1.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-1-preview.png" },
+            { label: "Urdu, part 2", url: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-2.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-2-preview.png" },
+            { label: "Urdu, part 3", url: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-3.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-3-preview.png" }
+          ]
         }
       ]
     },
@@ -557,10 +575,12 @@ window.siteContent = {
       files: [
         { label: "Urdu PDF", url: "files/my-fatawa/vegetarianism-and-veganism-urdu.pdf" },
         { label: "English PDF", url: "files/my-fatawa/vegetarianism-and-veganism-english.pdf" },
-        { label: "English infographic, part 1", url: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-1.jpg", preview: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-1-preview.jpg" },
-        { label: "English infographic, part 2", url: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-2.jpg", preview: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-2-preview.jpg" },
-        { label: "Urdu infographic, part 1", url: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-1.jpg", preview: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-1-preview.jpg" },
-        { label: "Urdu infographic, part 2", url: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-2.jpg", preview: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-2-preview.jpg" }
+        { label: "English infographic, part 1", url: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-1.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-1-preview.png" },
+        { label: "English infographic, part 2", url: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-2.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-2-preview.png" },
+        { label: "English infographic, part 3", url: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-3.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-3-preview.png" },
+        { label: "Urdu infographic, part 1", url: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-1.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-1-preview.png" },
+        { label: "Urdu infographic, part 2", url: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-2.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-2-preview.png" },
+        { label: "Urdu infographic, part 3", url: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-3.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-3-preview.png" }
       ]
     },
     {
