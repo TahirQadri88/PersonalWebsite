@@ -2204,6 +2204,43 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .post-alt .urdu,
 .post-alt .arabic { font-size: 17px; }
 
+/* A work pointing at the record it belongs to — the chart naming the
+   ruling it summarises. The sizes are `.more-like`'s, because that is
+   the other place a record's own title is quoted as a reference rather
+   than set as a heading, and the two must not disagree about how big a
+   quoted title is.
+
+   `direction: ltr` on the paragraph for the same reason `.more-like`
+   and `.record-meta` carry it: "See also" is the site's word about its
+   own library, not the author's words in the piece, so it reads in the
+   site's direction even on an Urdu page. The title inside keeps its own
+   script, which is the whole point of writing it through titleMarkup. */
+.work-seealso {
+  direction: ltr;
+  text-align: left;
+  width: fit-content;
+  margin: -0.2em 0 1.8em;
+  font-size: 14px;
+}
+/* Styled here rather than by borrowing `.text-link`, which was the first
+   attempt and came out wrong in a way worth recording: that class sets
+   `font-family: var(--font-ui)`, so the record's own title inside it was
+   drawn in DM Sans while "See also" beside it stayed in the serif. A
+   title is the author's words, not chrome — `.more-like li a` sets no
+   family at all for exactly that reason, and these two are the only
+   places a title is quoted as a reference. They must not disagree. */
+.work-seealso a {
+  color: var(--moss);
+  text-decoration: none;
+  border-bottom: 2px solid currentColor;
+  padding-bottom: 2px;
+}
+.work-seealso a:hover,
+.work-seealso a:active { color: var(--gold-on-light); }
+.work-seealso .record-title { font-size: 16px; line-height: 1.45; }
+.work-seealso .record-title.urdu { font-size: 18px; line-height: 1.95; }
+.work-seealso .record-title.arabic { font-size: 19px; line-height: 1.6; }
+
 .post-body > * { margin: 0 0 1.1em; }
 .post-body > *:last-child { margin-bottom: 0; }
 .post-body h2 {

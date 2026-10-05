@@ -295,6 +295,7 @@ window.siteContent = {
           description: "Abstaining from ḥalāl meat is one thing. Considering it ḥarām is quite another. Four cases follow from that difference.",
           descriptionUr: "گوشت سے پرہیز کرنا اور بات ہے، اور اسے حرام سمجھنا اور بات۔ اسی فرق سے چار صورتیں بنتی ہیں۔",
           tags: ["سبزی خوری", "ویگنزم", "گوشت", "حلال"],
+          seeAlso: "vegetarianism-and-veganism",
           files: [
             { label: "English, part 1", url: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-1.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-1-preview.png" },
             { label: "English, part 2", url: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-2.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-2-preview.png" },

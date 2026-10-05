@@ -97,6 +97,23 @@
     return found;
   }
 
+  /* The entry a record's `seeAlso` names, or null — the same refusal to
+     write a page from an unresolved id as `twinOf` above.
+
+     It does NOT require `page`, which is the one way it differs and the
+     reason it is a second function rather than an argument to that one.
+     A `page` is what a post and an app have; a work and a fatwa have a
+     file at works/<id>.html derived from the id, and `site.ownPage`
+     knows both shapes. `twinOf` is right to insist on `page`, because a
+     translation pair is only ever two posts. This may point anywhere. */
+  function relatedOf(id) {
+    var found = null;
+    allRecords().forEach(function (entry) {
+      if (entry.record.id === id) found = entry;
+    });
+    return found;
+  }
+
   function allRecords() {
     var out = [];
     eachRecord(function (record, list, index, category) {
@@ -2810,6 +2827,33 @@
          reorders "3 August 2026" into "August 2026 3". */
       pretty ? '        <p class="work-date" dir="ltr">' + e(pretty) + '</p>' : null,
       prose ? '        ' + prose : null,
+      /* The record this one points at. One-way, deliberately, and that is
+         the difference from `alsoIn` beside it in writeRecord: `alsoIn`
+         joins two translations of one piece and must be written on both,
+         because the failure that matters there is the reader crossing
+         over and finding no way back. This is a chart naming the ruling
+         it summarises — the ruling already carries the chart's own sheets
+         in its gallery, so the far side offers the thing itself rather
+         than a link to it, and a return link would only send the reader
+         back where they came from.
+
+         Set in Latin whatever the record is, the same decision
+         `.record-meta` and `.more-like` already make: "See also" is the
+         site's own word about its own library, not the author's words in
+         the piece. The title inside the link keeps its own script and
+         direction, which is why it is written through titleMarkup rather
+         than escaped flat.
+
+         `../` + ownPage, not the filename alone the way buildPost does
+         it: that shortcut holds only while both ends sit in the same
+         folder, and this one may name a post or an app. */
+      (function () {
+        var target = record.seeAlso ? relatedOf(record.seeAlso) : null;
+        if (!target) return null;
+        return '        <p class="work-seealso" dir="ltr">See also ' +
+          '<a href="' + e('../' + site.ownPage(target.record)) + '">' +
+          site.titleMarkup(target.record) + '</a></p>';
+      })(),
       files
         ? '        <div class="work-page-files" id="work-page-files">' + files + '</div>'
         : null,
@@ -3732,6 +3776,40 @@
     dateField.appendChild(dateField.own(dateInput));
     fields.appendChild(dateField);
 
+    /* Another record this one points at — a chart naming the ruling it
+       summarises, say. Out here rather than inside the isPost branch
+       where `Also in` lives, because any record can point at any other:
+       that one pairs two translations of one piece and only a post is
+       ever a translation of anything.
+
+       A menu for the same reason that one is a menu — an id typed twice
+       is an id typed wrong once — but it writes one side only, and the
+       comment in buildWork says why that is right here rather than an
+       oversight. Every other record is offered, including the one this
+       record was made from, because there is no rule about which way a
+       reference may run. */
+    var seeField = field('See also', 'another record this one points at — one way');
+    var seeSelect = document.createElement('select');
+    var seeNone = document.createElement('option');
+    seeNone.value = ''; seeNone.textContent = 'Nothing';
+    seeSelect.appendChild(seeNone);
+    allRecords().forEach(function (other) {
+      if (other.record.id === record.id || !other.record.id) return;
+      var option = document.createElement('option');
+      option.value = other.record.id;
+      option.textContent = other.record.title || other.record.id;
+      seeSelect.appendChild(option);
+    });
+    seeSelect.value = record.seeAlso || '';
+    seeSelect.addEventListener('change', function () {
+      record.seeAlso = seeSelect.value || undefined;
+      touch(record);
+      markDirty();
+      render();
+    });
+    seeField.appendChild(seeField.own(seeSelect));
+    fields.appendChild(seeField);
+
     /* An app is neither a page of writing nor a record of a file: it is a
        link, a version, a list of what is new and the platforms it runs
        on. Written as prose it would be an essay about an app; as fields
@@ -4047,7 +4125,7 @@
        rather than the top. The bottom is where a field nobody has
        thought about belongs. */
     var order = [langField, titleField, subtitleField, bodyField, altField, descField,
-      descUrField, tagField, kindField, dateField, filesField, pageField,
+      descUrField, tagField, kindField, dateField, seeField, filesField, pageField,
       idField, moveField, tools].filter(Boolean);
     Array.prototype.slice.call(fields.children).forEach(function (part) {
       if (order.indexOf(part) === -1) order.push(part);
@@ -4716,6 +4794,20 @@
             '", which is in the same language. Also in is for the same piece in another language.');
         }
       }
+      /* Unlike the pairing above there is nothing to check at the far
+         end, because this one is deliberately one-way. What is left to
+         get wrong is the id itself, and a record naming itself — both of
+         which only a hand-edited content.js can produce, and both of
+         which would otherwise reach a published page as a dead link or a
+         link to the page you are already on. */
+      if (record.seeAlso) {
+        if (record.seeAlso === record.id) {
+          found.push(where + ': its See also points at itself.');
+        } else if (!relatedOf(record.seeAlso)) {
+          found.push(where + ': its See also names "' + record.seeAlso +
+            '", which is not a record.');
+        }
+      }
       if (record.app) {
         if (!record.page) {
           found.push(where + ': an app needs a page, e.g. apps/' + (record.id || 'slug') + '.html');
@@ -4899,6 +4991,11 @@
        next regeneration threw it away, which is exactly the failure this
        list makes possible. */
     if (record.alsoIn) lines.push(pad + 'alsoIn: ' + str(record.alsoIn));
+    /* Beside alsoIn because it is the other field naming another record,
+       and in this list at all because the list is the whole of what a
+       publish keeps. Left out, a seeAlso written into content.js by hand
+       survives exactly until the next regeneration. */
+    if (record.seeAlso) lines.push(pad + 'seeAlso: ' + str(record.seeAlso));
     if (record.app) lines.push(pad + 'app: ' + writeValue(record.app, indent));
     if (record.files && record.files.length) {
       lines.push(pad + writeFiles(record.files, indent));
@@ -5250,7 +5347,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-10-04.1';
+  var EDITOR_VERSION = '2026-10-05.1';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */

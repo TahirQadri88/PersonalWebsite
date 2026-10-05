@@ -828,6 +828,35 @@ crosses over and the far page offers no way back. `problems()` catches
 the hand-edited cases: an id naming nothing, a mate that does not point
 back, and a pairing between two records in the same language.
 
+**`seeAlso` points one way, and that is the difference from `alsoIn`.**
+A chart summarising a ruling names the ruling; the ruling does not name
+the chart back, because it already carries the chart's own sheets in its
+gallery — the far side offers the thing itself rather than a link to it,
+and a return link would only send the reader where they came from. That
+is why this one has no two-sided write and no "does it point back" check.
+`alsoIn` needs both because two translations each hold half a piece.
+
+It resolves through `relatedOf`, not `twinOf`, and the difference is one
+line: `twinOf` insists on `page`, which only a post and an app have, and
+is right to — a translation pair is only ever two posts. A work and a
+fatwa have `works/<id>.html` derived from the id instead, which
+`site.ownPage` knows. The link is written `'../' + ownPage`, not the bare
+filename `buildPost` uses, because that shortcut holds only while both
+ends sit in the same folder and this one may name a post or an app.
+
+`problems()` catches the two states a hand-edited `content.js` can reach
+— an id naming nothing, and a record naming itself — and both were
+proved by writing them in and watching the publish refuse.
+
+**A title quoted as a reference keeps the serif, and `.text-link` takes
+it away.** The first version of that line borrowed `.text-link` for its
+underline and got DM Sans with it, so the record's own title was drawn in
+the UI face while "See also" beside it stayed in Gentium. A title is the
+author's words, not chrome: `.more-like li a` sets no `font-family` at
+all for exactly that reason, and those two are the only places a title is
+quoted rather than set as a heading. They must not disagree, so
+`.work-seealso a` carries its own colour and rule and nothing else.
+
 **A block's script may not disagree with the words in it, and "nobody
 chose this" is not the same as "Enter made this".** `guessed` in
 `admin.js` is the set of blocks whose script came from the line above
