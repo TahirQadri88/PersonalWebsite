@@ -1895,14 +1895,43 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   padding: 0;
   list-style: none;
 }
-.work-page-gallery a {
+/* `.gallery-sheet`, not `a`. This was an unscoped `.work-page-gallery a`
+   until the caption under each thumbnail gained a Download link — which
+   then inherited the card's border, background and hover lift, so a
+   13px text link was drawn as a second empty card under every sheet.
+   Naming the thing the rule is about costs nothing and cannot do that. */
+.work-page-gallery .gallery-sheet {
   display: block;
   border: 1px solid var(--line);
   background: var(--card);
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
-.work-page-gallery a:hover { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(24, 62, 51, 0.16); }
+.work-page-gallery .gallery-sheet:hover { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(24, 62, 51, 0.16); }
+.work-page-gallery .gallery-sheet:active { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(24, 62, 51, 0.16); }
 .work-page-gallery img { display: block; width: 100%; height: auto; }
+
+/* Which sheet this is, and the link that saves it. Set in Latin at the
+   size `.record-meta` uses, for the same reason: these are the site's
+   own words about a file, not the author's words in the piece. The
+   label can still turn right-to-left when the label itself is Urdu —
+   six of the chart names on this site are — which is what the class on
+   the span is for. */
+.gallery-caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 9px 0 0;
+}
+.gallery-label {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+.gallery-label.urdu,
+.gallery-label.arabic { font-family: var(--font-urdu); font-size: 15px; }
 
 /* Alignment a post's author chose for one block. Written as classes
    rather than inline styles so the stylesheet keeps the say, and so a

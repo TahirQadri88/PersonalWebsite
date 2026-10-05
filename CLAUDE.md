@@ -1426,6 +1426,28 @@ pictures are all there is (`imageGallery` takes an `id` for that case,
 which also puts Share after the pictures rather than before them), and
 the availability note when there is genuinely nothing.
 
+**Taking a picture out of the button row took its Download with it.**
+The rule above is right and the cost of it went unnoticed for months: a
+sheet had a thumbnail that *opened* it and nothing that *saved* it, while
+every PDF beside it had both. The order of the two changes is the whole
+explanation — images left `fileLinks` first, and "Read … online" beside
+"Download" was written into `fileLinks` afterwards, so the one kind of
+file on this site that exists to be forwarded was the only kind with no
+way to keep it. Nobody reported it because long-pressing a picture works.
+
+Each gallery item carries a caption now: which sheet it is, and a
+`.file-download` — the same component the PDFs use, not a second one.
+Offsite images get the thumbnail alone, the same decision `fileLinks`
+makes, because `download` is ignored across origins and the link would
+promise a copy and open a tab.
+
+Two things that had to move with it. `.work-page-gallery a` was
+unscoped, so the new link inherited the card's border, background and
+hover lift and was drawn as a small empty card under every sheet; it is
+`.gallery-sheet` now. And the label is `aria-hidden` — the image's own
+`alt` already announces it, so without that a screen reader read the
+name, then the name again, then "Download" plus the name a third time.
+
 **A guard tuned to the size of the library stops being a guard.** Adding
 a seventh ruling failed two assertions on the fatāwā grid, and neither
 was about the new ruling.

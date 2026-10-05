@@ -656,10 +656,43 @@
       '<ul class="work-page-gallery"' + (id ? ' id="' + escapeHtml(id) + '"' : '') + '>' +
       images
         .map(function (file) {
+          var label = file.label || '';
+          var url = escapeHtml(file.url);
+          /* The thumbnail opens the sheet; the link under it saves one.
+             Without that second link the only way to keep a chart was to
+             open it and long-press, which is the whole point of a sheet
+             drawn to be forwarded. The PDFs beside it have had both
+             offers since the day the buttons were relabelled — a picture
+             simply never got them, because it had left `fileLinks`
+             before that line was written.
+
+             Offsite files get the thumbnail alone, the same decision
+             `fileLinks` makes one function above: `download` is ignored
+             across origins, so the link would say it saves a copy and
+             then open a tab instead. */
+          var offsite = OFFSITE.test(String(file.url || ''));
+          var language = file.language || (isArabicScript(label) ? 'ur' : 'en');
+          var rtl = language === 'ur' || language === 'ar';
+          /* The label is announced by the image's own alt, so the copy
+             of it under the picture is hidden from a screen reader
+             rather than read out a second time before a link that names
+             it a third. What it is for is the eye: six sheets in two
+             languages are six pictures of the same shape, and which one
+             you are looking at is otherwise guesswork. */
+          var caption =
+            '<p class="gallery-caption">' +
+            '<span class="gallery-label' + (rtl ? ' ' + scriptClass(language) : '') + '"' +
+            (rtl ? ' lang="' + language + '" dir="rtl"' : '') +
+            ' aria-hidden="true">' + escapeHtml(label) + '</span>' +
+            (offsite ? '' :
+              '<a class="file-download" href="' + url + '" download' +
+              ' aria-label="Download ' + escapeHtml(label) + '">' +
+              'Download ' + icon('download', 'icon-inline') + '</a>') +
+            '</p>';
           return (
-            '<li><a href="' + escapeHtml(file.url) + '" target="_blank" rel="noopener">' +
-            '<img src="' + escapeHtml(file.preview || file.url) + '" alt="' + escapeHtml(file.label || '') + '" loading="lazy" />' +
-            '</a></li>'
+            '<li><a class="gallery-sheet" href="' + url + '" target="_blank" rel="noopener">' +
+            '<img src="' + escapeHtml(file.preview || file.url) + '" alt="' + escapeHtml(label) + '" loading="lazy" />' +
+            '</a>' + caption + '</li>'
           );
         })
         .join('') +

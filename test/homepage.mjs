@@ -2162,9 +2162,10 @@ try {
   /* ---- what a record's page offers, and offers once ---- */
   group('a record page offers each file once');
   {
-    /* The fatawa on vegetarianism carries one PDF and four infographics;
-       halloween carries three infographics and nothing else. Between them
-       they cover every branch of how files reach a page. */
+    /* The fatwa on vegetarianism carries two PDFs and six infographics;
+       halloween carries three infographics and nothing else; nfts carries
+       no file at all. Between them they cover every branch of how files
+       reach a page — buttons, pictures, and neither. */
     /* Counted off content.js, not typed in: a second PDF on the fatwa took
        the expected number from 2 to 4 the moment the English one arrived,
        and a number typed here would have gone red for being out of date
@@ -2191,7 +2192,22 @@ try {
            element must carry it, whichever of the three shapes the page is. */
         mounts: document.querySelectorAll('#work-page-files').length,
         note: !!document.querySelector('.availability-note'),
-        tools: document.querySelectorAll('.page-tools button').length
+        tools: document.querySelectorAll('.page-tools button').length,
+        /* Read off the <li>, not off two flat selectors: what matters is
+           that each sheet has its own pair, and two lists of the same
+           length would say nothing about which save belongs to which
+           picture. */
+        sheets: [...document.querySelectorAll('.work-page-gallery li')].map((li) => {
+          const open = li.querySelector('.gallery-sheet');
+          const save = li.querySelector('.file-download');
+          const name = li.querySelector('.gallery-label');
+          return {
+            open: open && open.getAttribute('href'),
+            save: save && save.getAttribute('href'),
+            saves: !!(save && save.hasAttribute('download')),
+            label: name ? name.textContent.trim() : ''
+          };
+        })
       }));
       t(c.path + ' offers its ' + c.buttons + ' file button(s)', m.buttons.length === c.buttons,
         JSON.stringify(m.buttons));
@@ -2210,6 +2226,27 @@ try {
       t('  …and does not claim to be unpublished', m.note === c.note, 'availability-note: ' + m.note);
       t('  …with exactly one mount point for Share', m.mounts === 1, m.mounts + ' found');
       t('  …which Share actually found', m.tools >= 1, m.tools + ' tools mounted');
+      /* A sheet is drawn to be forwarded, so it needs the link that saves
+         it as much as a PDF does. It had neither for as long as pictures
+         have been the gallery's: `fileLinks` grew "Read … online" beside
+         "Download" long after images had stopped going through it, so the
+         one kind of file most likely to be passed on was the only kind
+         with no way to keep it.
+
+         The count first, because every assertion under it is an `every`
+         over this list and `every` over nothing is true. */
+      t('  …and lists ' + c.thumbs + ' sheet(s) to measure',
+        m.sheets.length === c.thumbs, m.sheets.length + ' found');
+      t('  …each with a link that saves it',
+        m.sheets.every((s) => s.save), JSON.stringify(m.sheets));
+      t('  …saving the same file the thumbnail opens',
+        m.sheets.every((s) => s.save === s.open), JSON.stringify(m.sheets));
+      t('  …by the download attribute, not by opening a tab',
+        m.sheets.every((s) => s.saves), JSON.stringify(m.sheets));
+      /* Six pictures of the same shape in two languages: which one you
+         are looking at is otherwise guesswork. */
+      t('  …and says which sheet it is',
+        m.sheets.every((s) => s.label.length > 0), JSON.stringify(m.sheets.map((s) => s.label)));
       await context.close();
     }
   }
