@@ -612,7 +612,12 @@ try {
                    '/author/index.html',
                    /* An English ruling whose description pair stacks
                       English over Urdu, with a standfirst above both. */
-                   '/works/vegetarianism-and-veganism.html'];
+                   '/works/vegetarianism-and-veganism.html',
+                   /* Three paragraphs of Urdu prose on a right-reading
+                      page — the longest unbroken Urdu any work page has
+                      carried, and the case where a line that began in a
+                      different place would be most visible. */
+                   '/works/vegetarianism-and-veganism-urdu.html'];
     const measure = () => {
       const ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
       const out = [];
@@ -2132,7 +2137,13 @@ try {
   {
     const PAGES = ['/index.html', '/fatawa/index.html',
                    '/works/bay-al-hayawan.html', '/works/bustan-bani-amir.html',
-                   '/works/al-ithaf-fazail-tawaf.html', '/works/sai-ul-ifham.html'];
+                   '/works/al-ithaf-fazail-tawaf.html', '/works/sai-ul-ifham.html',
+                   /* The first pages carrying a `background` — several
+                      paragraphs of the author's own prose rather than the
+                      one line a description is, and on the chart a
+                      standfirst in each language at once. */
+                   '/works/vegetarianism-and-veganism-urdu.html',
+                   '/works/vegetarianism-infographic.html'];
     let counted = 0;
     const wrong = [];
     for (const path of PAGES) {
@@ -2177,6 +2188,139 @@ try {
     t('there are prose blocks in both scripts to measure', counted >= 25, 'counted ' + counted);
     t('no passage is marked as the script it is not written in',
       wrong.length === 0, wrong.slice(0, 4).join('\n      '));
+  }
+
+  /* ---- the background to the question ---------------------------------
+
+     A fatwa answers something, and the thing it answers is often a
+     situation rather than a sentence. There was nowhere for that: a
+     description is one line for somebody who has *not* opened the piece,
+     and a work has no writing of its own the way a post does, because a
+     work's words live in its PDF. `background` / `backgroundUr` is the
+     field, several paragraphs, the shape `about.bio.prose` already uses.
+
+     What is measured here is the register — that it reads as prose rather
+     than as more caption, and that its Urdu heading is set in the face
+     this site keeps for an Urdu heading. Aslam and Mehr are self-hosted,
+     so the browser really draws them in this suite and CDP will say which
+     one did: the same reason the ayn patch can be asserted at all. */
+  group('the background reads as prose, in the right faces');
+  {
+    const { context, page } = await open(1280, '/works/vegetarianism-and-veganism-urdu.html');
+    const sizes = await page.evaluate(() => {
+      const px = (s) => {
+        const el = document.querySelector(s);
+        return el ? parseFloat(getComputedStyle(el).fontSize) : null;
+      };
+      /* How dark the ink is, 0 for black and 1 for white. The register is
+         carried by colour here and not by size — on an Urdu page the
+         description is already at the body's 21px — so this is the
+         quantity that actually separates the two. */
+      const ink = (s) => {
+        const el = document.querySelector(s);
+        if (!el) return null;
+        const m = getComputedStyle(el).color.match(/\d+(\.\d+)?/g);
+        if (!m) return null;
+        const [r, g, b] = m.slice(0, 3).map(Number);
+        return +((0.2126 * r + 0.7152 * g + 0.0722 * b) / 255).toFixed(3);
+      };
+      return {
+        paras: document.querySelectorAll('.work-background-text').length,
+        text: px('.work-background-text'),
+        heading: px('.work-background-heading'),
+        description: px('.work-page-description'),
+        title: px('.work-hero h1'),
+        textInk: ink('.work-background-text'),
+        descriptionInk: ink('.work-page-description'),
+        /* The buttons must still come after it: the author asked for the
+           background above them, so this is what says the order is the one
+           he asked for rather than whichever way the builder happened to
+           emit the two. */
+        bgTop: Math.round(document.querySelector('.work-background').getBoundingClientRect().top),
+        filesTop: Math.round(document.getElementById('work-page-files').getBoundingClientRect().top)
+      };
+    });
+    t('the background is on the page, every paragraph of it',
+      sizes.paras === 3, JSON.stringify(sizes));
+    /* It is prose, not another caption — and the first version of this
+       asserted the wrong quantity. It said the background must be *larger*
+       than the description, which is false about what was built: on an
+       Urdu page the description is already 21px, the body size, so both
+       are 21 and the assertion failed on a page that reads correctly.
+       What separates them is the ink. The description is deliberately
+       muted; a background in the same grey would read as a second
+       description and nobody would get past it. */
+    t('it is set in darker ink than the description it follows',
+      sizes.textInk !== null && sizes.textInk < sizes.descriptionInk - 0.03,
+      JSON.stringify(sizes));
+    t('…and never smaller than it', sizes.text >= sizes.description, JSON.stringify(sizes));
+    t('…and still under the title above it', sizes.heading < sizes.title, JSON.stringify(sizes));
+    t('the buttons come after it, as asked', sizes.bgTop < sizes.filesTop,
+      JSON.stringify({ bgTop: sizes.bgTop, filesTop: sizes.filesTop }));
+
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('DOM.enable');
+    await cdp.send('CSS.enable');
+    const faces = async (selector) => {
+      const { root } = await cdp.send('DOM.getDocument');
+      const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector });
+      if (!nodeId) return null;
+      const { fonts } = await cdp.send('CSS.getPlatformFontsForNode', { nodeId });
+      return fonts.map((f) => f.familyName);
+    };
+    const headingFace = await faces('.work-background-heading.urdu');
+    const textFace = await faces('.work-background-text.urdu');
+    /* Aslam over Mehr is the whole point of there being two Urdu faces
+       here: Nastaliq has no bold cut of its own, so a heading is told from
+       the body under it by being a bold Naskh rather than by being bigger.
+       Naming only the size would pass with both set in Mehr. */
+    t('the Urdu heading is drawn by the heading face',
+      !!headingFace && headingFace.includes('Aslam'), JSON.stringify(headingFace));
+    t('…and the prose under it by the body face',
+      !!textFace && textFace.includes('Mehr Nastaliq Web'), JSON.stringify(textFace));
+    await context.close();
+  }
+
+  /* A record can be named in two languages at once, which the standfirst
+     could not express: it takes the *piece's* script by design, so the
+     four-cases chart — three English sheets and three Urdu — could say
+     one or the other and not both. */
+  group('a record can carry a standfirst in each language');
+  {
+    const { context, page } = await open(390, '/works/vegetarianism-infographic.html');
+    const seen = await page.evaluate(() => {
+      const subs = [...document.querySelectorAll('.record-subtitle')];
+      return subs.map((p) => ({
+        lang: p.getAttribute('lang'),
+        dir: p.getAttribute('dir'),
+        urdu: p.classList.contains('urdu'),
+        /* Urdu in a left-reading column needs align-left, and a block that
+           can wrap needs own-edge beside it — the rule this file has
+           broken eight times. */
+        left: p.classList.contains('align-left'),
+        ownEdge: p.classList.contains('own-edge'),
+        text: p.textContent.trim(),
+        start: Math.round(p.getBoundingClientRect().left)
+      }));
+    });
+    t('both standfirsts are written', seen.length === 2, JSON.stringify(seen));
+    t('one is English and one is Urdu',
+      seen.some((s) => s.lang === 'en' && !s.urdu) && seen.some((s) => s.lang === 'ur' && s.urdu),
+      JSON.stringify(seen));
+    t('the Urdu one is not sent to the far edge of a left-reading page',
+      seen.filter((s) => s.urdu).every((s) => s.left && s.ownEdge), JSON.stringify(seen));
+    /* Measured rather than inferred, and the two are not interchangeable —
+       which was learned by taking both classes off and watching only the
+       assertion above go red. `ایک نظر میں` is eleven characters and fits
+       one line, and this file already records that a one-line Urdu block
+       renders identically with and without `align-left`. So the
+       measurement cannot fail on *this* string however wrong the classes
+       are; it is here for the day a standfirst is long enough to wrap,
+       which is exactly when the classes start doing work. Neither covers
+       the other, so neither comes out. */
+    t('…and begins where the English one begins',
+      seen.length === 2 && Math.abs(seen[0].start - seen[1].start) <= 2, JSON.stringify(seen));
+    await context.close();
   }
 
   group('a footnote is quieter than the prose it annotates');

@@ -1959,6 +1959,58 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 }
 .work-hero[dir="rtl"] .work-date,
 .work-hero[dir="rtl"] .availability-note { text-align: right; }
+/* What the question comes out of, between the description and the
+   buttons. A gold rule above it, the same 2px edge the search box and the
+   file row already use, because it is a change of register rather than
+   another paragraph of description: the description is one line for
+   somebody who has not opened the piece, and this is prose for somebody
+   deciding whether to.
+
+   It reads at the body size, not the description's muted 17px — a reader
+   is meant to read it rather than glance at it. */
+.work-background {
+  margin: 30px 0 4px;
+  padding-top: 24px;
+  border-top: 2px solid var(--gold-rule);
+}
+.work-background-heading {
+  margin: 0 0 10px;
+  color: var(--moss-deep);
+  font-size: 20px;
+  line-height: 1.35;
+}
+/* Aslam, the same face a record's own title takes and for the same
+   reason: Nastaliq has no bold cut of its own to set a heading apart from
+   the body under it. The word spacing goes with the face — Aslam's own
+   space is one pixel, which is why every rule that names it names both. */
+.work-background-heading.urdu {
+  font-family: var(--font-urdu-heading);
+  word-spacing: var(--space-urdu-heading);
+  font-size: 21px;
+  line-height: 1.9;
+}
+.work-background-text { max-width: 43em; margin: 0 0 14px; font-size: 17px; line-height: 1.75; }
+.work-background-text.urdu { font-size: 21px; line-height: 2.05; }
+.work-background-text.arabic { font-size: 23px; line-height: 1.95; }
+/* The half in the other script is *placed*, not aligned — section 11's
+   own decision, three paragraphs further down the page. The box ends at
+   the margin the rest of the page ends at, and the words inside it still
+   begin on the edge their own script begins on. Setting a run of English
+   flush right would satisfy the margin and break the reading. */
+.work-hero[dir="rtl"] .work-background-text[dir="ltr"],
+.work-hero[dir="rtl"] .work-background-heading[dir="ltr"] {
+  width: fit-content;
+  max-width: min(62ch, 100%);
+  margin-inline-start: auto;
+  text-align: left;
+}
+.work-hero:not([dir="rtl"]) .work-background-text.urdu,
+.work-hero:not([dir="rtl"]) .work-background-text.arabic,
+.work-hero:not([dir="rtl"]) .work-background-heading.urdu {
+  width: fit-content;
+  max-width: min(62ch, 100%);
+  text-align: right;
+}
 .work-page-files { display: flex; flex-wrap: wrap; gap: 14px 22px; margin-top: 22px; }
 .work-page-files .button { background: var(--moss-deep); color: #f6f1e4; }
 /* Here the pair stacks: the button reads it, the line under it saves it.

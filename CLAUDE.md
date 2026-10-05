@@ -1214,6 +1214,61 @@ it had to sit on, and the stacked-pairs guard measured the standfirst
 block narrower than its container already sits on the start edge, which
 is the right one in an RTL hero and the left one in an LTR hero.
 
+**A fatwa answers a situation, not only a sentence, and there was
+nowhere to say what the situation was.** `background` / `backgroundUr`
+is several paragraphs on the record's own page, between the description
+and the file buttons. It exists because neither of the two things that
+were there would hold it: a description is one line written for somebody
+who has **not** opened the piece, and a work has no writing of its own
+the way a post does, because a work's words live in its PDF.
+
+An array in `content.js`, the shape `about.bio.prose` already uses, and
+a blank line between paragraphs in the editor. Not the writing box: that
+is for a piece whose text carries marks, and this is plain prose.
+
+**Above the buttons at the author's word, and it costs two screens.**
+Measured at 390px on the Urdu ruling: the background runs 519→1269 and
+the Read PDF button went from 519 to **1291**. That is the trade he
+asked for — a reader meets why the question is being asked before
+deciding whether to open sixteen pages — and the number is here so the
+next person knows what it buys and what it costs. Moving it below the
+buttons is a one-line change in `buildWork`.
+
+**The register is carried by the ink, not the size**, and the first
+guard asserted the wrong one. It said the background must be *larger*
+than the description, which is false about what was built: on an Urdu
+page `.work-page-description.urdu` is already 21px, the body size, so
+both are 21 and the assertion failed on a page that reads correctly. The
+description is muted `#4b5852`; the background is in the body's ink. That
+is what makes one a caption and the other prose, and it is what the guard
+measures now.
+
+**A record can be named in two languages at once, which the standfirst
+could not express.** It takes the **piece's** script by design — the rule
+written up with the field — so the four-cases chart, three English sheets
+and three Urdu, could carry one name or the other and not both.
+`subtitleUr` sits beside `subtitle` exactly as `descriptionUr` sits
+beside `description`, and `ایک نظر میں` is the author's own name for that
+chart.
+
+Written by `buildWork` alone. **The editor offers it only where
+`buildWork` writes the page**, and that was found by measuring rather
+than reasoned out: on a post the control pushed the writing box to 359px
+against the 300px bar `test/editor.mjs` holds, for a field a post can
+never use — a post is one language and reaches its other half through
+`alsoIn`, which is a whole second page rather than a second line. A field
+the form offers and the page ignores is a button that does not do what it
+says, which this file already records in the other direction.
+
+**The guard that proves it and the guard that cannot.** Taking
+`align-left own-edge` off that Urdu standfirst fails the class assertion
+and **passes** the measurement, because `ایک نظر میں` is eleven
+characters and fits one line — and a one-line Urdu block renders
+identically with and without `align-left`, which this file says in as
+many words. The measurement is there for the day a standfirst wraps,
+which is exactly when the classes start doing work. Neither covers the
+other, so neither comes out.
+
 **A new field has to be added to `writeRecord` or a publish drops it.**
 `alsoIn` was written into `content.js` first and the next regeneration
 threw it away silently — `buildContent` serialises a listed set of fields

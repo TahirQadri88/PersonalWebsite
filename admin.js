@@ -2859,6 +2859,21 @@
           '" lang="' + e(record.language || 'en') + '" dir="' + (rtl ? 'rtl' : 'ltr') + '">' +
           e(record.subtitle) + '</p>'
         : null,
+      /* The Urdu one beside it, for a record that has a name in both — the
+         four-cases chart carries three English sheets and three Urdu, and
+         the field above can only ever hold the piece's own language, since
+         it takes the piece's script by design. Not written in buildPost:
+         a post is one language and reaches its other half through
+         `alsoIn`, which is a whole second page rather than a second line.
+
+         On an English page it is Urdu in a left-reading column, so it
+         takes `align-left` *and* `own-edge` — a standfirst can wrap, and a
+         wrapping Urdu block pinned left begins every line in a different
+         place. This file has walked into that one eight times. */
+      record.subtitleUr
+        ? '        <p class="record-subtitle urdu' + (rtl ? '' : ' align-left own-edge') +
+          '" lang="ur" dir="rtl">' + e(record.subtitleUr) + '</p>'
+        : null,
       /* Same reasoning as buildPost: formatDate's month name is always
          English, so this needs its own dir="ltr" or an RTL article
          reorders "3 August 2026" into "August 2026 3". */
@@ -2893,6 +2908,43 @@
         return '        <p class="work-seealso" dir="ltr">See also ' +
           '<a href="' + e('../' + site.ownPage(target.record)) + '">' +
           site.titleMarkup(target.record) + '</a></p>';
+      })(),
+      /* What the question comes out of, between the description and the
+         buttons. Above them deliberately and at the author's word: a
+         reader meets why the question is being asked before deciding
+         whether to open sixteen pages of answer.
+
+         Each half is written in its own script, and the heading with it —
+         `پس منظر` over the Urdu, `Background` over the English. That is
+         not the "a kind is shown in the language the record reads in"
+         case: a kind is the site's label for a record, while this names
+         the author's own prose and belongs to the language that prose is
+         in. A closed pair, the same shape as KIND_IN_ENGLISH.
+
+         `proseMarkup` sets each paragraph, which since today asks the
+         words themselves which face they want rather than taking it from
+         the record — so an Urdu background on an Arabic-language work
+         comes out in Nastaliq, which is the fault that was fixed this
+         morning in one more place. */
+      (function () {
+        var halves = rtl
+          ? [[record.backgroundUr, 'پس منظر', 'ur'], [record.background, 'Background', 'en']]
+          : [[record.background, 'Background', 'en'], [record.backgroundUr, 'پس منظر', 'ur']];
+        var written = halves
+          .filter(function (half) { return half[0] && half[0].length; })
+          .map(function (half) {
+            var urdu = half[2] === 'ur';
+            return (
+              '          <h2 class="work-background-heading' + (urdu ? ' urdu' : '') +
+              '" lang="' + half[2] + '" dir="' + (urdu ? 'rtl' : 'ltr') +
+              '">' + e(half[1]) + '</h2>\n' +
+              half[0].map(function (para) {
+                return '          ' + site.proseMarkup(para, 'work-background-text', half[2]);
+              }).join('\n')
+            );
+          });
+        if (!written.length) return null;
+        return '        <section class="work-background">\n' + written.join('\n') + '\n        </section>';
       })(),
       files
         ? '        <div class="work-page-files" id="work-page-files">' + files + '</div>'
@@ -3770,6 +3822,39 @@
     fields.appendChild(subtitleField);
     languageChanged.push(function (language) { applyScript(subtitleInput, language); });
 
+    /* The standfirst in Urdu, beside the one above it rather than instead
+       of it. A record whose language is English can still be a thing with
+       an Urdu name — the four-cases chart is three English sheets and
+       three Urdu ones, and `ایک نظر میں` is what the author calls it. The
+       field above takes the *piece's* script and so can only ever hold
+       one of the two; this is the same pair `description` and
+       `descriptionUr` have always been. */
+    /* Only where `buildWork` writes the page. A post is one language and
+       reaches its other half through `alsoIn`, which is a whole second
+       page rather than a second line, and an app's page is built by
+       `buildApp`, which does not write this either — so on either of those
+       the box would take a value and the page would throw it away. That is
+       the fault the Standfirst box itself had for months, the other way
+       round, and this file says plainly what it costs: a field the form
+       offers and the page ignores is a button that does not do what it
+       says.
+
+       Keeping it off a post also keeps the writing box near the top of the
+       row, which `test/editor.mjs` measures and which is how this was
+       caught — 359px against a 300px bar, for a control a post can never
+       use. */
+    var subtitleUrField = null;
+    if (!isPost(entry) && !isApp(entry)) {
+      subtitleUrField = field('Standfirst (Urdu)',
+        'the same line in Urdu — for a record that has a name in both');
+      var subtitleUrInput = textInput(record.subtitleUr, function (value) {
+        record.subtitleUr = value.trim() || undefined;
+      });
+      applyScript(subtitleUrInput, 'ur');
+      subtitleUrField.appendChild(subtitleUrField.own(subtitleUrInput));
+      fields.appendChild(subtitleUrField);
+    }
+
     /* description — both languages; either may be left empty */
     var descField = field('Description (English)', 'one or two lines — this is what search and Google read');
     var descArea = textArea(record.description, function (value) {
@@ -3785,6 +3870,44 @@
     applyScript(descUrBox, 'ur');
     descUrField.appendChild(descUrField.own(descUrBox));
     fields.appendChild(descUrField);
+
+    /* The background to the question, on the record's own page. A fatwa
+       answers something, and the thing it answers is often a situation
+       rather than a sentence — who is asking, and why now. That did not
+       fit anywhere: a description is one line written for somebody who has
+       *not* opened the piece, and a work has no writing of its own the way
+       a post does, because a work's words live in its PDF.
+
+       Several paragraphs, so it is an array in `content.js` the way
+       `about.bio.prose` already is, and a blank line between them here.
+       Not a rich-text box: this is the author's prose with no marks in it,
+       and the writing box exists for a piece that needs them. */
+    var paragraphs = function (value) {
+      return String(value || '').split(/\n\s*\n/)
+        .map(function (part) { return part.replace(/\s+/g, ' ').trim(); })
+        .filter(Boolean);
+    };
+    var joined = function (list) {
+      return (list && list.length) ? list.join('\n\n') : '';
+    };
+
+    var bgField = field('Background (English)',
+      'what the question comes out of — a paragraph or more, blank line between them');
+    var bgArea = textArea(joined(record.background), function (value) {
+      var list = paragraphs(value);
+      record.background = list.length ? list : undefined;
+    });
+    bgField.appendChild(bgField.own(bgArea));
+    fields.appendChild(bgField);
+
+    var bgUrField = field('Background (Urdu)', 'the same in Urdu');
+    var bgUrArea = textArea(joined(record.backgroundUr), function (value) {
+      var list = paragraphs(value);
+      record.backgroundUr = list.length ? list : undefined;
+    });
+    applyScript(bgUrArea, 'ur');
+    bgUrField.appendChild(bgUrField.own(bgUrArea));
+    fields.appendChild(bgUrField);
 
     /* tags — one pill each, with its own ×. A single comma-separated line
        meant deleting one tag by counting commas, and a stray comma inside
@@ -4178,8 +4301,9 @@
        still in the box**, which lands a forgotten field at the bottom
        rather than the top. The bottom is where a field nobody has
        thought about belongs. */
-    var order = [langField, titleField, subtitleField, bodyField, altField, descField,
-      descUrField, tagField, kindField, dateField, seeField, filesField, pageField,
+    var order = [langField, titleField, subtitleField, subtitleUrField, bodyField,
+      altField, descField, descUrField, bgField, bgUrField, tagField, kindField,
+      dateField, seeField, filesField, pageField,
       idField, moveField, tools].filter(Boolean);
     Array.prototype.slice.call(fields.children).forEach(function (part) {
       if (order.indexOf(part) === -1) order.push(part);
@@ -5030,11 +5154,22 @@
     var pad = ' '.repeat(indent);
     var lines = [pad + 'id: ' + str(record.id), pad + 'title: ' + str(record.title), pad + 'language: ' + str(record.language)];
     if (record.subtitle) lines.push(pad + 'subtitle: ' + str(record.subtitle));
+    if (record.subtitleUr) lines.push(pad + 'subtitleUr: ' + str(record.subtitleUr));
     if (record.kind) lines.push(pad + 'kind: ' + str(record.kind));
     if (record.date) lines.push(pad + 'date: ' + str(record.date));
     if (record.updated) lines.push(pad + 'updated: ' + str(record.updated));
     if (record.description) lines.push(pad + 'description: ' + str(record.description));
     if (record.descriptionUr) lines.push(pad + 'descriptionUr: ' + str(record.descriptionUr));
+    /* Several paragraphs, so an array — the shape `about.bio.prose`
+       already uses. Listed here like everything else: this list is the
+       whole of what a publish keeps, and a field left out of it survives
+       exactly until the next regeneration. */
+    if (record.background && record.background.length) {
+      lines.push(pad + 'background: ' + writeValue(record.background, indent));
+    }
+    if (record.backgroundUr && record.backgroundUr.length) {
+      lines.push(pad + 'backgroundUr: ' + writeValue(record.backgroundUr, indent));
+    }
     if (record.tags && record.tags.length) {
       lines.push(pad + 'tags: [' + record.tags.map(str).join(', ') + ']');
     }
@@ -5401,7 +5536,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-10-05.3';
+  var EDITOR_VERSION = '2026-10-05.4';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */

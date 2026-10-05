@@ -290,6 +290,8 @@ window.siteContent = {
           id: "vegetarianism-infographic",
           title: "Vegetarianism and veganism: the four cases",
           language: "en",
+          subtitle: "The ruling at a glance, on three sheets.",
+          subtitleUr: "ایک نظر میں",
           kind: "معلوماتی پمفلٹ",
           date: "2026-10-05",
           description: "Abstaining from ḥalāl meat is one thing. Considering it ḥarām is quite another. Four cases follow from that difference.",
@@ -571,6 +573,11 @@ window.siteContent = {
       date: "2026-09-28",
       updated: "2026-10-05",
       description: "Can a Muslim give up meat permanently? Short answer: it depends on why.",
+      background: [
+        "Vegetarianism, and veganism in particular, is spreading among some young Muslims educated in Western schools and colleges. Animal rights, the environment, health and what circulates on social media all feed it.",
+        "Some are taught that slaughtering an animal, or using milk, eggs and other animal produce, is morally wrong or inhumane. So they give these up not for health or taste but because they object in principle to animals being used at all.",
+        "That is where the question comes from. Is a vegetarian or vegan diet permitted in Islam? And if it rests on holding slaughter or animal produce to be morally wrong, what is the ruling then?"
+      ],
       tags: ["سبزی خوری", "ویگنزم", "گوشت", "حلال", "ذبیحہ", "قربانی", "رہبانیت", "جانوروں کے حقوق"],
       alsoIn: "vegetarianism-and-veganism-urdu",
       files: [
@@ -587,6 +594,11 @@ window.siteContent = {
       date: "2026-09-28",
       updated: "2026-10-05",
       descriptionUr: "کیا مسلمان ہمیشہ کے لیے گوشت چھوڑ سکتا ہے؟ مختصر جواب: یہ اس کی وجہ پر منحصر ہے۔",
+      backgroundUr: [
+        "مغربی اسکولوں اور کالجوں میں تعلیم حاصل کرنے والے بعض مسلم نوجوانوں میں Vegetarianism اور خصوصاً Veganism کا رجحان بڑھ رہا ہے۔ اس رجحان کے پیچھے جانوروں کے حقوق، ماحولیاتی تحفظ، صحت اور سوشل میڈیا پر پھیلنے والے مختلف نظریات اہم کردار ادا کرتے ہیں۔",
+        "بعض نوجوانوں کو یہ تصور دیا جاتا ہے کہ جانوروں کو ذبح کرنا یا دودھ، انڈے اور دیگر حیوانی مصنوعات استعمال کرنا اخلاقاً غلط یا Inhumane ہے۔ چنانچہ وہ محض صحت یا ذاتی پسند کی وجہ سے نہیں، بلکہ جانوروں کے استعمال کو اصولاً ناپسند کرتے ہوئے گوشت اور دیگر حیوانی غذاؤں سے مکمل اجتناب اختیار کرتے ہیں۔",
+        "اسی تناظر میں یہ سوال پیدا ہوتا ہے کہ کیا اسلام میں Vegetarian یا Vegan طرزِ غذا اختیار کرنا جائز ہے؟ اور اگر اس کی بنیاد جانوروں کے ذبح یا حیوانی مصنوعات کے استعمال کو اخلاقاً ناپسند کرنا ہو، تو اس کی شرعی حیثیت کیا ہوگی؟"
+      ],
       tags: ["سبزی خوری", "ویگنزم", "گوشت", "حلال", "ذبیحہ", "قربانی", "رہبانیت", "جانوروں کے حقوق"],
       alsoIn: "vegetarianism-and-veganism",
       files: [
