@@ -129,10 +129,36 @@
   function altHreflang(record, twin, base, url) {
     if (!twin) return [];
     var e = site.escapeHtml;
+    var mine = { language: record.language || 'en', href: url };
+    var theirs = {
+      language: twin.record.language || 'en',
+      href: base + site.ownPage(twin.record)
+    };
+    /* x-default answers one question — where a reader whose language is
+       neither of these should land — so both pages have to give the same
+       answer, and for months they did not. Each named *itself*: two
+       pages claiming to be the one fallback for the same piece, so a
+       crawler coming from the English side was sent to the English page
+       and from the Urdu side to the Urdu one.
+
+       It is the English page, the author's call: English is the
+       wider-reach of the two, so a reader with neither language is
+       likelier to cope with it.
+
+       The last branch is not a shrug. For a pair with no English side —
+       Urdu and Arabic, which this library has not got yet — naming "the
+       page being written" would put the two sides straight back into
+       disagreeing with each other, which is the whole fault. Sorting the
+       two ids and taking the first is arbitrary about *which* page wins
+       and exact about the thing that matters: both sides run this and
+       both get the same answer. */
+    var fallback = mine.language === 'en' ? mine.href
+      : theirs.language === 'en' ? theirs.href
+      : (String(record.id) < String(twin.record.id) ? mine.href : theirs.href);
     return [
-      '    <link rel="alternate" hreflang="' + e(record.language || 'en') + '" href="' + e(url) + '" />',
-      '    <link rel="alternate" hreflang="' + e(twin.record.language || 'en') + '" href="' + e(base + site.ownPage(twin.record)) + '" />',
-      '    <link rel="alternate" hreflang="x-default" href="' + e(url) + '" />'
+      '    <link rel="alternate" hreflang="' + e(mine.language) + '" href="' + e(mine.href) + '" />',
+      '    <link rel="alternate" hreflang="' + e(theirs.language) + '" href="' + e(theirs.href) + '" />',
+      '    <link rel="alternate" hreflang="x-default" href="' + e(fallback) + '" />'
     ];
   }
 

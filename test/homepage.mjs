@@ -81,7 +81,11 @@ const library = (function () {
   return {
     rulings: (c.rulings || []).length,
     records: every.length,
-    record: (id) => every.find((r) => r.id === id)
+    record: (id) => every.find((r) => r.id === id),
+    /* Every record, so a guard can ask the library a question rather
+       than be told the answer — the counts here already read content.js
+       for the same reason. */
+    all: () => every
   };
 })();
 
@@ -1833,6 +1837,39 @@ try {
         [...html.matchAll(/hreflang="(?:en|ur)" href="([^"]+)"/g)]
           .every((m) => existsSync(join(ROOT, m[1].replace(/^https?:\/\/[^/]+\//, '')))),
         [...html.matchAll(/hreflang="(?:en|ur)" href="([^"]+)"/g)].map((m) => m[1]).join(' '));
+    }
+
+    /* `x-default` answers one question — where a reader whose language is
+       neither should land — so the two halves have to give the SAME
+       answer. Both named themselves for as long as pairing has existed,
+       which is two pages each claiming to be the one fallback. Every
+       pair in the library is checked, not just this one: the fault was
+       never about fatāwā, it was in the helper both builders call. */
+    {
+      const pairs = new Map();
+      for (const r of library.all()) {
+        if (!r.alsoIn || pairs.has(r.alsoIn)) continue;
+        pairs.set(r.id, r.alsoIn);
+      }
+      t(`every pair in the library is checked — ${pairs.size} of them`,
+        pairs.size >= 5, String(pairs.size));
+      for (const [a, b] of pairs) {
+        const ra = library.record(a), rb = library.record(b);
+        const read = (r) => readFileSync(
+          join(ROOT, r.page || 'works/' + r.id + '.html'), 'utf8');
+        const xd = (html) => (/hreflang="x-default" href="([^"]+)"/.exec(html) || [])[1];
+        const one = xd(read(ra)), two = xd(read(rb));
+        t(`  ${a} and ${b} name one fallback between them`,
+          !!one && one === two, `${one}  vs  ${two}`);
+        /* And it is the English half — the author's call, because a
+           reader with neither language is likelier to cope with it. */
+        const english = [ra, rb].find((r) => (r.language || 'en') === 'en');
+        if (english) {
+          t('    …and it is the English one',
+            !!one && one.endsWith(english.page || 'works/' + english.id + '.html'),
+            `${one} should end with ${english.page || 'works/' + english.id + '.html'}`);
+        }
+      }
     }
   }
 

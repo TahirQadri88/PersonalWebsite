@@ -845,7 +845,23 @@ to know to look for the word *undefined* to catch it.
 `buildPost` writes two things from it: the visible line under the date,
 and `<link rel="alternate" hreflang>` for both sides plus `x-default`,
 which is the half a crawler reads to see one piece rather than two
-unrelated pages. The visible line is written **in the language it goes
+unrelated pages.
+
+**`x-default` is the English page, on both sides.** It answers one
+question — where a reader whose language is neither should land — so the
+two halves have to give the same answer, and for as long as pairing has
+existed they did not: each named *itself*, which is two pages each
+claiming to be the one fallback for the same piece. English is the
+author's call, being the wider-reach of the two. For a pair with no
+English side, which this library has not got yet, the helper sorts the
+two ids and takes the first: arbitrary about which page wins, exact about
+the thing that matters, which is that both sides compute the same answer.
+Naming "the page being written" there would put the fault straight back.
+
+The guard walks **every pair in `content.js`**, not the one that happened
+to prompt it — the fault was never about fatāwā, it was in the helper
+both builders call, and it had been shipping on five post pairs for
+months. Restoring the old line fails all five. The visible line is written **in the language it goes
 to** — whoever wants it reads that language, so offering it in the one
 they are already reading helps nobody. That is not the "a kind is shown
 in the language the record reads in" case: a kind describes this piece,
