@@ -86,32 +86,73 @@
     });
   }
 
-  /* The entry a record's `alsoIn` names, or null. A page is never written
-     from an unresolved id: a typo, or a record since deleted, would then
-     cost a dead link on a published page rather than a missing one. */
-  function twinOf(id) {
-    var found = null;
-    allRecords().forEach(function (entry) {
-      if (entry.record.id === id && entry.record.page) found = entry;
-    });
-    return found;
-  }
+  /* The entry an `alsoIn` or a `seeAlso` names, or null. A page is never
+     written from an unresolved id: a typo, or a record since deleted,
+     would cost a dead link on a published page rather than a missing one.
 
-  /* The entry a record's `seeAlso` names, or null — the same refusal to
-     write a page from an unresolved id as `twinOf` above.
+     There were two of these until the vegetarianism ruling was split into
+     an English page and an Urdu one. `twinOf` resolved `alsoIn` and
+     insisted the target carry a `page`, on the reasoning — written down,
+     and wrong — that "a translation pair is only ever two posts". A
+     fatwa in two languages is a translation pair and has no `page`: its
+     file is `works/<id>.html`, derived from the id, which
+     `site.ownPage` already knew. The requirement had never been about
+     linkability at all, since every record has a page by that rule; it
+     was about the one shape the field had been used in so far.
 
-     It does NOT require `page`, which is the one way it differs and the
-     reason it is a second function rather than an argument to that one.
-     A `page` is what a post and an app have; a work and a fatwa have a
-     file at works/<id>.html derived from the id, and `site.ownPage`
-     knows both shapes. `twinOf` is right to insist on `page`, because a
-     translation pair is only ever two posts. This may point anywhere. */
+     So they are one function. If a reason ever appears to let `alsoIn`
+     reach somewhere `seeAlso` may not, split them again — but on that
+     reason, not on `page`. */
   function relatedOf(id) {
     var found = null;
     allRecords().forEach(function (entry) {
       if (entry.record.id === id) found = entry;
     });
     return found;
+  }
+
+  /* The cross-language pair, written once and used by both builders.
+
+     It is a helper rather than the same markup typed into each because
+     this file already records what that costs: buildPost and buildWork
+     carry deliberately identical standfirst markup, and a patch anchored
+     on it removed one copy and left the other, so the test went green on
+     a fault that was still there. One function cannot do that.
+
+     Both callers need `site.ownPage` rather than `twin.record.page`.
+     buildPost read the field directly and took the filename off it with
+     `split('/').pop()` — which works only while both ends are posts in
+     the same folder, and silently writes `undefined` the moment one end
+     is a fatwa, whose file is works/<id>.html derived from its id. A post
+     and a work both sit one folder down, so `../` + ownPage is right from
+     either. */
+  function altHreflang(record, twin, base, url) {
+    if (!twin) return [];
+    var e = site.escapeHtml;
+    return [
+      '    <link rel="alternate" hreflang="' + e(record.language || 'en') + '" href="' + e(url) + '" />',
+      '    <link rel="alternate" hreflang="' + e(twin.record.language || 'en') + '" href="' + e(base + site.ownPage(twin.record)) + '" />',
+      '    <link rel="alternate" hreflang="x-default" href="' + e(url) + '" />'
+    ];
+  }
+
+  /* The visible line, in the language it goes TO — whoever wants it reads
+     that language, so offering it in the one they are already reading
+     helps nobody. `.urdu` carries `text-align: right`, so an Urdu line on
+     an English page takes `align-left` beside it; one line, so no
+     `own-edge`. */
+  function altLine(twin, rtl, cls) {
+    if (!twin) return null;
+    var e = site.escapeHtml;
+    var t = twin.record;
+    var trtl = t.language === 'ur' || t.language === 'ar';
+    var script = t.language === 'ur' ? 'urdu' : t.language === 'ar' ? 'arabic' : 'latin';
+    var words = t.language === 'ur' ? 'اردو میں پڑھیے'
+      : t.language === 'ar' ? 'العربية میں پڑھیے' : 'Read this in English';
+    return '        <p class="' + (cls || 'post-alt') + '"><a class="text-link ' + script +
+      (trtl && !rtl ? ' align-left' : '') + '" lang="' + e(t.language || 'en') +
+      '" dir="' + (trtl ? 'rtl' : 'ltr') + '" href="' +
+      e('../' + site.ownPage(t)) + '">' + e(words) + '</a></p>';
   }
 
   function allRecords() {
@@ -1738,7 +1779,7 @@
        reader who arrives on one from a forwarded link has no other way to
        learn the other exists. Resolved, not trusted: an id naming nothing
        writes nothing. */
-    var twin = record.alsoIn ? twinOf(record.alsoIn) : null;
+    var twin = record.alsoIn ? relatedOf(record.alsoIn) : null;
 
     var jsonLd = JSON.stringify({
       '@context': 'https://schema.org',
@@ -1773,9 +1814,7 @@
          this one included — the standard asks for that — and x-default
          points at the piece's own, which is where a reader with no
          language preference should land. */
-      twin ? '    <link rel="alternate" hreflang="' + e(record.language || 'en') + '" href="' + e(url) + '" />' : null,
-      twin ? '    <link rel="alternate" hreflang="' + e(twin.record.language || 'en') + '" href="' + e(base + twin.record.page) + '" />' : null,
-      twin ? '    <link rel="alternate" hreflang="x-default" href="' + e(url) + '" />' : null,
+      altHreflang(record, twin, base, url).join('\n') || null,
       '',
       '    <meta property="og:type" content="article" />',
       '    <meta property="og:title" content="' + e(record.title) + '" />',
@@ -1858,17 +1897,7 @@
          `text-align: right`, so on an English page the Urdu line takes
          `align-left` beside it — the trap CLAUDE.md names, in one more
          place. One line, so no `own-edge`. */
-      twin ? (function () {
-        var t = twin.record;
-        var trtl = t.language === 'ur' || t.language === 'ar';
-        var cls = t.language === 'ur' ? 'urdu' : t.language === 'ar' ? 'arabic' : 'latin';
-        var words = t.language === 'ur' ? 'اردو میں پڑھیے'
-          : t.language === 'ar' ? 'العربية میں پڑھیے' : 'Read this in English';
-        return '        <p class="post-alt"><a class="text-link ' + cls +
-          (trtl && !rtl ? ' align-left' : '') + '" lang="' + e(t.language || 'en') +
-          '" dir="' + (trtl ? 'rtl' : 'ltr') + '" href="' +
-          e(String(t.page).split('/').pop()) + '">' + e(words) + '</a></p>';
-      })() : null,
+      altLine(twin, rtl, 'post-alt'),
       /* Through the same helper the rest of the site uses, so a description
          written in Urdu comes out in Nastaliq here too. */
       /* No summary above the writing. On a work the description says what
@@ -2688,6 +2717,11 @@
     var path = 'works/' + record.id + '.html';
     var url = base + path;
     var rtl = record.language === 'ur' || record.language === 'ar';
+    /* The same ruling in the other language, if there is one. A fatwa is
+       a translation pair as readily as a post is — the vegetarianism
+       ruling is an English page and an Urdu one — which is what `alsoIn`
+       had always been able to express and `twinOf` would not resolve. */
+    var twin = record.alsoIn ? relatedOf(record.alsoIn) : null;
     /* The sentence a crawler shows under the title, and the one WhatsApp
        prints beside the card. It follows the piece the same way
        site.shareCaption already does — an Urdu article had an English
@@ -2774,6 +2808,10 @@
       record.description ? '    <meta name="description" content="' + e(record.description) + '" />' : null,
       '    <meta name="author" content="' + e(author) + '" />',
       '    <link rel="canonical" href="' + e(url) + '" />',
+      /* The half a crawler reads to see one ruling in two languages
+         rather than two unrelated pages. A fatwa could not carry this
+         until `alsoIn` stopped insisting its target be a post. */
+      altHreflang(record, twin, base, url).join('\n') || null,
       '',
       '    <meta property="og:type" content="article" />',
       '    <meta property="og:title" content="' + e(record.title) + '" />',
@@ -2826,6 +2864,9 @@
          English, so this needs its own dir="ltr" or an RTL article
          reorders "3 August 2026" into "August 2026 3". */
       pretty ? '        <p class="work-date" dir="ltr">' + e(pretty) + '</p>' : null,
+      /* Above the descriptions, where a reader who has landed on the
+         wrong language should meet it before reading a paragraph of it. */
+      altLine(twin, rtl, 'work-alt'),
       prose ? '        ' + prose : null,
       /* The record this one points at. One-way, deliberately, and that is
          the difference from `alsoIn` beside it in writeRecord: `alsoIn`
@@ -3776,6 +3817,50 @@
     dateField.appendChild(dateField.own(dateInput));
     fields.appendChild(dateField);
 
+    /* The same piece in the other language. A menu rather than a typed
+       id, because an id typed twice is an id typed wrong once — and
+       picking here writes the field on *both* records, so the two can
+       never point at each other by halves. Clearing it clears both.
+
+       Out here rather than inside the isPost branch, where it sat while
+       the comment said "a work has its own file to download and is not a
+       translation of anything". The vegetarianism ruling is a translation
+       of itself in two languages, and a fatwa never saw this control at
+       all — so the field it needed could not be set from the editor. Any
+       record is offered now; `problems()` still refuses a pairing between
+       two records in the same language, which is the mistake this opens
+       the door to. */
+    var altField = field('Also in', 'the same piece in another language — sets both sides');
+    var altSelect = document.createElement('select');
+    var altNone = document.createElement('option');
+    altNone.value = ''; altNone.textContent = 'Not paired';
+    altSelect.appendChild(altNone);
+    allRecords().forEach(function (other) {
+      if (other.record.id === record.id || !other.record.id) return;
+      var option = document.createElement('option');
+      option.value = other.record.id;
+      option.textContent = other.record.title || other.record.id;
+      altSelect.appendChild(option);
+    });
+    altSelect.value = record.alsoIn || '';
+    altSelect.addEventListener('change', function () {
+      /* Let go of whoever this record used to name, or that one is left
+         pointing back at a record that no longer answers. */
+      var had = record.alsoIn ? relatedOf(record.alsoIn) : null;
+      if (had && had.record.alsoIn === record.id) {
+        had.record.alsoIn = undefined;
+        touch(had.record);
+      }
+      record.alsoIn = altSelect.value || undefined;
+      var now = record.alsoIn ? relatedOf(record.alsoIn) : null;
+      if (now) { now.record.alsoIn = record.id; touch(now.record); }
+      touch(record);
+      markDirty();
+      render();
+    });
+    altField.appendChild(altField.own(altSelect));
+    fields.appendChild(altField);
+
     /* Another record this one points at — a chart naming the ruling it
        summarises, say. Out here rather than inside the isPost branch
        where `Also in` lives, because any record can point at any other:
@@ -3902,43 +3987,6 @@
       pageInput.placeholder = 'posts/' + (record.id || 'slug') + '.html';
       pageField.appendChild(pageField.own(pageInput));
       fields.appendChild(pageField);
-
-      /* The same piece in the other language. A menu rather than a typed
-         id, because an id typed twice is an id typed wrong once — and
-         picking here writes the field on *both* records, so the two can
-         never point at each other by halves. Clearing it clears both.
-         Only other posts are offered; a work has its own file to
-         download and is not a translation of anything. */
-      var altField = field('Also in', 'the same piece in another language — sets both sides');
-      var altSelect = document.createElement('select');
-      var none = document.createElement('option');
-      none.value = ''; none.textContent = 'Not paired';
-      altSelect.appendChild(none);
-      allRecords().forEach(function (other) {
-        if (!isPost(other) || other.record.id === record.id || !other.record.id) return;
-        var option = document.createElement('option');
-        option.value = other.record.id;
-        option.textContent = other.record.title || other.record.id;
-        altSelect.appendChild(option);
-      });
-      altSelect.value = record.alsoIn || '';
-      altSelect.addEventListener('change', function () {
-        /* Let go of whoever this record used to name, or that one is left
-           pointing back at a record that no longer answers. */
-        var had = record.alsoIn ? twinOf(record.alsoIn) : null;
-        if (had && had.record.alsoIn === record.id) {
-          had.record.alsoIn = undefined;
-          touch(had.record);
-        }
-        record.alsoIn = altSelect.value || undefined;
-        var now = record.alsoIn ? twinOf(record.alsoIn) : null;
-        if (now) { now.record.alsoIn = record.id; touch(now.record); }
-        touch(record);
-        markDirty();
-        render();
-      });
-      altField.appendChild(altField.own(altSelect));
-      fields.appendChild(altField);
 
       var bodyField = field(
         'The writing',
@@ -4782,7 +4830,7 @@
          link is the failure that matters: the reader crosses over and the
          far page offers no way back. */
       if (record.alsoIn) {
-        var mate = twinOf(record.alsoIn);
+        var mate = relatedOf(record.alsoIn);
         if (!mate) {
           found.push(where + ': is paired with "' + record.alsoIn +
             '", which is not a record with a page of its own.');
@@ -5347,7 +5395,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-10-05.1';
+  var EDITOR_VERSION = '2026-10-05.2';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */

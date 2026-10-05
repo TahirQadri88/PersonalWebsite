@@ -1785,6 +1785,57 @@ try {
      invisible in the source: a header that clips on a phone, a link the
      homepage stopped writing, and an address that goes through the old
      redirect. */
+  /* ---- a ruling in two languages ----
+
+     `alsoIn` had paired posts for months and could not pair a fatwa:
+     `twinOf` would only resolve a target carrying a `page`, which a post
+     and an app have and a work does not, and `buildWork` wrote no
+     cross-language line at all. The vegetarianism ruling is two pages
+     now, so this is the first pair that is not two posts.
+
+     It clicks rather than reading the href, because the href is exactly
+     what was wrong before — a bare filename that resolved only while
+     both ends sat in one folder, and `undefined` the moment one did
+     not. A string assertion would have passed on that. */
+  group('a ruling in two languages can be crossed, both ways');
+  {
+    const PAIR = [
+      ['/works/vegetarianism-and-veganism.html', '/works/vegetarianism-and-veganism-urdu.html', 'اردو میں پڑھیے'],
+      ['/works/vegetarianism-and-veganism-urdu.html', '/works/vegetarianism-and-veganism.html', 'Read this in English']
+    ];
+    for (const [from, to, words] of PAIR) {
+      const { context, page } = await open(1280, from);
+      const link = await page.$('.work-alt a');
+      t(from + ' offers the way across', !!link, 'no .work-alt a');
+      if (link) {
+        const said = (await link.textContent()).trim();
+        t('  …in the language it goes to, not the one being read',
+          said === words, said);
+        await Promise.all([
+          page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+          link.click()
+        ]);
+        t('  …and clicking it lands on ' + to,
+          new URL(page.url()).pathname === to, new URL(page.url()).pathname);
+      }
+      await context.close();
+    }
+    /* Both halves name each other, and a crawler is told it is one
+       ruling rather than two unrelated pages. */
+    for (const p of [PAIR[0][0], PAIR[0][1]]) {
+      const html = await readFile(join(ROOT, p.replace(/^\//, '')), 'utf8');
+      const tags = [...html.matchAll(/hreflang="([^"]+)"/g)].map((m) => m[1]).sort();
+      t(p + ' declares both languages and a default',
+        tags.join(',') === 'en,ur,x-default', tags.join(','));
+      /* The href the browser follows, not the one the id implies: this
+         is the shape that was silently `undefined` for a work. */
+      t('  …with the alternate pointing at a file that exists',
+        [...html.matchAll(/hreflang="(?:en|ur)" href="([^"]+)"/g)]
+          .every((m) => existsSync(join(ROOT, m[1].replace(/^https?:\/\/[^/]+\//, '')))),
+        [...html.matchAll(/hreflang="(?:en|ur)" href="([^"]+)"/g)].map((m) => m[1]).join(' '));
+    }
+  }
+
   group('the two landing pages');
   {
     /* The header on a generated page carries four links and has no

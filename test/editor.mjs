@@ -324,13 +324,21 @@ console.log('\nwhat the editor writes, against what is committed');
     return w ? w.page : '';
   });
   const solo = pages[soloPath] || '';
+  /* `../posts/<file>`, not the bare filename it used to be. The old form
+     worked only while both ends sat in the same folder — it came off
+     `twin.record.page` with `split('/').pop()`, and the moment one end
+     was a fatwa, whose file is works/<id>.html derived from its id and
+     which has no `page` at all, it wrote `undefined`. Both builders go
+     through `site.ownPage` now. Checked by clicking: all four links,
+     two posts and the two halves of the vegetarianism ruling, land on
+     the page they name. */
   t('a paired post offers the way across, in the language it goes to',
     /class="post-alt"/.test(en) && /اردو میں پڑھیے/.test(en) &&
-    /href="kitabein-mashin-ki-khurak\.html"/.test(en),
+    /href="\.\.\/posts\/kitabein-mashin-ki-khurak\.html"/.test(en),
     (en.split('\n').find((l) => /post-alt/.test(l)) || 'no post-alt line'));
   t('  …and the far side offers the way back',
     /class="post-alt"/.test(ur) && /Read this in English/.test(ur) &&
-    /href="books-that-arent-coming-back\.html"/.test(ur),
+    /href="\.\.\/posts\/books-that-arent-coming-back\.html"/.test(ur),
     (ur.split('\n').find((l) => /post-alt/.test(l)) || 'no post-alt line'));
   /* The trap CLAUDE.md names, in one more place: `.urdu` brings
      `text-align: right`, so an Urdu line on an English page needs

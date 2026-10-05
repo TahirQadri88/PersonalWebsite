@@ -2233,6 +2233,19 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .post-alt .urdu,
 .post-alt .arabic { font-size: 17px; }
 
+/* The same line on a work's page. Shares `.post-alt`'s sizes because it
+   is the same offer — the ruling in the other language — and the two
+   must not disagree about how it is set; it differs only in sitting
+   under the date rather than under a post's own, so it keeps its own
+   margin. */
+.work-alt {
+  width: fit-content;
+  margin: 2px 0 1.5em;
+  font-size: 14px;
+}
+.work-alt .urdu,
+.work-alt .arabic { font-size: 17px; }
+
 /* A work pointing at the record it belongs to — the chart naming the
    ruling it summarises. The sizes are `.more-like`'s, because that is
    the other place a record's own title is quoted as a reference rather

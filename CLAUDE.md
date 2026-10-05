@@ -809,8 +809,38 @@ written only when `preparedBy` is absent.
 Each is a page to be read, so each has its own id and its own file — and
 nothing joined them, which meant a reader arriving on one from a
 forwarded link could not learn the other existed. The field names the
-other record's id; `twinOf` resolves it and a page is never written from
-an id naming nothing.
+other record's id; `relatedOf` resolves it and a page is never written
+from an id naming nothing.
+
+**It is not only for posts, and three things said otherwise.** The
+vegetarianism ruling is an English page and an Urdu one now — one record
+carrying both PDFs meant a reader in either language scrolled past the
+half they could not read, and the page printed its description twice to
+serve both. Making that pair work took undoing three assumptions, none of
+which was about `alsoIn` itself:
+
+- `twinOf` would not resolve a target without a `page`. See above.
+- `buildWork` wrote no cross-language line and no `hreflang` at all.
+  `buildPost` had both; a work simply had never been asked for them.
+- the **Also in** menu was inside the editor's `isPost` branch, so a
+  fatwa could not be given the field even by hand.
+
+The visible line and the `hreflang` trio are **one helper each**, called
+by both builders, rather than the same markup typed into both — this file
+already records what that costs, in the standfirst that was patched in
+one builder and left in the other while the test went green.
+
+**The href is `'../' + ownPage`, and the bare filename it replaced was a
+latent `undefined`.** `buildPost` took the twin's filename off
+`twin.record.page` with `split('/').pop()`. That resolves only while both
+ends sit in the same folder, and a fatwa has no `page` — so the moment
+the pair was not two posts it wrote `href="undefined"`. Both a post and a
+work sit one folder down, so `../` + `ownPage` is right from either.
+
+The guard **clicks the link** rather than reading the href, and that is
+the point: restoring the old form writes `href="undefined"`, and the test
+reports landing on `/works/undefined`. A string assertion would have had
+to know to look for the word *undefined* to catch it.
 
 `buildPost` writes two things from it: the visible line under the date,
 and `<link rel="alternate" hreflang>` for both sides plus `x-default`,
@@ -836,13 +866,13 @@ and a return link would only send the reader where they came from. That
 is why this one has no two-sided write and no "does it point back" check.
 `alsoIn` needs both because two translations each hold half a piece.
 
-It resolves through `relatedOf`, not `twinOf`, and the difference is one
-line: `twinOf` insists on `page`, which only a post and an app have, and
-is right to — a translation pair is only ever two posts. A work and a
-fatwa have `works/<id>.html` derived from the id instead, which
-`site.ownPage` knows. The link is written `'../' + ownPage`, not the bare
-filename `buildPost` uses, because that shortcut holds only while both
-ends sit in the same folder and this one may name a post or an app.
+Both it and `alsoIn` resolve through `relatedOf`. There were two lookups
+until the vegetarianism ruling was split: `twinOf` served `alsoIn` and
+insisted the target carry a `page`, on the reasoning — written down here,
+and wrong — that *a translation pair is only ever two posts*. A fatwa in
+two languages is a translation pair and has no `page`. The requirement
+had never been about linkability, since `site.ownPage` gives every record
+one; it was about the single shape the field had been used in so far.
 
 `problems()` catches the two states a hand-edited `content.js` can reach
 — an id naming nothing, and a record naming itself — and both were

@@ -571,14 +571,26 @@ window.siteContent = {
       date: "2026-09-28",
       updated: "2026-10-05",
       description: "Can a Muslim give up meat permanently? Short answer: it depends on why.",
-      descriptionUr: "کیا مسلمان ہمیشہ کے لیے گوشت چھوڑ سکتا ہے؟ مختصر جواب: یہ اس کی وجہ پر منحصر ہے۔",
       tags: ["سبزی خوری", "ویگنزم", "گوشت", "حلال", "ذبیحہ", "قربانی", "رہبانیت", "جانوروں کے حقوق"],
+      alsoIn: "vegetarianism-and-veganism-urdu",
       files: [
-        { label: "Urdu PDF", url: "files/my-fatawa/vegetarianism-and-veganism-urdu.pdf" },
         { label: "English PDF", url: "files/my-fatawa/vegetarianism-and-veganism-english.pdf" },
         { label: "English infographic, part 1", url: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-1.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-1-preview.png" },
         { label: "English infographic, part 2", url: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-2.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-2-preview.png" },
-        { label: "English infographic, part 3", url: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-3.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-3-preview.png" },
+        { label: "English infographic, part 3", url: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-3.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-english-part-3-preview.png" }
+      ]
+    },
+    {
+      id: "vegetarianism-and-veganism-urdu",
+      title: "سبزی خوری اور ویگن ازم کا شرعی حکم",
+      language: "ur",
+      date: "2026-09-28",
+      updated: "2026-10-05",
+      descriptionUr: "کیا مسلمان ہمیشہ کے لیے گوشت چھوڑ سکتا ہے؟ مختصر جواب: یہ اس کی وجہ پر منحصر ہے۔",
+      tags: ["سبزی خوری", "ویگنزم", "گوشت", "حلال", "ذبیحہ", "قربانی", "رہبانیت", "جانوروں کے حقوق"],
+      alsoIn: "vegetarianism-and-veganism",
+      files: [
+        { label: "Urdu PDF", url: "files/my-fatawa/vegetarianism-and-veganism-urdu.pdf" },
         { label: "Urdu infographic, part 1", url: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-1.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-1-preview.png" },
         { label: "Urdu infographic, part 2", url: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-2.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-2-preview.png" },
         { label: "Urdu infographic, part 3", url: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-3.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-3-preview.png" }
