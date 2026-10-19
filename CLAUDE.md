@@ -1226,6 +1226,56 @@ An array in `content.js`, the shape `about.bio.prose` already uses, and
 a blank line between paragraphs in the editor. Not the writing box: that
 is for a piece whose text carries marks, and this is plain prose.
 
+**Four things about it were wrong on the day it shipped, and a review
+found all four.** They are worth keeping together, because every one is a
+rule this file already states, broken within a few lines of where it is
+written down.
+
+- **The boxes were offered on a post and an app**, which nothing renders:
+  only `buildWork` writes a background. Type one and `writeRecord` stores
+  it in `content.js` and the page never shows it. The Urdu standfirst
+  three fields above had the gate for exactly this reason, added the same
+  afternoon. *A field the form offers and the page ignores is a button
+  that does not do what it says* — and it was broken beside its own
+  statement.
+- **A hand-written string threw.** `background: "one paragraph"` is the
+  obvious thing to type into a hand-edited `content.js`, and a string has
+  a truthy `.length`, so every `x && x.length` guard waves it through and
+  the `.join` or `.map` behind it dies — the row mid-render, the publish
+  mid-build, with no sentence naming the record. Proved by writing one in
+  and watching the Files… dialog never finish.
+
+  `paragraphList` reads it as the one paragraph it plainly is, and
+  `writeRecord` serialises what it was given, so **the file repairs its
+  own shape on the next publish**. Refusing it in `problems()` was the
+  other option and is worse: a check that refuses what it could simply
+  understand makes work for the author instead of doing it.
+- **The heading took its script from the field, the prose from the
+  words.** `proseMarkup` asks the text; the heading asked which of the
+  two fields it was sitting in. Put Urdu in `background` — nothing stops
+  you, the names are a convention — and an `ltr` heading, pushed to the
+  column's left by `margin-inline-start: auto`, sat above its own
+  flush-right Urdu paragraphs. Measured both ways: pre-fix
+  `lang="en" dir="ltr">Background` over two `dir="rtl"` paragraphs,
+  after it `lang="ur" dir="rtl">پس منظر`. It is `scriptOf` of the prose
+  now, with the field only as the fallback for when the letters are
+  silent — and being a *majority* count, one Urdu paragraph among two
+  English ones correctly leaves the heading English.
+- **The measure was copied from the wrong neighbour.**
+  `max-width: min(62ch, 100%)` came from `.work-page-description`, where
+  it caps a single line. Measured on the combination: **731px as it
+  stands, 507px with the cap put back**, against the same right edge — so
+  the placement was never wrong, only the width. 43em is the
+  70-character column; 507 is the cramped one the whole `ch`-to-`em`
+  migration existed to remove.
+
+  That rule has **no page to stand on**: each record carries a background
+  in its own language only, so an English one inside a right-reading hero
+  is a combination the site has never written — and it is the combination
+  the rule is *for*, which is how a rule rots. The guard puts the block
+  there itself and measures it, which is cheaper than inventing a record
+  to hold it.
+
 **Above the buttons at the author's word, and it costs two screens.**
 Measured at 390px on the Urdu ruling: the background runs 519→1269 and
 the Read PDF button went from 519 to **1291**. That is the trade he
@@ -1612,6 +1662,36 @@ exactly that and read as our fault. It is the browser's, it is right (you
 cannot type into a box you cannot see), and it is not what is under test;
 the input event is raised directly instead, since that is all the handler
 ever sees.
+
+**And raising the event directly was still not enough — the browser moves
+the page a second way.** The assertion that replaced it allowed 40px of
+drift and explained the rest as the browser clamping a scroll position
+past the end of a now-shorter document, *"8px here"*. **Both halves of
+that were wrong**, and it passed for a fortnight on one container and
+failed three times out of three on the next.
+
+The cause is **scroll anchoring**. A narrower term hides cards *above*
+the viewport, the document loses 300px, and Chromium moves the scroll
+position to keep what you are looking at still. Measured: parked at 2276
+the same keystroke lands at **1975**, and the search row goes from 262px
+above the screen to 31px below its top — which reads exactly like our own
+anchor firing, and is not ours at all. The clean experiment is one line:
+with `overflow-anchor: none` the same press leaves **2300 at 2300**.
+
+So the guard turns anchoring off for that one measurement, which is a
+**control** rather than a convenience — it holds still the one thing that
+legitimately moves the page, leaving the handler as the only thing that
+could move it, and the assertion becomes exact rather than a tolerance
+covering an unexplained 301px. It is named for what it proves now:
+*correcting a query does not re-anchor the page*, with a second quantity
+beside it — the box stays above the screen — because a clamp would move
+`y` without bringing the box back, and anchoring moves both.
+
+The lesson is the one this file keeps relearning in new clothes: **when a
+measurement needs a tolerance, find out what is filling it.** A 40px
+allowance hiding a 301px effect is not a tolerance, it is an unread
+result; and the sentence written to excuse it taught the next reader
+something false, which this file already says is worse than silence.
 
 **A count over a filtered list must count the list.** Looking at the
 fixed page — screenshotting it, which is what found this — the category
@@ -2161,6 +2241,21 @@ What separated them was the space bar — the very thing the reader
 complained about. Reached from the other end than the report, and only
 by restoring the fault twice. **A test that cannot fail is worse than no
 test:** it says the fault is guarded.
+
+**A sleep that is usually long enough is a flake with a timer on it.**
+The export dialog fills in two stages — the pages and `content.js` at
+once, the link-preview cards when thirty-odd canvases have finished — and
+every read in `test/editor.mjs` slept 800 or 900ms and hoped. On a slower
+container that failed about one run in two, as *its own share card is
+drawn for it* with no card in the export at all, passing on re-run.
+
+The signal was already there and simply not waited on: `#export-summary`
+reads *Drawing the link-preview cards…* until `buildCardFiles` settles.
+`exported(page)` waits for that sentence to change. And it can now change
+two ways, because the promise had no `.catch`: a canvas that failed left
+the dialog on that same sentence for ever with no cards under it and
+nothing saying why — a failure that looked exactly like still working. It
+names the reason now, and says the rest of the publish is still good.
 
 **They are quick, and they should stay quick.** `test/homepage.mjs` took
 seven and a half minutes because every one of its thirty-odd page loads

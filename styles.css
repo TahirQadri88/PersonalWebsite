@@ -1996,11 +1996,19 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    own decision, three paragraphs further down the page. The box ends at
    the margin the rest of the page ends at, and the words inside it still
    begin on the edge their own script begins on. Setting a run of English
-   flush right would satisfy the margin and break the reading. */
+   flush right would satisfy the margin and break the reading.
+
+   The measure is `43em`, inherited, and that is the one thing not copied
+   from `.work-page-description` beside it. That rule caps at
+   `min(62ch, 100%)`, which is right for the single line it holds and
+   wrong here: `1ch` is Gentium's own zero, about 8px at 17px, so 62ch is
+   **496px** — 62 characters, the cramped column the whole `ch`-to-`em`
+   migration existed to get rid of, and this is paragraphs rather than a
+   line. So only the placement is taken, and the width stays whatever the
+   base rule set. */
 .work-hero[dir="rtl"] .work-background-text[dir="ltr"],
 .work-hero[dir="rtl"] .work-background-heading[dir="ltr"] {
   width: fit-content;
-  max-width: min(62ch, 100%);
   margin-inline-start: auto;
   text-align: left;
 }
@@ -2008,7 +2016,6 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .work-hero:not([dir="rtl"]) .work-background-text.arabic,
 .work-hero:not([dir="rtl"]) .work-background-heading.urdu {
   width: fit-content;
-  max-width: min(62ch, 100%);
   text-align: right;
 }
 .work-page-files { display: flex; flex-wrap: wrap; gap: 14px 22px; margin-top: 22px; }

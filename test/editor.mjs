@@ -114,6 +114,29 @@ function t(name, ok, detail) {
 
 const POST = 'kitabein-mashin-ki-khurak';
 
+/* The export dialog opens at once and fills in two stages: the pages and
+   content.js are there immediately, and the link-preview cards arrive
+   when thirty-odd canvases have finished drawing. Every read below used
+   to sleep 800 or 900ms and hope, which failed about one run in two on a
+   slower container — *its own share card is drawn for it* with no card in
+   the export at all, passing on re-run.
+
+   `#export-summary` already says which stage it is in: it reads "Drawing
+   the link-preview cards…" until `buildCardFiles` settles and is then
+   rewritten, either with the count or — since today — with the reason it
+   could not. So the signal exists and was simply not being waited on. A
+   sleep that is usually long enough is a flake with a timer on it, and
+   this file's own rule is that a guard which fails for its own reasons is
+   worse than none. */
+async function exported(page) {
+  await page.waitForSelector('#out-pages section', { timeout: 30000 });
+  await page.waitForFunction(
+    () => !/Drawing the link-preview cards/
+      .test(document.getElementById('export-summary').textContent),
+    null, { timeout: 60000 }
+  );
+}
+
 /* The buttons carry their own words for the kinds and the scripts, and a
    drawing for the alignments — so the alignments are found by the label
    read out to a screen reader, which is the only text they have. */
@@ -244,8 +267,7 @@ let row = await openEditor(page);
 console.log('\nwhat the editor writes, against what is committed');
 {
   await page.click('#export');
-  await page.waitForSelector('#out-pages section', { timeout: 30000 });
-  await page.waitForTimeout(800);
+  await exported(page);
   const made = await page.evaluate(() => {
     const at = (path) => {
       const s = [...document.querySelectorAll('#out-pages section')]
@@ -901,8 +923,7 @@ t('  …a paragraph added to the introduction is in Nastaleeq too',
 
 /* And out the other end. */
 await page.click('#export');
-await page.waitForSelector('#out-pages section', { timeout: 30000 });
-await page.waitForTimeout(800);
+await exported(page);
 const reached = await page.evaluate(() => {
   const sections = Array.from(document.querySelectorAll('#out-pages section'));
   const home = sections.find((s) => s.querySelector('h3').textContent.trim() === 'index.html');
@@ -1357,8 +1378,7 @@ console.log('\nwhat a row puts first');
 }
 
 await page.click('#export');
-await page.waitForSelector('#out-pages section', { timeout: 30000 });
-await page.waitForTimeout(900);
+await exported(page);
 const appOut = await page.evaluate((id) => {
   const sections = [...document.querySelectorAll('#out-pages section')];
   const mine = sections.find((s) => s.querySelector('h3').textContent.trim() === 'apps/' + id + '.html');

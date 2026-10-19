@@ -979,6 +979,23 @@ try {
        directly: that is all the handler ever sees. */
     await page.evaluate(() => window.scrollBy({ top: 420, behavior: 'instant' }));
     await page.waitForTimeout(120);
+    /* Scroll anchoring is turned off for this one measurement, and that is
+       a control rather than a convenience. A narrower term hides cards
+       *above* the viewport, the document loses 300px, and Chromium moves
+       the scroll position to keep what you are looking at still. Measured
+       on this page: parked at 2276 the same keystroke lands at 1975, and
+       the search row goes from 262px above the screen to 31px below its
+       top — which reads exactly like our own anchor firing, and is not.
+       With `overflow-anchor: none` the same press leaves 2300 at 2300.
+
+       The first version of this assertion allowed 40px of drift and
+       explained the rest as the browser clamping a scroll past the end of
+       a shortened document, "8px here". That was wrong twice: the cause is
+       anchoring, not clamping, and the number is 301. It passed for a
+       fortnight on one container and failed three times out of three on
+       the next. A false account of a fault is worse than none. */
+    await page.addStyleTag({ content: '*, *::before, *::after { overflow-anchor: none; }' });
+    await page.waitForTimeout(60);
     const parked = await page.evaluate(() => Math.round(window.scrollY));
     await page.evaluate(() => {
       const box = document.getElementById('work-search');
@@ -988,15 +1005,22 @@ try {
     await page.waitForTimeout(600);
     const after = await page.evaluate(() => ({
       y: Math.round(window.scrollY),
-      most: Math.round(document.documentElement.scrollHeight - window.innerHeight)
+      most: Math.round(document.documentElement.scrollHeight - window.innerHeight),
+      rowTop: Math.round(document.querySelector('.library .search-row').getBoundingClientRect().top)
     }));
-    /* Not exact: a narrower term keeps fewer cards, so the document gets
-       shorter and the browser clamps a scroll position that is now past
-       its end. Measured, that is 8px here — against the 420 the reader
-       would lose if this anchored on every keystroke. */
-    t('correcting a query leaves the reader where they were reading',
-      Math.abs(after.y - parked) <= 40,
+    /* Exact, now that the one thing that legitimately moves the page is
+       held still. The handler either re-anchors or it does nothing, and
+       there is no third amount. */
+    t('correcting a query does not re-anchor the page',
+      after.y === parked,
       JSON.stringify({ parked, after: after.y, most: after.most }));
+    /* And the box stays off the top of the screen, which is the thing the
+       reader would actually notice. It is a second quantity rather than a
+       restatement: a clamp at the end of a shortened document would move
+       `y` without bringing the box back, and anchoring moves both. */
+    t('…and leaves the search box above the screen, where it was',
+      after.rowTop < 0,
+      JSON.stringify({ rowTop: after.rowTop }));
     await context.close();
 
     /* No `behavior` is passed, so the scroll takes the root's own
@@ -2278,6 +2302,39 @@ try {
       !!headingFace && headingFace.includes('Aslam'), JSON.stringify(headingFace));
     t('…and the prose under it by the body face',
       !!textFace && textFace.includes('Mehr Nastaliq Web'), JSON.stringify(textFace));
+
+    /* The rule for the half in the other script has no page to stand on:
+       each record carries a background in its own language only, so an
+       English one inside a right-reading hero is a combination the site
+       has never written. It is the combination the rule is *for*, which
+       is exactly how a rule rots — so the block is put there and measured,
+       which is cheaper than inventing a record to hold it.
+
+       It shipped capped at `min(62ch, 100%)`, copied from
+       `.work-page-description` beside it, where it caps a single line.
+       Measured here: 731px as it stands, **507px** with the cap put back,
+       against the same right edge — so the placement was never the
+       problem, only the measure. 43em is the 70-character column; 507 is
+       the cramped one the whole `ch`-to-`em` migration removed. */
+    const placed = await page.evaluate(() => {
+      const section = document.querySelector('.work-background');
+      const p = document.createElement('p');
+      p.className = 'work-background-text';
+      p.setAttribute('dir', 'ltr');
+      p.textContent = 'Vegetarianism, and veganism in particular, is spreading among ' +
+        'some young Muslims educated in Western schools and colleges.';
+      section.appendChild(p);
+      const base = document.querySelector('.work-background-text');
+      const probe = p.getBoundingClientRect();
+      const own = base.getBoundingClientRect();
+      p.remove();
+      return { width: Math.round(probe.width), rightEdge: Math.round(probe.right),
+               siblingRight: Math.round(own.right) };
+    });
+    t('an English background in a right-reading hero keeps the prose measure',
+      placed.width > 600, JSON.stringify(placed));
+    t('…and still ends where the rest of the page ends',
+      Math.abs(placed.rightEdge - placed.siblingRight) <= 2, JSON.stringify(placed));
     await context.close();
   }
 

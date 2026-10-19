@@ -1017,6 +1017,42 @@
      has already paid for twice; this is the one function, aliased.  */
   var scriptOf = site.scriptOf;
 
+  /* ---- a background, whatever shape it is in ---------------------------
+
+     `background` and `backgroundUr` are arrays of paragraphs. `content.js`
+     is hand-edited sometimes — this file says so in as many words — and
+     `background: "one paragraph"` is the obvious thing to write. A string
+     has a truthy `.length`, so every guard of the form `x && x.length`
+     waves it through and the `.join` or `.map` behind it throws: the row
+     dies mid-render, and a publish dies mid-build with no sentence saying
+     which record.
+
+     Refusing it in `problems()` was the other option and is worse. A
+     string is not ambiguous — it is one paragraph, which is exactly what
+     it looks like — so reading it as one costs nothing and repairs itself:
+     `writeRecord` serialises the list it was given, so the next publish
+     writes the array back out. A check that refuses what it could simply
+     understand makes work for the author instead of doing it. */
+  function paragraphList(value) {
+    if (Array.isArray(value)) {
+      return value.map(function (part) { return String(part == null ? '' : part); })
+        .filter(function (part) { return part.trim(); });
+    }
+    if (typeof value === 'string' && value.trim()) return [value];
+    return [];
+  }
+
+  function joinParagraphs(value) {
+    return paragraphList(value).join('\n\n');
+  }
+
+  function splitParagraphs(value) {
+    return String(value || '').split(/\n\s*\n/)
+      .map(function (part) { return part.replace(/\s+/g, ' ').trim(); })
+      .filter(Boolean);
+  }
+
+
   /* ---- references that were never marked as footnotes -----------------
 
      A post's references are set apart because they are the quieter
@@ -2921,25 +2957,34 @@
          the author's own prose and belongs to the language that prose is
          in. A closed pair, the same shape as KIND_IN_ENGLISH.
 
-         `proseMarkup` sets each paragraph, which since today asks the
-         words themselves which face they want rather than taking it from
-         the record — so an Urdu background on an Arabic-language work
-         comes out in Nastaliq, which is the fault that was fixed this
-         morning in one more place. */
+         `proseMarkup` sets each paragraph, and it asks the words
+         themselves which face they want rather than taking it from the
+         record. **The heading has to ask the same question**, and at first
+         it did not: it took `lang` and `dir` from which of the two fields
+         the prose was sitting in. Put Urdu in `background` — which nothing
+         stops, the field names are a convention — and an `ltr` heading,
+         pushed to the column's left by `margin-inline-start: auto`, sat
+         above its own flush-right Urdu paragraphs. The heading is chosen
+         by `scriptOf` of the prose under it now, so the two cannot part;
+         the field only decides which word is used. */
       (function () {
         var halves = rtl
-          ? [[record.backgroundUr, 'پس منظر', 'ur'], [record.background, 'Background', 'en']]
-          : [[record.background, 'Background', 'en'], [record.backgroundUr, 'پس منظر', 'ur']];
+          ? [[paragraphList(record.backgroundUr), 'ur'], [paragraphList(record.background), 'en']]
+          : [[paragraphList(record.background), 'en'], [paragraphList(record.backgroundUr), 'ur']];
         var written = halves
-          .filter(function (half) { return half[0] && half[0].length; })
+          .filter(function (half) { return half[0].length; })
           .map(function (half) {
-            var urdu = half[2] === 'ur';
+            /* The prose decides, and the field is only the fallback for
+               when the letters are silent — the same argument, and the
+               same `prefer` argument, that `proseMarkup` itself makes. */
+            var tongue = scriptOf(half[0].join(' '), half[1]) || half[1];
+            var rightward = tongue === 'ur' || tongue === 'ar';
             return (
-              '          <h2 class="work-background-heading' + (urdu ? ' urdu' : '') +
-              '" lang="' + half[2] + '" dir="' + (urdu ? 'rtl' : 'ltr') +
-              '">' + e(half[1]) + '</h2>\n' +
+              '          <h2 class="work-background-heading' + (rightward ? ' urdu' : '') +
+              '" lang="' + e(tongue) + '" dir="' + (rightward ? 'rtl' : 'ltr') +
+              '">' + e(rightward ? 'پس منظر' : 'Background') + '</h2>\n' +
               half[0].map(function (para) {
-                return '          ' + site.proseMarkup(para, 'work-background-text', half[2]);
+                return '          ' + site.proseMarkup(para, 'work-background-text', tongue);
               }).join('\n')
             );
           });
@@ -3881,33 +3926,36 @@
        Several paragraphs, so it is an array in `content.js` the way
        `about.bio.prose` already is, and a blank line between them here.
        Not a rich-text box: this is the author's prose with no marks in it,
-       and the writing box exists for a piece that needs them. */
-    var paragraphs = function (value) {
-      return String(value || '').split(/\n\s*\n/)
-        .map(function (part) { return part.replace(/\s+/g, ' ').trim(); })
-        .filter(Boolean);
-    };
-    var joined = function (list) {
-      return (list && list.length) ? list.join('\n\n') : '';
-    };
+       and the writing box exists for a piece that needs them.
 
-    var bgField = field('Background (English)',
-      'what the question comes out of — a paragraph or more, blank line between them');
-    var bgArea = textArea(joined(record.background), function (value) {
-      var list = paragraphs(value);
-      record.background = list.length ? list : undefined;
-    });
-    bgField.appendChild(bgField.own(bgArea));
-    fields.appendChild(bgField);
+       Offered only where `buildWork` writes the page, the same gate the
+       Urdu standfirst above it takes and for the same reason: nothing
+       renders a background on a post or an app, so the box would take
+       prose, `writeRecord` would store it in `content.js`, and the page
+       would never show it. That shipped — the rule about a field the form
+       offers and the page ignoring it, broken three fields below where it
+       had just been written down. */
+    var bgField = null;
+    var bgUrField = null;
+    if (!isPost(entry) && !isApp(entry)) {
+      bgField = field('Background (English)',
+        'what the question comes out of — a paragraph or more, blank line between them');
+      var bgArea = textArea(joinParagraphs(record.background), function (value) {
+        var list = splitParagraphs(value);
+        record.background = list.length ? list : undefined;
+      });
+      bgField.appendChild(bgField.own(bgArea));
+      fields.appendChild(bgField);
 
-    var bgUrField = field('Background (Urdu)', 'the same in Urdu');
-    var bgUrArea = textArea(joined(record.backgroundUr), function (value) {
-      var list = paragraphs(value);
-      record.backgroundUr = list.length ? list : undefined;
-    });
-    applyScript(bgUrArea, 'ur');
-    bgUrField.appendChild(bgUrField.own(bgUrArea));
-    fields.appendChild(bgUrField);
+      bgUrField = field('Background (Urdu)', 'the same in Urdu');
+      var bgUrArea = textArea(joinParagraphs(record.backgroundUr), function (value) {
+        var list = splitParagraphs(value);
+        record.backgroundUr = list.length ? list : undefined;
+      });
+      applyScript(bgUrArea, 'ur');
+      bgUrField.appendChild(bgUrField.own(bgUrArea));
+      fields.appendChild(bgUrField);
+    }
 
     /* tags — one pill each, with its own ×. A single comma-separated line
        meant deleting one tag by counting commas, and a stray comma inside
@@ -5163,12 +5211,15 @@
     /* Several paragraphs, so an array — the shape `about.bio.prose`
        already uses. Listed here like everything else: this list is the
        whole of what a publish keeps, and a field left out of it survives
-       exactly until the next regeneration. */
-    if (record.background && record.background.length) {
-      lines.push(pad + 'background: ' + writeValue(record.background, indent));
+       exactly until the next regeneration. Read through `paragraphList`,
+       so a hand-written string is serialised back as the one-element
+       array it means — the file repairs its own shape on the next
+       publish rather than being refused for it. */
+    if (paragraphList(record.background).length) {
+      lines.push(pad + 'background: ' + writeValue(paragraphList(record.background), indent));
     }
-    if (record.backgroundUr && record.backgroundUr.length) {
-      lines.push(pad + 'backgroundUr: ' + writeValue(record.backgroundUr, indent));
+    if (paragraphList(record.backgroundUr).length) {
+      lines.push(pad + 'backgroundUr: ' + writeValue(paragraphList(record.backgroundUr), indent));
     }
     if (record.tags && record.tags.length) {
       lines.push(pad + 'tags: [' + record.tags.map(str).join(', ') + ']');
@@ -5439,6 +5490,18 @@
         writtenWorks + (writtenWorks === 1 ? ' work page' : ' work pages') +
         (writtenPosts ? ' and ' + writtenPosts + (writtenPosts === 1 ? ' post page' : ' post pages') : '') +
         ', and ' + cards.length + (cards.length === 1 ? ' card' : ' cards') + ', below.';
+    }).catch(function (error) {
+      /* Without this the dialog sat on "Drawing the link-preview cards…"
+         for ever with no cards under it and nothing saying why — a canvas
+         that failed looked exactly like one still working. Everything
+         above the cards is already offered by this point, so the sentence
+         says what is missing rather than pretending the publish is whole:
+         the same rule as the Worker's errors, which name their own
+         remedy. */
+      document.getElementById('export-summary').textContent =
+        'The pages and content.js below are ready, but the link-preview ' +
+        'cards could not be drawn: ' + (error && error.message ? error.message : error) +
+        '. Publish without them and the committed cards stay as they are.';
     });
   });
 
@@ -5536,7 +5599,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-10-05.4';
+  var EDITOR_VERSION = '2026-10-19.1';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */
