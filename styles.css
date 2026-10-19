@@ -81,8 +81,21 @@
   /* Mehr first — closer to traditional Nastaliq calligraphy than Noto's
      own, which is why it's here at all — but Noto Nastaliq Urdu, already
      loaded for this same fallback role, catches it if Mehr's file (self-
-     hosted, not on Google's CDN) is ever slow or unreachable. */
-  --font-urdu: "Mehr", "Latin in Urdu", "Noto Nastaliq Urdu", serif;
+     hosted, not on Google's CDN) is ever slow or unreachable.
+
+     `Ayn and hamza` is the same patch --font-display names, and it had
+     only ever been named there. So the ayn in an Urdu sentence — eight
+     of them in the shares article alone — fell past Mehr (declares the
+     block, holds neither mark), past `Latin in Urdu` (letters only) and
+     past Noto Nastaliq to whatever the device had. The patch was sitting
+     in the repository the whole time, fixing it on one side of the site
+     and not the other. 672 bytes.
+
+     `Urdu guillemets` behind it is the other half of that: see its own
+     @font-face. Both are scoped by unicode-range to the characters they
+     are for and can draw nothing else. */
+  --font-urdu: "Mehr", "Latin in Urdu", "Ayn and hamza", "Urdu guillemets",
+               "Noto Nastaliq Urdu", serif;
   /* A record's own title, and an in-prose subheading inside a post —
      see `.record-title` and `.post-body h2` below. Bold reads better
      than Nastaliq at heading weight, which is the same reasoning Jameel
@@ -291,16 +304,68 @@ img { max-width: 100%; }
    with the Urdu around them and must stay at the Urdu's size — a
    bracket belonging to an Urdu clause set at 71% would be its own fault.
 
-   `local()` throughout: if a device has none of them the face is simply
-   unused and the term renders as it does today, which is the right way
-   for this to fail. */
+   This was a `local()` list — DM Sans, Segoe UI, Roboto, Helvetica,
+   Arial — and that is a claim about the reader's device, not a face.
+   The claim is that they own DM Sans, and they do not: every reader got
+   a different sans, and every one of them got a *sans*, inside a page
+   whose English everywhere else is Gentium, a serif. Asked of the
+   rendered page with CDP, the shares article had 330 glyphs drawn by
+   Liberation Sans in the middle of its Urdu. Same class of fault as the
+   two patches above — a declaration that looks right and is not — and
+   the same answer: name the face, self-host it, measure it.
+
+   It is Gentium itself, cut to Latin. The term in the sentence is now
+   the same typeface as the site's own English, one size down.
+
+   78%, not 71%. 71% was DM Sans's number; Gentium's x-height is 454
+   against DM Sans's 526, so the same ratio needs a larger em. 82% is
+   the arithmetic match and was drawn and looked at beside 78 and 88 —
+   78 reads better here and keeps the worst justification gap where it
+   already was (9.6px at 390px, against 12.3 at 82).
+
+   Letters only, still. Digits, spaces, parentheses and punctuation are
+   shared with the Urdu around them and must stay at the Urdu's size — a
+   bracket belonging to an Urdu clause set at 78% would be its own
+   fault. That is also why the guillemets have a rule of their own
+   below rather than sitting in this range.
+
+   No em-dash here either, deliberately: 73 of them sit in Urdu text
+   across the site, and the note in CLAUDE.md about not patching them
+   still holds — a dash is a horizontal bar in every serif, and at 78%
+   it would be a *shorter* bar than the Urdu around it wants. */
 @font-face {
   font-family: "Latin in Urdu";
-  src: local("DM Sans"), local("Segoe UI"), local("Roboto"),
-       local("Helvetica Neue"), local("Helvetica"), local("Arial"),
-       local("Liberation Sans"), local("DejaVu Sans");
-  size-adjust: 71%;
-  unicode-range: U+0041-005A, U+0061-007A, U+00C0-024F;
+  /* A-Z, a-z, Latin-1 Supplement and Extended-A, Latin Extended
+     Additional and the two guillemets: 406 codepoints, 16.9KB. See
+     files/fonts/latin-in-urdu-NOTICE.txt. 400 only — Latin inside a
+     bold Urdu run is 102 characters across the whole site, so the
+     browser synthesises the weight, as it already does for Mehr. */
+  src: url("files/fonts/latin-in-urdu-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  size-adjust: 78%;
+  unicode-range: U+0041-005A, U+0061-007A, U+00C0-024F, U+1E00-1E9F;
+}
+
+/* The same file, at the Urdu's own size, for two characters.
+
+   « and » wrap an Arabic quotation inside an Urdu paragraph. Mehr
+   declares them and does not hold them, so they fell past `Latin in
+   Urdu` — whose range is letters — to Noto Nastaliq Urdu, and pulled
+   20KB over the wire to draw two marks. That is more than a third of
+   Mehr itself. Measured off the wire: with this rule the Noto subset is
+   not fetched at all, and the post's fonts go 363KB to 360KB — so the
+   face above pays for itself and the page ends up lighter.
+
+   A separate rule rather than two more codepoints in the range above,
+   because these are punctuation belonging to the Urdu clause and must
+   not take the 78%. Same URL, so it is the same single fetch. */
+@font-face {
+  font-family: "Urdu guillemets";
+  src: url("files/fonts/latin-in-urdu-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+00AB, U+00BB;
 }
 
 /* The ayn and the hamza, and nothing else — the same shape as the face
@@ -2433,6 +2498,26 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 
 .post-body > * { margin: 0 0 1.1em; }
 .post-body > *:last-child { margin-bottom: 0; }
+/* A paragraph break has to be bigger than a line break, and in Nastaliq
+   it was not. 1.1em is a sane margin under a line-height of 1.5, which
+   is what the English body has; the Urdu body is 21px at 2.15, so the
+   line pitch is 45.15px and the gap between two paragraphs was 23.1px —
+   half a line. Paragraphs stopped reading as paragraphs and the whole
+   article came out as one grey slab, which is the first thing anybody
+   notices and the hardest to name. Reported as the articles not looking
+   like a professional, readable piece of writing.
+
+   1.6em is 33.6px: three-quarters of a line clear of the line pitch, so
+   the break reads without the text coming apart. The article grows 4%.
+
+   Not `li` — a list wants its items closer together than its paragraphs,
+   which is the whole shape of a list. Not `.latin` either: a block of
+   English in an Urdu piece is 15px at 1.5, so it already has the ratio
+   this is putting back, and the fourteen bibliography entries at the
+   foot of an Urdu article should stay a list of entries rather than
+   fourteen paragraphs. */
+.post-body.urdu > p:not(.latin),
+.post-body.arabic > p:not(.latin) { margin-bottom: 1.6em; }
 .post-body h2 {
   margin-top: 1.7em;
   font-size: 1.32em;

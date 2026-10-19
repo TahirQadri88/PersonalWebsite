@@ -1,0 +1,45 @@
+Latin in Urdu
+
+A Latin subset of Gentium Book Plus — the face that already sets this
+site's English — carrying A-Z, a-z, Latin-1 Supplement and Extended-A,
+Latin Extended Additional (U+1E00-1E9F, the dotted and barred letters
+the transliteration here needs), and the two guillemets « ». 406
+codepoints, 16.9KB. Nothing else.
+
+Gentium Book Plus is copyright (c) 2003-2022 SIL International,
+licensed under the SIL Open Font License, Version 1.1:
+https://scripts.sil.org/OFL
+
+"Gentium" is SIL's Reserved Font Name, so the family has been renamed
+inside the font to "Latin in Urdu" — which the OFL requires of a
+modified copy, and which is right anyway: this is a cut of Gentium and
+must not be mistaken for Gentium entire.
+
+Built by merging Google's `latin` and `latin-ext` woff2 subsets of
+Gentium Book Plus 400 and subsetting the result; neither of Google's
+files holds the whole of what is wanted on its own.
+
+Why it exists: an English term inside an Urdu sentence — `board of
+directors`, `Shariah screening`, `companies/corporations`, and this
+library is full of them — is drawn by none of the Urdu faces, because
+Mehr withholds Latin letters and Noto Nastaliq has none. What stood
+here before was a `local()` list naming DM Sans, Segoe UI, Roboto,
+Helvetica and Arial, which is a claim about the reader's device rather
+than a face: every reader got a different sans, and all of them got a
+*sans*, inside a page whose English everywhere else is a serif.
+Measured on the shares article: 330 glyphs drawn by Liberation Sans.
+
+It also covers what Mehr simply does not have and nothing else was
+catching: ī ā ū ḥ Ṭ ş ğ (29 uses on that one article) and the
+guillemets around an Arabic quotation. Those two marks alone were
+pulling a 20KB subset of Noto Nastaliq Urdu over the wire to draw two
+characters — so self-hosting this file makes the page lighter, not
+heavier: measured 363KB of fonts before, 360KB after.
+
+400 only. Latin inside a bold Urdu run is 102 characters across the
+whole site, which is not worth a second 17KB file; the browser
+synthesises the weight, exactly as it already does for Mehr's own bold.
+
+The ayn (ʿ) is not in here. Gentium has never had it, which is why
+`Ayn and hamza` exists — that patch is named in --font-urdu behind
+this one now, where it had only ever been named in --font-display.

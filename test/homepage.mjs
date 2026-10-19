@@ -1618,6 +1618,194 @@ try {
       /font-family:\s*"Superscript digits";[\s\S]{0,220}?unicode-range:\s*U\+00B2-00B3,\s*U\+00B9,\s*U\+2070-2079;/.test(css));
   }
 
+  /* ---- an English term inside an Urdu sentence ----
+
+     The third face in the same family of faults, and the longest-lived.
+     `Latin in Urdu` named DM Sans, Segoe UI, Roboto, Helvetica and Arial
+     through `local()` — which is a claim about the reader's device, not
+     a face. Nobody has DM Sans installed, so every reader got a
+     different sans, and all of them got a *sans*, inside a page whose
+     English everywhere else is a serif. Asked of the rendered page, the
+     shares article had 330 glyphs drawn by Liberation Sans in the middle
+     of its Urdu.
+
+     This one can be measured here where Gentium cannot, for the reason
+     the two groups above give: the replacement is self-hosted, so the
+     browser really fetches it and really says which face painted the
+     term. Put the `local()` list back and the first assertion reports
+     the container's own sans instead. */
+  group('an English term in an Urdu sentence is set in the site\'s own serif');
+  {
+    const POST = '/posts/reservations-shariah-screening-stocks.html';
+    const { context, page } = await open(390, POST);
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('DOM.enable');
+    await cdp.send('CSS.enable');
+    const faces = async (selector) => {
+      const { root } = await cdp.send('DOM.getDocument');
+      const { nodeId } = await cdp.send('DOM.querySelector',
+        { nodeId: root.nodeId, selector });
+      if (!nodeId) return null;
+      const { fonts } = await cdp.send('CSS.getPlatformFontsForNode', { nodeId });
+      return fonts.map((f) => f.familyName);
+    };
+
+    /* Mark the paragraphs rather than trust an index: a post is edited,
+       and a guard that counts paragraphs goes red for the wrong reason
+       the first time one is added. Each probe is put on the element that
+       OWNS the text — wrapping a mark in its own span splits the shaping
+       run and Chromium then reports the glyphs against the parent, which
+       is the mistake that once produced 284 false faults. */
+    const found = await page.evaluate(() => {
+      const out = { latin: 0, guillemet: 0 };
+      const body = document.querySelector('.post-body');
+      let i = 0;
+      for (const p of body.querySelectorAll('p')) {
+        if (p.classList.contains('latin')) continue;
+        const text = p.textContent;
+        if (!/[؀-ۿ]/.test(text)) continue;
+        if (out.latin === 0 && /[A-Za-z]{5}/.test(text)) {
+          p.id = 'probe-latin'; out.latin = 1;
+        }
+        if (out.guillemet === 0 && /«/.test(text)) {
+          p.id = 'probe-guillemet'; out.guillemet = 1;
+        }
+        i++;
+      }
+      out.urduParagraphs = i;
+      return out;
+    });
+    /* Count what you matched. If the post is rewritten and loses its
+       English terms there is nothing here to guard, and this says so
+       rather than passing on an empty set. */
+    t(`the article has ${found.urduParagraphs} Urdu paragraphs to look at`,
+      found.urduParagraphs > 10, JSON.stringify(found));
+    t('…one of which holds an English term', found.latin === 1, JSON.stringify(found));
+    t('…and one a guillemet', found.guillemet === 1, JSON.stringify(found));
+
+    const drewLatin = await faces('#probe-latin');
+    t(`the English term is drawn by ${(drewLatin || []).join(' + ') || 'nothing'}`,
+      !!drewLatin && drewLatin.includes('Latin in Urdu'), JSON.stringify(drewLatin));
+    /* The point of the change is not only that the right face is reached
+       but that no system face is: a term half in Gentium and half in the
+       device's sans is the fault, not a lesser version of it. Mehr draws
+       the Urdu around it, so both are expected and nothing else is. */
+    t('…and by nothing the site has not named',
+      !!drewLatin && drewLatin.every((f) =>
+        ['Latin in Urdu', 'Mehr Nastaliq Web'].includes(f)),
+      JSON.stringify(drewLatin));
+
+    /* The ayn is written into the page by the guard, because there is no
+       Urdu paragraph on the site that carries one yet — counted: all
+       eight on this article sit in its English reference entries, which
+       are `.latin` and take the display stack, where the existing ayn
+       group already covers them. So the patch in --font-urdu is correct
+       and latent. Putting the mark there and measuring it is what the
+       background rule already does for a combination the library has not
+       written; inventing a post to hold one would be the expensive way
+       round. The day an Urdu sentence does carry an ayn, this says
+       whether it draws.
+
+       `fonts.load` has to be given the character as well as the family:
+       a unicode-range'd face is fetched only for text that needs it, and
+       the default probe string the one-argument form assumes holds no
+       ayn. That trap has caught three faces in this repository. */
+    const aynStack = await page.evaluate(async () => {
+      const host = document.querySelector('.post-body p:not(.latin)');
+      const p = document.createElement('p');
+      p.id = 'probe-ayn';
+      p.className = host.className;
+      p.setAttribute('dir', 'rtl');
+      p.textContent = 'شرعی ʿ جانچ';
+      host.parentNode.insertBefore(p, host.nextSibling);
+      await document.fonts.load('400 21px "Ayn and hamza"', 'ʿ');
+      await document.fonts.ready;
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      return getComputedStyle(p).fontFamily;
+    });
+    t('the probe inherits the Urdu stack',
+      /Mehr/.test(aynStack) && /Ayn and hamza/.test(aynStack), aynStack);
+    const drewAyn = await faces('#probe-ayn');
+    t(`an ayn in Urdu prose is drawn by ${(drewAyn || []).join(' + ') || 'nothing'}`,
+      !!drewAyn && drewAyn.includes('Ayn and hamza'), JSON.stringify(drewAyn));
+
+    /* The guillemets cannot be told apart from the Latin letters by
+       name: `Urdu guillemets` is a second @font-face on the SAME file,
+       which is the whole point of it — one fetch — and CDP answers with
+       the family name inside the font, which is `Latin in Urdu` for
+       both. So what is asserted here is that nothing off the reader's
+       device drew them; that they are not size-adjusted is read out of
+       the stylesheet below, and neither assertion covers the other.
+
+       Restoring the fault still fails this: without the rule the marks
+       fall to Noto Nastaliq Urdu, which `open()` keeps off the network,
+       so a system serif paints them and turns up in this list. */
+    const drewGuillemet = await faces('#probe-guillemet');
+    t(`« and » are drawn by ${(drewGuillemet || []).join(' + ') || 'nothing'}`,
+      !!drewGuillemet && drewGuillemet.length > 0 && drewGuillemet.every((f) =>
+        ['Latin in Urdu', 'Mehr Nastaliq Web', 'Ayn and hamza'].includes(f)),
+      JSON.stringify(drewGuillemet));
+
+    /* A paragraph break has to be bigger than a line break. It was half
+       of one — 23.1px under a 45.15px line pitch — which is what made the
+       article read as a single grey slab. */
+    const rhythm = await page.evaluate(() => {
+      const body = document.querySelector('.post-body');
+      const ps = [...body.querySelectorAll('p')]
+        .filter((p) => !p.classList.contains('latin'));
+      const gaps = [];
+      for (let i = 1; i < ps.length; i++) {
+        const a = ps[i - 1].getBoundingClientRect();
+        const b = ps[i].getBoundingClientRect();
+        if (b.top > a.bottom - 2) gaps.push(b.top - a.bottom);
+      }
+      gaps.sort((x, y) => x - y);
+      return {
+        gap: gaps.length ? gaps[Math.floor(gaps.length / 2)] : 0,
+        line: parseFloat(getComputedStyle(body).lineHeight),
+        n: gaps.length
+      };
+    });
+    t(`${rhythm.n} paragraph breaks measured`, rhythm.n > 10, JSON.stringify(rhythm));
+    t(`…each ${Math.round(rhythm.gap)}px against a ${Math.round(rhythm.line)}px line, at least two thirds of it`,
+      rhythm.gap >= rhythm.line * 0.66, JSON.stringify(rhythm));
+    await context.close();
+
+    /* A cut of Gentium, not Gentium entire smuggled in behind a name,
+       and the whole argument for it is that the page gets LIGHTER: the
+       guillemets alone were pulling a 20KB Noto Nastaliq subset over the
+       wire to draw two characters. Over 20KB here and the trade is off. */
+    const kb = (await stat(join(ROOT, 'files/fonts/latin-in-urdu-400.woff2'))).size;
+    t(`the subset is ${Math.round(kb / 1024)}KB, under the 20KB it replaces`,
+      kb < 20480, String(kb));
+
+    const css = await readFile(join(ROOT, 'styles.css'), 'utf8');
+    /* Order again, and it is the same lesson as the display stack: a
+       unicode-range says what a face MAY draw, never that it is
+       preferred. Both patches must sit behind the face they patch and
+       ahead of the fallback that would otherwise swallow them. */
+    const stack = (/--font-urdu:([^;]*);/.exec(css) || [, ''])[1];
+    const at = (name) => stack.indexOf(name);
+    t('the Urdu stack names the serif, both patches and the fallback',
+      ['Mehr', 'Latin in Urdu', 'Ayn and hamza', 'Urdu guillemets',
+        'Noto Nastaliq Urdu'].every((n) => at(n) > -1), stack.trim());
+    t('…with every patch ahead of Noto Nastaliq, which would swallow them',
+      at('Latin in Urdu') < at('Noto Nastaliq Urdu') &&
+      at('Ayn and hamza') < at('Noto Nastaliq Urdu') &&
+      at('Urdu guillemets') < at('Noto Nastaliq Urdu'), stack.trim());
+    /* The guillemets are a second @font-face on the same file rather than
+       two more codepoints in the range above, because they are
+       punctuation belonging to the Urdu clause and must not take the
+       78%. Fold them in and they come out smaller than the Urdu around
+       them — the same fault the brackets were deliberately left with
+       Mehr to avoid. */
+    t('…and the Latin face is size-adjusted while the guillemets are not',
+      /font-family:\s*"Latin in Urdu";[\s\S]{0,600}?size-adjust:\s*78%/.test(css) &&
+      !/font-family:\s*"Urdu guillemets";[\s\S]{0,400}?size-adjust/.test(css));
+    t('…no longer claiming a face off the reader\'s own device',
+      !/font-family:\s*"Latin in Urdu";[\s\S]{0,400}?local\(/.test(css));
+  }
+
   /* ---- the rhythm between sections ---- */
   group('the page breathes without falling apart');
   {

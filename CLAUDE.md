@@ -550,9 +550,112 @@ fall through to `Latin in Urdu`: the same system face at `size-adjust:
 71%`, which is the site's own ratio (a block of English in an Urdu piece
 is 15px against the body's 21px). Digits, brackets and punctuation stay
 with Mehr deliberately — they are shared with the Urdu around them, and a
-bracket in an Urdu clause set at 71% would be a new fault. `local()`
-throughout, so a device with none of the named faces simply renders as
-before. Aslam still has its Latin; nothing has asked for it yet.
+bracket in an Urdu clause set at 71% would be a new fault. Aslam still
+has its Latin; nothing has asked for it yet.
+
+**That fallback was `local()`, and `local()` is a claim about the
+reader's device.** The same class of fault as the declared
+`unicode-range` above, one layer out: the stack named DM Sans, Segoe
+UI, Roboto, Helvetica and Arial, and the first of those is a *webfont*.
+Nobody has DM Sans installed. So every reader got a different sans
+depending on what their device happened to carry — Liberation Sans in
+the test container, Roboto on the author's phone — and every one of
+them got a **sans**, inside a page whose English everywhere else is
+Gentium, a serif. Asked of the rendered page with
+`getPlatformFontsForNode`: **330 glyphs drawn by Liberation Sans** in
+the middle of the shares article's Urdu. Reported as *the articles seem
+unattractive, not a professional readable format*, which is what a
+paragraph looks like when the terms inside it are in somebody else's
+typeface.
+
+It is a self-hosted cut of **Gentium** now — the site's own English
+face, 406 codepoints, 16.9KB, renamed inside the font because
+*Gentium* is SIL's Reserved Font Name. Same pattern as the other three
+patches, and the fourth time this repository has paid for the lesson
+that **a font stack is a claim and a claim is worth measuring**.
+
+**78%, not 71%, and the number moved because the face did.** 71% was
+DM Sans's; Gentium's x-height is 454 against DM Sans's 526, so the same
+apparent size needs a larger em — 82% is the arithmetic match. 78, 82
+and 88 were drawn and **looked at**: 78 reads better here and keeps the
+worst justification gap where it already was (9.6px at 390px, against
+12.3 at 82).
+
+**It makes the page lighter, which is the whole argument for it.**
+`«` and `»` wrap an Arabic quotation inside an Urdu paragraph; Mehr
+*declares* them and does not hold them, so they fell past `Latin in
+Urdu` (letters only) to **Noto Nastaliq Urdu — 20KB over the wire to
+draw two characters**, more than a third of Mehr itself. `Urdu
+guillemets` is a second `@font-face` on the same file, so one fetch,
+and it carries **no** `size-adjust`: those are punctuation belonging to
+the Urdu clause, exactly the reason brackets were left with Mehr.
+Measured off the wire, the post's fonts went **363KB → 360KB** and
+Noto is no longer fetched at all.
+
+Two consequences of sharing one file. CDP reports the family name
+*inside* the font, so both rules answer `Latin in Urdu` and the guard
+cannot tell the guillemets apart by name — what it asserts is that
+nothing off the device drew them, with the size half read out of the
+stylesheet. And no em-dash was added to the range, deliberately: the
+note below about not patching Mehr's dashes still holds, and at 78% a
+dash would be a *shorter* bar than the Urdu around it wants.
+
+**`Ayn and hamza` was named in `--font-display` and never in
+`--font-urdu`.** The patch has been sitting in the repository fixing
+one side of the site and not the other. An ayn in an Urdu sentence fell
+past Mehr (declares the block, holds neither mark), past `Latin in
+Urdu`, past Noto Nastaliq, to the device. 672 bytes to fix, and it is
+in the Urdu stack now.
+
+**No Urdu paragraph on the site carries one yet**, which is why the
+guard writes the mark into the page itself and measures that. All eight
+ayns on the shares article sit in its English reference entries, which
+are `.latin` and take the display stack. Same move the background rule
+already makes for a combination the library has not written — inventing
+a post to hold one would be the expensive way round. Stated plainly
+because the fix is **correct and latent**, and a note that implied
+otherwise would be the false account this file keeps warning about.
+
+**A paragraph break has to be bigger than a line break, and in Nastaliq
+it was half of one.** `.post-body > *` carries `margin: 0 0 1.1em`,
+which is sane under the 1.5 line-height English has. The Urdu body is
+21px at 2.15, so the line pitch is **45.15px and the paragraph gap was
+23.1px** — paragraphs stopped reading as paragraphs and the article
+came out as one grey slab. That is the first thing a reader notices and
+the hardest to name; it arrived as the same sentence about the articles
+not looking professional, and it is a *second* cause, not the same one.
+`1.6em` is 33.6px and the article grows 4%.
+
+Not `li` — a list wants its items closer than its paragraphs, which is
+the shape of a list. Not `.latin` either: a block of English in an Urdu
+piece is 15px at 1.5 and already has this ratio, and the fourteen
+bibliography entries at the foot of an Urdu article should stay a list
+rather than fourteen paragraphs.
+
+**Removing the justification was tried and is worse — keep it.** The
+obvious thing to reach for, and the measurement says it is inert for
+pure Urdu anyway: median gap = worst gap = **0.5px**, Mehr's own
+natural space, because Nastaliq separates words by letterform and not
+by an advance. It only stretches around the Latin terms. But with it
+off, `جانچ Shariah` **collides** — the justification is supplying the
+only separation at the Urdu/Latin boundary. Found by rendering it and
+looking, not by the 9.8 → 6.7px the gap measurement reported, which
+says the change was an improvement.
+
+**Jameel Noori Nastaleeq, asked for and answered with numbers.** Mehr
+is 55KB, 493 glyphs, built from components the engine joins. Jameel
+Noori **subsetted down to the characters of one of the author's own
+fatwās, out of his own PDF, is 9.2MB** — it stores whole ligatures, a
+drawn shape per word, so subsetting barely touches it. 170× the page's
+entire font budget, and no open licence found. Affordable only for a
+fixed string: a wordmark, a masthead. Never body text.
+
+**What Amiri costs, for the record.** 118KB on that article to draw
+**26 glyphs** — the single line `باسمه تعالى و تقدس الجواب:`. A third
+of the page's fonts for one line. Not a fault; a real Naskh for Arabic
+quotation is worth something, and the fetch is demand-driven, so a page
+with no Arabic never pays it. Written down so the price is known rather
+than rediscovered.
 
 **A class the editor writes must outrank the stylesheet's default, or
 the button is a lie — except where the class is the context leaking.** Three rules were quietly beating the writing
