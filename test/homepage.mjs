@@ -1806,6 +1806,195 @@ try {
       !/font-family:\s*"Latin in Urdu";[\s\S]{0,400}?local\(/.test(css));
   }
 
+  /* ---- the reading face ----
+
+     Jameel Noori Nastaleeq is 6.57MB — a hundred and twenty times Mehr,
+     and by far the largest file in the repository. It is offered and
+     never served: nothing names that family except one rule behind
+     `html.jameel`, and a @font-face is fetched only when something
+     rendered needs it.
+
+     So the assertion that matters is a NEGATIVE one, and it is the kind
+     this file has been caught by before: a guard that only checks the
+     happy path cannot see the fault. The requests are counted on an
+     ordinary load, and the file must not be among them.
+
+     The second half is the same lesson as the `Latin in Urdu` group
+     above, one face along. Jameel carries 196 non-Arabic codepoints of
+     its own, so without a unicode-range withholding the Latin letters,
+     turning this on would quietly undo the work that put an English term
+     into the site's own serif — the term would go back to being drawn at
+     the Urdu's full size, by the Urdu face this time. */
+  group('Jameel Noori is offered, never served');
+  {
+    const POST = '/posts/reservations-shariah-screening-stocks.html';
+    const FONT = 'jameel-noori-nastaleeq.woff2';
+    const context = await browser.newContext({ viewport: { width: 390, height: 900 } });
+    await context.route('https://fonts.g**', (r) => r.abort());
+    const page = await context.newPage();
+    page.on('pageerror', (e) => threw.push('reading face: ' + e.message));
+    const fetched = [];
+    page.on('response', (r) => {
+      if (/\.woff2(\?|$)/.test(r.url())) fetched.push(r.url().split('/').pop());
+    });
+    await page.goto(`http://127.0.0.1:${PORT}${POST}`, { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(400);
+
+    t(`${fetched.length} fonts fetched on an ordinary load`, fetched.length > 3,
+      JSON.stringify(fetched));
+    t('…and the 6.5MB one is not among them',
+      !fetched.some((f) => f === FONT), JSON.stringify(fetched));
+
+    const face = page.locator('.reading-face');
+    t('the article offers the reading face', await face.count() === 1);
+    t('…reading as an offer, not as a state',
+      /Read in Jameel Noori/.test(await face.textContent() || ''),
+      await face.textContent());
+    t('…and saying so to a screen reader too',
+      await face.getAttribute('aria-pressed') === 'false');
+    /* The cost is named before it is spent. A control that quietly
+       downloads 6.5MB of someone's mobile data has not asked. */
+    t('…with the size on the control before it is paid',
+      /6\.5 MB/.test(await face.getAttribute('title') || ''),
+      await face.getAttribute('title'));
+
+    const before = await page.evaluate(() => document.documentElement.scrollHeight);
+    await face.scrollIntoViewIfNeeded();
+    await face.click();
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(2500);
+
+    t('asking for it fetches it', fetched.some((f) => f === FONT), JSON.stringify(fetched));
+    t('…the control now says it is on',
+      await face.getAttribute('aria-pressed') === 'true' &&
+      /on/.test(await face.textContent() || ''), await face.textContent());
+    t('…and the size is said once it is spent, not only before',
+      /6\.5 MB/.test(await page.locator('.page-tools-note').textContent() || ''),
+      await page.locator('.page-tools-note').textContent());
+
+    /* Which face actually painted it. Self-hosted, so unlike Gentium
+       this really is drawn here and CDP really can be asked. */
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('DOM.enable');
+    await cdp.send('CSS.enable');
+    const drew = async (selector) => {
+      const { root } = await cdp.send('DOM.getDocument');
+      const { nodeId } = await cdp.send('DOM.querySelector',
+        { nodeId: root.nodeId, selector });
+      if (!nodeId) return null;
+      const { fonts } = await cdp.send('CSS.getPlatformFontsForNode', { nodeId });
+      return fonts.map((f) => f.familyName);
+    };
+    await page.evaluate(() => {
+      const p = [...document.querySelectorAll('.post-body p:not(.latin)')]
+        .filter((el) => /[A-Za-z]{5}/.test(el.textContent))[0];
+      if (p) p.id = 'face-probe';
+    });
+    const painted = await drew('#face-probe');
+    t(`the Urdu is drawn by ${(painted || []).join(' + ') || 'nothing'}`,
+      !!painted && painted.includes('Jameel Noori Nastaleeq'), JSON.stringify(painted));
+    /* The whole point of the unicode-range. Take it off and Jameel draws
+       the English term too, at the Urdu's own size, and this fails. */
+    t('…while the English term inside it stays in the site\'s serif',
+      !!painted && painted.includes('Latin in Urdu'), JSON.stringify(painted));
+    t('…and Mehr is no longer painting that paragraph',
+      !!painted && !painted.includes('Mehr Nastaliq Web'), JSON.stringify(painted));
+
+    /* Measured rather than assumed, because the first measurement of this
+       was taken before the Latin was withheld and said the opposite. */
+    const after = await page.evaluate(() => document.documentElement.scrollHeight);
+    t(`the article goes ${before} to ${after}px — within a tenth either way`,
+      Math.abs(after - before) / before < 0.1, JSON.stringify({ before, after }));
+
+    t('the choice is remembered',
+      await page.evaluate(() => {
+        try { return localStorage.getItem('reading-face'); } catch (e) { return 'threw'; }
+      }) === 'jameel');
+
+    /* A returning reader gets it back without touching anything.
+
+       What this does NOT prove is the thing the code is written for —
+       that the class is on before first paint, so the article does not
+       re-set itself a moment after it appears. common.js is one
+       parser-blocking script at the end of <body>, so applying the class
+       at the top of the file and applying it down in the mount both land
+       in the same synchronous pass and both pass this. Moving the call
+       would leave this green, which is the state this file calls worse
+       than no test at all. The ordering is a reasoned claim, written up
+       beside the code; this assertion covers persistence only, and is
+       named for that. */
+    await page.goto(`http://127.0.0.1:${PORT}${POST}`, { waitUntil: 'domcontentloaded' });
+    t('…and comes back on the next visit without being asked again',
+      await page.evaluate(() => document.documentElement.classList.contains('jameel')));
+
+    const again = page.locator('.reading-face');
+    await again.scrollIntoViewIfNeeded();
+    await again.click();
+    t('turning it off puts Mehr back',
+      !(await page.evaluate(() => document.documentElement.classList.contains('jameel'))));
+    t('…and forgets the choice rather than storing a second state',
+      !(await page.evaluate(() => {
+        try { return localStorage.getItem('reading-face'); } catch (e) { return 'threw'; }
+      })));
+    await context.close();
+
+    /* An English post carries exactly one `.urdu` — the اردو میں پڑھیے
+       link to its twin — so asking for `.urdu` anywhere offered a 6.5MB
+       download to re-typeset fourteen characters of chrome. Found by
+       looking at what the selector matched, not by reasoning about it. */
+    {
+      const { context: c2, page: p2 } = await open(390, '/posts/the-strong-and-the-trustworthy.html');
+      t('an English post does carry an Urdu element',
+        await p2.locator('.urdu').count() > 0);
+      t('…and is still not offered the face, because its prose is not Urdu',
+        await p2.locator('.reading-face').count() === 0);
+      await c2.close();
+    }
+
+    /* Without JavaScript there is no control and no 6.5MB anything —
+       the page is exactly what it is today. The third of the three cases
+       this codebase holds everything that moves to. */
+    {
+      const c3 = await browser.newContext({ viewport: { width: 390, height: 900 }, javaScriptEnabled: false });
+      await c3.route('https://fonts.g**', (r) => r.abort());
+      const p3 = await c3.newPage();
+      const got = [];
+      p3.on('response', (r) => {
+        if (/\.woff2(\?|$)/.test(r.url())) got.push(r.url().split('/').pop());
+      });
+      await p3.goto(`http://127.0.0.1:${PORT}${POST}`, { waitUntil: 'domcontentloaded' });
+      await p3.waitForTimeout(800);
+      t('with JavaScript off the article still has its words',
+        (await p3.locator('#post-body p').count()) > 10);
+      t('…offers no reading face', await p3.locator('.reading-face').count() === 0);
+      t('…and fetches nothing of the 6.5MB font',
+        !got.some((f) => f === FONT), JSON.stringify(got));
+      await c3.close();
+    }
+
+    /* It is the biggest file here by two orders of magnitude, so the cap
+       is about it not growing further rather than about it being small.
+       And nothing may name the family except the one rule behind the
+       class — the moment a second rule does, it is served to everybody
+       and the whole design is gone. */
+    const kb = (await stat(join(ROOT, 'files/fonts/' + FONT))).size;
+    t(`the font is ${(kb / 1048576).toFixed(2)}MB, under 8`, kb < 8 * 1048576, String(kb));
+    const css = await readFile(join(ROOT, 'styles.css'), 'utf8');
+    /* Quoted, so the comments naming the face in prose are not counted —
+       `--font-urdu-heading` explains itself by reference to Jameel, and
+       so does Aslam's. Two quoted uses: the @font-face that declares it
+       and the single rule that reaches it. */
+    const names = (css.match(/"Jameel Noori Nastaleeq"/g) || []).length;
+    t(`the family is named ${names} times in CSS — the face and the one rule`,
+      names === 2, String(names));
+    t('…and that rule is behind the class, not on :root',
+      /:root\.jameel\s*\{[^}]*--font-urdu:/.test(css));
+    t('…with the Latin letters withheld, as Mehr withholds them',
+      /font-family:\s*"Jameel Noori Nastaleeq";[\s\S]{0,400}?unicode-range:[\s\S]{0,200}?U\+0600-06FF/.test(css) &&
+      !/font-family:\s*"Jameel Noori Nastaleeq";[\s\S]{0,400}?unicode-range:[^;]*U\+0041-005A/.test(css));
+  }
+
   /* ---- the rhythm between sections ---- */
   group('the page breathes without falling apart');
   {

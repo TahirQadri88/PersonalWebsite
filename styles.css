@@ -272,6 +272,49 @@ img { max-width: 100%; }
                  U+2010-205E, U+FB50-FDFF, U+FE70-FEFF;
 }
 
+/* Jameel Noori Nastaleeq — 6.57MB, and nobody downloads it unless they
+   ask. A @font-face is fetched only when something rendered needs the
+   family, and nothing on this site names it except the rule below, which
+   needs a class on <html> that only a reader's own tap puts there. So
+   this declaration is free until it is wanted; that is the whole design,
+   and `test/homepage.mjs` counts the requests to prove it.
+
+   Withholding the Latin letters, exactly as Mehr does above and for the
+   same measured reason: Jameel carries a full Latin set of its own (196
+   non-Arabic codepoints, read off the cmap) and would otherwise draw an
+   English term in an Urdu sentence at the Urdu's own size. The two faces
+   must agree about this or turning the toggle on would quietly undo the
+   work that put English into the site's own serif.
+
+   It keeps « » — those sit inside U+007B-00BF, which this range
+   declares, and Jameel does hold them. So when it is on it draws its own
+   guillemets at its own size and `Urdu guillemets` is simply not
+   reached. One fewer fetch, and the right answer either way.
+
+   See files/fonts/jameel-noori-nastaleeq-NOTICE.txt for the licence
+   position and why the file is not subsetted. */
+@font-face {
+  font-family: "Jameel Noori Nastaleeq";
+  src: url("files/fonts/jameel-noori-nastaleeq.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+0000-0040, U+005B-0060, U+007B-00BF, U+02B0-036F,
+                 U+0600-06FF, U+0750-077F, U+08A0-08FF, U+200C-200F,
+                 U+2010-205E, U+FB50-FDFF, U+FE70-FEFF;
+}
+/* The one rule that reaches it. `common.js` puts `jameel` on <html> from
+   a stored choice, and takes it off again.
+
+   Only the body face. --font-urdu-heading stays Aslam: a heading is set
+   apart from the prose under it by being bold Naskh against Nastaliq,
+   and Jameel has no bold cut either — swapping it in would take the
+   distinction away rather than carry it over. The comment on
+   --font-urdu-heading says this already, about Jameel Noori by name. */
+:root.jameel {
+  --font-urdu: "Jameel Noori Nastaleeq", "Latin in Urdu", "Ayn and hamza",
+               "Urdu guillemets", "Mehr", "Noto Nastaliq Urdu", serif;
+}
+
 /* Aslam — bold Naskh, used here for the same reason Jameel Noori
    Nastaleeq sites pair it with a heading role: Nastaliq mostly has no
    bold cut of its own. No open license found for this one — see
@@ -2753,6 +2796,16 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   font-size: 13px;
 }
 .print-credit { display: none; }
+/* The reading face, when it is the one being read in. Selected on
+   `aria-pressed` rather than on a class of our own, the same argument
+   `markPlace` makes for `aria-current`: the attribute that tells a
+   screen reader is the attribute worth styling, and then the two cannot
+   come apart. Weight and the site's own gold, no background — it sits
+   in a row with Share and Print and must not outrank them. */
+.page-tools .reading-face[aria-pressed="true"] {
+  color: var(--gold-on-light);
+  font-weight: 600;
+}
 .work-hero[dir="rtl"] .page-tools { direction: rtl; }
 
 /* Share, on a row in the library — `button.text-link` above does the

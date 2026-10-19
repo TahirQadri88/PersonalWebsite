@@ -5,6 +5,43 @@
 
   var content = window.siteContent || { categories: [], rulings: [], site: {} };
 
+  /* ---- The reading face -----------------------------------------------
+
+     Mehr draws the Urdu, and Jameel Noori Nastaleeq is offered to anyone
+     who would rather read in it. It is 6.57MB — a hundred and twenty
+     times Mehr — so it is never served to anybody who has not asked:
+     nothing in the stylesheet names that family except one rule behind
+     `html.jameel`, and a @font-face is fetched only when something
+     rendered needs it. The class is put here, from the reader's own
+     stored choice, and nowhere else.
+
+     This runs before the page is drawn rather than inside the mount
+     below, so a reader who has already chosen does not watch the article
+     reflow a moment after it appears. common.js is a parser-blocking
+     script, so the class is on <html> before first paint. It cannot be
+     earlier than that without writing a snippet into the <head> of every
+     generated page, which would mean rewriting all thirty-odd of them
+     for a saving nobody would see.
+
+     Storage is wrapped, every time: a private window, blocked site data
+     or a browser that simply refuses makes these throw rather than
+     return nothing, and a reader whose storage is off must still get a
+     working page in Mehr. */
+  var FACE_KEY = 'reading-face';
+  function storedFace() {
+    try { return window.localStorage.getItem(FACE_KEY); } catch (error) { return null; }
+  }
+  function rememberFace(value) {
+    try {
+      if (value) window.localStorage.setItem(FACE_KEY, value);
+      else window.localStorage.removeItem(FACE_KEY);
+    } catch (error) { /* nothing to do: the choice lasts this page only */ }
+  }
+  function applyFace(on) {
+    document.documentElement.classList.toggle('jameel', !!on);
+  }
+  applyFace(storedFace() === 'jameel');
+
   function escapeHtml(value) {
     return String(value == null ? '' : value)
       .replace(/&/g, '&amp;')
@@ -420,6 +457,17 @@
       'M12 3.5v11',
       'M7.6 10.1L12 14.5l4.4-4.4',
       'M4 16.5v2.5A1.5 1.5 0 0 0 5.5 20.5h13a1.5 1.5 0 0 0 1.5-1.5v-2.5'
+    ],
+    /* A nib and the stroke it has just laid down — the reading face.
+       Not a letter `A` in a box, which is the usual mark for this and
+       says *Latin* on a control whose whole subject is Nastaliq; and not
+       the qalam above, which already means مضامین و خیالات on every
+       category row. A nib with ink under it says "the hand this is
+       written in" in either script. */
+    nib: [
+      'M12 3.2l3.2 7.4h-6.4z',
+      'M12 10.6v4.2',
+      'M5.5 18.8c2.2-1.2 4.3-1.8 6.5-1.8s4.3.6 6.5 1.8'
     ],
     /* A page with a folded corner */
     document: [
@@ -1324,6 +1372,61 @@
       print.innerHTML = icon('print', 'icon-inline') + ' Print';
       print.addEventListener('click', function () { window.print(); });
       box.appendChild(print);
+    }
+
+    /* Offered only where the READING MATTER is Urdu, which is not the
+       same as the page holding any Urdu at all. Asking for `.urdu`
+       anywhere was tried and is wrong: every English post carries one —
+       the اردو میں پڑھیے link to its twin — so the English pieces would
+       each offer a 6.5MB download to re-typeset fourteen characters of
+       chrome.
+
+       Asked of the rendered page rather than of `record.language`,
+       because those two genuinely disagree: four Arabic-language works
+       carry Urdu descriptions, which is a fault this codebase has
+       already fixed once by asking the text instead of the field.
+       `.arabic` is Amiri and this does not touch it. */
+    var urduProse = document.querySelector(
+      '#post-body.urdu, .work-page-description.urdu, ' +
+      '.work-background-text.urdu, .work-hero h1.record-title.urdu'
+    );
+
+    /* A button, not a link or a checkbox: it does something to this page
+       rather than going anywhere, and `aria-pressed` is what says which
+       way it is set — the state belongs on the control, not in a label
+       that has to be kept in step with it. */
+    if (urduProse) {
+      var face = document.createElement('button');
+      face.type = 'button';
+      face.className = 'text-link reading-face';
+      /* The name stays in Latin, like Share and Print and every other
+         word the site says about itself. `جمیل نوری نستعلیق` at 14px
+         beside them would be a Nastaliq word in a row of UI, which this
+         codebase has already paid for twice — .bio-facts dt and the kind
+         in a suggestion row. The face it offers is its own argument. */
+      var label = function (on) {
+        return icon('nib', 'icon-inline') +
+          (on ? ' Jameel Noori · on' : ' Read in Jameel Noori');
+      };
+      var set = function (on, announce) {
+        applyFace(on);
+        rememberFace(on ? 'jameel' : '');
+        face.setAttribute('aria-pressed', on ? 'true' : 'false');
+        face.innerHTML = label(on);
+        if (announce) {
+          say.textContent = on
+            ? 'Reading in Jameel Noori Nastaleeq. It is a 6.5 MB font, downloaded once.'
+            : 'Back to Mehr Nastaliq.';
+        }
+      };
+      set(document.documentElement.classList.contains('jameel'), false);
+      /* The size is said before it is spent, and only on the way in. A
+         reader turning it off is owed no warning. */
+      face.title = 'Jameel Noori Nastaleeq — 6.5 MB, downloaded once';
+      face.addEventListener('click', function () {
+        set(!document.documentElement.classList.contains('jameel'), true);
+      });
+      box.appendChild(face);
     }
 
     box.appendChild(say);

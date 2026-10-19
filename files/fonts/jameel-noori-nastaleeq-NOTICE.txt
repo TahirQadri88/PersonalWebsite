@@ -1,0 +1,47 @@
+Jameel Noori Nastaleeq
+
+6,889,712 bytes as woff2 — 6.57MB, by far the largest file on this
+site, and it is downloaded by nobody unless they ask for it. See
+"Jameel Noori is offered, never served" in CLAUDE.md for the control
+that asks.
+
+Version 2, 2009. The font's own name table carries, in place of a
+licence: "This Font Is Free Of Charge For Urdu Lovers". That is a
+statement of goodwill, not a grant, and no OFL or other licence text
+was found for it. Same footing as Aslam, which this repository already
+ships on the author's judgement — see Aslam-NOTICE.txt. It is recorded
+here rather than implied, so the position can be revisited.
+
+The whole font, NOT subsetted, and that is deliberate. Subsetting it to
+the 92 Arabic-script characters the site uses today was measured at
+6,802,296 bytes — 1.3% saved — because the file is 25,269 pre-drawn
+ligatures reachable from almost any Urdu text, and the GSUB closure
+keeps nearly all of them. 87KB is not worth a face that silently lacks
+a glyph the first time an article uses a character the subsetter was
+not told about.
+
+Why it cannot simply be the body font:
+
+  Mehr Nastaliq Web      55KB       493 glyphs, components the engine joins
+  Gulzar                167KB       817 glyphs, components  (OFL, measured)
+  Jameel Noori        6,570KB    25,269 glyphs, whole words drawn
+
+Measured, not reasoned: the glyf table alone is 12.9MB of the 13.8MB
+TTF. Strip the ligatures and the file is 9.5KB and the text is
+unreadable — disconnected letterforms, not Nastaliq. The ligatures ARE
+the size.
+
+Two things that do not help, both tested rather than assumed:
+
+- Brotli or gzip over the wire. woff2 is already a Brotli container:
+  recompressing it at q11 makes it 24 bytes BIGGER, and gzip -9 adds
+  2KB. It also beats raw TTF + Brotli (7,498,520) by 700KB, so woff2 is
+  already the best container there is for it.
+- A long Cache-Control. GitHub Pages serves `cache-control: max-age=600`
+  and gives no way to change it — read off the live site, which is
+  served by GitHub's own Fastly, not by Cloudflare (DNS only here). A
+  returning reader revalidates and gets a 304 while the file is still in
+  their browser cache, which for a 6.5MB entry on a phone is not a
+  promise. Setting a real max-age would mean proxying the domain through
+  Cloudflare and adding a cache rule — a DNS change, not a repository
+  change.

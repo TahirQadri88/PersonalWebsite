@@ -642,13 +642,107 @@ only separation at the Urdu/Latin boundary. Found by rendering it and
 looking, not by the 9.8 → 6.7px the gap measurement reported, which
 says the change was an improvement.
 
-**Jameel Noori Nastaleeq, asked for and answered with numbers.** Mehr
-is 55KB, 493 glyphs, built from components the engine joins. Jameel
-Noori **subsetted down to the characters of one of the author's own
-fatwās, out of his own PDF, is 9.2MB** — it stores whole ligatures, a
-drawn shape per word, so subsetting barely touches it. 170× the page's
-entire font budget, and no open licence found. Affordable only for a
-fixed string: a wordmark, a masthead. Never body text.
+**Jameel Noori is offered, never served.** The author wanted the face
+and was right to: rendered beside Mehr at 21px it is plainly more open
+and more legible. It is also **6.57MB as woff2**, a hundred and twenty
+times Mehr, so it is behind a control. Mehr stays the default; a reader
+taps **Read in Jameel Noori** at the foot of an Urdu piece and gets it,
+and the choice is remembered.
+
+The design is one sentence: **nothing in the stylesheet names that
+family except a single rule behind `html.jameel`**, and a `@font-face`
+is fetched only when something rendered needs it. So the declaration
+costs nothing until it is wanted. The class is put on by `common.js`
+from `localStorage`, and nowhere else. The guard is therefore a
+**negative** one — it counts the woff2 requests on an ordinary load and
+refuses to find this file among them — which is the assertion that
+would actually catch the design being undone. Moving the rule from
+`:root.jameel` to `:root` fails it.
+
+**It withholds the Latin letters, exactly as Mehr does.** Jameel
+carries 196 non-Arabic codepoints of its own, read off the cmap, so
+without the `unicode-range` turning the toggle on would quietly undo
+the work that put an English term in an Urdu sentence into the site's
+own serif — it would go back to being drawn at the Urdu's full size,
+by the Urdu face this time.
+
+**That also corrects a number measured too early.** The first
+measurement said Jameel ran the article 5% *longer*; it was taken
+before the Latin was withheld, so Jameel was setting the English at
+21px too. With the range on it is **13,465 → 12,842px, 4.6% shorter**.
+A measurement taken in the wrong configuration is not a measurement,
+and the first version of this paragraph would have been false.
+
+**It is the whole font, not a subset, and that is the measurement
+too.** Cutting it to the 92 Arabic-script characters the site uses
+today saves **1.3%** — 6,802,296 against 6,889,712 — because the file
+is 25,269 pre-drawn ligatures and the GSUB closure keeps nearly all of
+them from almost any Urdu. 87KB is not worth a face that silently lacks
+a glyph the first time an article uses a character the subsetter was
+not told about. Contrast Gulzar below, where the same operation saved
+18%, which is the structural difference showing itself.
+
+**Offered where the reading matter is Urdu, which is not "wherever
+there is Urdu".** Asking for `.urdu` anywhere was written first and is
+wrong: every English post carries one — the اردو میں پڑھیے link to its
+twin — so the English pieces each offered a 6.5MB download to re-typeset
+fourteen characters of chrome. Found by looking at what the selector
+matched. It asks for Urdu in `#post-body`, the work description, the
+background or the work's own title.
+
+**The three cases hold.** No JavaScript: no control, no download, the
+page exactly as it is today in Mehr. Storage blocked or refused: every
+read and write is wrapped, and the choice simply lasts the one page.
+Nothing starts invisible waiting for a script. The size is on the
+control **before** it is spent, not only after — a button that quietly
+takes 6.5MB of someone's mobile data has not asked.
+
+What is *not* asserted, and the comment beside it says so: that the
+class is on before first paint. `common.js` is one parser-blocking
+script at the end of `<body>`, so applying the class at the top of the
+file and applying it down in the mount both land in the same
+synchronous pass and both would pass. The ordering is a reasoned claim,
+not a measured one, and naming the assertion after it would be a test
+that cannot fail.
+
+**The advice that prompted this was two-thirds right, and the third
+matters.** Three claims were checked rather than taken:
+
+- *"Self-host with `Cache-Control: public, max-age=31536000, immutable`
+  and after the first visit it costs nothing."* **You cannot set
+  headers on GitHub Pages.** Read off the live site:
+  `server: GitHub.com`, `cache-control: max-age=600`. Ten minutes. The
+  domain is on Cloudflare **DNS only** — no `cf-cache-status`, and that
+  `via: varnish` is GitHub's own Fastly — so there is no edge in the
+  request path to put a rule on. A returning reader revalidates and
+  gets a 304 *while the file is still in their browser cache*, which
+  for a 6.5MB entry on a phone is not a promise. Making the advice true
+  means proxying the domain through Cloudflare and adding a cache rule:
+  a DNS change, not a repository change.
+- *"Use Brotli or gzip on the server."* **woff2 is already a Brotli
+  container.** Measured: recompressing at q11 makes it **24 bytes
+  bigger**, gzip -9 adds 2KB. It also beats raw TTF + Brotli
+  (7,498,520) by 700KB.
+- *"Preload it, and also show the page first and swap it in."* Those
+  two fight. `<link rel=preload as=font>` fetches at the highest
+  priority immediately, against the HTML, the CSS and the other six
+  fonts. Nothing is preloaded here.
+
+**Gulzar was measured as the way out and is a real one, not taken.**
+OFL, by Borna Izadpanah, Fiona Ross, Alice Savoie and Simon Cozens.
+Component-based like Mehr — 817 glyphs and 89 GSUB lookups against
+Jameel's 25,269 — so subsetting works on it: Google serves 204KB, cut
+to the site's own characters it is **167KB**. It covers 89 of the 92
+characters here against Mehr's 87, having `﴾ ﴿ ﷺ` that Mehr lacks. On
+the test line its ink is within **1.2%** of Jameel's. The author chose
+to stay on Mehr; the file is not in the repository, and this is the
+note that says where to start if that is ever revisited.
+
+One trap found while measuring it, and it is this file's own lesson in
+a new place: **Gulzar's Arabic subset contains exactly one Latin letter,
+`A`.** So `AAOIFI` drew its two `A`s in Gulzar at 21px and `OIFI` in the
+serif at 78% — one acronym, two faces, two sizes. Any Nastaliq brought
+in here needs Mehr's `unicode-range` copied onto it on the same day.
 
 **What Amiri costs, for the record.** 118KB on that article to draw
 **26 glyphs** — the single line `باسمه تعالى و تقدس الجواب:`. A third
