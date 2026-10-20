@@ -2464,8 +2464,52 @@ a desktop to 209–240px and leaves a phone untouched, where the 56px floor
 already wins. Judge any change to it against the 30px card gap, not on
 its own.
 
-**Colour contrast.** `--gold-on-light` and `--gold-on-dark` are two different
-values for a reason. Do not collapse them into one.
+**Colour contrast, and it had never been measured.** `--gold-on-light`
+and `--gold-on-dark` are two different values for a reason. Do not
+collapse them into one — and the numbers are here now rather than the
+assertion alone: gold-on-light is **5.33** on the page and **2.38** on
+the moss panel; gold-on-dark is **8.35** on the panel and **1.52** on
+the page. Each fails where the other works, which is *why* there are
+two, and the guard asserts that failure as well as the pass. An
+assertion that only checked each one on its own ground would stay green
+if somebody made them the same colour.
+
+**What reasoning about contrast missed.** Every colour on six pages was
+walked — the element that owns the text, its real background composited
+up through the ancestors — and **858 text elements** measured. One thing
+failed: `.record-meta > span`, the `·` separators, at **1.97:1**. Inside
+`4 FILES · ENGLISH · 28 SEPTEMBER` that is a separator nobody can see,
+so the line reads as one run of words.
+
+The obvious repair does not survive the arithmetic, and that is the part
+worth keeping. Keeping the hue and saturation and lowering the
+lightness, the first value clearing 4.5 on all four creams the line
+lands on is `#636D63` — and `--muted` itself measures 4.88 to 5.70 on
+those same four. **There is no colour at 12px that is both legible and
+visibly quieter.** So the rule is gone rather than retuned, and the dots
+take the colour of their own line.
+
+**Where the walk meets a gradient it stops, and says so.** Seven
+elements sit on the hero's photograph, where no declared colour
+describes the ground and a composited ratio would be a fiction. Those
+were measured by **hiding each line, screenshotting the backdrop and
+reading three hundred pixels under it** — worst pixel, not average:
+eyebrow 9.83, h1 9.42, hero copy 6.82, the Urdu line 5.33, the gold
+`em` 7.87, the graded name 11.87. The guard counts them and skips them;
+repeating that in the suite would need a screenshot per page.
+
+Two of those numbers were wrong on the first pass and impossible on
+their face, which is how they were caught. `h1` read **1.26** because
+the heading was made transparent and its inner `<em>` keeps its own
+colour, so the sample read the em's own ink. And a second script
+reported the dark panel as `#15342B on #15342B`, ratio **1.00**, seven
+failures — it did not walk up to the ruling cards' own light background.
+**A ratio of 1.00 on text means the probe is wrong, not the page.**
+
+**46 distinct hex literals in `styles.css`, 11 of them tokens.** That is
+the structural finding behind the separator: the fault lived in a
+one-off literal rather than in the system, which is also why nothing had
+ever questioned it.
 
 ## Working on this
 

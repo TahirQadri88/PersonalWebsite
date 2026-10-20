@@ -1679,7 +1679,18 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   text-transform: uppercase;
   line-height: 1.7;
 }
-.record-meta > span { color: #a8b0a8; }
+/* The separators used to be #a8b0a8, two tones lighter than the line
+   they divide, and that measured **1.97:1** against the cream behind
+   them — a separator nobody can see, in `4 FILES · ENGLISH · 28
+   SEPTEMBER`, which then reads as one run of words.
+
+   The obvious repair is a darker grey that is still quieter than the
+   text, and it does not survive the arithmetic. Keeping this hue and
+   saturation, the first lightness clearing 4.5:1 on every cream the
+   line lands on is `#636D63` — and `--muted` itself measures 4.88 to
+   5.70 on those same four. There is no colour at 12px that is both
+   legible and visibly quieter, so the rule is gone and the dots take
+   the colour of their own line. One fewer one-off literal with it. */
 /* titleMarkup defaults to a bare <span> here — there is no <h1> or <h3>
    for it to inherit the site's own heading font from, the way a work's
    own page or the fatawa grid's h3 do. .urdu and .arabic already carry

@@ -3524,6 +3524,129 @@ try {
   }
 
   /* ---- a control that cannot show what it is asking for ---- */
+  /* ---- every word on the site is legible on what it sits on ----
+
+     Contrast was never measured here. It was reasoned about — the two
+     golds have a rule in CLAUDE.md saying they must not be collapsed —
+     and reasoning is what let `.record-meta > span` ship at **1.97:1**,
+     a separator nobody could see inside `4 FILES · ENGLISH · 28
+     SEPTEMBER`.
+
+     So this walks every element that OWNS text on six pages and
+     composites its real background: up through the ancestors, layering
+     each translucent fill, which is the only way to get the colour a
+     line is actually painted on rather than the one its own rule names.
+
+     Where that walk meets a gradient or an image the answer is not a
+     flat colour and a ratio would be a fiction, so those are counted
+     and skipped — the hero is the only such region, and it was measured
+     separately by sampling pixels under each line. That measurement is
+     not repeated here because it needs a screenshot; it is written up
+     in CLAUDE.md with its numbers.
+
+     The threshold is WCAG 2.1 AA: 4.5, or 3.0 for large text, which is
+     24px and over or 18.66px and over at weight 700. */
+  group('every word is legible on what it sits on');
+  {
+    const lin = (c) => (c / 255 <= 0.04045 ? c / 255 / 12.92 : (((c / 255) + 0.055) / 1.055) ** 2.4);
+    const lum = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    const ratio = (a, b) => {
+      const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+      return (hi + 0.05) / (lo + 0.05);
+    };
+    const hex = (c) => '#' + c.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('').toUpperCase();
+
+    const pages = ['/index.html', '/posts/reservations-shariah-screening-stocks.html',
+      '/works/vegetarianism-and-veganism-urdu.html', '/fatawa/index.html',
+      '/author/index.html', '/apps/zakat-calculator.html'];
+    const found = [];
+    let onImage = 0;
+    for (const path of pages) {
+      const { context, page } = await open(390, path);
+      /* The library rows are shut <details>; a closed row paints nothing
+         and would silently take itself out of the count. */
+      await page.evaluate(() => document.querySelectorAll('details').forEach((d) => { d.open = true; }));
+      await page.waitForTimeout(250);
+      const rows = await page.evaluate(() => {
+        const parse = (s) => {
+          const m = /rgba?\(([^)]+)\)/.exec(s);
+          if (!m) return null;
+          const n = m[1].split(/[\s,\/]+/).filter(Boolean).map(Number);
+          return { r: n[0], g: n[1], b: n[2], a: n.length > 3 ? n[3] : 1 };
+        };
+        const over = (f, b) => ({ r: f.r * f.a + b.r * (1 - f.a), g: f.g * f.a + b.g * (1 - f.a),
+          b: f.b * f.a + b.b * (1 - f.a), a: 1 });
+        const backdrop = (el) => {
+          let node = el; const stack = []; let imaged = false;
+          while (node) {
+            const cs = getComputedStyle(node);
+            if (cs.backgroundImage && cs.backgroundImage !== 'none') imaged = true;
+            const c = parse(cs.backgroundColor);
+            if (c && c.a > 0) { stack.push(c); if (c.a === 1) break; }
+            node = node.parentElement;
+          }
+          let base = { r: 255, g: 255, b: 255, a: 1 };
+          for (let i = stack.length - 1; i >= 0; i--) base = over(stack[i], base);
+          return { colour: base, imaged };
+        };
+        const out = [];
+        document.querySelectorAll('*').forEach((el) => {
+          if (![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) return;
+          const r = el.getBoundingClientRect();
+          if (!r.width || !r.height) return;
+          const cs = getComputedStyle(el);
+          if (cs.visibility === 'hidden' || +cs.opacity === 0) return;
+          const fg = parse(cs.color); if (!fg) return;
+          const bd = backdrop(el);
+          const ink = over(fg, bd.colour);
+          const size = parseFloat(cs.fontSize);
+          const weight = parseInt(cs.fontWeight, 10) || 400;
+          out.push({ fg: [ink.r, ink.g, ink.b], bg: [bd.colour.r, bd.colour.g, bd.colour.b],
+            size, large: size >= 24 || (size >= 18.66 && weight >= 700), imaged: bd.imaged,
+            sel: el.tagName.toLowerCase() + (typeof el.className === 'string' && el.className.trim()
+              ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : ''),
+            text: el.textContent.replace(/\s+/g, ' ').trim().slice(0, 30) });
+        });
+        return out;
+      });
+      rows.forEach((r) => { r.page = path; if (r.imaged) onImage++; else found.push(r); });
+      await context.close();
+    }
+
+    /* Count what you matched. A selector change or a page that stops
+       rendering would otherwise empty this group and pass. */
+    t(`${found.length} text elements measured on ${pages.length} pages`,
+      found.length > 150, String(found.length));
+    t(`${onImage} sit on a gradient or image and are measured by pixel elsewhere`,
+      onImage > 0 && onImage < 40, String(onImage));
+
+    const failed = found
+      .map((r) => Object.assign(r, { ratio: ratio(r.fg, r.bg), need: r.large ? 3.0 : 4.5 }))
+      .filter((r) => r.ratio < r.need)
+      .sort((a, b) => a.ratio - b.ratio);
+    const worst = failed[0];
+    t(`nothing falls under AA${worst ? ` — worst is ${worst.ratio.toFixed(2)} on ${hex(worst.fg)}/${hex(worst.bg)}` : ''}`,
+      failed.length === 0,
+      failed.slice(0, 6).map((r) => `${r.ratio.toFixed(2)} ${hex(r.fg)} on ${hex(r.bg)} ${r.size}px ${r.sel} "${r.text}" ${r.page}`).join('\n      '));
+
+    /* The two golds exist because one is unreadable where the other
+       works. Collapsing them is the thing CLAUDE.md warns against, and
+       until now nothing measured it. */
+    const css = await readFile(join(ROOT, 'styles.css'), 'utf8');
+    const token = (name) => (new RegExp('--' + name + ':\\s*(#[0-9a-fA-F]{6})').exec(css) || [, ''])[1];
+    const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+    const light = token('gold-on-light'); const dark = token('gold-on-dark');
+    const moss = token('moss-deep'); const paper = token('paper');
+    t('both golds are declared', !!light && !!dark, JSON.stringify({ light, dark }));
+    t(`--gold-on-light reads on the page: ${ratio(rgb(light), rgb(paper)).toFixed(2)}`,
+      ratio(rgb(light), rgb(paper)) >= 4.5);
+    t(`--gold-on-dark reads on the panel: ${ratio(rgb(dark), rgb(moss)).toFixed(2)}`,
+      ratio(rgb(dark), rgb(moss)) >= 4.5);
+    /* And each fails on the other's ground, which is WHY there are two. */
+    t(`…and neither would do the other's job (${ratio(rgb(light), rgb(moss)).toFixed(2)} and ${ratio(rgb(dark), rgb(paper)).toFixed(2)})`,
+      ratio(rgb(light), rgb(moss)) < 4.5 && ratio(rgb(dark), rgb(paper)) < 4.5);
+  }
+
   group('a search box says what it is');
   for (const [path, id] of [['/index.html', 'work-search'], ['/fatawa/index.html', 'fatawa-search']]) {
     const { context, page } = await open(390, path);
