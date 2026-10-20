@@ -1827,6 +1827,39 @@ meant regenerating every page; the homepage's rows call `fileLinks` at
 render time and changed on their own. The test read the committed page
 and caught exactly that gap.
 
+**And making the label say more broke the row it sits in.** The change
+above lengthened every Latin file label — *Slides — colour print*
+became *Read Slides — colour print online* — and `.work-files` is
+`grid-template-columns: max-content max-content`, which says neither
+column may shrink. So a label too long for the row does not wrap: it
+**pushes its Download out of the card**. Reported from a phone with a
+screenshot, the word Download sitting against the edge of the screen
+outside the cream panel. Measured on the live site: **4 rows escaped at
+390px, 12 at 360, the worst by 80px.** `minmax(0, max-content)` on the
+first column, with the second left at `max-content` because
+`.file-download` is `white-space: nowrap` and *Download* must not break.
+
+**Two guards were green while it was plainly visible, and that is the
+part worth keeping.** *a file button says whether it opens or saves*
+measured the **words** and nothing measured the **row** — the group that
+asked for the longer label had no idea the label had to fit anywhere.
+And *nothing pushes the page sideways* measures the **document's**
+scroll width; the overflow was inside a card and never widened the page.
+A guard named for exactly this fault watched the wrong quantity.
+
+The third reason, and the cheapest to repeat by accident: **every row in
+the library is a shut `<details>`.** A guard that does not open them is
+measuring nothing — the same lesson as `(none)` from
+`getPlatformFontsForNode` meaning *hidden* rather than *fallback*. The
+new group opens every row and measures every file link against the card
+that holds it at 320, 360, 390 and 480, with the count asserted beside
+it.
+
+**The general rule this is the third instance of: when a change makes a
+string longer, measure the box.** `ch`-to-`em` was this. The toolbar's
+*One step larger* was this. A label is not a string, it is a thing that
+has to fit.
+
 **Measure a tap target by tapping it.** Three kinds of control here carry
 an invisible pad — an `::after` stretched past the text — so the box
 `getBoundingClientRect` reports is nothing like the area that answers a

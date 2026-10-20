@@ -3459,6 +3459,72 @@ try {
     await context.close();
   }
 
+  /* ---- a file row stays inside the card it is drawn in ----
+
+     Reported from a phone, with a screenshot: on the study-material row
+     the word **Download** sat outside the cream panel altogether,
+     against the right-hand edge of the screen. `.work-files` was
+     `grid-template-columns: max-content max-content`, which says neither
+     column may shrink — so a label too long for the row does not wrap,
+     it pushes its Download out of the card.
+
+     The labels got longer because this suite's own group above asked
+     them to: "Read Slides — colour print online" where it used to say
+     "Slides — colour print". That group measured the WORDS and nothing
+     measured the ROW, so the change passed in full while making four
+     rows overflow at 390px and twelve at 360 — the worst by 80px.
+
+     Two reasons nothing caught it, and both are worth keeping:
+
+     - *nothing pushes the page sideways* measures the DOCUMENT's scroll
+       width. The overflow here is inside a card and did not widen the
+       page, so that guard was green while the thing it is named for was
+       plainly visible on the author's screen.
+     - every row in the library is a shut `<details>`. A guard that does
+       not open them is measuring nothing at all — the same lesson as
+       `(none)` from `getPlatformFontsForNode` meaning *hidden*, not
+       *fallback*.
+
+     So this opens every row and measures every file link in the library
+     against the card that holds it, at the narrow widths where a label
+     runs out of room. The count is asserted beside it, because a
+     selector that matched nothing would otherwise pass this twice
+     over. */
+  group('a file row stays inside the card it is drawn in');
+  for (const width of [320, 360, 390, 480]) {
+    const { context, page } = await open(width);
+    const out = await page.evaluate(() => {
+      document.querySelectorAll('.work').forEach((d) => { d.open = true; });
+      const bad = [];
+      let n = 0;
+      const vw = document.documentElement.clientWidth;
+      for (const a of document.querySelectorAll('.file-download, .document-link')) {
+        /* `.work-detail` is the opened row's own box — the cream panel a
+           reader sees the link sitting inside. The viewport is checked
+           as well, since the card itself could be pushed.
+
+           Written as `.work-body` first, which is not a class this site
+           has: the count assertion below went red with 0 and said so,
+           while the overflow assertion beside it passed over the empty
+           list exactly as this file warns. Count what you matched. */
+        const host = a.closest('.work-detail');
+        if (!host) continue;
+        n++;
+        const pr = host.getBoundingClientRect();
+        const r = a.getBoundingClientRect();
+        const over = Math.max(r.right - pr.right, pr.left - r.left, r.right - vw, -r.left);
+        if (over > 1) bad.push(Math.round(over) + 'px past: ' +
+          a.textContent.trim().replace(/\s+/g, ' ').slice(0, 30));
+      }
+      return { n, bad };
+    });
+    t(`${width}px: ${out.n} file links in the open library`,
+      out.n > 30, JSON.stringify(out.n));
+    t(`  …and none of them escapes its card`,
+      out.bad.length === 0, out.bad.slice(0, 4).join(' | '));
+    await context.close();
+  }
+
   /* ---- the shelf says it is a shelf ----
 
      Two reports, months apart, that are the same report. First the strip

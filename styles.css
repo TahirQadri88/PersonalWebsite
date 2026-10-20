@@ -1883,7 +1883,20 @@ details[open] > summary .toggle { transform: rotate(45deg); }
    the titles line up under each other and so do the Downloads. */
 .work-files {
   display: grid;
-  grid-template-columns: max-content max-content;
+  /* minmax(0, …) on the first column, not max-content, and this is what
+     the longer button labels cost. `max-content` twice means neither
+     column may shrink: a label that does not fit pushes Download out of
+     the card rather than wrapping. "Read Slides — colour print online"
+     did exactly that — measured on the live site, 4 rows escaped the
+     panel at 390px and 12 at 360, the worst by 80px, with Download
+     sitting off the right-hand edge of the phone. The page did not
+     scroll sideways for it, so the guard that watches for that saw
+     nothing.
+
+     The second column keeps max-content: `.file-download` is
+     white-space: nowrap and "Download" is two words that must not
+     break. So the label wraps and the row stays inside the card. */
+  grid-template-columns: minmax(0, max-content) max-content;
   justify-content: start;
   align-items: baseline;
   gap: 16px 26px;
