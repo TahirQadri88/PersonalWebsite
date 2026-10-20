@@ -3343,6 +3343,66 @@ a fault.
 
 ## Outstanding
 
+**What to do next, in the order risk says rather than interest.** The
+writing box has had four rounds of work and now holds what a word
+processor holds: script, bold, italic, underline, raised, lowered,
+struck, plain, five block styles, two size steps, four alignments,
+bullets, numbering, two levels of sub-point, a divider, a link, a
+bigger gap after a block, and undo. **Almost none of it can be used on
+a fatwa**, and the thing that can lose an article outright is still
+unbuilt. Both of those outrank adding anything else.
+
+**1. Nothing saves a draft, and that can lose work.** `bodies[record.id]`
+is a plain JavaScript variable. Nothing in `admin.js` writes to
+`localStorage` or `sessionStorage` — the only protection is a
+`beforeunload` warning, which a phone evicting a background tab does
+not reliably fire. An hour of writing is one eviction from gone. This
+is small, self-contained, and the only item here whose absence
+destroys something: autosave `bodies` under the record's id, offer it
+back on load when it differs from the committed page, clear it on a
+publish that really committed. Guard the branch that matters — storage
+refused or full — the way the reading-face control already does, since
+that is the path that fails silently.
+
+**2. A fatwa cannot be written at all**, which is what makes items 1
+and everything above it matter less than they should. `isPost` gates
+the writing box on `record.page`, and a fatwa has none — so lists,
+sub-points, quotations, footnotes, the divider and the link reach
+**posts only**, in a library whose subject is rulings.
+
+There is a real design decision inside this one and it should be taken
+deliberately rather than discovered. A work's page is **regenerated in
+full on every publish**, and this file says why: nothing about a work
+lives anywhere but `content.js`, so there is no "has this changed"
+question. Free-text writing on a work breaks that — the words would
+have to be read back out of `works/<id>.html`, exactly as a post's are,
+and a work's page stops being purely derived. Either that invariant
+moves, or a fatwa's writing lives somewhere else. Decide it before
+writing code.
+
+**3. The attestation block.** کتبہ, الجواب صحیح, the muftī's name and
+title, the institution, the reference number, the two calendar dates,
+the seal. **Fields, not prose** — the shape an app's `verifiedBy[]`
+already has, for the reason written up there: a ruling two muftis have
+signed is a different thing from one nobody has, and a page that does
+not say which leaves a reader to guess. It can render on a work page
+today and does not strictly wait for item 2, though it reads oddly on
+a page with no ruling on it.
+
+**4. Dates for the twenty-two works** — below, and the one item here
+nobody but the author can do.
+
+**5. Only when something else needs the toolbar.** The rail is full at
+390px: Style is 46% visible and a seventh group does not fit. The
+answer is a second row on the phone, measured at about 92px against
+the 380px four-row stack this file records rejecting. Not worth doing
+until a control actually needs the space.
+
+Two things deliberately **not** on this list, so they are not
+rediscovered as gaps: no font-family control and no point sizes. The
+face follows the script and the sizes are steps, which is this file's
+own typography doctrine.
+
 - Every work and fatwa has its files. Nothing is owed.
 - The twenty-two works still carry no `date`. Not cosmetic: the
   *Recently added and updated* strip is ordered by `updated || date`, so
@@ -3362,10 +3422,12 @@ a fault.
   `apps/zakat-calculator.html`. Adding another is a form: **+ Add an app**
   in the editor, then the address, the version, the platforms and what is
   new. No screenshot on the page yet — the author has one.
-- The `posts` category's English/Urdu pairs are joined by `alsoIn`. The
-  block format still has no way to write a link inside the writing — that
-  was the wrong place for it, since the crossing belongs to the record and
-  not to a sentence in it.
+- The `posts` category's English/Urdu pairs are joined by `alsoIn`. That
+  is still the right home for the *crossing* — it belongs to the record
+  and not to a sentence in it — but the claim that once sat here, that
+  the block format has no way to write a link inside the writing, is no
+  longer true: it has one, and `alsoIn` is kept separate on purpose
+  rather than for want of a mechanism.
 - Writing a post still means opening the editor. The plan is a GitHub
   Action: commit one Markdown file from the phone app, and it builds the
   page, the entry and the sitemap line.
