@@ -3156,6 +3156,26 @@ are put back. The band matters: the byline and the domain share a row
 at opposite ends of the card, so measuring their row reports a hole on
 every card.
 
+**A card is encoded by whatever browser published it, and one of them
+ignores the quality.** `cardBlob` asks `toBlob` for `'image/jpeg', 0.88`.
+A publish from the author's phone came back with all 33 cards redrawn at
+the same 1200×630 and **1,599KB → 2,802KB, +75%** — every one of them
+about 40KB heavier. Reading the JPEG quantization tables says why: 0.88
+gives a first row of `4 3 3 3 …`, and the published files carry
+`1 1 1 1 …`, which is roughly q97. The code had not changed; WebKit has
+historically ignored the quality argument to `toBlob`.
+
+Re-encoded at q88 they are **1,737KB**, RMSE 0.63% against the published
+ones, and the two are indistinguishable put side by side at the 265px
+WhatsApp width — which is the only size anybody sees them at, and the
+check that matters rather than the number.
+
+Nothing is broken by the heavy ones: a reader fetches one card per link,
+so it is 99KB instead of 58. It is the repository that carries the rest.
+Expect it back after any publish from that device; the fix is one pass of
+`convert -quality 88 -sampling-factor 2x2 -strip` over `files/cards/`.
+Doing it inside the editor is not possible — the encoder is the browser's.
+
 **An infographic is flat colour and sharp type, which is the one case
 JPEG loses twice.** The charts in `files/social-media-posts-and-pamphlets/`
 ship as **256-colour PNG at the author's native export size**, and every
