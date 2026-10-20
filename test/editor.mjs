@@ -943,6 +943,92 @@ t('  …and takes the sentence back once a press works',
   (await row.locator('.writing-note').first().textContent()).trim() === '',
   JSON.stringify(await row.locator('.writing-note').first().textContent()));
 
+
+/* ---- the bar says what the words are really in ----
+
+   Reported as *the size menu is malfunctioning*, straight after the
+   selection fix made the first press work — which is why it surfaced
+   then and not before.
+
+   `refresh()` was bound to `mouseup` and `focus`. **A phone raises
+   neither.** You select with the drag handles, which fire
+   `selectionchange`, so after setting one word larger the menu went on
+   reading `Larger` while the caret sat in a plain one.
+
+   The second half is the platform's and cannot be patched in the
+   handler: a `<select>` fires no `change` event when you pick the value
+   it already shows. So a stale `Larger` meant tapping Larger on an
+   unsized word ran NOTHING — not the action, and not the note that
+   exists to say why nothing happened.
+
+   Which is why keeping the menu honest is the whole fix, and why this
+   guard measures the menu rather than the mark: with the mark asserted
+   instead it passes in the broken state, because Playwright's
+   `selectOption` dispatches `change` whether or not the value moved. The
+   harness models the API; a finger models the browser. That is this
+   file's own "a test that cannot fail" in a new place, and it is how
+   the first version of this guard fooled me. */
+await newBlock(page, 'alpha bravo charlie');
+/* Select by the words themselves: after a size is applied the block's
+   text is split across nodes, so an offset into "the first text node"
+   stops meaning what it did. */
+async function pickWord(word) {
+  await page.evaluate((w) => {
+    const canvas = document.querySelector('.admin-row[open] .writing-canvas');
+    const walk = document.createTreeWalker(canvas.lastElementChild, NodeFilter.SHOW_TEXT, null);
+    let node;
+    while ((node = walk.nextNode())) {
+      const at = node.data.indexOf(w);
+      if (at !== -1) {
+        const range = document.createRange();
+        range.setStart(node, at);
+        range.setEnd(node, at + w.length);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        return;
+      }
+    }
+    throw new Error('no such word: ' + w);
+  }, word);
+  await page.waitForTimeout(80);
+}
+
+await pickWord('alpha');
+t('the Size menu starts on Normal for unmarked words',
+  await showing(page, row, 'Size') === 'Normal', await showing(page, row, 'Size'));
+await use(page, row, 'Larger');
+await page.waitForTimeout(140);
+t('  …applying a size marks the words',
+  /<span class="text-large">alpha<\/span>/.test(await page.evaluate(() =>
+    document.querySelector('.admin-row[open] .writing-canvas').lastElementChild.innerHTML)));
+t('  …and the menu reads back what they are in',
+  await showing(page, row, 'Size') === 'Larger', await showing(page, row, 'Size'));
+
+/* The fault. No mouse event is raised here on purpose — this is the
+   phone's path, and it is the one the old binding could not see. */
+await pickWord('bravo');
+t('  …and moving to a plain word puts the menu back to Normal',
+  await showing(page, row, 'Size') === 'Normal', await showing(page, row, 'Size'));
+/* Because that is true, picking Larger is a real change of value, so a
+   real <select> raises `change` and the mark lands. */
+await use(page, row, 'Larger');
+await page.waitForTimeout(140);
+t('  …so the next word can be sized too',
+  /<span class="text-large">bravo<\/span>/.test(await page.evaluate(() =>
+    document.querySelector('.admin-row[open] .writing-canvas').lastElementChild.innerHTML)),
+  await page.evaluate(() =>
+    document.querySelector('.admin-row[open] .writing-canvas').lastElementChild.innerHTML));
+
+/* A press that is already satisfied is not a failure, and used to say
+   nothing for that reason — but "nothing happened and nothing was said"
+   is the whole complaint the note exists to answer. */
+await use(page, row, 'Larger');
+await page.waitForTimeout(140);
+t('  …and a size already on says so rather than going quiet',
+  /already set that way/i.test((await row.locator('.writing-note').first().textContent()).trim()),
+  JSON.stringify((await row.locator('.writing-note').first().textContent()).trim()));
+
 /* Bold inside Urdu, since Nastaliq has no bold of its own and the page
    answers with the heading face instead of a synthesised smear. */
 await newBlock(page, 'ایک دو تین');

@@ -1341,7 +1341,11 @@
     var WHY = {
       'nothing-picked': 'Pick out the words first, then choose a size.',
       'could-not-wrap': 'That selection crosses two blocks — pick words inside one.',
-      already: ''
+      /* Not a failure, and it used to say nothing for that reason. But
+         "nothing happened and nothing was said" is the complaint this
+         line exists to answer, and a reader cannot tell a press that was
+         already satisfied from one that broke. */
+      already: 'Those words are already set that way.'
     };
     function say(outcome) {
       note.textContent = Object.prototype.hasOwnProperty.call(WHY, outcome)
@@ -1394,6 +1398,30 @@
     canvas.addEventListener('keyup', refresh);
     canvas.addEventListener('mouseup', refresh);
     canvas.addEventListener('focus', refresh);
+    /* And on `selectionchange`, which is the only event a PHONE raises
+       when the selection moves. `mouseup` and `focus` were the whole of
+       it, and a finger produces neither — so dragging the handles onto
+       different words left every control in the bar showing what the
+       LAST words were set in.
+
+       That is what *the size menu is malfunctioning* turned out to be,
+       and the second half of it is the platform's: a `<select>` fires no
+       `change` event when you pick the value it is already showing. So a
+       stale "Larger" meant tapping Larger on a plain word ran no handler
+       at all — not the action, not the note that says why nothing
+       happened. Measured: after setting one word larger, selecting a
+       different, unsized word still read `Larger`.
+
+       Keeping the bar honest is therefore the whole fix. There is no
+       second change making a repeat press act: once the menu says what
+       the words are really in, picking something else always differs
+       from what is shown, and picking the same thing is a genuine
+       no-op that the note below now says out loud. */
+    document.addEventListener('selectionchange', function () {
+      var selection = window.getSelection();
+      if (!selection || !selection.rangeCount) return;
+      if (canvas.contains(selection.getRangeAt(0).commonAncestorContainer)) refresh();
+    });
 
     canvas.addEventListener('keydown', function (event) {
       if (event.key === 'Enter' && !event.shiftKey) {
