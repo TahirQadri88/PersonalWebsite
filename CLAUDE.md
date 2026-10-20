@@ -1628,6 +1628,142 @@ all: `isPost` gates the writing box on `record.page`, which a fatwa
 does not carry, so today these lists can only be used in a post. Both
 are real next steps and neither is started.
 
+**The editor had no undo, and that is not a missing convenience.**
+Asked for as *all the working functionality of a basic word processor
+— fonts size paragraphs spacing bullets alignment styles language
+direction*. Measured against what the box already had — script, bold,
+italic, underline, five block styles, two size steps, four alignments
+and lists — the two real gaps were **undo** and the inline marks.
+
+Almost every edit in this editor is **direct DOM surgery outside the
+browser's own stack**: `setBlockField`, `turn`, `adoptScript`,
+`correctScript`, `tidy`, `splitBlock` and `pastePlain` all replace
+elements wholesale, and the stack a browser keeps is a record of *its*
+edits, not ours. So Ctrl+Z was not merely absent — it was
+**unpredictable**, undoing a keystroke from before a block was turned
+round and leaving the box in a state the document had never been in.
+
+**What is remembered is the body text, not the box's HTML.** That is
+the document's own representation — the thing `bodies` holds and a
+file is written from — so a restored state cannot reach a shape the
+format could not have stored, and `bodyToHtml(…, flat)` puts it back
+exactly as opening the post would. An innerHTML stack would also carry
+the browser's own scratch markup back in. The caret is kept as a block
+index and a character offset, the pair every other replacement here
+already measures, because the elements are rebuilt and remembering a
+node would remember nothing.
+
+A step is a **burst of typing**, not a keystroke — 700ms of quiet
+closes one, and any toolbar press closes the open step first, so a
+press is always its own step. Otherwise a word typed just before
+pressing Bold is undone along with it. The stack is capped at 80: it
+lives in a phone's tab for as long as the piece is open.
+
+**Buttons, pinned beside the rail rather than in it.** An undo that
+exists only as Ctrl+Z exists for nobody who writes on a phone, which
+is who writes here. And it is the one control reached for *when
+something has already gone wrong* — the worst moment to ask somebody
+to go hunting along a rail — so it sits outside the scroller. That
+meant splitting the bar into a pinned group and a `.writing-rail`
+that is now the thing which scrolls.
+
+**Raised, lowered, struck through, and Plain.** Four marks a person
+coming from Word reaches for without thinking, and none existed.
+Raised has a real job in this library: a post's references are
+numbered **in the words themselves**, which is why this repository
+carries a font subset patched to draw all ten superscript digits. A
+`<sup>` numbers anything, not only the ten somebody thought to patch.
+They are one menu rather than four buttons for the reason Size is a
+menu — it can show what the words are already in — and because four
+more buttons would push Bold off the phone's rail.
+
+The codes stored are `~ ^ _`, the characters every markup language
+already uses for these, so a stored body can be read by eye.
+`inlineCode` folds `<s>`, `<strike>` and `<del>` into one mark:
+Chromium's `strikeThrough` writes `<strike>`, other engines write
+`<s>`, a paste can bring `<del>`, and the file is written back as
+`<s>` whichever arrived.
+
+**Three faults found by running it, not by reading it.**
+
+- **`removeFormat` empties a tag and leaves it.** Plain left
+  `marked<b></b> up heavily` — invisible, and not nothing:
+  `inlineToText` reads it as a mark with no words in it and writes
+  `<b></b>` into the published page. Empty marks are dropped in the box
+  *and* again in `inlineToText`, which is the one path every block takes
+  to a file, so whatever leaves one behind cannot get it into a page.
+- **The new marks went silent on a collapsed caret.** `execCommand`
+  sets a *pending* style — nothing moves, the next letter typed comes
+  out raised, and the press returns success. That is precisely the
+  silence this bar already had to be fixed for once. The Mark menu now
+  says *Pick out the words first*; the **B/I/U buttons keep** the
+  pending behaviour deliberately, because pressing bold and then typing
+  is what a button is for.
+- **The menu read-back named the two size codes literally.** A second
+  inline menu therefore reported the *size* of the words instead of its
+  own mark, with every assertion about the tag still passing. Three
+  assertions go red with that one line put back.
+
+**`line-height: 0` is the whole of why the `sup` rule exists.**
+Without it the browser counts the raised box's own line box into the
+line it sits in, so one reference numeral opens that line. Real here:
+the Urdu body is 21px at 2.15 and the line pitch is 45px, where a
+single grown line stands out at once. `vertical-align` does the same
+thing even with the line-height taken away, so the shift is
+`position: relative` and an explicit offset instead.
+
+**The rail is now at its limit, and that guard was re-argued rather
+than relaxed.** *Style is mostly in view* asked for **80%**; measured
+at 390px it is **46%**, because the bar carried five groups and now
+carries six with two pinned ahead of all of them. The floor is a
+third, with ten points of room, and the assertion is still named for
+**Style specifically** rather than "something is cut" — something is
+always cut, and the control that has to be findable is that one. What
+it does *not* cover is Underline being pushed off, which the assertion
+above it covers and which still fails if broken.
+
+Two numbers worth keeping: with the Mark menu placed **before** Style
+the figure is **0%**, which is how the ordering was settled; and the
+guard now measures against the **rail's** right edge rather than the
+bar's, since those stopped being the same box. The next group added
+will not fit, and the answer then is **a second row on the phone** —
+the four-row stack this file records rejecting was 380px tall, and two
+rows is about 92. Do not buy the width by narrowing the buttons; they
+are at the tap minimum and that was tried and measured once already.
+
+**Two of the new guards could not fail, and both were caught the same
+way.** Restoring a fault in the **key handler alone** left every
+assertion green, because all of them pressed the buttons — the keys
+are a second path to the same two functions and needed a guard of
+their own.
+
+And the assertion that the stack winds forward again asked whether
+Redo had greyed itself out, which is true the moment there is nothing
+left to redo **including when the stack was thrown away**. That is
+exactly what happened: an edit made while the history is wound back
+clears the redo stack, deliberately, the way every editor does — and
+the key test was sitting between the rewind and the wind-forward,
+doing precisely that. The piece never came back, *the marks reach the
+published page* failed three groups later, and the assertion written
+to catch it reported success. It compares the **box** against what was
+in it before now.
+
+That comparison also has to be taken at the **top** of the stack. With
+one undo still outstanding above it, winding fully forward correctly
+replays that undo and the comparison fails on a perfectly restored
+document — which it did, reporting `after 53 presses the box is not
+what it was`. **Eighty blocks compared, one differing, and that one
+was the test's own trailing keypress.** Which is also the measurement
+that says the restoration is exact rather than approximate: the other
+seventy-nine came back byte for byte through fifty-three replays.
+
+**Not reached, and not started:** a link inside the writing, a
+divider, paragraph spacing, and nested list levels. No font-family
+control and no point sizes, deliberately — the face follows the script
+and the sizes are steps, which is this file's own typography doctrine
+and not an omission. And a fatwa still has no written page at all,
+since `isPost` gates the writing box on `record.page`.
+
 **A guard that inspects only what is marked cannot see what is not.**
 A post's references are the quieter register — `.footnote` is 17px
 against a 21px Urdu body — and a block that loses that mark falls
