@@ -792,6 +792,71 @@ fourteen characters of chrome. Found by looking at what the selector
 matched. It asks for Urdu in `#post-body`, the work description, the
 background or the work's own title.
 
+
+**The control that offers it was in the wrong category, and only one of
+its three faults was the wording.** It was a button in the Share/Print
+row reading `Jameel Noori · on`, with `6.5 MB, downloaded once` in a
+`title`. Reported as *bad labels and at the wrong place*, which was
+right on both counts and understated the third:
+
+- **A `title` never appears on a phone.** There is no hover. So the one
+  place the cost was stated was invisible to exactly the readers paying
+  it — which makes *the size is on the control before it is spent*, this
+  file's own rule, false in practice rather than in wording.
+- **It was filed with the wrong things.** Share and Print act on the
+  page as an object; this is a reading setting. Measured at 390px: it
+  sat **2259px down a 2970px article, 76% of the way**, offered after
+  the reader had read the whole piece in whatever face they got. It is
+  at **13%** now, above the body.
+- **It was named after a font.** A reader who does not know what Jameel
+  Noori is cannot act on `Jameel Noori · on`.
+
+**`Aa` at the top of the piece, opening a panel that shows the two
+faces.** `Aa` is the convention for text settings and needs no
+translating on a page whose reader may want neither English chrome nor a
+Nastaliq word at UI size — a pairing this file already records twice
+(`.bio-facts dt`, the kind in a suggestion row). Inside the panel each
+face is **its own name set in itself**, which is the one caption that
+cannot disagree with what it describes: a reader who cannot evaluate the
+words *Jameel Noori* can see which of two Urdu lines they prefer. **The
+sample is the label.**
+
+**The one decision the whole panel is built around.** Drawing a live
+Jameel sample for a reader who has *not* got Jameel would start the
+6.57MB download **from the act of opening the panel** — spending their
+data before they asked, which is the single thing the control exists to
+let them decline. So Jameel's sample is a **1,231-byte picture** until
+Jameel is actually on, and live type once it is; Mehr is always live,
+being 55KB and already drawing the page. The guard counts fonts **off
+the wire** rather than reading the markup, and reports `no font` with
+Jameel off.
+
+**The picture is transparent, and that was found by looking.** On the
+page's cream it drew a visible rectangle around the one row that has a
+picture, and would have fought the warm ground that marks the chosen
+row. Transparent is also **less than half the size** — 1,231 against
+2,685 — because the ground was most of the pixels. No measurement said
+any of that.
+
+**`margin-left`, physical, for the same reason `.own-edge-latin` gives.**
+The hero of an Urdu piece is `dir="rtl"` and everything in it sits
+right; a full-width `ltr` block put the control alone on the far left,
+reading as something that had fallen off the page.
+`margin-inline-start: auto` is the trap — in a right-reading hero it
+pushes a box *away* from the edge it has to sit on, which the standfirst
+already paid for. The box moves; its contents stay `ltr`, because they
+are the site's own words about the page.
+
+**What the guard asserts beyond the fetch:** that the seed really took
+before anything is concluded from it; that the control is above the
+writing and out of the tools row; that the cost is **rendered** text of
+a real size and not an attribute; that the control is 44px and the panel
+stays on the screen at 390 — the Download lesson applied before a report
+rather than after; and that choosing stores `'mehr'` rather than
+clearing the key, since clearing hands the reader back to the default,
+which *is* Jameel, so a tap meant to turn it off would last one page
+load.
+
 **The three cases hold.** No JavaScript: no control, no download, the
 page exactly as it is today in Mehr. Storage blocked or refused: every
 read and write is wrapped, and the choice simply lasts the one page.

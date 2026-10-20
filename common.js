@@ -1371,6 +1371,167 @@
     return copyCaption(record, url);
   }
 
+  /* ---- how the Urdu is set, offered where a reader decides it -------
+
+     This was a button in the Share/Print row reading `Jameel Noori · on`,
+     with `6.5 MB, downloaded once` in a `title` attribute. Three things
+     were wrong with that and only one of them was the wording:
+
+     - **A `title` never appears on a phone.** There is no hover. So the
+       one place the cost was stated was invisible to exactly the readers
+       paying it, which makes "the size is on the control before it is
+       spent" — this repository's own rule — false in practice.
+     - **It was filed with the wrong things.** Share and Print act on the
+       page as an object: send it, put it on paper. This is a reading
+       setting, and it sat 2259px down a 2970px article — offered after
+       the reader had already read the whole piece in whatever face they
+       got.
+     - **It was named after a font.** A reader who does not know what
+       Jameel Noori is cannot act on `Jameel Noori · on`.
+
+     So: an `Aa` at the top of the piece, where every reading app puts
+     text settings and where no word needs translating, opening a panel
+     that shows the two faces and lets the reader pick the one they like
+     the look of. The sample is the label — each face's own name, set in
+     itself, which is the one caption that cannot disagree with what it
+     is describing. */
+  var FACE_SAMPLE = { jameel: 'جمیل نوری نستعلیق', mehr: 'مہر نستعلیق' };
+
+  /* The cost, in the order a person reads it: what it means first, the
+     number after it for anyone on metered data. Both halves are needed —
+     plain words alone hide a real charge, and the number alone is what
+     the old control already said and nobody could act on. */
+  var FACE_COST = 'Takes a few seconds the first time — about 6.5 MB.';
+
+  function readingFace(depth) {
+    var wrap = document.createElement('div');
+    wrap.className = 'reading-face';
+
+    var open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'reading-face-open';
+    /* `Aa` rather than a word: it is the convention for text settings in
+       every reading app, it is script-neutral, and it needs no
+       translation on a page whose reader may want neither English nor a
+       Nastaliq word in a row of Latin chrome — a combination this
+       codebase has paid for twice (.bio-facts dt, the kind in a
+       suggestion row). */
+    open.innerHTML = '<span aria-hidden="true">Aa</span>';
+    open.setAttribute('aria-label', 'How the Urdu is set');
+    open.setAttribute('aria-expanded', 'false');
+    wrap.appendChild(open);
+
+    var panel = document.createElement('div');
+    panel.className = 'reading-face-panel';
+    panel.hidden = true;
+    var heading = document.createElement('p');
+    heading.className = 'reading-face-heading';
+    heading.textContent = 'How the Urdu is set';
+    panel.appendChild(heading);
+    wrap.appendChild(panel);
+
+    var say = document.createElement('p');
+    say.className = 'reading-face-note';
+    say.setAttribute('role', 'status');
+    say.setAttribute('aria-live', 'polite');
+    wrap.appendChild(say);
+
+    /* One row per face. `live` says whether the sample may be drawn as
+       real type.
+
+       This is the decision the whole panel is built around: drawing a
+       live Jameel sample for a reader who has not got Jameel would start
+       the 6.57MB download from the act of OPENING the panel — spending
+       their data before they asked, which is the one thing this control
+       exists to let them decline. So Jameel's sample is a 2.6KB picture
+       until Jameel is actually on, and live type once it is. Mehr is
+       always live: it is 55KB and already drawing the page. */
+    function row(key, live) {
+      var choice = document.createElement('button');
+      choice.type = 'button';
+      choice.className = 'reading-face-choice';
+      choice.setAttribute('data-face', key);
+      var sample;
+      if (live) {
+        sample = document.createElement('span');
+        sample.className = 'reading-face-sample is-' + key;
+        sample.setAttribute('lang', 'ur');
+        sample.setAttribute('dir', 'rtl');
+        sample.textContent = FACE_SAMPLE[key];
+      } else {
+        sample = document.createElement('img');
+        sample.className = 'reading-face-sample is-picture';
+        sample.src = depth + 'files/images/jameel-sample.png';
+        sample.width = 158;
+        sample.height = 79;
+        /* The words themselves, so a screen reader is told what the
+           picture says rather than that there is a picture. */
+        sample.alt = FACE_SAMPLE[key];
+      }
+      choice.appendChild(sample);
+      if (key === 'jameel') {
+        var cost = document.createElement('span');
+        cost.className = 'reading-face-cost';
+        cost.textContent = FACE_COST;
+        choice.appendChild(cost);
+      }
+      choice.addEventListener('click', function () { pick(key); });
+      panel.appendChild(choice);
+      return choice;
+    }
+
+    var on = document.documentElement.classList.contains('jameel');
+    var rows = { mehr: row('mehr', true), jameel: row('jameel', on) };
+
+    function mark() {
+      var now = document.documentElement.classList.contains('jameel');
+      rows.jameel.setAttribute('aria-pressed', now ? 'true' : 'false');
+      rows.mehr.setAttribute('aria-pressed', now ? 'false' : 'true');
+    }
+    mark();
+
+    function pick(key) {
+      var want = key === 'jameel';
+      applyFace(want);
+      /* `'mehr'`, never an empty key: clearing it would hand the reader
+         back to the default, which IS Jameel, so a tap meant to turn it
+         off would last exactly one page load. Both answers are answers. */
+      rememberFace(want ? 'jameel' : 'mehr');
+      /* Once Jameel is really on, its row stops needing the picture —
+         the face itself is here and can draw its own name. */
+      if (want && rows.jameel.querySelector('img')) {
+        panel.replaceChild(row('jameel', true), rows.jameel);
+        rows.jameel = panel.lastElementChild;
+        panel.appendChild(rows.jameel);
+      }
+      mark();
+      say.textContent = want
+        ? 'Reading in Jameel Noori.'
+        : 'Reading in Mehr — lighter on a slow connection.';
+      shut();
+      open.focus();
+    }
+
+    function shut() {
+      panel.hidden = true;
+      open.setAttribute('aria-expanded', 'false');
+    }
+    open.addEventListener('click', function () {
+      var showing = !panel.hidden;
+      panel.hidden = showing;
+      open.setAttribute('aria-expanded', showing ? 'false' : 'true');
+    });
+    /* Escape shuts it, and a tap anywhere else shuts it — the two ways a
+       reader says "not this" without choosing. */
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && !panel.hidden) shut();
+    });
+    document.addEventListener('click', function (event) {
+      if (!panel.hidden && !wrap.contains(event.target)) shut();
+    });
+    return wrap;
+  }
+
   /* Share everywhere; Print only where there is a page worth printing.
 
      A work or a fatwa is a record of a PDF — the page holds a title, a
@@ -1433,66 +1594,6 @@
       print.innerHTML = icon('print', 'icon-inline') + ' Print';
       print.addEventListener('click', function () { window.print(); });
       box.appendChild(print);
-    }
-
-    /* Offered only where the READING MATTER is Urdu, which is not the
-       same as the page holding any Urdu at all. Asking for `.urdu`
-       anywhere was tried and is wrong: every English post carries one —
-       the اردو میں پڑھیے link to its twin — so the English pieces would
-       each offer a 6.5MB download to re-typeset fourteen characters of
-       chrome.
-
-       Asked of the rendered page rather than of `record.language`,
-       because those two genuinely disagree: four Arabic-language works
-       carry Urdu descriptions, which is a fault this codebase has
-       already fixed once by asking the text instead of the field.
-       `.arabic` is Amiri and this does not touch it. */
-    var urduProse = readsInUrdu();
-
-    /* A button, not a link or a checkbox: it does something to this page
-       rather than going anywhere, and `aria-pressed` is what says which
-       way it is set — the state belongs on the control, not in a label
-       that has to be kept in step with it. */
-    if (urduProse) {
-      var face = document.createElement('button');
-      face.type = 'button';
-      face.className = 'text-link reading-face';
-      /* The name stays in Latin, like Share and Print and every other
-         word the site says about itself. `جمیل نوری نستعلیق` at 14px
-         beside them would be a Nastaliq word in a row of UI, which this
-         codebase has already paid for twice — .bio-facts dt and the kind
-         in a suggestion row. The face it offers is its own argument. */
-      var label = function (on) {
-        return icon('nib', 'icon-inline') +
-          (on ? ' Jameel Noori · on' : ' Read in Jameel Noori');
-      };
-      /* `'mehr'`, not `''`. Clearing the key would send the reader back
-         to the default — which is now Jameel — so a tap meant to turn it
-         off would last until the next page load and no longer. Both
-         answers are stored because both are answers, which is the same
-         thing `faceWanted` says from the other end. */
-      var set = function (on, announce) {
-        applyFace(on);
-        rememberFace(on ? 'jameel' : 'mehr');
-        face.setAttribute('aria-pressed', on ? 'true' : 'false');
-        face.innerHTML = label(on);
-        if (announce) {
-          say.textContent = on
-            ? 'Reading in Jameel Noori Nastaleeq. It is a 6.5 MB font, downloaded once.'
-            : 'Back to Mehr Nastaliq — lighter on a slow connection.';
-        }
-      };
-      set(document.documentElement.classList.contains('jameel'), false);
-      /* The size is named whichever way it is set. It used to be a
-         warning before spending; now that the face is the default it is
-         simply what this control is about, and a reader deciding whether
-         to turn it off is owed the number as much as one deciding to
-         turn it on. */
-      face.title = 'Jameel Noori Nastaleeq — 6.5 MB, downloaded once';
-      face.addEventListener('click', function () {
-        set(!document.documentElement.classList.contains('jameel'), true);
-      });
-      box.appendChild(face);
     }
 
     box.appendChild(say);
@@ -1960,6 +2061,25 @@
     /* Written once and used at both mount points below, so a post and a
        work cannot end up offering different things. */
     var onward = moreLike(mine);
+
+    /* The reading face goes at the TOP of the piece, not in the row
+       above — a reader decides whether text is comfortable in the first
+       few seconds, and the old place was 76% of the way down the
+       article. Offered only where the READING MATTER is Urdu, which is
+       not the same as the page holding any Urdu at all: every English
+       post carries the اردو میں پڑھیے link to its twin, so asking for
+       `.urdu` anywhere would offer a 6.5MB download to re-typeset
+       fourteen characters of chrome.
+
+       `depth` is how far this page sits below the root, for the sample
+       picture's address. A post and a work both sit one folder down. */
+    if (readsInUrdu()) {
+      var faceBox = readingFace('../');
+      var postHero = document.querySelector('.post-hero, .work-hero');
+      var afterDate = postHero && postHero.querySelector('.post-date, .work-date');
+      if (afterDate) afterDate.insertAdjacentElement('afterend', faceBox);
+      else if (postHero) postHero.appendChild(faceBox);
+    }
 
     var postBody = document.getElementById('post-body');
     if (postBody) {

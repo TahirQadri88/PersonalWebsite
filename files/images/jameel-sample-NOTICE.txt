@@ -1,0 +1,25 @@
+jameel-sample.png
+
+The words جمیل نوری نستعلیق set in Jameel Noori Nastaleeq, 1,231 bytes,
+316x158 at 2x, 32 colours, on a transparent ground.
+
+Why a picture and not type: the reading-face panel lets a reader choose
+by looking at the two faces rather than by reading a font's name. But
+drawing a live Jameel sample for somebody who does not have Jameel would
+start the 6.57MB download from the act of opening the panel — spending
+their data before they asked, which is the exact thing the control
+exists to let them decline. So when Jameel is off, its sample is this
+file; when Jameel is already on, the panel draws live type and never
+fetches this.
+
+Quantised from a 9,008-byte capture. 32 colours costs a mean shift of
+about 0.12/255 and saves most of the file; 16 colours saves a few
+hundred bytes more at ten times the shift, which is not a trade worth
+making on type.
+
+Transparent, not on the page's cream, and that was found by LOOKING at
+the panel rather than by measuring it: a cream rectangle reads as a box
+drawn around the one row that has a picture, and it would fight the
+warm ground that marks the row a reader has chosen. It is also smaller
+— 1,231 bytes against 2,685 — because the ground was most of the
+pixels.

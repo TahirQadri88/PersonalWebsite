@@ -2104,17 +2104,21 @@ try {
       t('…while the English term inside it stays in the site\'s serif',
         !!painted && painted.includes('Latin in Urdu'), JSON.stringify(painted));
 
-      const face = page.locator('.reading-face');
+      /* The control's own shape is the next group's business; what
+         matters here is that the face a reader is given can be turned
+         off from this page, and that the answer sticks. The mechanism
+         changed — a button in the tools row became a panel at the top —
+         so these reach for the panel rather than a toggle. */
+      const face = page.locator('.reading-face-open');
       t('the article carries the control', await face.count() === 1);
-      t('…set, and saying so to a screen reader',
-        await face.getAttribute('aria-pressed') === 'true',
-        await face.textContent());
-      t('…with the size on it whichever way it is set',
-        /6\.5 MB/.test(await face.getAttribute('title') || ''),
-        await face.getAttribute('title'));
+      t('…marking the face it is actually set in',
+        await page.locator('.reading-face-choice[data-face="jameel"]')
+          .getAttribute('aria-pressed') === 'true');
 
       await face.scrollIntoViewIfNeeded();
       await face.click();
+      await page.locator('.reading-face-choice[data-face="mehr"]').click();
+      await page.waitForTimeout(150);
       t('turning it off puts Mehr back',
         !(await page.evaluate(() => document.documentElement.classList.contains('jameel'))));
       /* `mehr`, not an empty key. Clearing it would hand the reader back
@@ -2177,10 +2181,11 @@ try {
         !painted.includes('Jameel Noori Nastaleeq'), JSON.stringify(painted));
       /* …and it is a default, not a lock. Somebody on a metered phone
          who taps for it has answered better than we can. */
-      const face = page.locator('.reading-face');
+      const face = page.locator('.reading-face-open');
       await face.scrollIntoViewIfNeeded();
       await face.click();
-      await page.waitForTimeout(2000);
+      await page.locator('.reading-face-choice[data-face="jameel"]').click();
+      await page.waitForTimeout(2500);
       t('…but asking for it anyway still works',
         fetched.some((f) => f === FONT), JSON.stringify(fetched));
       await context.close();
@@ -2215,7 +2220,7 @@ try {
       t('…none of them reading matter, so the font is not fetched',
         !fetched.some((f) => f === FONT), JSON.stringify(fetched));
       t('…and no control is offered either',
-        await page.locator('.reading-face').count() === 0);
+        await page.locator('.reading-face-open').count() === 0);
       await context.close();
     }
 
@@ -2249,7 +2254,7 @@ try {
       const { context, page, fetched } = await visit(null, { javaScriptEnabled: false });
       t('with JavaScript off the article still has its words',
         (await page.locator('#post-body p').count()) > 10);
-      t('…offers no control', await page.locator('.reading-face').count() === 0);
+      t('…offers no control', await page.locator('.reading-face-open').count() === 0);
       t('…and fetches nothing of the 6.5MB font',
         !fetched.some((f) => f === FONT), JSON.stringify(fetched));
       await context.close();
@@ -2265,11 +2270,16 @@ try {
     const css = await readFile(join(ROOT, 'styles.css'), 'utf8');
     /* Quoted, so the comments naming the face in prose are not counted —
        `--font-urdu-heading` explains itself by reference to Jameel, and
-       so does Aslam's. Two quoted uses: the @font-face that declares it
-       and the single rule that reaches it. */
+       so does Aslam's. THREE quoted uses now: the @font-face that
+       declares it, the one rule that reaches it, and the panel's own
+       sample, which has to name the face directly rather than go
+       through `--font-urdu` — a chooser that drew whichever face the
+       page is already in would not be a comparison. The count is here
+       rather than a bare "at most" so a fourth use has to be argued
+       for. */
     const names = (css.match(/"Jameel Noori Nastaleeq"/g) || []).length;
-    t(`the family is named ${names} times in CSS — the face and the one rule`,
-      names === 2, String(names));
+    t(`the family is named ${names} times in CSS — the face, the rule, the sample`,
+      names === 3, String(names));
     t('…and that rule is behind the class, not on :root',
       /:root\.jameel\s*\{[^}]*--font-urdu:/.test(css));
     /* The load-bearing part of the default: Mehr inside that same stack
@@ -2284,6 +2294,161 @@ try {
       /font-family:\s*"Jameel Noori Nastaleeq";[\s\S]{0,400}?unicode-range:[\s\S]{0,200}?U\+0600-06FF/.test(css) &&
       !/font-family:\s*"Jameel Noori Nastaleeq";[\s\S]{0,400}?unicode-range:[^;]*U\+0041-005A/.test(css));
   }
+
+  /* ---- choosing how the Urdu is set ----
+
+     The control used to be a button in the Share/Print row reading
+     `Jameel Noori · on`, with the size in a `title` attribute. Three
+     separate faults, and only one of them was the wording:
+
+     - a `title` never appears on a phone, so the one place the cost was
+       stated was invisible to exactly the readers paying it;
+     - it sat 2259px down a 2970px article, offered after the piece had
+       already been read in whatever face the reader got;
+     - it was named after a font, which a reader who does not know what
+       Jameel Noori is cannot act on.
+
+     The first assertion below is the one that matters most. Drawing a
+     live Jameel sample for a reader who has NOT got Jameel would start
+     the 6.57MB download from the act of opening the panel — spending
+     their data before they asked, which is the single thing this control
+     exists to let them decline. So it is counted off the wire, not
+     reasoned from the markup. */
+  group('choosing how the Urdu is set');
+  for (const start of ['mehr', 'jameel']) {
+    const context = await browser.newContext({ viewport: { width: 390, height: 1000 } });
+    await context.route('https://fonts.g**', (r) => r.abort());
+    const fetched = [];
+    await context.route('**/*.woff2', (r) => {
+      fetched.push(r.request().url().split('/').pop());
+      return r.continue();
+    });
+    /* An IIFE, because `addInitScript` runs a string as a SCRIPT: a bare
+       arrow function is an expression that evaluates to a function and
+       is never called, which is how an earlier seed here silently
+       no-opped and turned a green run into a lie. */
+    await context.addInitScript(
+      `(() => { try { localStorage.setItem('reading-face', '${start}'); } catch (e) {} })();`);
+    const page = await context.newPage();
+    page.on('pageerror', (e) => threw.push('face/' + start + ': ' + e.message));
+    await page.goto(`http://127.0.0.1:${PORT}/posts/hunar-nahin-amanat.html`,
+      { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(200);
+
+    /* Assert the seed really took before asserting what the page did
+       about it — a seed that silently does nothing makes the run green
+       whichever way the code happens to go. */
+    const seeded = await page.evaluate(() => {
+      try { return localStorage.getItem('reading-face'); } catch (e) { return 'unreadable'; }
+    });
+    t(`${start}: the page really sees that choice`, seeded === start, String(seeded));
+
+    const opener = page.locator('.reading-face-open');
+    t(`${start}: the control is offered on an Urdu piece`,
+      (await opener.count()) === 1, String(await opener.count()));
+
+    /* Where it is, which is the whole of the second fault above. */
+    const place = await page.evaluate(() => {
+      const el = document.querySelector('.reading-face');
+      const body = document.getElementById('post-body');
+      return {
+        top: Math.round(el.getBoundingClientRect().top + window.scrollY),
+        bodyTop: Math.round(body.getBoundingClientRect().top + window.scrollY),
+        inTools: !!document.querySelector('.page-tools .reading-face'),
+        /* The site's own words about the page, in the site's own
+           direction — the same decision `.record-meta` and `.more-like`
+           already make. The hero around it is rtl. */
+        dir: getComputedStyle(el).direction
+      };
+    });
+    t(`${start}: it sits above the writing, not after it`,
+      place.top < place.bodyTop, JSON.stringify(place));
+    t(`${start}: and no longer in the Share/Print row`, !place.inTools);
+    t(`${start}: set in the site's own direction`, place.dir === 'ltr', place.dir);
+
+    fetched.length = 0;
+    await opener.click();
+    await page.waitForTimeout(600);
+
+    /* THE assertion. Off the wire, not from the DOM. */
+    t(`${start}: opening the panel fetched ${fetched.length ? fetched.join(', ') : 'no font'}`,
+      start === 'jameel' ? true : fetched.length === 0, JSON.stringify(fetched));
+
+    const rows = await page.evaluate(() => [...document.querySelectorAll('.reading-face-choice')]
+      .map((r) => ({
+        face: r.getAttribute('data-face'),
+        on: r.getAttribute('aria-pressed'),
+        kind: r.querySelector('img') ? 'picture' : 'live',
+        cost: ((r.querySelector('.reading-face-cost') || {}).textContent || '').trim()
+      })));
+    t(`${start}: both faces are offered`, rows.length === 2, JSON.stringify(rows));
+    /* The sample IS the label — a reader who cannot evaluate the name
+       "Jameel Noori" can see which of two Urdu lines they prefer. */
+    const jameel = rows.filter((r) => r.face === 'jameel')[0] || {};
+    const mehr = rows.filter((r) => r.face === 'mehr')[0] || {};
+    t(`${start}: the one being read in is marked`,
+      (start === 'jameel' ? jameel.on : mehr.on) === 'true', JSON.stringify(rows));
+    t(`${start}: Jameel's sample is ${jameel.kind}, which is what it may be here`,
+      jameel.kind === (start === 'jameel' ? 'live' : 'picture'), JSON.stringify(jameel));
+
+    /* The cost, as text a phone can see, in the order a person reads it:
+       what it means, then the number for anyone on metered data. A
+       `title` would pass a "does it say the size" check and still be
+       invisible, so this asserts the RENDERED text. */
+    t(`${start}: the cost is written where a phone can read it`,
+      /first time/i.test(jameel.cost) && /6\.5\s*MB/i.test(jameel.cost), jameel.cost);
+    const visible = await page.evaluate(() => {
+      const el = document.querySelector('.reading-face-cost');
+      const r = el.getBoundingClientRect();
+      return r.width > 40 && r.height > 8 && getComputedStyle(el).visibility === 'visible';
+    });
+    t(`${start}: …and really drawn, not only in the markup`, visible);
+
+    /* A thumb has to be able to hit it, and the panel has to stay on the
+       screen — the lesson from Download escaping its card, applied here
+       before it is reported rather than after. */
+    const fit = await page.evaluate(() => {
+      const b = document.querySelector('.reading-face-open').getBoundingClientRect();
+      const p = document.querySelector('.reading-face-panel').getBoundingClientRect();
+      const vw = document.documentElement.clientWidth;
+      return { w: Math.round(b.width), h: Math.round(b.height),
+               left: Math.round(p.left), right: Math.round(p.right), vw,
+               scrolls: document.documentElement.scrollWidth > window.innerWidth };
+    });
+    t(`${start}: the control is ${fit.w}x${fit.h}, a thumb's worth`,
+      fit.w >= 44 && fit.h >= 44, JSON.stringify(fit));
+    t(`${start}: the panel stays on the screen`,
+      fit.left >= 0 && fit.right <= fit.vw && !fit.scrolls, JSON.stringify(fit));
+
+    /* Choosing applies it and stores it — and `'mehr'` is stored rather
+       than the key cleared, because clearing would hand the reader back
+       to the default, which IS Jameel, so a tap meant to turn it off
+       would last exactly one page load. */
+    await page.locator('.reading-face-choice[data-face="mehr"]').click();
+    await page.waitForTimeout(200);
+    const after = await page.evaluate(() => ({
+      jameel: document.documentElement.classList.contains('jameel'),
+      stored: (function () { try { return localStorage.getItem('reading-face'); }
+        catch (e) { return 'unreadable'; } }()),
+      shut: document.querySelector('.reading-face-panel').hidden
+    }));
+    t(`${start}: choosing Mehr applies it and stores an answer`,
+      after.jameel === false && after.stored === 'mehr', JSON.stringify(after));
+    t(`${start}: …and shuts the panel behind it`, after.shut === true, JSON.stringify(after));
+    await context.close();
+  }
+
+  /* The picture earns its place or it does not belong: it exists so a
+     reader can SEE Jameel before spending 6.5MB on it, and a picture
+     that cost a meaningful fraction of what it is standing in for would
+     be absurd. Transparent rather than on the page's cream, which was
+     found by looking at the panel and not by measuring it. */
+  {
+    const px = (await stat(join(ROOT, 'files/images/jameel-sample.png'))).size;
+    t(`the stand-in sample is ${px} bytes, well under 6KB`, px < 6144, String(px));
+  }
+
   /* ---- the rhythm between sections ---- */
   group('the page breathes without falling apart');
   {

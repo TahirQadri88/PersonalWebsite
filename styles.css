@@ -2887,15 +2887,141 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   font-size: 13px;
 }
 .print-credit { display: none; }
-/* The reading face, when it is the one being read in. Selected on
-   `aria-pressed` rather than on a class of our own, the same argument
-   `markPlace` makes for `aria-current`: the attribute that tells a
-   screen reader is the attribute worth styling, and then the two cannot
-   come apart. Weight and the site's own gold, no background — it sits
-   in a row with Share and Print and must not outrank them. */
-.page-tools .reading-face[aria-pressed="true"] {
-  color: var(--gold-on-light);
+/* ---- how the Urdu is set -------------------------------------------
+
+   A reading setting, so it sits at the top of the piece where a reader
+   decides whether the text is comfortable — not in the row with Share
+   and Print, which act on the page as an object.
+
+   `direction: ltr` on the whole control, and this is the rule this file
+   keeps relearning: the hero of an Urdu piece is `dir="rtl"`, so English
+   words placed inside it are set from the right and rag down the left.
+   These are the SITE's own words about the page, in the site's own
+   direction as well as its own face — the same decision `.record-meta`
+   and `.more-like` already make. The two samples carry `dir="rtl"`
+   themselves, because those really are Urdu. */
+.reading-face {
+  direction: ltr;
+  position: relative;
+  margin: 10px 0 0;
+}
+/* `Aa` rather than a word: the convention for text settings, and
+   script-neutral on a page whose reader may want neither English chrome
+   nor a Nastaliq word at UI size. Drawn as a control — the lesson from
+   the step buttons and the row's own action, in one more place. */
+.reading-face-open {
+  font-family: var(--font-ui);
+  font-size: 15px;
   font-weight: 600;
+  line-height: 1;
+  color: var(--moss-deep);
+  background: var(--paper-warm);
+  border: 2px solid var(--gold-rule);
+  border-radius: 8px;
+  /* A real padded target, not an invisible pad: the thing you aim at
+     should be the thing that is there. 12px measured 43px tall, one
+     short of the 44 this site holds every other control to. */
+  padding: 13px 14px;
+  cursor: pointer;
+}
+.reading-face-open[aria-expanded="true"] { background: #fff; }
+/* In an Urdu piece the hero is `dir="rtl"` and everything in it — the
+   title, the standfirst, the date — sits on the right. A full-width
+   `ltr` block put the control alone on the far left, which reads as
+   something that fell off the page.
+
+   `margin-left` is PHYSICAL, deliberately, the same reasoning
+   `.own-edge-latin` records: `margin-inline-start: auto` in a
+   right-reading hero pushes a box AWAY from the edge it has to sit on,
+   which this file has already paid for once on the standfirst. The box
+   moves; its contents stay `ltr`, because they are the site's words. */
+.work-hero[dir="rtl"] .reading-face,
+.post-hero[dir="rtl"] .reading-face { width: fit-content; margin-left: auto; }
+/* …and the panel then hangs from that same right edge, or it would
+   open off the side of the screen. */
+.work-hero[dir="rtl"] .reading-face-panel,
+.post-hero[dir="rtl"] .reading-face-panel { right: 0; }
+.reading-face-panel {
+  position: absolute;
+  z-index: 5;
+  margin-top: 6px;
+  /* Never wider than the screen on a phone, and never so wide on a
+     desktop that two short samples sprawl. */
+  width: min(320px, calc(100vw - 32px));
+  background: #fff;
+  border: 2px solid var(--gold-rule);
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(21, 52, 43, 0.14);
+  padding: 12px;
+}
+.reading-face-heading {
+  margin: 0 0 8px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+/* One row per face, and the row IS the sample: a reader who cannot
+   evaluate the name "Jameel Noori" can see which of two Urdu lines they
+   prefer. Nothing here names a font in Latin. */
+.reading-face-choice {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.reading-face-choice:hover { background: var(--paper-warm); }
+.reading-face-choice[aria-pressed="true"] {
+  background: var(--paper-warm);
+  box-shadow: inset 0 0 0 2px var(--gold-rule);
+}
+.reading-face-sample {
+  display: block;
+  font-size: 26px;
+  line-height: 2;
+  color: var(--ink);
+}
+/* Each face named explicitly, not through --font-urdu: the panel has to
+   draw BOTH, whichever one the page is currently set in, or it is not a
+   comparison. */
+.reading-face-sample.is-mehr { font-family: "Mehr", "Noto Nastaliq Urdu", serif; }
+.reading-face-sample.is-jameel {
+  font-family: "Jameel Noori Nastaleeq", "Mehr", "Noto Nastaliq Urdu", serif;
+}
+/* The picture stands in for Jameel until Jameel is actually on — see
+   the comment in `readingFace`, common.js. Sized in CSS as well as on
+   the element so the row does not jump as it loads. */
+.reading-face-sample.is-picture {
+  width: 158px;
+  height: 79px;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: left center;
+}
+/* The cost, as text a phone can actually see. It used to live in a
+   `title` attribute, which never appears without a hover — so the one
+   place the size was stated was invisible to exactly the readers paying
+   it. Plain words first, the number after, for anyone on metered data. */
+.reading-face-cost {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.reading-face-note {
+  margin: 6px 0 0;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--gold-on-light);
 }
 .work-hero[dir="rtl"] .page-tools { direction: rtl; }
 
