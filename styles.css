@@ -2824,8 +2824,11 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    the selector that sets it, rather than hiding it behind an
    `!important` somewhere else.
 
-   Measured before and after: 33.6px with the rule as it was, which is
-   this rule's own 1.6em and not the 3.2 the class asks for. */
+   Measured with the exception taken out: the block kept this rule's own
+   gap and not the larger one the class asks for — 33.6px against 67.2
+   when that was 1.6em and 3.2. Both numbers came down with the leading
+   and the ratio between them did not; today it is 27.3px against 54.6,
+   from 1.3em and 2.6. */
 .post-body.urdu > p:not(.latin):not(.space-below),
 .post-body.arabic > p:not(.latin):not(.space-below) { margin-bottom: 1.3em; }
 .post-body h2 {

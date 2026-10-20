@@ -780,5 +780,7 @@
 .writing-canvas > .indent-1:not(.list-bullet):not(.list-number) { padding-inline-start: 1.8em; }
 .writing-canvas > .indent-2:not(.list-bullet):not(.list-number) { padding-inline-start: 3.6em; }
 /* The box shows the gap the page will leave, so what is written is
-   what is read. */
-.writing-canvas > .space-below { margin-bottom: 3.2em; }
+   what is read — which means this number moves whenever the page's
+   does. It came down from 3.2em with the Urdu leading, and the page's
+   own rule is in section 11 of styles.css beside the reasoning. */
+.writing-canvas > .space-below { margin-bottom: 2.6em; }
