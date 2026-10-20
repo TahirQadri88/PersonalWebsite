@@ -667,6 +667,53 @@ only separation at the Urdu/Latin boundary. Found by rendering it and
 looking, not by the 9.8 → 6.7px the gap measurement reported, which
 says the change was an improvement.
 
+**The leading was Mehr's and the face is Jameel's, and nobody moved
+the number.** Reported from the live site as *unusually extra
+paragraphs and line spacing*, with a paragraph of his own beside it
+that was set correctly.
+
+The first thing checked was the piece rather than the stylesheet,
+because an article full of empty blocks looks identical from the
+outside: `reservations-shariah-screening-stocks` holds **56
+paragraphs, zero empty**, no `<br>`, no `&nbsp;`. So it was the CSS.
+
+Measured at 21px by painting each face on a canvas and reading the ink
+rows: **Mehr is 22px tall and 215px wide** for the same words,
+**Jameel is 27 tall and 149 wide** — a quarter taller, a third
+narrower. Two faces with quite different proportions under the same
+**45.15px** pitch, because 2.15 was set when Mehr was the only body
+face and the default moved to Jameel without it being re-measured.
+Exactly the shape of `71% → 78%` for `Latin in Urdu`: **a number
+tuned for one face does not survive the face changing.**
+
+Settled by rendering the author's own sentence at 2.15, 1.95 and 1.8
+and **looking at the three together** — the only way a typographic
+judgement has ever been settled here. He chose 1.95, and the gap came
+down with it: **1.3em against the new 40.95px pitch is 0.667 of a
+line**, where 1.6em under the old pitch was 0.74. The gap follows the
+leading rather than moving independently, because what a reader sees
+is the **ratio** — leaving 1.6em under a tighter line would have made
+the breaks louder than before rather than quieter.
+
+`.space-below`, the bigger-gap control, went 3.2em → 2.6em for the
+same reason: it means *twice the usual break*, so it has to follow the
+usual break or it says something different the day the break moves.
+
+**The guard passed by 0.7% and that is a failure of the guard.** Its
+floor was 0.66, set when the gap measured 0.74 and had eight points of
+room; the new setting cleared it by **seven thousandths**. Green here,
+red on the next container, for a document that is perfectly correct —
+the scroll-anchoring lesson again. The floor is **0.60** now, sitting
+between the fault (0.51, the grey slab) and the setting (0.667) with
+room on both sides, and the assertion prints the ratio rather than
+hiding it. Widening a floor is only honest when the fault still fails:
+restored at 1.1em it reports **0.56** and goes red.
+
+**Print was left at 2.1 deliberately.** Paper is a different medium
+and no printed page was looked at; the report was about reading on a
+phone. Changing it would be a judgement made without the measurement
+this one was made with.
+
 **Jameel Noori is the Urdu face, and Mehr is what holds the page while
 it arrives.** The author wanted it and was right to: beside Mehr at
 21px it is plainly more open and more legible. It is also **6.57MB as

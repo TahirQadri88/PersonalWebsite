@@ -1869,8 +1869,23 @@ try {
       JSON.stringify(drewGuillemet));
 
     /* A paragraph break has to be bigger than a line break. It was half
-       of one — 23.1px under a 45.15px line pitch — which is what made the
-       article read as a single grey slab. */
+       of one — 23.1px under a 45.15px line pitch, 0.51 — which is what
+       made the article read as a single grey slab.
+
+       The floor is 0.60 and was 0.66, and the reason is worth more than
+       the number. 0.66 was set when the gap measured 0.74 of a line, so
+       it had eight points of room. The leading came down to 1.95 and
+       the gap with it, and the ratio is now **0.667** — which cleared
+       0.66 by seven thousandths. It passed. A guard that passes by
+       0.7% is the scroll-anchoring guard again: green on this
+       container, red on the next, for a document that is perfectly
+       correct.
+
+       So the bar is set where it catches what it is for and nothing
+       else. The fault is 0.51; the setting is 0.667; 0.60 sits between
+       them with real room on both sides. Widening a floor to admit a
+       change is only honest when the fault it was written for still
+       fails, and this one does — by a margin of nine points. */
     const rhythm = await page.evaluate(() => {
       const body = document.querySelector('.post-body');
       const ps = [...body.querySelectorAll('p')]
@@ -1889,8 +1904,9 @@ try {
       };
     });
     t(`${rhythm.n} paragraph breaks measured`, rhythm.n > 10, JSON.stringify(rhythm));
-    t(`…each ${Math.round(rhythm.gap)}px against a ${Math.round(rhythm.line)}px line, at least two thirds of it`,
-      rhythm.gap >= rhythm.line * 0.66, JSON.stringify(rhythm));
+    t(`…each ${Math.round(rhythm.gap)}px against a ${Math.round(rhythm.line)}px line, ` +
+      `${(rhythm.gap / rhythm.line).toFixed(2)} of it — over 0.60, where half a line is the fault`,
+      rhythm.gap >= rhythm.line * 0.60, JSON.stringify(rhythm));
     await context.close();
 
     /* A cut of Gentium, not Gentium entire smuggled in behind a name,
