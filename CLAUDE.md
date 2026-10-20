@@ -2315,6 +2315,84 @@ altogether while the cards drifted. It is a 44px circle with a border, a
 background and a shadow now — a control that moves the thing beside it
 has to look like one.
 
+**A shelf that walks while nobody is watching has spent its motion to
+say the wrong thing.** `autoAdvance` paused on `document.hidden` — the
+tab in the background — and had nothing to say about the strip simply
+being scrolled past. Measured at 390px: a reader who goes down to the
+library and reads for twenty-five seconds comes back to a strip that has
+walked to **1354 of 1792**, with the newest card no longer at the left
+edge. The section is called *Recently added and updated*; showing its
+fifth item to somebody who has just arrived at it is worse than not
+moving at all.
+
+It **pauses, and does not rewind.** Coming back to find it reset would
+undo the reader's own position — the carousel steering them, which is
+the thing every other listener in that function exists to prevent.
+
+This is the one place an `IntersectionObserver` is allowed here, and the
+reason is the three cases rather than an exception to them: **nothing
+depends on it.** Without JavaScript there is no motion at all and the
+cards are in the file; without `IntersectionObserver` — there is a
+`typeof` guard — it runs exactly as it did; under
+`prefers-reduced-motion` it never starts. The observer can only ever
+take motion away.
+
+**The guard that already covered this was passing because of the
+fault.** *the strip moves on its own again* measured at scroll 0, and at
+390px the strip sits far below the fold there — so it was asserting
+motion in a state the strip now deliberately holds still in. It was
+right about what it wanted and wrong about where to stand; it scrolls
+the strip into view first now. A guard written against the old behaviour
+is the quietest way for a change like this to look like a regression.
+
+**A title is a heading in every script it is set in, and Latin was not.**
+`.urdu` carries 500 and `.arabic` 700, each written where the face is
+chosen. Latin had neither, so it fell to **400** — paragraph weight on a
+heading — and the library row and the fatāwā grid each patched that
+locally with a `font-weight: 600` of their own while every other place a
+title is rendered was left behind. Measured across six pages: the recent
+strip drew its English titles at **16.5px/400** beside an Urdu sibling at
+19px/500, and a work hero's cross-language title at **16px/400**.
+Reported as the English cards being too light.
+
+One rule on `.record-title.latin`, not a third local patch — the same
+shape as `Ayn and hamza` being named in one stack and not the other. The
+places that set a *size* still set it; none of them restates the weight,
+and the library row's duplicate came out. Proved by diffing every title
+on six pages before and after: **three lines moved, all 400 → 600**, and
+nothing else — which is what says the removed duplicate was redundant
+rather than load-bearing.
+
+**The decoration outranked the action, in the one place this was never
+carried back to.** This file already records fixing exactly that at the
+foot of a post: the tag pills carried a filled background while the only
+two things a reader could *do* were bare words. The library row kept the
+fault. Measured in an open row: the tag beside it was 20px/500 on a
+filled ground with a 999px radius and real padding, while
+`Open details →` was 15px/700 with a hairline under it and **no padding
+at all**.
+
+The primary action is `.button` now — **the component the file links
+already use**, not a second one invented for this row; `.work-actions
+.button` only tightens the padding, because a library row is compact
+where a work page has the whole column. Share stays a word on purpose: a
+row offers one thing to do and one thing to do with it, and drawing both
+would hand the choice back to the reader.
+
+**Area was the wrong quantity and the run said so.** The first assertion
+compared the action's area against a tag's, and the English tag
+`Choose Your Words Wisely` measured **4870 against the action's 3347** on
+a row that reads perfectly well — a pill is as wide as its words. What
+tells a drawn control from a word is that it is *padded*, which does not
+move with the label. That is what is asserted.
+
+**A guard that crashes on the fault it is for is worse than one that
+fails.** Restoring the bare word put `primary` back to null, and the
+padding assertion threw inside the page rather than failing — which
+killed the whole run and reported nothing at all. Null-safe now, and the
+restored fault reports `padX: 0, padY: 0, filled: false` beside a tag at
+`padX: 11, filled: true`, which is the fault in one line.
+
 **The rail marks the section you are in, and moves only itself.**
 `markPlace` in `script.js` sets `aria-current` on the matching pill —
 the attribute, not a class of our own, so a screen reader is told too.

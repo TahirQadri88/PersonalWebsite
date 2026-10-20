@@ -587,6 +587,23 @@ h1, h2, h3 {
   word-spacing: var(--space-urdu-heading);
   font-size: clamp(16px, 1.7vw, 23px);
 }
+/* And the Latin title's own weight, which it never had.
+
+   `.urdu` above carries 500 and `.arabic` carries 700, each written
+   where the face is chosen; Latin had neither, so it fell to 400 —
+   plain paragraph weight on a heading. The library row and the fatāwā
+   grid each patched that locally with a `font-weight: 600` of their
+   own, and every other place a title is rendered was left behind.
+   Measured across six pages: the recent strip drew its English titles
+   at **16.5px/400** beside an Urdu sibling at 19px/500, and the
+   cross-language title in a work hero at **16px/400**. Reported as the
+   English cards being too light.
+
+   One rule here rather than a third local patch — the same move the
+   ayn patch needed when it turned out to be named in one stack and not
+   the other. The places that set a size still set it; none of them
+   needs to restate the weight. */
+.record-title.latin { font-weight: 600; }
 
 /* The word actually searched for, wherever script.js finds it inside a
    title — the default yellow reads as a highlighter mark left by
@@ -1709,7 +1726,6 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .work summary .record-title.latin {
   font-family: var(--font-display);
   font-size: 19px;
-  font-weight: 600;
   line-height: 1.3;
 }
 .work summary::-webkit-details-marker { display: none; }
@@ -1805,6 +1821,17 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 /* 24px, not 18px: it has to clear the invisible touch padding on the
    links above, or a wrapped second row steals taps from the first. */
 .work-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; }
+/* The row's own action, drawn. `.button` is sized for a work page, where
+   it stands alone under the description with the whole column to itself;
+   in a library row it sits in a wrapping line beside Share, so it takes
+   the same ink at a smaller pad. Nothing else about the component
+   changes — the fill, the radius, the weight and both states come from
+   `.button` itself, so this row and a work page cannot drift apart. */
+.work-actions .button { padding: 9px 16px; gap: 8px; }
+/* Share is the quieter half of the pair and stays a word: a row offers
+   one thing to do and one thing to do with it, and drawing both would
+   put the reader back where they started, choosing between two equals. */
+.work-actions .text-link { font-size: 14px; }
 
 /* Opening a PDF and saving it are two different wants, and one link
    could only serve the first: the browser's viewer had to render the

@@ -140,6 +140,31 @@
       if (document.hidden) pause(); else start();
     });
 
+    /* And off the screen is the same thing as off the tab. This advanced
+       while nobody was looking: measured, a reader who scrolls down to
+       the library and reads for 25 seconds comes back to a strip that has
+       walked to **1354 of 1792** with the newest card no longer at the
+       left edge. A shelf called *Recently added and updated* showing its
+       fifth item to somebody who has just arrived at it has spent its
+       motion to say the wrong thing.
+
+       It pauses rather than rewinds. Coming back to find it reset would
+       undo a reader's own position, which is the carousel steering them
+       — the thing every other listener here exists to prevent.
+
+       The three cases still hold, and this is the one place an
+       `IntersectionObserver` is allowed: nothing *depends* on it. Without
+       JavaScript there is no motion at all and the cards are in the file;
+       without `IntersectionObserver` — the `typeof` guard below — it runs
+       exactly as it did; under `prefers-reduced-motion` it never starts.
+       The observer only ever takes motion away. */
+    if (typeof IntersectionObserver === 'function') {
+      new IntersectionObserver(function (entries) {
+        if (entries[entries.length - 1].isIntersecting) start();
+        else pause();
+      }, { threshold: 0 }).observe(section);
+    }
+
     bar.setAttribute('data-moving', 'on');
     start();
     return stop;
@@ -402,12 +427,24 @@
          first thing on the row goes straight to the app, and the page
          about it comes second. Everything else here reaches its own page
          first because its own page is where the document is. */
+      /* The one thing this row is for is drawn as a control; everything
+         beside it stays a word. Measured in an open row: the tag pill
+         below was 20px/500 on a filled ground with a 999px radius and
+         real padding, while `Open details →` was a bare 15px word with a
+         hairline under it — the decoration outranking the action, which
+         is the fault this codebase already fixed at the foot of a post
+         and never carried back here.
+
+         `.button` is the component the file links already use, not a
+         second one invented for this row; `.work-actions .button` only
+         tightens its padding, because a library row is compact where a
+         work page has the whole column. */
       (work.app && work.app.url
-        ? '<a class="text-link" href="' + site.escapeHtml(work.app.url) + '"' +
+        ? '<a class="button" href="' + site.escapeHtml(work.app.url) + '"' +
           (site.isOffsite(work.app.url) ? ' target="_blank" rel="noopener"' : '') +
           '>Open the app ' + site.icon('open', 'icon-inline') + '</a>' +
           '<a class="text-link" href="' + site.escapeHtml(site.recordHref(work)) + '">About this app →</a>'
-        : '<a class="text-link" href="' + site.escapeHtml(site.recordHref(work)) + '">' +
+        : '<a class="button" href="' + site.escapeHtml(site.recordHref(work)) + '">' +
           (work.page ? 'Read →' : 'Open details →') +
           '</a>') +
       /* Sharing from the list, without opening the piece first. Someone

@@ -1260,6 +1260,117 @@ try {
   }
 
   /* ---- opening a row ---- */
+  /* ---- the decoration must not outrank the action ----
+
+     This codebase already records fixing exactly this at the foot of a
+     post: the tag pills above carried a filled background while the only
+     two things a reader could *do* were bare words. The library row was
+     never carried back. Measured in an open row: the tag beside it was
+     20px/500 on a filled ground with a 999px radius and real padding,
+     while `Open details →` was 15px/700 with a hairline under it and no
+     padding at all.
+
+     What is asserted is the comparison, not a colour: the row's own
+     action is drawn, and it is not out-drawn by a tag. A rule naming a
+     hex would go stale the moment the palette moved; this one is about
+     which element wins the reader's eye. */
+  group('a row offers its action as a control');
+  {
+    const { context, page } = await open(390);
+    await page.evaluate(() => {
+      document.querySelectorAll('details.work').forEach((d) => { d.open = true; });
+    });
+    await page.waitForTimeout(300);
+    const rows = await page.evaluate(() => {
+      const ink = (el) => {
+        const cs = getComputedStyle(el);
+        const m = /rgba?\(([^)]+)\)/.exec(cs.backgroundColor);
+        const n = m ? m[1].split(/[\s,\/]+/).filter(Boolean).map(Number) : [0, 0, 0, 0];
+        const r = el.getBoundingClientRect();
+        return { filled: (n.length > 3 ? n[3] : 1) > 0, area: Math.round(r.width * r.height),
+          padX: parseFloat(cs.paddingLeft), padY: parseFloat(cs.paddingTop),
+          text: el.textContent.replace(/\s+/g, ' ').trim().slice(0, 20) };
+      };
+      return [...document.querySelectorAll('.work-actions')].map((box) => {
+        const primary = box.querySelector('.button');
+        const quiet = box.querySelector('.text-link');
+        const tag = (box.closest('.work-detail') || document).querySelector('.tag');
+        return { primary: primary && ink(primary), quiet: quiet && ink(quiet),
+          tag: tag && ink(tag) };
+      });
+    });
+    /* Count what you matched: an empty list would pass every `every()`
+       below without looking at anything. */
+    t(`${rows.length} open rows have an action row`, rows.length > 10, String(rows.length));
+    const drawn = (r) => !!r.primary && r.primary.filled;
+    t('every one of them draws its primary action',
+      rows.every(drawn), JSON.stringify(rows.filter((r) => !drawn(r)).slice(0, 3)));
+    /* Area was asserted here first and is the wrong quantity: a pill is
+       as wide as its words, so the English tag `Choose Your Words Wisely`
+       measured 4870 against the action's 3347 and the row read perfectly
+       well. What tells a drawn control from a word is that it is *padded*
+       — the ink stands off the text on every side — and that does not
+       move with the label. */
+    /* Null-safe, and that is not pedantry: restoring the fault put a
+       `.text-link` back where the `.button` was, `primary` came back
+       null, and this threw inside the page instead of failing — which
+       killed the whole run and reported nothing at all. A guard that
+       crashes on the fault it is for is worse than one that fails. */
+    const padded = (r) => !!r.primary && r.primary.padX > 8 && r.primary.padY > 6;
+    t('…each one padded on every side, the way a control is and a word is not',
+      rows.every(padded), JSON.stringify(rows.filter((r) => !padded(r)).slice(0, 3)));
+    /* One drawn thing, not two. A row that offers two equal controls has
+       handed the choice back to the reader. */
+    t('…with Share left as the quieter word beside it',
+      rows.every((r) => r.quiet && !r.quiet.filled),
+      JSON.stringify(rows.filter((r) => r.quiet && r.quiet.filled).slice(0, 3)));
+    await context.close();
+  }
+
+  /* ---- a title is a heading in every script it is set in ----
+
+     `.urdu` carries 500 and `.arabic` 700, each written where the face is
+     chosen. Latin had neither, so it fell to 400 — paragraph weight on a
+     heading — and the library row and the fatāwā grid each patched that
+     locally while every other place a title is rendered was left behind.
+     Measured across six pages: the recent strip drew English titles at
+     16.5px/400 beside an Urdu sibling at 19px/500, and a work hero's
+     cross-language title at 16px/400. Reported as the English cards
+     being too light. */
+  group('an english title is set as heavily as its urdu sibling');
+  {
+    const seen = [];
+    for (const path of ['/index.html', '/fatawa/index.html',
+      '/works/vegetarianism-and-veganism.html', '/works/vegetarianism-and-veganism-urdu.html']) {
+      const { context, page } = await open(900, path);
+      await page.evaluate(() => {
+        document.querySelectorAll('details').forEach((d) => { d.open = true; });
+      });
+      await page.waitForTimeout(200);
+      const rows = await page.evaluate(() => [...document.querySelectorAll('.record-title')]
+        .map((el) => ({
+          script: el.classList.contains('urdu') ? 'urdu'
+            : el.classList.contains('arabic') ? 'arabic' : 'latin',
+          weight: parseInt(getComputedStyle(el).fontWeight, 10),
+          size: Math.round(parseFloat(getComputedStyle(el).fontSize)),
+          text: el.textContent.replace(/\s+/g, ' ').trim().slice(0, 24)
+        })));
+      rows.forEach((r) => { r.page = path; seen.push(r); });
+      await context.close();
+    }
+    const latin = seen.filter((r) => r.script === 'latin');
+    t(`${seen.length} titles measured, ${latin.length} of them Latin`,
+      latin.length > 5, JSON.stringify({ all: seen.length, latin: latin.length }));
+    const light = latin.filter((r) => r.weight < 600);
+    t('no Latin title is left at paragraph weight',
+      light.length === 0,
+      light.map((r) => `${r.weight} ${r.size}px "${r.text}" ${r.page}`).join('\n      '));
+    /* The weight belongs to the class, not to a third local patch. */
+    const css = await readFile(join(ROOT, 'styles.css'), 'utf8');
+    t('…because the class carries it, rather than each place that uses it',
+      /\.record-title\.latin \{ font-weight: 600; \}/.test(css));
+  }
+
   group('opening a row');
   {
     const { context, page } = await open(1440);
@@ -3266,6 +3377,69 @@ try {
      and did not move at all, and read as a static row with no sign there
      were more. A shelf of recent things has to say it is a shelf, and a
      row says that by moving and by showing the next thing along. */
+  /* ---- a shelf that walks while nobody watches ----
+
+     `autoAdvance` paused on `document.hidden` — the tab in the
+     background — and had nothing to say about the strip simply being
+     scrolled past. Measured on the homepage at 390px: a reader who goes
+     down to the library and reads for twenty-five seconds comes back to
+     a strip that has walked to **1354 of 1792**, with the newest card no
+     longer at the left edge. A shelf called *Recently added and updated*
+     showing its fifth item to somebody who has just arrived at it has
+     spent its motion to say the wrong thing.
+
+     It pauses rather than rewinds, deliberately: coming back to find it
+     reset would undo the reader's own position, which is the carousel
+     steering them.
+
+     This is the one place an `IntersectionObserver` is allowed here,
+     because nothing depends on it — it can only ever take motion away.
+     The three cases are asserted in their own group above and still
+     hold. */
+  group('the strip holds still while it is off screen');
+  {
+    const { context, page } = await open(390);
+    await page.evaluate(() => document.fonts.ready).catch(() => {});
+    /* In view first: at 390px the strip is far below the fold on load,
+       which is now a state it deliberately holds still in. */
+    await page.evaluate(() => {
+      document.getElementById('recent').scrollIntoView({ block: 'center' });
+    });
+    await page.waitForTimeout(250);
+    /* It has to be moving before standing still means anything — the
+       assertion below would pass on a strip whose timer never started. */
+    const moved = await page.evaluate(() => new Promise((done) => {
+      const track = document.getElementById('recent-track');
+      const from = track.scrollLeft;
+      setTimeout(() => done(Math.round(track.scrollLeft - from)), 6000);
+    }));
+    t(`the strip advances on its own while it is in view (${moved}px)`,
+      moved > 0, String(moved));
+
+    /* To the end of the page, not a computed offset: the library and the
+       footer are below the strip, so this is certainly behind the reader,
+       and an arithmetic target can clamp against the document's end and
+       quietly leave the strip on screen — which it did. */
+    const parked = await page.evaluate(() => {
+      const strip = document.getElementById('recent');
+      window.scrollTo(0, document.documentElement.scrollHeight);
+      return new Promise((done) => setTimeout(() => {
+        const track = document.getElementById('recent-track');
+        const r = strip.getBoundingClientRect();
+        done({ offscreen: r.bottom < 0 || r.top > window.innerHeight,
+          left: Math.round(track.scrollLeft) });
+      }, 200));
+    });
+    t('…and the reader scrolls past it', parked.offscreen, JSON.stringify(parked));
+    const after = await page.evaluate((was) => new Promise((done) => {
+      setTimeout(() => done(Math.round(
+        document.getElementById('recent-track').scrollLeft - was)), 12000);
+    }), parked.left);
+    t(`…after which it moves ${after}px in twelve seconds, not a card`,
+      after === 0, String(after));
+    await context.close();
+  }
+
   group('the recent strip says there is more');
   {
     /* The peek. It used to be whatever was left over after the cards —
@@ -3305,6 +3479,15 @@ try {
        the real track by the same step the buttons use. */
     {
       const { context, page } = await open(390);
+      /* Bring it into view first. This guard used to measure at scroll 0,
+         where at 390px the strip sits far below the fold — and it passed,
+         because the strip advanced wherever it was. It does not any more:
+         off the screen is now the same as off the tab. The assertion was
+         right about what it wanted and wrong about where to stand. */
+      await page.evaluate(() => {
+        document.getElementById('recent').scrollIntoView({ block: 'center' });
+      });
+      await page.waitForTimeout(250);
       const ran = await page.evaluate(async () => {
         const track = document.getElementById('recent-track');
         const bar = document.getElementById('recent-rail');
