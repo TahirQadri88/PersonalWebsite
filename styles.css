@@ -2683,6 +2683,34 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    the numbering a reader is following through a ruling. */
 .post-body li::marker { color: inherit; }
 
+/* A block stepped in — a sub-point under a point. On the published
+   page a sub-point inside a list is REAL nesting and the browser's own
+   list padding does this work, so what is left for these two rules is
+   the other case: an ordinary paragraph or a quotation stepped in
+   under the line above it.
+
+   `padding-inline-start`, not a margin and not `padding-left`: in an
+   Urdu block the step has to come off the right, which is the edge the
+   script begins on, and the logical property is the only one that says
+   that in both directions at once. This file has paid for the physical
+   form of that mistake more than once. */
+.post-body .indent-1 { padding-inline-start: 1.8em; }
+.post-body .indent-2 { padding-inline-start: 3.6em; }
+
+/* A bigger gap after one block — a break between two parts of a piece
+   that is not big enough to want a divider. ONE step, deliberately:
+   the 1.6em between paragraphs is not a taste but a measurement, and a
+   control offering arbitrary spacing invites a piece to drift out of
+   the setting the rest of the site is in. Doubling it is the most this
+   can say.
+
+   On `.post-body > *` rather than loose, so it beats the 1.6em rule
+   beside it at the same weight by coming later, and so it cannot
+   reach a block inside a list item. */
+.post-body > .space-below { margin-bottom: 3.2em; }
+.post-body.urdu > .space-below,
+.post-body > .urdu.space-below { margin-bottom: 3.2em; }
+
 /* The divider between one part of a piece and the next — what a fatwa
    puts between the question and the answer. Not a full-width hairline:
    a short centred rule reads as a considered break rather than as the
@@ -2762,8 +2790,19 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    this is putting back, and the fourteen bibliography entries at the
    foot of an Urdu article should stay a list of entries rather than
    fourteen paragraphs. */
-.post-body.urdu > p:not(.latin),
-.post-body.arabic > p:not(.latin) { margin-bottom: 1.6em; }
+/* `:not(.space-below)` for the reason the alignment defaults above
+   excuse their own classes by name: this rule is (0,3,1) and the class
+   the editor writes is (0,2,0), so without it a button that says it
+   leaves a bigger gap leaves exactly the gap it always did. A class the
+   editor writes must outrank the stylesheet's default or the button is
+   a lie — and naming the exception here keeps the default visible in
+   the selector that sets it, rather than hiding it behind an
+   `!important` somewhere else.
+
+   Measured before and after: 33.6px with the rule as it was, which is
+   this rule's own 1.6em and not the 3.2 the class asks for. */
+.post-body.urdu > p:not(.latin):not(.space-below),
+.post-body.arabic > p:not(.latin):not(.space-below) { margin-bottom: 1.6em; }
 .post-body h2 {
   margin-top: 1.7em;
   font-size: 1.32em;

@@ -1390,6 +1390,187 @@ await page.waitForTimeout(150);
 }
 
 
+/* ---- sub-points, and a bigger gap after a block ----
+
+   A ruling is built from points with sub-points under them, and the
+   box held every item at one level. A ROUND TRIP again, and here it
+   matters more than anywhere: the box keeps items FLAT with a class
+   saying which level each is, and the file has to carry real nesting
+   — which in HTML means the inner list sits INSIDE the `li` it
+   belongs to, not beside it. Two shapes, one function filling both,
+   which is exactly how the first list work lost three items. */
+{
+  const canvas = OPEN_CANVAS;
+  const style = row.locator('.writing-menu[aria-label="Style"]');
+  const indent = row.locator('.writing-tool[aria-label^="Indent"]');
+  const outdent = row.locator('.writing-tool[aria-label^="Move this block back out"]');
+  const spacer = row.locator('.writing-tool[aria-label^="Leave a bigger gap"]');
+
+  for (const [words, deep] of [['point one', 0], ['sub point a', 1],
+                               ['sub point b', 1], ['point two', 0]]) {
+    await newBlock(page, words);
+    await style.selectOption({ label: 'Numbered' });
+    await page.waitForTimeout(110);
+    for (let n = 0; n < deep; n += 1) { await indent.click(); await page.waitForTimeout(110); }
+  }
+  await newBlock(page, 'and a closing paragraph');
+
+  t('a sub-point is held flat in the box, marked by its level',
+    await page.evaluate((sel) => {
+      const kids = [...document.querySelector(sel).children];
+      const items = kids.filter((k) => k.classList.contains('list-number'));
+      return items.length >= 4 &&
+        items.slice(-4).map((k) => k.classList.contains('indent-1') ? 1 : 0).join('') === '0110' &&
+        !document.querySelector(sel).querySelector('ol, ul');
+    }, canvas),
+    await page.evaluate((sel) => [...document.querySelector(sel).children]
+      .slice(-5).map((k) => k.tagName + '.' + k.className).join(' | '), canvas));
+
+  /* The box numbers its own items, and a sub-point has to start again
+     at 1 under each point — one counter would run 1 2 3 4 straight
+     through and tell the author their ruling is numbered in a way it
+     is not.
+
+     Measured as INK, because `getComputedStyle(el, '::before').content`
+     returns the DECLARATION and not the numeral: both sub-points read
+     back `counter(writing-sub, urdu) "۔"` whether they draw ۱ and ۲ or
+     ۱ and ۱. The first version of this assertion compared those two
+     strings, found them equal, and went red on a box that was numbered
+     correctly — a test looking at the stylesheet while claiming to look
+     at the page. The same lesson the list marker already cost once.
+
+     So the two sub-points' markers are shot and compared byte for
+     byte: two different numerals cannot produce the same picture. */
+  {
+    /* `page`, not `row`: `canvas` is already an absolute selector
+       naming the open row, and nesting it under the row locator asks
+       for `.admin-row … .admin-row[open] …`, which matches nothing and
+       times out thirty seconds later. */
+    const items = page.locator(`${canvas} > .list-number`);
+    const n = await items.count();
+    const shots = [];
+    for (const at of [n - 3, n - 2]) {
+      const item = items.nth(at);
+      /* Into view before measuring: a clip is in VIEWPORT coordinates,
+         so a block below the fold is shot as whatever happens to be on
+         the screen at those numbers. */
+      await item.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(80);
+      const box = await item.boundingBox();
+      /* The marker is the first inline thing in the CONTENT box, which
+         in a right-reading block begins where the padding ends — not
+         inside the padding. Clipping the padding gives a blank image,
+         and two blank images are equal, so the first version of this
+         reported the numerals identical on a box that was numbered
+         correctly. 144 bytes each was the tell: a solid colour. */
+      const pad = await item.evaluate((el) => parseFloat(getComputedStyle(el).paddingRight));
+      shots.push(await page.screenshot({ clip: {
+        x: Math.max(0, box.x + box.width - pad - 44),
+        y: box.y,
+        width: 44,
+        height: Math.min(box.height, 44) } }));
+    }
+    t('  …and the box restarts the sub-numbering under each point',
+      !shots[0].equals(shots[1]),
+      'the two sub-points draw the same numeral (' + shots[0].length + ' bytes each)');
+  }
+
+  /* Two steps and no more, and it says so rather than going quiet —
+     a press that does nothing and says nothing cannot be told from a
+     broken control. */
+  await page.locator(canvas).click();
+  await page.keyboard.press('Control+End');
+  await page.waitForTimeout(80);
+  await spacer.click();
+  await page.waitForTimeout(140);
+  t('a block can be given a bigger gap after it',
+    await page.evaluate((sel) =>
+      document.querySelector(sel).lastElementChild.classList.contains('space-below'), canvas),
+    await page.evaluate((sel) => document.querySelector(sel).lastElementChild.className, canvas));
+  t('  …and the gap is really drawn, not only declared',
+    await page.evaluate((sel) => {
+      const el = document.querySelector(sel).lastElementChild;
+      const now = parseFloat(getComputedStyle(el).marginBottom);
+      el.classList.remove('space-below');
+      const without = parseFloat(getComputedStyle(el).marginBottom);
+      el.classList.add('space-below');
+      return now > without + 8;
+    }, canvas),
+    await page.evaluate((sel) =>
+      getComputedStyle(document.querySelector(sel).lastElementChild).marginBottom, canvas));
+
+  /* Written out, served back, opened again. The nesting exists only
+     in the file, so this is the only place it can be checked at all. */
+  await page.click('#export');
+  await page.waitForSelector('#out-pages section', { timeout: 20000 });
+  await page.waitForTimeout(1200);
+  const written = await page.evaluate((post) => {
+    const sections = Array.from(document.querySelectorAll('#out-pages section'));
+    const mine = sections.find((x) => x.querySelector('h3').textContent.includes(post));
+    return mine ? mine.querySelector('textarea').value : null;
+  }, POST);
+  await page.click('#close-dialog');
+  await page.waitForTimeout(200);
+
+  /* Parsed in the PAGE, not here: this file runs in node, where there
+     is no DOM at all. The first version called `document.createElement`
+     and the run died with `document is not defined` — which reads like
+     the editor throwing and is nothing of the kind. */
+  const nested = typeof written === 'string' && await page.evaluate((html) => {
+    const holder = document.createElement('div');
+    holder.innerHTML = html;
+    const inner = holder.querySelector('li ol, li ul');
+    return !!inner && inner.querySelectorAll(':scope > li').length === 2;
+  }, written);
+  t('  …and the file carries the sub-points as a list inside their point',
+    nested,
+    typeof written === 'string'
+      ? (written.match(/<li[^>]*>|<\/li>|<ol[^>]*>|<\/ol>/g) || []).slice(0, 14).join(' ')
+      : 'the piece was not written');
+
+  t('  …and the gap after a block survives into the file',
+    typeof written === 'string' && /class="[^"]*space-below/.test(written),
+    typeof written === 'string' ? (written.match(/class="[^"]*space-below[^"]*"/g) || ['none'])[0]
+      : 'the piece was not written');
+
+  /* Outdent steps back, and refuses past the margin with a word for
+     why rather than in silence. */
+  await page.locator(canvas).click();
+  await page.keyboard.press('Control+End');
+  await page.waitForTimeout(80);
+  await outdent.click();
+  await page.waitForTimeout(140);
+  t('Outdent at the margin says so rather than going quiet',
+    /already at the margin/i.test(
+      (await row.locator('.writing-note').first().textContent()).trim()),
+    JSON.stringify((await row.locator('.writing-note').first().textContent()).trim()));
+  await indent.click();
+  await page.waitForTimeout(120);
+  await indent.click();
+  await page.waitForTimeout(120);
+  await indent.click();
+  await page.waitForTimeout(140);
+  t('  …and Indent stops at two steps, and says that too',
+    /two steps in/i.test((await row.locator('.writing-note').first().textContent()).trim()),
+    JSON.stringify((await row.locator('.writing-note').first().textContent()).trim()));
+
+  /* The six blocks this group wrote come out again. A later group
+     counts the lists on the published page and was written against a
+     piece holding one; leaving four more items behind made it report
+     `3 list of 3 items` and read as a regression in the list work,
+     which it is not. A group that adds to the piece has to put the
+     piece back. */
+  await page.evaluate((sel) => {
+    const box = document.querySelector(sel);
+    for (let n = 0; n < 6; n += 1) {
+      if (box.lastElementChild) box.removeChild(box.lastElementChild);
+    }
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+  }, canvas);
+  await page.waitForTimeout(160);
+}
+
+
 /* ---- undo and redo ----
 
    The box had neither, and that is not a missing convenience. Almost

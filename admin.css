@@ -738,22 +738,47 @@
    counter to that element AND the siblings after it, so two separate
    lists in one piece do not run on from each other — without this the
    second would start where the first left off. */
-.writing-canvas > * { counter-reset: writing-item; }
-.writing-canvas > .list-number { counter-reset: none; counter-increment: writing-item; }
-.writing-canvas > .list-bullet,
-.writing-canvas > .list-number { padding-inline-start: 1.6em; position: relative; }
-.writing-canvas > .list-bullet::before,
-.writing-canvas > .list-number::before {
-  position: absolute;
-  inset-inline-start: 0;
-  /* Not a colour of its own: the marker belongs to the item's own ink,
-     and a quieter one would read as an aside rather than as the
-     numbering a reader follows through a ruling. */
-  color: inherit;
+/* The box numbers its own items, because it holds them FLAT — the
+   real `<ol>` only exists in the published file. Two counters, not
+   one: a sub-point has to start again at 1 under each point, and a
+   single counter would run 1 2 3 4 straight through and tell the
+   author their ruling is numbered in a way it is not.
+
+   `counter-reset` scopes to the element AND its following siblings,
+   which is what makes a run restart; a level-one item resets the sub
+   counter so each group of sub-points begins again. */
+.writing-canvas > * { counter-reset: writing-item writing-sub; }
+.writing-canvas > .list-number {
+  counter-reset: writing-sub;
+  counter-increment: writing-item;
 }
-.writing-canvas > .list-bullet::before { content: "•"; }
+.writing-canvas > .list-number.indent-1,
+.writing-canvas > .list-number.indent-2 {
+  counter-reset: none;
+  counter-increment: writing-sub;
+}
+.writing-canvas > .list-bullet,
+.writing-canvas > .list-number {
+  padding-inline-start: 1.6em;
+  position: relative;
+}
+.writing-canvas > .list-bullet.indent-1,
+.writing-canvas > .list-number.indent-1 { padding-inline-start: 3.4em; }
+.writing-canvas > .list-bullet.indent-2,
+.writing-canvas > .list-number.indent-2 { padding-inline-start: 5.2em; }
 .writing-canvas > .list-number::before { content: counter(writing-item) "."; }
-/* The figures follow the script, exactly as the published list's do —
-   ۱ ۲ ۳ in Urdu, ١ ٢ ٣ in Arabic, 1 2 3 in English. */
 .writing-canvas > .list-number.urdu::before { content: counter(writing-item, urdu) "۔"; }
 .writing-canvas > .list-number.arabic::before { content: counter(writing-item, arabic-indic) "."; }
+.writing-canvas > .list-number.indent-1::before,
+.writing-canvas > .list-number.indent-2::before { content: counter(writing-sub) "."; }
+.writing-canvas > .list-number.indent-1.urdu::before,
+.writing-canvas > .list-number.indent-2.urdu::before { content: counter(writing-sub, urdu) "۔"; }
+.writing-canvas > .list-number.indent-1.arabic::before,
+.writing-canvas > .list-number.indent-2.arabic::before { content: counter(writing-sub, arabic-indic) "."; }
+/* An ordinary block stepped in — the box shows the same step the page
+   will, so what is written is what is read. */
+.writing-canvas > .indent-1:not(.list-bullet):not(.list-number) { padding-inline-start: 1.8em; }
+.writing-canvas > .indent-2:not(.list-bullet):not(.list-number) { padding-inline-start: 3.6em; }
+/* The box shows the gap the page will leave, so what is written is
+   what is read. */
+.writing-canvas > .space-below { margin-bottom: 3.2em; }

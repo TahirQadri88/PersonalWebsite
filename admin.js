@@ -618,11 +618,34 @@
       { value: 's', text: 'Smaller', title: 'Set the words picked out a step smaller', cls: 'is-smaller' },
       { value: 'l', text: 'Larger', title: 'Set the words picked out a step larger', cls: 'is-bigger' }
     ] },
-    { field: 'align', label: 'Align', items: [
+    /* "Layout" rather than "Align": the group is about where the BLOCK
+       sits now, not only where its words sit inside it. Indent is here
+       rather than in a group of its own because the rail is full — a
+       seventh group is what needs the two-row answer, and these two
+       buttons belong with the alignments by meaning anyway. */
+    { field: 'align', label: 'Layout', items: [
       { value: 'r', icon: 'r', title: 'Align this block to the right', cls: 'is-align' },
       { value: 'c', icon: 'c', title: 'Centre this block', cls: 'is-align' },
       { value: 'l', icon: 'l', title: 'Align this block to the left', cls: 'is-align' },
-      { value: 'j', icon: 'j', title: 'Justify this block — both edges straight', cls: 'is-align' }
+      { value: 'j', icon: 'j', title: 'Justify this block — both edges straight', cls: 'is-align' },
+      /* Two steps and no more, and they STEP rather than toggle — which
+         is why they carry `step` instead of a value for the field. A
+         sub-point under a point is what a ruling is built from; inside
+         a list these become real nesting in the published page. */
+      { step: 1, icon: 'in', title: 'Indent this block — a sub-point under the one above',
+        cls: 'is-align', press: 'in' },
+      { step: -1, icon: 'out', title: 'Move this block back out a step',
+        cls: 'is-align', press: 'out' },
+      /* One step, and a toggle rather than a menu of sizes. The gap
+         between paragraphs here is not a taste — it is 1.6em because
+         the Urdu line pitch is 45px and half of that stopped reading
+         as a paragraph break at all, which is measured and written
+         down. A control offering arbitrary spacing invites a piece to
+         drift out of the setting the whole site is in; one bounded
+         step says "a bigger break here" and cannot say anything
+         else. */
+      { field: 'space', value: 'b', icon: 'space',
+        title: 'Leave a bigger gap after this block', cls: 'is-align' }
     ] }
   ];
 
@@ -637,6 +660,38 @@
     c: [14, 9, 14, 9],
     j: [14, 14, 14, 14]
   };
+
+  /* Indent and outdent: the four lines of a paragraph with the arrow
+     that says which way they are going. Drawn, like the alignments
+     beside them and for the same reason — every word processor draws
+     these two and they need no translating into whichever of three
+     languages is being typed. */
+  function indentIcon(kind) {
+    var rows = [14, 9, 9, 14].map(function (width, index) {
+      var x = index === 0 || index === 3 ? 1 : 7;
+      return '<rect x="' + x + '" y="' + (1 + index * 3) + '" width="' +
+        (index === 0 || index === 3 ? width : width - 1) + '" height="1.6" rx="0.8" />';
+    });
+    var arrow = kind === 'in'
+      ? '<path d="M1.6 5.6 4.3 7.3 1.6 9" />'
+      : '<path d="M4.3 5.6 1.6 7.3 4.3 9" />';
+    return '<svg viewBox="0 0 16 12.6" width="17" height="13" aria-hidden="true" ' +
+      'focusable="false" fill="currentColor">' + rows.join('') +
+      '<g fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" ' +
+      'stroke-linejoin="round">' + arrow + '</g></svg>';
+  }
+
+  /* A gap: two blocks of lines with air between them, and the arrows
+     that say the air is the point. */
+  function spaceIcon() {
+    return '<svg viewBox="0 0 16 12.6" width="17" height="13" aria-hidden="true" ' +
+      'focusable="false" fill="currentColor">' +
+      '<rect x="1" y="1" width="14" height="1.6" rx="0.8" />' +
+      '<rect x="1" y="3.6" width="10" height="1.6" rx="0.8" />' +
+      '<rect x="1" y="10" width="14" height="1.6" rx="0.8" />' +
+      '<g fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round">' +
+      '<path d="M8 6.4v2.2M6.9 7.9 8 8.9l1.1-1" /></g></svg>';
+  }
 
   function alignIcon(kind) {
     var rows = ALIGN_LINES[kind].map(function (width, index) {
@@ -706,7 +761,7 @@
   /* What one block already is, read off the element — the same three
      things the marks in the file record. */
   function blockState(node) {
-    var state = { kind: 'p', language: '', align: '' };
+    var state = { kind: 'p', language: '', align: '', indent: '', space: '' };
     if (!node) return state;
     if (node.tagName === 'H2') state.kind = 'h2';
     else if (node.tagName === 'H3') state.kind = 'h3';
@@ -721,6 +776,12 @@
     });
     Object.keys(ALIGN).forEach(function (key) {
       if (node.classList.contains('align-' + ALIGN[key])) state.align = key;
+    });
+    Object.keys(INDENT).forEach(function (key) {
+      if (node.classList.contains(INDENT[key])) state.indent = key;
+    });
+    Object.keys(SPACE).forEach(function (key) {
+      if (node.classList.contains(SPACE[key])) state.space = key;
     });
     return state;
   }
@@ -741,6 +802,8 @@
       node.setAttribute('dir', SCRIPTS[state.language].dir);
     }
     if (state.align && ALIGN[state.align]) node.classList.add('align-' + ALIGN[state.align]);
+    if (state.indent && INDENT[state.indent]) node.classList.add(INDENT[state.indent]);
+    if (state.space && SPACE[state.space]) node.classList.add(SPACE[state.space]);
     if (state.kind === 'footnote') node.classList.add('footnote');
     if (state.kind === 'bullet') node.classList.add('list-bullet');
     if (state.kind === 'number') node.classList.add('list-number');
@@ -866,6 +929,27 @@
       return;
     }
     putCaret(next, offset);
+  }
+
+  /* Indent steps, where every other control on this bar sets or
+     toggles. `setBlockField` toggles a field back off when the value
+     pressed is the one already there, which is right for Quote and
+     Centre and wrong here: pressing Indent twice has to mean two
+     steps, not one step and then none.
+
+     Clamped at both ends, and it says when it is already there rather
+     than going quiet — a press that does nothing and says nothing is
+     indistinguishable from a broken control, which is the complaint
+     the bar's note line exists to answer. */
+  function stepIndent(canvas, by) {
+    var block = caretBlock(canvas);
+    if (!block) return 'nothing-picked';
+    var now = Number(blockState(block).indent || 0);
+    var next = now + by;
+    if (next < 0) return by < 0 ? 'no-further-out' : 'done';
+    if (!INDENT[next] && next !== 0) return 'no-further-in';
+    setBlockField(canvas, 'indent', next === 0 ? '' : String(next), true);
+    return 'done';
   }
 
   /* Which blocks hold a script they were handed rather than one anybody
@@ -1587,7 +1671,9 @@
       group.items.forEach(function (item) {
         var button = el('button', 'writing-tool' + (item.cls ? ' ' + item.cls : ''));
         button.type = 'button';
-        if (item.icon) button.innerHTML = alignIcon(item.icon);
+        if (item.press) button.innerHTML = indentIcon(item.press);
+        else if (item.icon === 'space') button.innerHTML = spaceIcon();
+        else if (item.icon) button.innerHTML = alignIcon(item.icon);
         else button.textContent = item.text;
         button.title = item.title;
         button.setAttribute('aria-label', item.title);
@@ -1597,12 +1683,20 @@
         button.addEventListener('mousedown', function (event) {
           event.preventDefault();
           settleHistory();
-          if (group.inline) say(markSelection(canvas, item.value));
-          else { setBlockField(canvas, group.field, item.value); say('done'); }
+          if (item.step) say(stepIndent(canvas, item.step));
+          else if (group.inline) say(markSelection(canvas, item.value));
+          else { setBlockField(canvas, item.field || group.field, item.value); say('done'); }
           changed();
           refresh();
         });
-        buttons.push({ button: button, field: group.field, value: item.value, inline: !!group.inline });
+        /* `item.field || group.field`, because the Layout group holds
+           two fields now — where the words sit and how much air is
+           left after the block. Reading the group's field for both
+           would light the space button whenever an alignment matched
+           its letter. */
+        buttons.push({ button: button, field: item.field || group.field,
+                       value: item.value, inline: !!group.inline,
+                       stepper: !!item.step });
         row.appendChild(button);
       });
       box.appendChild(row);
@@ -1635,6 +1729,8 @@
          is broken, which is the complaint this line exists for. */
       cancelled: '',
       'bad-address': 'That address was not understood. Use one starting http://, https:// or mailto:.',
+      'no-further-in': 'Two steps in is as far as a sub-point goes.',
+      'no-further-out': 'That block is already at the margin.',
       'nothing-to-undo': 'Nothing to undo.',
       'nothing-to-redo': 'Nothing to redo.'
     };
@@ -1655,6 +1751,11 @@
       var state = blockState(caretBlock(canvas));
       var marks = marksAtCaret(canvas);
       buttons.forEach(function (entry) {
+        /* Indent and Outdent are steps, not states — there is no "on"
+           for them to be in, and marking one pressed would say the
+           block is indented when what it means is that the button
+           exists. */
+        if (entry.stepper) return;
         var on = entry.inline ? marks.indexOf(entry.value) !== -1
                               : state[entry.field] === entry.value;
         entry.button.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -2167,6 +2268,11 @@
     Array.prototype.forEach.call(node.childNodes, function (child) {
       if (child.nodeType === 3) { out += child.textContent; return; }
       if (child.nodeType !== 1) return;
+      /* A sub-list sits INSIDE the `li` it belongs to — that is what
+         nesting means in HTML — so without this every sub-point would
+         be read into the words of the point above it and come back as
+         one long run-on line. */
+      if (child.tagName === 'UL' || child.tagName === 'OL') return;
       var code = inlineCode(child);
       var inner = inlineToText(child);
       if (code === 'a') {
@@ -2283,13 +2389,36 @@
       Object.keys(ALIGN).forEach(function (key) {
         if (node.classList.contains('align-' + ALIGN[key])) mark += '[' + key + '] ';
       });
+      Object.keys(INDENT).forEach(function (key) {
+        if (node.classList.contains(INDENT[key])) mark += '[i' + key + '] ';
+      });
+      Object.keys(SPACE).forEach(function (key) {
+        if (node.classList.contains(SPACE[key])) mark += '[s' + key + '] ';
+      });
       return mark;
     }
 
-    function add(node, lead) {
+    function add(node, lead, depth) {
       var text = inlineToText(node).trim().replace(/\s+/g, ' ');
       if (!text) return;
-      blocks.push(lead + marksOf(node) + text);
+      /* The depth token goes where `marksOf` would have written it —
+         last — so a nested `li` in a FILE and a flat `p.indent-1` in
+         the BOX come back as the same line. They have to: this one
+         function reads both, and a post that changed shape between
+         them would change shape every time it was opened and saved. */
+      var deep = depth > 0 && INDENT[depth] ? '[i' + depth + '] ' : '';
+      blocks.push(lead + marksOf(node) + deep + text);
+    }
+
+    function readList(list, depth) {
+      var lead = list.tagName === 'UL' ? '- ' : '1. ';
+      Array.prototype.forEach.call(list.children, function (item) {
+        if (item.tagName !== 'LI') return;
+        add(item, lead, depth);
+        Array.prototype.forEach.call(item.children, function (child) {
+          if (child.tagName === 'UL' || child.tagName === 'OL') readList(child, depth + 1);
+        });
+      });
     }
 
     Array.prototype.forEach.call(article.children, function (node) {
@@ -2299,8 +2428,7 @@
          come back as the same line or a post would change shape every
          time it was opened and saved. */
       if (node.tagName === 'UL' || node.tagName === 'OL') {
-        var lead = node.tagName === 'UL' ? '- ' : '1. ';
-        Array.prototype.forEach.call(node.children, function (item) { add(item, lead); });
+        readList(node, 0);
         return;
       }
       /* Both shapes of a divider, because this one function reads the
@@ -2339,6 +2467,13 @@
                   ur: { cls: 'urdu', dir: 'rtl' },
                   en: { cls: 'latin', dir: 'ltr' } };
   var ALIGN = { l: 'left', c: 'center', r: 'right', j: 'justify' };
+  /* Two steps and no more. A ruling carries sub-points under a point;
+     nothing in this library has ever carried a sub-sub-point, and an
+     unbounded ladder is a column of text with no room left in it on a
+     328px phone. Written as `[i1]`/`[i2]`, which is why the token loop
+     below had to learn a digit — every other token is two letters. */
+  var INDENT = { 1: 'indent-1', 2: 'indent-2' };
+  var SPACE = { b: 'space-below' };
 
   function readBlock(raw) {
     var block = String(raw || '').trim();
@@ -2362,15 +2497,20 @@
 
     var language = '';
     var align = '';
+    var indent = '';
+    var space = '';
     var token;
-    while ((token = block.match(/^\[([a-z]{1,2})\]\s*/))) {
+    while ((token = block.match(/^\[([a-z][a-z0-9]?)\]\s*/))) {
       var key = token[1];
       if (SCRIPTS[key]) language = key;
       else if (ALIGN[key]) align = key;
+      else if (key.charAt(0) === 'i' && INDENT[key.charAt(1)]) indent = key.charAt(1);
+      else if (key.charAt(0) === 's' && SPACE[key.charAt(1)]) space = key.charAt(1);
       else break;
       block = block.slice(token[0].length);
     }
-    return { kind: kind, language: language, align: align, text: block };
+    return { kind: kind, language: language, align: align, indent: indent,
+             space: space, text: block };
   }
 
   /* A post's words with every mark stripped — the same parse bodyToHtml
@@ -2423,6 +2563,8 @@
          stylesheet keeps the say, and so a post page carries no inline
          CSS for a content-security policy to object to later. */
       if (b.align) classes.push('align-' + ALIGN[b.align]);
+      if (b.indent && INDENT[b.indent]) classes.push(INDENT[b.indent]);
+      if (b.space && SPACE[b.space]) classes.push(SPACE[b.space]);
       if (extra) classes.push(extra);
       return classes.length ? ' class="' + classes.join(' ') + '"' + attrs : attrs;
     }
@@ -2461,12 +2603,46 @@
            marker sits on the side the LIST reads from, not the side the
            item does, so an `ol` left `ltr` around Urdu items puts its
            numerals on the wrong edge. */
-        out.push(pad + '<' + wrap + dress({ language: run[0].language, align: '' }) + '>');
-        run.forEach(function (item) {
-          out.push(pad + '  <li' + dress(item) + '>' +
-            inlineToHtml(item.text.replace(/\s+/g, ' ')) + '</li>');
+        /* Sub-points. The box holds every item flat and says which
+           level it is with a class; the FILE has to carry real
+           nesting, and real nesting in HTML means the inner list sits
+           INSIDE the `li` it belongs to — not beside it. So an item's
+           `</li>` cannot be written until it is known whether a deeper
+           item follows, which is why this is a small state machine
+           rather than a map over the run.
+
+           An item that starts at level 2 with nothing above it is a
+           hand-edited state, and it opens its own list rather than
+           being dropped: the words are the author's and belong on the
+           page whatever the markup says about them. */
+        var open = [];
+        function shut(downTo) {
+          while (open.length > downTo) {
+            out.push(pad + '  '.repeat(open.length) + '</' + wrap + '>');
+            open.pop();
+            if (open.length) out.push(pad + '  '.repeat(open.length) + '</li>');
+          }
+        }
+        run.forEach(function (item, at) {
+          var depth = Number(item.indent || 0) + 1;
+          if (depth > open.length + 1) depth = open.length + 1;
+          if (depth < open.length) shut(depth);
+          if (depth > open.length) {
+            /* Opening a deeper list leaves the `li` above it open, so
+               the nested list lands inside it. With nothing above —
+               the hand-edited case — there is no `li` to sit in. */
+            out.push(pad + '  '.repeat(open.length) +
+              '<' + wrap + dress({ language: run[at].language, align: '', indent: '' }) + '>');
+            open.push(true);
+          } else if (at) {
+            out.push(pad + '  '.repeat(open.length) + '</li>');
+          }
+          out.push(pad + '  '.repeat(open.length) + '<li' +
+            dress({ language: item.language, align: item.align, indent: '' }) + '>' +
+            inlineToHtml(item.text.replace(/\s+/g, ' ')));
         });
-        out.push(pad + '</' + wrap + '>');
+        if (open.length) out.push(pad + '  '.repeat(open.length) + '</li>');
+        shut(0);
         continue;
       }
 
