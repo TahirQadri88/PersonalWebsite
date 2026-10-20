@@ -1779,7 +1779,7 @@ try {
        run and Chromium then reports the glyphs against the parent, which
        is the mistake that once produced 284 false faults. */
     const found = await page.evaluate(() => {
-      const out = { latin: 0, guillemet: 0 };
+      const out = { latin: 0 };
       const body = document.querySelector('.post-body');
       let i = 0;
       for (const p of body.querySelectorAll('p')) {
@@ -1788,9 +1788,6 @@ try {
         if (!/[؀-ۿ]/.test(text)) continue;
         if (out.latin === 0 && /[A-Za-z]{5}/.test(text)) {
           p.id = 'probe-latin'; out.latin = 1;
-        }
-        if (out.guillemet === 0 && /«/.test(text)) {
-          p.id = 'probe-guillemet'; out.guillemet = 1;
         }
         i++;
       }
@@ -1803,7 +1800,6 @@ try {
     t(`the article has ${found.urduParagraphs} Urdu paragraphs to look at`,
       found.urduParagraphs > 10, JSON.stringify(found));
     t('…one of which holds an English term', found.latin === 1, JSON.stringify(found));
-    t('…and one a guillemet', found.guillemet === 1, JSON.stringify(found));
 
     const drewLatin = await faces('#probe-latin');
     t(`the English term is drawn by ${(drewLatin || []).join(' + ') || 'nothing'}`,
@@ -1851,22 +1847,66 @@ try {
     t(`an ayn in Urdu prose is drawn by ${(drewAyn || []).join(' + ') || 'nothing'}`,
       !!drewAyn && drewAyn.includes('Ayn and hamza'), JSON.stringify(drewAyn));
 
-    /* The guillemets cannot be told apart from the Latin letters by
-       name: `Urdu guillemets` is a second @font-face on the SAME file,
-       which is the whole point of it — one fetch — and CDP answers with
-       the family name inside the font, which is `Latin in Urdu` for
-       both. So what is asserted here is that nothing off the reader's
-       device drew them; that they are not size-adjusted is read out of
-       the stylesheet below, and neither assertion covers the other.
+    /* The guillemets are planted too, and they did not used to be. The
+       one paragraph on the site that carried « » was the درر الحکام
+       citation in this post, and the author has since remarked it
+       `.arabic` — which it is, the quotation inside it being Arabic. So
+       there is no Urdu-block guillemet left on the site to find, and the
+       patch is correct and latent exactly as the ayn is.
+
+       It cannot be measured on the Arabic block instead. `.arabic` sets
+       Amiri, Amiri comes off Google's CDN, and `open()` turns that CDN
+       away — so in this suite those marks are painted by a system face
+       whatever the stylesheet says, which is the same blindness this
+       repository already records about Gentium. An assertion there would
+       report a fault on a page that is right.
+
+       What is asserted is that nothing off the reader's device drew
+       them. The marks cannot be told from the Latin letters by name:
+       `Urdu guillemets` is a second @font-face on the SAME file, which
+       is the whole point of it — one fetch — and CDP answers with the
+       family name inside the font, which is `Latin in Urdu` for both.
+       That they are not size-adjusted is read out of the stylesheet
+       below, and neither assertion covers the other.
 
        Restoring the fault still fails this: without the rule the marks
        fall to Noto Nastaliq Urdu, which `open()` keeps off the network,
        so a system serif paints them and turns up in this list. */
+    const guillemetStack = await page.evaluate(async () => {
+      /* The `jameel` class comes off first, and that is the whole
+         measurement rather than tidying. Jameel declares U+007B-00BF
+         and really holds « », so on the default face the patch is never
+         reached — the first version of this guard stood on a Jameel page
+         and PASSED with the @font-face deleted, which is this file's own
+         cardinal sin in a new place. Mehr is the configuration the patch
+         exists for: a reader on Save-Data, on 2g, or who has chosen it. */
+      document.documentElement.classList.remove('jameel');
+      const host = document.querySelector('.post-body p:not(.latin)');
+      const p = document.createElement('p');
+      p.id = 'probe-guillemet';
+      p.className = host.className;
+      p.setAttribute('dir', 'rtl');
+      p.textContent = 'جانچ «الْعِبْرَةُ» شرعی';
+      host.parentNode.insertBefore(p, host.nextSibling);
+      await document.fonts.load('400 21px "Urdu guillemets"', '«»');
+      await document.fonts.ready;
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      return getComputedStyle(p).fontFamily;
+    });
+    t('the guillemet probe is on Mehr, which is what the patch is for',
+      /Mehr/.test(guillemetStack) && !/Jameel/.test(guillemetStack)
+        && /Urdu guillemets/.test(guillemetStack),
+      guillemetStack);
     const drewGuillemet = await faces('#probe-guillemet');
     t(`« and » are drawn by ${(drewGuillemet || []).join(' + ') || 'nothing'}`,
       !!drewGuillemet && drewGuillemet.length > 0 && drewGuillemet.every((f) =>
         ['Latin in Urdu', 'Ayn and hamza'].concat(URDU_BODY_FACES).includes(f)),
       JSON.stringify(drewGuillemet));
+    /* Put the default face back: the rhythm measured below is in em and
+       does not depend on the family, but leaving a page in a state no
+       reader is in is how a later assertion gets measured in the wrong
+       configuration. */
+    await page.evaluate(() => document.documentElement.classList.add('jameel'));
 
     /* A paragraph break has to be bigger than a line break. It was half
        of one — 23.1px under a 45.15px line pitch, 0.51 — which is what

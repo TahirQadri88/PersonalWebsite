@@ -625,6 +625,36 @@ stylesheet. And no em-dash was added to the range, deliberately: the
 note below about not patching Mehr's dashes still holds, and at 78% a
 dash would be a *shorter* bar than the Urdu around it wants.
 
+**Its guard had to be moved twice, and the second move is the one that
+matters.** The post that carried the only `« »` on the site has since
+been edited: the درر الحکام citation is marked `.arabic` now, which it
+is — the quotation inside it is Arabic — so there is no Urdu-block
+guillemet left for a probe to find, and the patch is **correct and
+latent** exactly as the ayn is. It cannot be measured on the Arabic
+block instead: `.arabic` sets Amiri, Amiri comes off Google's CDN, and
+`open()` turns that CDN away, so in this suite those marks are painted
+by a system face whatever the stylesheet says. An assertion there would
+report a fault on a page that is right.
+
+So the mark is planted, the same move the ayn already makes. **And the
+first version of that planted probe could not fail.** The default face
+is Jameel, which declares `U+007B-00BF` and really holds `« »` — the
+comment on its own `@font-face` says so — so on a post the patch is
+never reached, and deleting the whole `@font-face` left the run at
+**PASS (410)**. The probe takes the `jameel` class off first now, which
+is not tidying: Mehr is the configuration the patch exists for, being
+what a reader on Save-Data, on 2g, or who has chosen it is reading in.
+On Mehr the marks are drawn by `Latin in Urdu + Mehr Nastaliq Web`, and
+with the rule deleted the same assertion reports `Noto Nastaliq Urdu +
+Mehr Nastaliq Web` — the 20KB-for-two-characters fetch this patch exists
+to prevent, named in the failure itself. One failure, no others.
+
+The class goes back on afterwards. The rhythm measured below it is in
+`em` and does not depend on the family, but leaving a page in a state no
+reader is in is how a later assertion comes to be measured in the wrong
+configuration — which this file already records costing a false number
+once.
+
 **`Ayn and hamza` was named in `--font-display` and never in
 `--font-urdu`.** The patch has been sitting in the repository fixing
 one side of the site and not the other. An ayn in an Urdu sentence fell
