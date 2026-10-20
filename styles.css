@@ -272,12 +272,21 @@ img { max-width: 100%; }
                  U+2010-205E, U+FB50-FDFF, U+FE70-FEFF;
 }
 
-/* Jameel Noori Nastaleeq — 6.57MB, and nobody downloads it unless they
-   ask. A @font-face is fetched only when something rendered needs the
-   family, and nothing on this site names it except the rule below, which
-   needs a class on <html> that only a reader's own tap puts there. So
-   this declaration is free until it is wanted; that is the whole design,
-   and `test/homepage.mjs` counts the requests to prove it.
+/* Jameel Noori Nastaleeq — 6.57MB, and the Urdu face by default.
+
+   What makes that affordable is the stack below, not this file: `Mehr`
+   sits behind it and `font-display: swap` draws the article in Mehr
+   until this arrives. Measured on the live site with a cold cache —
+   2.9s to Jameel on wifi, 9.1s on 4G, 33.7s on 3G, and the words are on
+   screen and readable at every one of them. Nobody waits to read.
+
+   It is still behind a class, and that is deliberate rather than left
+   over: `common.js` adds `jameel` before first paint unless the reader
+   has turned it off or their own browser has asked us not to spend
+   their data (`saveData`, or a 2g connection). On `:root` the browser
+   would be away with 6.5MB before any script could say otherwise, so
+   the Save-Data branch would be a comment rather than a behaviour.
+   `test/homepage.mjs` proves both directions.
 
    Withholding the Latin letters, exactly as Mehr does above and for the
    same measured reason: Jameel carries a full Latin set of its own (196
@@ -302,8 +311,13 @@ img { max-width: 100%; }
                  U+0600-06FF, U+0750-077F, U+08A0-08FF, U+200C-200F,
                  U+2010-205E, U+FB50-FDFF, U+FE70-FEFF;
 }
-/* The one rule that reaches it. `common.js` puts `jameel` on <html> from
-   a stored choice, and takes it off again.
+/* The one rule that reaches it.
+
+   `Mehr` is named inside this stack on purpose and is the load-bearing
+   part of the default: it is what `font-display: swap` falls back to
+   while 6.5MB is in flight, so the article is readable from the first
+   paint rather than blank or in a system face. Take Mehr out of this
+   line and a reader on 3G gets thirty-three seconds of something else.
 
    Only the body face. --font-urdu-heading stays Aslam: a heading is set
    apart from the prose under it by being bold Naskh against Nastaliq,

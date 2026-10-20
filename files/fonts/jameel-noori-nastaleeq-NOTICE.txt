@@ -1,9 +1,16 @@
 Jameel Noori Nastaleeq
 
 6,889,712 bytes as woff2 — 6.57MB, by far the largest file on this
-site, and it is downloaded by nobody unless they ask for it. See
-"Jameel Noori is offered, never served" in CLAUDE.md for the control
-that asks.
+site, and the Urdu face by default. What makes that affordable is that
+Mehr is named behind it in the same stack with font-display: swap, so
+the article is readable from the first paint while this is in flight;
+measured cold on the live site, Jameel is usable at 2.9s on wifi, 9.1s
+on 4G and 33.7s on 3G, with the words on screen throughout.
+
+It is not served to a reader whose own browser says their data is
+precious (saveData, or a 2g connection), nor to one who has turned it
+off, nor where JavaScript is off. See "Jameel Noori is the Urdu face"
+in CLAUDE.md.
 
 Version 2, 2009. The font's own name table carries, in place of a
 licence: "This Font Is Free Of Charge For Urdu Lovers". That is a

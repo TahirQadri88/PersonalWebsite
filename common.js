@@ -7,26 +7,42 @@
 
   /* ---- The reading face -----------------------------------------------
 
-     Mehr draws the Urdu, and Jameel Noori Nastaleeq is offered to anyone
-     who would rather read in it. It is 6.57MB — a hundred and twenty
-     times Mehr — so it is never served to anybody who has not asked:
-     nothing in the stylesheet names that family except one rule behind
-     `html.jameel`, and a @font-face is fetched only when something
-     rendered needs it. The class is put here, from the reader's own
-     stored choice, and nowhere else.
+     Jameel Noori Nastaleeq is the Urdu face now, and Mehr is what draws
+     the article until it arrives. That is the whole safety of it, and it
+     was measured on the live site with a cold cache before the default
+     was changed: `font-display: swap` with Mehr behind it in the stack
+     means the words are on screen from the first paint at every speed —
+     2.9s to Jameel on wifi, 9.1s on 4G, 33.7s on 3G, and **readable
+     throughout**. Nobody ever waits to read. What they do pay is 6.57MB
+     of their own data, and a reflow when it lands.
 
-     This runs before the page is drawn rather than inside the mount
-     below, so a reader who has already chosen does not watch the article
-     reflow a moment after it appears. common.js is a parser-blocking
-     script, so the class is on <html> before first paint. It cannot be
-     earlier than that without writing a snippet into the <head> of every
-     generated page, which would mean rewriting all thirty-odd of them
-     for a saving nobody would see.
+     So one line of restraint, and only one: if the reader's own browser
+     says their data is precious, we believe it. `saveData` is the
+     setting a person turns on themselves, and a 2g `effectiveType` is
+     the network telling us the same thing without being asked. Neither
+     is a guess about who they are. An explicit choice outranks both —
+     somebody who has tapped for Jameel on a metered phone has already
+     answered this question better than we can.
+
+     The class still gates everything: nothing in the stylesheet names
+     that family except one rule behind `html.jameel`, and a @font-face
+     is fetched only when something rendered needs it. Putting the
+     default here rather than on `:root` is what makes the Save-Data
+     branch real — common.js is a parser-blocking script at the end of
+     <body>, so this runs before first paint and the fetch never starts
+     for a reader who should not pay for it. On `:root` the browser would
+     be away with it before any script could say otherwise.
+
+     The cost of that choice, stated rather than hidden: a reader with
+     JavaScript off keeps Mehr. That is a complete, correct page — the
+     one the site shipped for years — and it is the right thing to lose
+     here, because the alternative spends 6.5MB of somebody's data with
+     no way for them to decline it.
 
      Storage is wrapped, every time: a private window, blocked site data
      or a browser that simply refuses makes these throw rather than
      return nothing, and a reader whose storage is off must still get a
-     working page in Mehr. */
+     working page. */
   var FACE_KEY = 'reading-face';
   function storedFace() {
     try { return window.localStorage.getItem(FACE_KEY); } catch (error) { return null; }
@@ -37,10 +53,32 @@
       else window.localStorage.removeItem(FACE_KEY);
     } catch (error) { /* nothing to do: the choice lasts this page only */ }
   }
+  /* Both halves of the same question, and either one answers it. The
+     whole thing is wrapped because `navigator.connection` is absent on
+     Safari and iOS — where it is absent the answer is "no", which is the
+     right way to fail: the reader still gets the face and can turn it
+     off, rather than being quietly denied it by a browser that declined
+     to say anything. */
+  function thrifty() {
+    try {
+      var link = navigator.connection;
+      if (!link) return false;
+      return !!link.saveData || /(^|-)2g$/.test(link.effectiveType || '');
+    } catch (error) { return false; }
+  }
   function applyFace(on) {
     document.documentElement.classList.toggle('jameel', !!on);
   }
-  applyFace(storedFace() === 'jameel');
+  /* A stored answer is an answer, in both directions — `mehr` is as much
+     a decision as `jameel` and must survive being the default's
+     opposite. Only the absence of one asks the connection. */
+  function faceWanted() {
+    var stored = storedFace();
+    if (stored === 'jameel') return true;
+    if (stored === 'mehr') return false;
+    return !thrifty();
+  }
+  applyFace(faceWanted());
 
   function escapeHtml(value) {
     return String(value == null ? '' : value)
@@ -1408,20 +1446,28 @@
         return icon('nib', 'icon-inline') +
           (on ? ' Jameel Noori · on' : ' Read in Jameel Noori');
       };
+      /* `'mehr'`, not `''`. Clearing the key would send the reader back
+         to the default — which is now Jameel — so a tap meant to turn it
+         off would last until the next page load and no longer. Both
+         answers are stored because both are answers, which is the same
+         thing `faceWanted` says from the other end. */
       var set = function (on, announce) {
         applyFace(on);
-        rememberFace(on ? 'jameel' : '');
+        rememberFace(on ? 'jameel' : 'mehr');
         face.setAttribute('aria-pressed', on ? 'true' : 'false');
         face.innerHTML = label(on);
         if (announce) {
           say.textContent = on
             ? 'Reading in Jameel Noori Nastaleeq. It is a 6.5 MB font, downloaded once.'
-            : 'Back to Mehr Nastaliq.';
+            : 'Back to Mehr Nastaliq — lighter on a slow connection.';
         }
       };
       set(document.documentElement.classList.contains('jameel'), false);
-      /* The size is said before it is spent, and only on the way in. A
-         reader turning it off is owed no warning. */
+      /* The size is named whichever way it is set. It used to be a
+         warning before spending; now that the face is the default it is
+         simply what this control is about, and a reader deciding whether
+         to turn it off is owed the number as much as one deciding to
+         turn it on. */
       face.title = 'Jameel Noori Nastaleeq — 6.5 MB, downloaded once';
       face.addEventListener('click', function () {
         set(!document.documentElement.classList.contains('jameel'), true);

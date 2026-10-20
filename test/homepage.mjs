@@ -89,6 +89,17 @@ const library = (function () {
   };
 })();
 
+/* The faces the site may set Urdu BODY text in, named once because
+   three separate assertions ask the question and all three were written
+   when there was only Mehr. Making Jameel the default turned all three
+   red at once, for one reason — which is the signal that the literal
+   belonged in a constant rather than in each of them.
+
+   Aslam is deliberately NOT here. A heading is told from the body under
+   it by being a bold Naskh rather than by being bigger, and an assertion
+   that accepted Aslam as a body face would stop saying so. */
+const URDU_BODY_FACES = ['Mehr Nastaliq Web', 'Jameel Noori Nastaleeq'];
+
 let passed = 0;
 const failed = [];
 function t(name, ok, detail) {
@@ -1692,7 +1703,7 @@ try {
        the Urdu around it, so both are expected and nothing else is. */
     t('…and by nothing the site has not named',
       !!drewLatin && drewLatin.every((f) =>
-        ['Latin in Urdu', 'Mehr Nastaliq Web'].includes(f)),
+        ['Latin in Urdu'].concat(URDU_BODY_FACES).includes(f)),
       JSON.stringify(drewLatin));
 
     /* The ayn is written into the page by the guard, because there is no
@@ -1743,7 +1754,7 @@ try {
     const drewGuillemet = await faces('#probe-guillemet');
     t(`« and » are drawn by ${(drewGuillemet || []).join(' + ') || 'nothing'}`,
       !!drewGuillemet && drewGuillemet.length > 0 && drewGuillemet.every((f) =>
-        ['Latin in Urdu', 'Mehr Nastaliq Web', 'Ayn and hamza'].includes(f)),
+        ['Latin in Urdu', 'Ayn and hamza'].concat(URDU_BODY_FACES).includes(f)),
       JSON.stringify(drewGuillemet));
 
     /* A paragraph break has to be bigger than a line break. It was half
@@ -1805,179 +1816,196 @@ try {
     t('…no longer claiming a face off the reader\'s own device',
       !/font-family:\s*"Latin in Urdu";[\s\S]{0,400}?local\(/.test(css));
   }
-
   /* ---- the reading face ----
 
      Jameel Noori Nastaleeq is 6.57MB — a hundred and twenty times Mehr,
-     and by far the largest file in the repository. It is offered and
-     never served: nothing names that family except one rule behind
-     `html.jameel`, and a @font-face is fetched only when something
-     rendered needs it.
+     and by far the largest file in the repository. It is the Urdu face
+     by default, and what makes that affordable is that `Mehr` sits
+     behind it in the stack with `font-display: swap`, so the article is
+     readable from the first paint while it is in flight. Measured on the
+     live site, cold: 2.9s on wifi, 9.1s on 4G, 33.7s on 3G, words on
+     screen at every one.
 
-     So the assertion that matters is a NEGATIVE one, and it is the kind
-     this file has been caught by before: a guard that only checks the
-     happy path cannot see the fault. The requests are counted on an
-     ordinary load, and the file must not be among them.
+     The assertion that matters is still a NEGATIVE one, it has simply
+     moved. It used to be "nobody gets it unless they ask"; it is now
+     "nobody gets it who has said no, or whose browser has said no for
+     them". That is the branch a future change would silently break —
+     the happy path announces itself and the Save-Data path does not.
 
-     The second half is the same lesson as the `Latin in Urdu` group
+     Hence the class, rather than `:root`. On `:root` the browser would
+     be away with 6.5MB before any script could say otherwise, so the
+     Save-Data branch would be a comment and not a behaviour; this is
+     what proves it is a behaviour.
+
+     The last part is the same lesson as the `Latin in Urdu` group
      above, one face along. Jameel carries 196 non-Arabic codepoints of
-     its own, so without a unicode-range withholding the Latin letters,
-     turning this on would quietly undo the work that put an English term
+     its own, so without a unicode-range withholding the Latin letters
+     the default would quietly undo the work that put an English term
      into the site's own serif — the term would go back to being drawn at
      the Urdu's full size, by the Urdu face this time. */
-  group('Jameel Noori is offered, never served');
+  group('the reading face is Jameel, except where it must not be');
   {
     const POST = '/posts/reservations-shariah-screening-stocks.html';
     const FONT = 'jameel-noori-nastaleeq.woff2';
-    const context = await browser.newContext({ viewport: { width: 390, height: 900 } });
-    await context.route('https://fonts.g**', (r) => r.abort());
-    const page = await context.newPage();
-    page.on('pageerror', (e) => threw.push('reading face: ' + e.message));
-    const fetched = [];
-    page.on('response', (r) => {
-      if (/\.woff2(\?|$)/.test(r.url())) fetched.push(r.url().split('/').pop());
-    });
-    await page.goto(`http://127.0.0.1:${PORT}${POST}`, { waitUntil: 'domcontentloaded' });
-    await page.evaluate(() => document.fonts.ready);
-    await page.waitForTimeout(400);
 
-    t(`${fetched.length} fonts fetched on an ordinary load`, fetched.length > 3,
-      JSON.stringify(fetched));
-    t('…and the 6.5MB one is not among them',
-      !fetched.some((f) => f === FONT), JSON.stringify(fetched));
-
-    const face = page.locator('.reading-face');
-    t('the article offers the reading face', await face.count() === 1);
-    t('…reading as an offer, not as a state',
-      /Read in Jameel Noori/.test(await face.textContent() || ''),
-      await face.textContent());
-    t('…and saying so to a screen reader too',
-      await face.getAttribute('aria-pressed') === 'false');
-    /* The cost is named before it is spent. A control that quietly
-       downloads 6.5MB of someone's mobile data has not asked. */
-    t('…with the size on the control before it is paid',
-      /6\.5 MB/.test(await face.getAttribute('title') || ''),
-      await face.getAttribute('title'));
-
-    const before = await page.evaluate(() => document.documentElement.scrollHeight);
-    await face.scrollIntoViewIfNeeded();
-    await face.click();
-    await page.evaluate(() => document.fonts.ready);
-    await page.waitForTimeout(2500);
-
-    t('asking for it fetches it', fetched.some((f) => f === FONT), JSON.stringify(fetched));
-    t('…the control now says it is on',
-      await face.getAttribute('aria-pressed') === 'true' &&
-      /on/.test(await face.textContent() || ''), await face.textContent());
-    t('…and the size is said once it is spent, not only before',
-      /6\.5 MB/.test(await page.locator('.page-tools-note').textContent() || ''),
-      await page.locator('.page-tools-note').textContent());
+    /* One opener for all four readers below: an ordinary one, one who
+       has turned it off, one whose browser asks us not to spend their
+       data, and one with no JavaScript. `seed` runs before any of the
+       page's own script, which is the only place a stored choice or a
+       faked `navigator.connection` can be put. */
+    const visit = async (seed, options) => {
+      const context = await browser.newContext(
+        Object.assign({ viewport: { width: 390, height: 900 } }, options || {}));
+      await context.route('https://fonts.g**', (r) => r.abort());
+      const page = await context.newPage();
+      page.on('pageerror', (e) => threw.push('reading face: ' + e.message));
+      const fetched = [];
+      page.on('response', (r) => {
+        if (/\.woff2(\?|$)/.test(r.url())) fetched.push(r.url().split('/').pop());
+      });
+      if (seed) await page.addInitScript(seed);
+      await page.goto(`http://127.0.0.1:${PORT}${POST}`, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => document.fonts.ready).catch(() => {});
+      await page.waitForTimeout(600);
+      return { context, page, fetched };
+    };
 
     /* Which face actually painted it. Self-hosted, so unlike Gentium
        this really is drawn here and CDP really can be asked. */
-    const cdp = await context.newCDPSession(page);
-    await cdp.send('DOM.enable');
-    await cdp.send('CSS.enable');
-    const drew = async (selector) => {
+    const painter = async (context, page) => {
+      const cdp = await context.newCDPSession(page);
+      await cdp.send('DOM.enable');
+      await cdp.send('CSS.enable');
+      await page.evaluate(() => {
+        const p = [...document.querySelectorAll('.post-body p:not(.latin)')]
+          .filter((el) => /[A-Za-z]{5}/.test(el.textContent))[0];
+        if (p) p.id = 'face-probe';
+      });
       const { root } = await cdp.send('DOM.getDocument');
       const { nodeId } = await cdp.send('DOM.querySelector',
-        { nodeId: root.nodeId, selector });
+        { nodeId: root.nodeId, selector: '#face-probe' });
       if (!nodeId) return null;
       const { fonts } = await cdp.send('CSS.getPlatformFontsForNode', { nodeId });
       return fonts.map((f) => f.familyName);
     };
-    await page.evaluate(() => {
-      const p = [...document.querySelectorAll('.post-body p:not(.latin)')]
-        .filter((el) => /[A-Za-z]{5}/.test(el.textContent))[0];
-      if (p) p.id = 'face-probe';
-    });
-    const painted = await drew('#face-probe');
-    t(`the Urdu is drawn by ${(painted || []).join(' + ') || 'nothing'}`,
-      !!painted && painted.includes('Jameel Noori Nastaleeq'), JSON.stringify(painted));
-    /* The whole point of the unicode-range. Take it off and Jameel draws
-       the English term too, at the Urdu's own size, and this fails. */
-    t('…while the English term inside it stays in the site\'s serif',
-      !!painted && painted.includes('Latin in Urdu'), JSON.stringify(painted));
-    t('…and Mehr is no longer painting that paragraph',
-      !!painted && !painted.includes('Mehr Nastaliq Web'), JSON.stringify(painted));
 
-    /* Measured rather than assumed, because the first measurement of this
-       was taken before the Latin was withheld and said the opposite. */
-    const after = await page.evaluate(() => document.documentElement.scrollHeight);
-    t(`the article goes ${before} to ${after}px — within a tenth either way`,
-      Math.abs(after - before) / before < 0.1, JSON.stringify({ before, after }));
-
-    t('the choice is remembered',
-      await page.evaluate(() => {
-        try { return localStorage.getItem('reading-face'); } catch (e) { return 'threw'; }
-      }) === 'jameel');
-
-    /* A returning reader gets it back without touching anything.
-
-       What this does NOT prove is the thing the code is written for —
-       that the class is on before first paint, so the article does not
-       re-set itself a moment after it appears. common.js is one
-       parser-blocking script at the end of <body>, so applying the class
-       at the top of the file and applying it down in the mount both land
-       in the same synchronous pass and both pass this. Moving the call
-       would leave this green, which is the state this file calls worse
-       than no test at all. The ordering is a reasoned claim, written up
-       beside the code; this assertion covers persistence only, and is
-       named for that. */
-    await page.goto(`http://127.0.0.1:${PORT}${POST}`, { waitUntil: 'domcontentloaded' });
-    t('…and comes back on the next visit without being asked again',
-      await page.evaluate(() => document.documentElement.classList.contains('jameel')));
-
-    const again = page.locator('.reading-face');
-    await again.scrollIntoViewIfNeeded();
-    await again.click();
-    t('turning it off puts Mehr back',
-      !(await page.evaluate(() => document.documentElement.classList.contains('jameel'))));
-    t('…and forgets the choice rather than storing a second state',
-      !(await page.evaluate(() => {
-        try { return localStorage.getItem('reading-face'); } catch (e) { return 'threw'; }
-      })));
-    await context.close();
-
-    /* An English post carries exactly one `.urdu` — the اردو میں پڑھیے
-       link to its twin — so asking for `.urdu` anywhere offered a 6.5MB
-       download to re-typeset fourteen characters of chrome. Found by
-       looking at what the selector matched, not by reasoning about it. */
+    /* ---- the ordinary reader ---- */
     {
-      const { context: c2, page: p2 } = await open(390, '/posts/the-strong-and-the-trustworthy.html');
-      t('an English post does carry an Urdu element',
-        await p2.locator('.urdu').count() > 0);
-      t('…and is still not offered the face, because its prose is not Urdu',
-        await p2.locator('.reading-face').count() === 0);
-      await c2.close();
+      const { context, page, fetched } = await visit(null);
+      t(`${fetched.length} fonts fetched on an ordinary load`, fetched.length > 3,
+        JSON.stringify(fetched));
+      t('…the reading face among them, without being asked for',
+        fetched.some((f) => f === FONT), JSON.stringify(fetched));
+      const painted = await painter(context, page);
+      t(`the Urdu is drawn by ${(painted || []).join(' + ') || 'nothing'}`,
+        !!painted && painted.includes('Jameel Noori Nastaleeq'), JSON.stringify(painted));
+      /* The whole point of the unicode-range. Take it off and Jameel
+         draws the English term too, at the Urdu's own size. */
+      t('…while the English term inside it stays in the site\'s serif',
+        !!painted && painted.includes('Latin in Urdu'), JSON.stringify(painted));
+
+      const face = page.locator('.reading-face');
+      t('the article carries the control', await face.count() === 1);
+      t('…set, and saying so to a screen reader',
+        await face.getAttribute('aria-pressed') === 'true',
+        await face.textContent());
+      t('…with the size on it whichever way it is set',
+        /6\.5 MB/.test(await face.getAttribute('title') || ''),
+        await face.getAttribute('title'));
+
+      await face.scrollIntoViewIfNeeded();
+      await face.click();
+      t('turning it off puts Mehr back',
+        !(await page.evaluate(() => document.documentElement.classList.contains('jameel'))));
+      /* `mehr`, not an empty key. Clearing it would hand the reader back
+         to the default on the next load, so a tap meant to turn the face
+         off would last exactly one page. */
+      t('…and stores that as an answer, not as an absence',
+        await page.evaluate(() => {
+          try { return localStorage.getItem('reading-face'); } catch (e) { return 'threw'; }
+        }) === 'mehr');
+      await context.close();
     }
 
-    /* Without JavaScript there is no control and no 6.5MB anything —
-       the page is exactly what it is today. The third of the three cases
-       this codebase holds everything that moves to. */
+    /* ---- the reader who said no ---- */
     {
-      const c3 = await browser.newContext({ viewport: { width: 390, height: 900 }, javaScriptEnabled: false });
-      await c3.route('https://fonts.g**', (r) => r.abort());
-      const p3 = await c3.newPage();
-      const got = [];
-      p3.on('response', (r) => {
-        if (/\.woff2(\?|$)/.test(r.url())) got.push(r.url().split('/').pop());
+      const { context, page, fetched } = await visit(() => {
+        try { localStorage.setItem('reading-face', 'mehr'); } catch (e) { /* ignore */ }
       });
-      await p3.goto(`http://127.0.0.1:${PORT}${POST}`, { waitUntil: 'domcontentloaded' });
-      await p3.waitForTimeout(800);
+      t('a reader who turned it off does not fetch it again',
+        !fetched.some((f) => f === FONT), JSON.stringify(fetched));
+      const painted = await painter(context, page);
+      t(`…and reads in ${(painted || []).join(' + ') || 'nothing'}`,
+        !!painted && painted.includes('Mehr Nastaliq Web') &&
+        !painted.includes('Jameel Noori Nastaleeq'), JSON.stringify(painted));
+      await context.close();
+    }
+
+    /* ---- the reader whose browser asks us not to ----
+
+       The branch that would break silently, so it is the one worth the
+       most here. Both halves are asserted, because either alone answers
+       the question and a change could plausibly drop one. */
+    for (const [name, link] of [
+      ['Save-Data is on', { saveData: true, effectiveType: '4g' }],
+      ['the connection is 2g', { saveData: false, effectiveType: 'slow-2g' }]
+    ]) {
+      /* An IIFE, and the parentheses are the whole of it. `addInitScript`
+         runs a string as a SCRIPT, so `() => { … }` is an expression
+         that evaluates to a function and is never called — the override
+         silently does not happen, the page sees the container's real
+         connection, and the assertion fails as though the code were
+         wrong. It did, once; the code was right. A seed that does
+         nothing is the same family as a test that cannot fail. */
+      const { context, page, fetched } = await visit(`(function () {
+        Object.defineProperty(navigator, 'connection',
+          { get: function () { return ${JSON.stringify(link)}; }, configurable: true });
+      })();`);
+      /* Proved rather than assumed, for exactly that reason. */
+      const sawLink = await page.evaluate(() => {
+        const c = navigator.connection;
+        return c ? { saveData: !!c.saveData, effectiveType: c.effectiveType } : null;
+      });
+      t(`${name}: the page really sees it`,
+        !!sawLink && (sawLink.saveData === link.saveData) &&
+        sawLink.effectiveType === link.effectiveType, JSON.stringify(sawLink));
+      t(`${name}: the 6.5MB font is not fetched`,
+        !fetched.some((f) => f === FONT), JSON.stringify(fetched));
+      const painted = await painter(context, page);
+      t(`…and the article reads in ${(painted || []).join(' + ') || 'nothing'}`,
+        !!painted && painted.includes('Mehr Nastaliq Web') &&
+        !painted.includes('Jameel Noori Nastaleeq'), JSON.stringify(painted));
+      /* …and it is a default, not a lock. Somebody on a metered phone
+         who taps for it has answered better than we can. */
+      const face = page.locator('.reading-face');
+      await face.scrollIntoViewIfNeeded();
+      await face.click();
+      await page.waitForTimeout(2000);
+      t('…but asking for it anyway still works',
+        fetched.some((f) => f === FONT), JSON.stringify(fetched));
+      await context.close();
+    }
+
+    /* ---- the reader with no JavaScript ----
+
+       Stated as a cost rather than hidden: they keep Mehr. That is a
+       complete, correct page, and it is the right thing to lose, because
+       the alternative spends 6.5MB with no way to decline it. */
+    {
+      const { context, page, fetched } = await visit(null, { javaScriptEnabled: false });
       t('with JavaScript off the article still has its words',
-        (await p3.locator('#post-body p').count()) > 10);
-      t('…offers no reading face', await p3.locator('.reading-face').count() === 0);
+        (await page.locator('#post-body p').count()) > 10);
+      t('…offers no control', await page.locator('.reading-face').count() === 0);
       t('…and fetches nothing of the 6.5MB font',
-        !got.some((f) => f === FONT), JSON.stringify(got));
-      await c3.close();
+        !fetched.some((f) => f === FONT), JSON.stringify(fetched));
+      await context.close();
     }
 
     /* It is the biggest file here by two orders of magnitude, so the cap
        is about it not growing further rather than about it being small.
        And nothing may name the family except the one rule behind the
-       class — the moment a second rule does, it is served to everybody
-       and the whole design is gone. */
+       class — the moment a second rule does, the Save-Data branch is a
+       comment rather than a behaviour. */
     const kb = (await stat(join(ROOT, 'files/fonts/' + FONT))).size;
     t(`the font is ${(kb / 1048576).toFixed(2)}MB, under 8`, kb < 8 * 1048576, String(kb));
     const css = await readFile(join(ROOT, 'styles.css'), 'utf8');
@@ -1990,11 +2018,18 @@ try {
       names === 2, String(names));
     t('…and that rule is behind the class, not on :root',
       /:root\.jameel\s*\{[^}]*--font-urdu:/.test(css));
+    /* The load-bearing part of the default: Mehr inside that same stack
+       is what `swap` draws while 6.5MB is in flight. Take it out and a
+       reader on 3G gets thirty-three seconds of a system face. */
+    const stack = (/:root\.jameel\s*\{([^}]*)\}/.exec(css) || [, ''])[1];
+    t('…with Mehr named inside it, which is what swap falls back to',
+      /"Mehr"/.test(stack), stack.trim());
+    t('…and the face swapping rather than blocking',
+      /font-family:\s*"Jameel Noori Nastaleeq";[\s\S]{0,400}?font-display:\s*swap/.test(css));
     t('…with the Latin letters withheld, as Mehr withholds them',
       /font-family:\s*"Jameel Noori Nastaleeq";[\s\S]{0,400}?unicode-range:[\s\S]{0,200}?U\+0600-06FF/.test(css) &&
       !/font-family:\s*"Jameel Noori Nastaleeq";[\s\S]{0,400}?unicode-range:[^;]*U\+0041-005A/.test(css));
   }
-
   /* ---- the rhythm between sections ---- */
   group('the page breathes without falling apart');
   {
@@ -2678,7 +2713,8 @@ try {
     t('the Urdu heading is drawn by the heading face',
       !!headingFace && headingFace.includes('Aslam'), JSON.stringify(headingFace));
     t('…and the prose under it by the body face',
-      !!textFace && textFace.includes('Mehr Nastaliq Web'), JSON.stringify(textFace));
+      !!textFace && textFace.some((f) => URDU_BODY_FACES.includes(f)),
+      JSON.stringify(textFace));
 
     /* The rule for the half in the other script has no page to stand on:
        each record carries a background in its own language only, so an

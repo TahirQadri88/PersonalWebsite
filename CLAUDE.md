@@ -642,22 +642,82 @@ only separation at the Urdu/Latin boundary. Found by rendering it and
 looking, not by the 9.8 → 6.7px the gap measurement reported, which
 says the change was an improvement.
 
-**Jameel Noori is offered, never served.** The author wanted the face
-and was right to: rendered beside Mehr at 21px it is plainly more open
-and more legible. It is also **6.57MB as woff2**, a hundred and twenty
-times Mehr, so it is behind a control. Mehr stays the default; a reader
-taps **Read in Jameel Noori** at the foot of an Urdu piece and gets it,
-and the choice is remembered.
+**Jameel Noori is the Urdu face, and Mehr is what holds the page while
+it arrives.** The author wanted it and was right to: beside Mehr at
+21px it is plainly more open and more legible. It is also **6.57MB as
+woff2**, a hundred and twenty times Mehr.
 
-The design is one sentence: **nothing in the stylesheet names that
-family except a single rule behind `html.jameel`**, and a `@font-face`
-is fetched only when something rendered needs it. So the declaration
-costs nothing until it is wanted. The class is put on by `common.js`
-from `localStorage`, and nowhere else. The guard is therefore a
-**negative** one — it counts the woff2 requests on an ordinary load and
-refuses to find this file among them — which is the assertion that
-would actually catch the design being undone. Moving the rule from
-`:root.jameel` to `:root` fails it.
+It shipped behind a control first, opt-in, and the author came back
+having tried it: *Jameel loaded without taking time — can we make it
+default.* His experience was not the one to design for — the file was
+already in his cache and his connection is not a student's — so the
+question was measured on the live site with a cold cache before the
+default moved:
+
+```
+ 3G  ~0.4 Mbps   words on screen while waiting: yes   Jameel usable  33.7s
+ slow 4G ~1.6    words on screen while waiting: yes   Jameel usable  31.8s
+ 4G  ~8 Mbps     words on screen while waiting: yes   Jameel usable   9.1s
+ wifi ~40        words on screen while waiting: yes   Jameel usable   2.9s
+```
+
+**Nobody ever waits to read**, and that is the whole of why the default
+is safe. `font-display: swap` with **`Mehr` named inside the same
+stack** draws the article in Mehr from the first paint and replaces it
+when the file lands. Mehr in that line is load-bearing, not tidy: take
+it out and a reader on 3G gets thirty-three seconds of a system face.
+There is a guard reading that one stack for it.
+
+What a reader does pay is 6.5MB of their own data and a reflow when it
+lands. So there is one line of restraint and only one: if their own
+browser says their data is precious — `saveData`, or a 2g
+`effectiveType` — we believe it and stay on Mehr. Neither is a guess
+about who they are; `saveData` is a setting a person turns on
+themselves. An explicit tap outranks both, because somebody who asks
+for it on a metered phone has answered better than we can.
+
+**The class is what makes that restraint real.** `common.js` adds
+`jameel` before first paint unless the reader has said no or the
+connection has; nothing in the stylesheet names the family except the
+one rule behind it. On `:root` the browser would be away with 6.5MB
+before any script could speak, so the Save-Data branch would be a
+comment rather than a behaviour.
+
+**The negative assertion did not go away, it moved.** It used to be
+*nobody gets it unless they ask*; it is now *nobody gets it who has
+said no, or whose browser has said no for them*. That is the branch a
+later change breaks silently — the happy path announces itself and the
+Save-Data path does not.
+
+**`'mehr'` is stored, not an empty key.** Clearing it would hand the
+reader back to the default, so a tap meant to turn the face off would
+last exactly one page load. Both answers are answers now; only the
+absence of one asks the connection.
+
+**The cost of the class, stated rather than hidden:** a reader with
+JavaScript off keeps Mehr. That is a complete, correct page — the one
+the site shipped for years — and it is the right thing to lose, because
+the alternative spends 6.5MB with no way to decline it.
+
+**Making it the default turned three assertions red in other groups,
+for one reason.** They named `Mehr Nastaliq Web` literally, from when it
+was the only face the site set Urdu body text in — the Latin-in-Urdu
+probe, the guillemets probe and the background's prose. Three literals
+going red together is the signal that the name belonged in a constant:
+`URDU_BODY_FACES` in `test/homepage.mjs`. **Aslam is deliberately not in
+it** — a heading is told from the body under it by being a bold Naskh
+rather than by being bigger, and an assertion that accepted Aslam as a
+body face would stop saying so.
+
+**A seed that does nothing is the same family as a test that cannot
+fail.** The Save-Data guard failed on its first run and read exactly
+like the code being wrong. It was the test: `addInitScript` runs a
+string as a *script*, so the `() => { … }` it was given was an
+expression that evaluated to a function and was never called. The page
+saw the container's real connection. It is an IIFE now, and the guard
+asserts **that the page really sees the faked link** before asserting
+what the page did about it — because a seed that silently no-ops turns
+a green run into a lie in whichever direction the code happens to go.
 
 **It withholds the Latin letters, exactly as Mehr does.** Jameel
 carries 196 non-Arabic codepoints of its own, read off the cmap, so
