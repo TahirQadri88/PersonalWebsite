@@ -844,6 +844,105 @@ for (const [button, cls, label] of [['Smaller', 'text-small', 'a step smaller'],
   t('  …and Normal takes it off again', html.indexOf(cls) === -1, html);
 }
 
+/* ---- a control acts on what was picked out, whoever has focus now ----
+
+   Reported as the Size menu not changing the size of an inline citation,
+   and not reproduced here — on this container, in headless Chromium,
+   opening the menu leaves the words selected and the mark lands. What is
+   NOT in doubt is the asymmetry in the source that the report points at:
+   a toolbar button acts on `mousedown` and calls `preventDefault`, with
+   a comment saying in as many words that by the time `click` fires the
+   box has lost the selection — while a `<select>` has no such defence,
+   because its popup is the platform's and takes focus how it likes.
+
+   So the box holds the last range that was inside it and every action
+   restores that range before doing anything, which makes the question of
+   who has focus moot rather than answered per-control. These two
+   assertions measure that, by taking the selection away in a way the
+   editor cannot defend against: focus is moved OUT of the canvas
+   entirely before the menu is used. */
+await newBlock(page, 'one two three');
+await pickOut(page, 4, 7);
+/* Not a click on the menu — a focus somewhere else altogether, which is
+   the state the browser's own popup can leave behind. `blur()` on the
+   canvas is the strongest form of the fault being guarded: with the
+   range no longer held, there is nothing for the menu to act on. */
+await page.evaluate(() => {
+  const canvas = document.querySelector('.admin-row[open] .writing-canvas');
+  canvas.blur();
+  document.getElementById('filter').focus();
+});
+await page.waitForTimeout(80);
+t('the words are picked out and the canvas no longer has focus',
+  await page.evaluate(() => {
+    const canvas = document.querySelector('.admin-row[open] .writing-canvas');
+    return !canvas.contains(document.activeElement);
+  }));
+await use(page, row, 'Larger');
+await page.waitForTimeout(140);
+{
+  const html = await page.evaluate(() =>
+    document.querySelector('.admin-row[open] .writing-canvas').lastElementChild.innerHTML);
+  t('  …and a size chosen from elsewhere still wraps them',
+    /one <span class="text-large">two<\/span> three/.test(html), html);
+}
+
+/* The other half, and the half that is the whole complaint: a press that
+   does nothing has to SAY it did nothing. Four of the five ways a size
+   could fail to apply used to return in silence, which from the outside
+   is indistinguishable from the control being broken — which is exactly
+   how it was described.
+
+   Collapsed caret, nothing picked out. There is nothing for a size to
+   wrap and there never was; what is new is that the bar says so. */
+await newBlock(page, 'nothing picked out here');
+await page.evaluate(() => {
+  const canvas = document.querySelector('.admin-row[open] .writing-canvas');
+  const node = canvas.lastElementChild.firstChild;
+  const range = document.createRange();
+  range.setStart(node, 5);
+  range.collapse(true);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  canvas.focus();
+});
+await page.waitForTimeout(60);
+await use(page, row, 'Larger');
+await page.waitForTimeout(140);
+{
+  const note = (await row.locator('.writing-note').first().textContent()).trim();
+  const html = await page.evaluate(() =>
+    document.querySelector('.admin-row[open] .writing-canvas').lastElementChild.innerHTML);
+  t('nothing is wrapped when nothing was picked out',
+    html.indexOf('text-large') === -1, html);
+  t('  …and the bar says why rather than going quiet',
+    /pick out the words/i.test(note), JSON.stringify(note));
+  /* One line, not two. The element was already being created, styled and
+     returned by `writingBox` and written to by nobody; a second one added
+     beside it would have left the sentence in whichever of them the
+     closure happened to hold. */
+  t('  …from the one line the bar has',
+    await row.locator('.writing-note').count() === 1,
+    String(await row.locator('.writing-note').count()));
+}
+
+/* And it clears itself: a sentence explaining a failed press must not
+   still be sitting there after a press that worked.
+
+   This one passes vacuously with `say` gutted — an always-empty line is
+   always clear — so it is a companion to the assertion above and not a
+   guard in its own right. Said rather than left for the next reader to
+   discover: with both faults restored the run reports exactly two
+   failures, *a size chosen from elsewhere still wraps them* and *the bar
+   says why rather than going quiet*, and those two are the guard. */
+await pickOut(page, 0, 7);
+await use(page, row, 'Larger');
+await page.waitForTimeout(140);
+t('  …and takes the sentence back once a press works',
+  (await row.locator('.writing-note').first().textContent()).trim() === '',
+  JSON.stringify(await row.locator('.writing-note').first().textContent()));
+
 /* Bold inside Urdu, since Nastaliq has no bold of its own and the page
    answers with the heading face instead of a synthesised smear. */
 await newBlock(page, 'ایک دو تین');

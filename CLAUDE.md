@@ -493,6 +493,31 @@ instead of emphasising part of it. The synthesised one measures **0%
 wider**. Less contrast, and right: emphasis inside a sentence must not
 resize the sentence.
 
+**And the browser will make up an italic, which is the same bargain
+refused.** Nastaliq has no italic cut, so `font-style: italic` — one of
+the five marks the writing box puts on a picked-out run — was being
+answered by Chromium **shearing the glyphs**. Reported from the live
+site and measured there: the Urdu quotation in `hunar-nahin-amanat`
+came out leaning, drawn by Jameel at `font-style: italic` with the
+default `font-synthesis: weight style small-caps`, which permits
+exactly that. Emphasis in this script is **kasheeda**, the elongation
+of a joining stroke — a property of the letterforms, and not something
+a transform can fake. The author's instruction was the right one: if
+the face has no italic, show none.
+
+`font-synthesis-style: none`, and **never the `font-synthesis`
+shorthand**, which would take the synthesised *weight* with it and undo
+the paragraph above in the one mark an author reaches for most. The
+guard measures the shear rather than the declaration: the real `<i>` is
+cloned, one copy forced back to `font-style: normal`, and the two are
+screenshotted and compared byte for byte. A computed
+`font-synthesis-style: none` would also go red when the rule comes out,
+but it says nothing about whether the glyphs moved — and this
+repository has shipped a stack that *declared* coverage it did not
+have. Nine italic runs across the posts, exactly one of them Urdu,
+which the guard counts so a rewrite that loses it fails rather than
+passes on an empty set.
+
 **An in-prose Urdu heading is justified, like the prose under it.**
 The body has been justified all along and the headings were not, so they
 sat ragged above justified paragraphs with the first line short. Setting
@@ -1347,6 +1372,61 @@ level. `unicode-bidi: isolate`, `plaintext` and wrapping the Latin run
 in `<bdi>` were all measured and none of them changes it. That is a
 different thing from the NBSP fault above, and it is genuinely not
 fixable here.
+
+**Every control in the bar acts on the range the box remembers, and the
+fix went on the thing they share rather than on the one that was
+reported.** *The Size menu is not changing the size of an inline
+citation* — and it **could not be reproduced**, which is worth writing
+down as plainly as a fix: in headless Chromium here, on that exact run
+inside the `<b>` of `درر الحکام`, opening the menu leaves the words
+selected and the mark lands, with `selectOption`, with the select
+focused first, and with a real click on it.
+
+What is not in doubt is the asymmetry the report points at. A toolbar
+**button** acts on `mousedown` and calls `preventDefault`, with a
+comment beside it saying in as many words that by the time `click` fires
+the box has lost the selection. A **`<select>`** has no such defence:
+its popup is the platform's and takes focus how it likes, and there is
+no event to prevent. Three rounds of fixes had each gone on the control
+that was complained about. So the box now holds the last range that was
+inside it — cloned, from `selectionchange` on the document, which is the
+only event that fires for every way a selection can move, a soft
+keyboard's own handles included — and `markSelection` restores it before
+doing anything. Who has focus stops being a question each control
+answers for itself.
+
+**And the half that is the whole complaint: four of the five ways a size
+could fail returned in silence.** Nothing picked out, a selection
+crossing two blocks, a step already on, a range the box no longer owns —
+each one did nothing and said nothing, which from the outside is
+indistinguishable from a broken control. That is what *half-baked band
+aids* describes, and no amount of making the happy path work would have
+answered it. `markSelection` returns an outcome now and the bar says
+why.
+
+It says it in the line `writingBox` was **already creating, styling,
+returning — and that nothing had ever written to**. A second element was
+added beside it first, which redeclared `var note` in the same scope, so
+the sentence landed in whichever of the two the closure happened to hold
+by the time a handler ran, and `.writing-note` had two competing rules.
+The guard counts the lines in the bar for that reason. It also holds its
+height whether or not there is anything to say: on a phone, where the
+box fills the screen, a line that comes and goes lurches the page under
+the caret.
+
+The two guards take the selection away in a way the editor cannot
+defend against — `blur()` on the canvas and focus moved to another field
+entirely, which is stronger than anything a popup does — and then assert
+the mark still lands. The second presses Larger on a collapsed caret and
+reads the sentence back. That second one is the guard that would have
+caught the whole class, and it is the one that could not have existed
+while a failed press was silent: there was nothing to assert.
+
+Both faults were restored and the run reports **exactly two** failures —
+the mark not landing, and the bar going quiet. The third assertion
+beside them, *takes the sentence back once a press works*, passes
+vacuously in that state: an always-empty line is always clear. It is a
+companion, not a guard, and the comment beside it says so.
 
 **A box you type Urdu into has to take the script too, not only what it
 writes out.** The tag box was the plainest case: each finished pill

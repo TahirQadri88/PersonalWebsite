@@ -1927,6 +1927,95 @@ try {
     t('…no longer claiming a face off the reader\'s own device',
       !/font-family:\s*"Latin in Urdu";[\s\S]{0,400}?local\(/.test(css));
   }
+  /* ---- no made-up italic ----
+
+     Nastaliq has no italic cut, and a browser asked for one makes it up
+     by shearing the glyphs. `<i>` is one of the marks the writing box
+     puts on a picked-out run, so the moment an author emphasised a run
+     of Urdu the whole quotation leaned — reported from the live site and
+     confirmed there, drawn by Jameel at `font-style: italic` with the
+     default `font-synthesis`, which permits exactly that.
+
+     What is measured is the shear itself, not the declaration. A
+     computed `font-synthesis-style: none` would fail when the rule comes
+     out, which is something — but it says nothing about whether the
+     glyphs actually moved, and this repository has shipped a stack that
+     *declared* coverage it did not have. So the real `<i>` is cloned,
+     one copy forced back to `font-style: normal`, and the two are
+     SCREENSHOTTED and compared byte for byte. Identical is the claim:
+     an italic that draws nothing different is an italic the face does
+     not have. With the rule taken out the two buffers differ. */
+  group('urdu is never sheared into an italic it has not got');
+  {
+    const POST = '/posts/hunar-nahin-amanat.html';
+    const { context, page } = await open(390, POST);
+
+    /* Count what was matched. There are nine italic runs across the
+       posts and exactly one of them is Urdu; if that post is ever
+       rewritten and loses it there is nothing here to guard, and this
+       says so rather than passing on an empty set. */
+    const real = await page.evaluate(() => {
+      const runs = [...document.querySelectorAll('#post-body i, #post-body em')]
+        .filter((el) => /[؀-ۿ]/.test(el.textContent));
+      if (!runs.length) return { n: 0 };
+      const el = runs[0];
+      const cs = getComputedStyle(el);
+      return {
+        n: runs.length,
+        style: cs.fontStyle,
+        synth: cs.fontSynthesisStyle,
+        family: cs.fontFamily
+      };
+    });
+    t(`${real.n} Urdu italic run on the page`, real.n === 1, JSON.stringify(real));
+    /* The element really is asking for an italic — without this the
+       assertion below would be comparing a normal block with itself and
+       could not fail. */
+    t('…which really does ask for an italic', real.style === 'italic', JSON.stringify(real));
+    t('…and is told not to synthesise one',
+      real.synth === 'none', JSON.stringify(real));
+
+    /* Both probes are built from the real run so they inherit everything
+       it inherits — face, size, direction, the lot. They are placed in
+       the flow one after the other at the same width, which keeps the
+       line breaks identical; the only declared difference between them
+       is the font-style. */
+    await page.evaluate(() => {
+      const el = [...document.querySelectorAll('#post-body i, #post-body em')]
+        .filter((n) => /[؀-ۿ]/.test(n.textContent))[0];
+      const host = el.closest('p') || el.parentNode;
+      for (const [id, style] of [['probe-italic', 'italic'], ['probe-roman', 'normal']]) {
+        const p = document.createElement('p');
+        p.id = id;
+        p.className = host.className;
+        p.setAttribute('dir', host.getAttribute('dir') || 'rtl');
+        p.style.fontStyle = style;
+        p.textContent = el.textContent;
+        host.parentNode.insertBefore(p, host.nextSibling);
+      }
+    });
+    await page.evaluate(() => document.fonts.ready);
+    const leaning = await page.locator('#probe-italic').screenshot();
+    const upright = await page.locator('#probe-roman').screenshot();
+    t(`the italic run draws in ${leaning.length} bytes, the same words upright in ${upright.length}`,
+      leaning.length > 500 && upright.length > 500,
+      `${leaning.length} / ${upright.length}`);
+    t('…and the two are the same pixels, so nothing was sheared',
+      leaning.equals(upright), `${leaning.length} vs ${upright.length} bytes`);
+    await context.close();
+
+    /* `font-synthesis-style`, never the shorthand. The shorthand would
+       take the synthesised WEIGHT with it, and bold inside Urdu is
+       exactly that: Mehr ships one weight and the browser's synthesised
+       bold measures 0% wider, which is why it is used in place of Noto's
+       real 700. Taking it away would undo that, silently, in the one
+       mark an author reaches for most. */
+    const css = await readFile(join(ROOT, 'styles.css'), 'utf8');
+    t('the rule names font-synthesis-style and not the shorthand',
+      /font-synthesis-style:\s*none/.test(css) &&
+      !/font-synthesis:\s/.test(css.replace(/\/\*[\s\S]*?\*\//g, '')));
+  }
+
   /* ---- the reading face ----
 
      Jameel Noori Nastaleeq is 6.57MB — a hundred and twenty times Mehr,

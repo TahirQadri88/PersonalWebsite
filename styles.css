@@ -605,6 +605,32 @@ h1, h2, h3 {
    needs to restate the weight. */
 .record-title.latin { font-weight: 600; }
 
+/* Nastaliq has no italic, and a browser will make one up.
+
+   `<i>` is one of the marks the writing box puts on a picked-out run,
+   and with no italic cut in the family the browser **synthesises** one
+   by shearing the glyphs. Reported from the live site, and measured
+   there: an Urdu quotation inside `hunar-nahin-amanat` came out leaning,
+   drawn by `Jameel Noori Nastaleeq` at `font-style: italic` with
+   `font-synthesis: weight style small-caps` — the default, which permits
+   exactly that.
+
+   A slanted Nastaliq is not a style this script has. Emphasis in Urdu is
+   **kasheeda**, the elongation of a joining stroke, which is a property
+   of the letterforms and cannot be faked by a transform. The author's
+   instruction was the right one: if the face has no italic, show none.
+
+   `font-synthesis-style`, never the `font-synthesis` shorthand — that
+   would take the synthesised **weight** with it, and this file records
+   that bold inside Urdu is exactly that: Mehr has one weight and the
+   browser's synthesised bold measures 0% wider, which is why it is used
+   instead of Noto's real 700. Taking it away would undo that.
+
+   It inherits, so the block carries it and every mark inside it
+   follows. Where the face has a real italic — the Latin prose — nothing
+   changes, because there is nothing to synthesise. */
+.urdu, .arabic, [lang="ur"], [lang="ar"] { font-synthesis-style: none; }
+
 /* The word actually searched for, wherever script.js finds it inside a
    title — the default yellow reads as a highlighter mark left by
    accident, not something the page meant to show. */

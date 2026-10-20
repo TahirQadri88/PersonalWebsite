@@ -1297,8 +1297,8 @@
           menu.appendChild(choice);
         });
         menu.addEventListener('change', function () {
-          if (group.inline) markSelection(canvas, menu.value, true);
-          else setBlockField(canvas, group.field, menu.value, true);
+          if (group.inline) say(markSelection(canvas, menu.value, true));
+          else { setBlockField(canvas, group.field, menu.value, true); say('done'); }
           changed();
           refresh();
         });
@@ -1322,8 +1322,8 @@
            the selection to the button, and there is no block to act on. */
         button.addEventListener('mousedown', function (event) {
           event.preventDefault();
-          if (group.inline) markSelection(canvas, item.value);
-          else setBlockField(canvas, group.field, item.value);
+          if (group.inline) say(markSelection(canvas, item.value));
+          else { setBlockField(canvas, group.field, item.value); say('done'); }
           changed();
           refresh();
         });
@@ -1333,6 +1333,20 @@
       box.appendChild(row);
       bar.appendChild(box);
     });
+
+    /* Why a press did nothing, in the words a reader of the bar would
+       use. An empty string for `already` is deliberate: a size that was
+       already on is not a failure and wants nothing said about it. The
+       line itself is built below, beside the rest of the box. */
+    var WHY = {
+      'nothing-picked': 'Pick out the words first, then choose a size.',
+      'could-not-wrap': 'That selection crosses two blocks — pick words inside one.',
+      already: ''
+    };
+    function say(outcome) {
+      note.textContent = Object.prototype.hasOwnProperty.call(WHY, outcome)
+        ? WHY[outcome] : '';
+    }
 
     function changed() {
       tidy(canvas);
@@ -1409,11 +1423,23 @@
       if (onPaste && text) onPaste(text);
     });
 
+    /* The bar's own line, which until now was created, styled, returned
+       and never written to by anybody. It says why a press did nothing —
+       and that silence is the whole of what "the editor is half-baked"
+       describes: four of the five ways a size could fail to apply
+       returned without a word.
+
+       `role="status"` so it is announced as well as shown; the author
+       writes on a phone, where the bar can be mid-swipe and the sentence
+       off the side of the rail. It goes directly under the bar, beside
+       the control that was pressed, rather than under the writing. */
     var note = el('p', 'writing-note');
+    note.setAttribute('role', 'status');
+    note.setAttribute('aria-live', 'polite');
 
     wrap.appendChild(bar);
-    wrap.appendChild(canvas);
     wrap.appendChild(note);
+    wrap.appendChild(canvas);
 
     return {
       node: wrap,
@@ -1455,44 +1481,105 @@
      The two sizes have no command of their own, so they are wrapped by
      hand. Pressing the same size again takes it off, which is the only
      way back to the line's own size. */
-  function markSelection(canvas, code, exact) {
+  /* ---- the selection the toolbar acts on, remembered in one place ----
+
+     Every control on the bar acts on whatever is picked out in the
+     writing box, and until now each one had its own relationship with
+     it. The buttons guard it — `mousedown` with `preventDefault`, and a
+     comment above them saying why. The menus cannot: a `<select>` opens
+     a popup the page does not control, and on a phone that popup is a
+     system sheet. Whether it takes the selection with it is the
+     browser's business, not ours.
+
+     That asymmetry is the honest answer to why this bar has felt
+     half-finished: the fix went on the control that was reported rather
+     than on the thing every control shares. So the box remembers the
+     last range that was inside it, and every action restores that range
+     before it does anything. Then it does not matter who took focus, or
+     when, or on which device.
+
+     `selectionchange` is on the document because that is the only event
+     that fires for every way a selection can move — typing, tapping,
+     dragging, a soft keyboard's own handles. The range is cloned: a live
+     range held across a DOM edit is a range that has moved. */
+  var heldRange = null;
+  var heldIn = null;
+  document.addEventListener('selectionchange', function () {
     var selection = window.getSelection();
     if (!selection || !selection.rangeCount) return;
-    if (!canvas.contains(selection.getRangeAt(0).commonAncestorContainer)) return;
+    var range = selection.getRangeAt(0);
+    var box = range.commonAncestorContainer;
+    box = box.nodeType === 1 ? box : box.parentNode;
+    var canvas = box && box.closest ? box.closest('.writing-canvas') : null;
+    if (!canvas) return;
+    heldRange = range.cloneRange();
+    heldIn = canvas;
+  });
+
+  /* Put it back, and say whether there is anything to put back. The
+     caller decides what to do about `false`; what it must not do is
+     carry on silently, which is what every path here used to. */
+  function restoreSelection(canvas) {
+    var selection = window.getSelection();
+    if (selection && selection.rangeCount &&
+        canvas.contains(selection.getRangeAt(0).commonAncestorContainer)) return true;
+    if (!heldRange || heldIn !== canvas || !canvas.contains(heldRange.commonAncestorContainer)) {
+      return false;
+    }
+    canvas.focus();
+    selection.removeAllRanges();
+    selection.addRange(heldRange);
+    return true;
+  }
+
+  function markSelection(canvas, code, exact) {
+    if (!restoreSelection(canvas)) return 'nothing-picked';
+    var selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return 'nothing-picked';
+    if (!canvas.contains(selection.getRangeAt(0).commonAncestorContainer)) return 'nothing-picked';
     canvas.focus();
 
     /* "Normal size" — take off whichever step is on, and leave the words
        at whatever the line itself is set in. */
     if (exact && !code) {
       var off = enclosing(canvas, 'text-small') || enclosing(canvas, 'text-large');
-      if (off) unwrap(off);
-      return;
+      if (off) { unwrap(off); return 'done'; }
+      return 'already';
     }
     if (code === 'b' || code === 'i' || code === 'u') {
       try { document.execCommand('styleWithCSS', false, false); } catch (error) { /* older browsers */ }
       document.execCommand({ b: 'bold', i: 'italic', u: 'underline' }[code]);
-      return;
+      return 'done';
     }
 
     var className = code === 's' ? 'text-small' : 'text-large';
     var inside = enclosing(canvas, className);
-    if (inside) { if (exact) return; unwrap(inside); return; }
+    if (inside) { if (exact) return 'already'; unwrap(inside); return 'done'; }
     /* Picking one step while the other is on swaps them, rather than
        wrapping a smaller span inside a larger one. */
     var other = enclosing(canvas, code === 's' ? 'text-large' : 'text-small');
     if (other) unwrap(other);
-    if (selection.isCollapsed) return;
+    /* A size wraps words; with nothing picked out there are none. This
+       used to return in silence, which is indistinguishable from the
+       control being broken. */
+    if (selection.isCollapsed) return 'nothing-picked';
     var range = selection.getRangeAt(0);
     var span = document.createElement('span');
     span.className = className;
     try {
       span.appendChild(range.extractContents());
       range.insertNode(span);
-    } catch (error) { return; }
+    } catch (error) {
+      /* A selection that begins in one element and ends in another can
+         refuse to be wrapped. Swallowing that is how a press becomes
+         nothing at all with no account of why. */
+      return 'could-not-wrap';
+    }
     var after = document.createRange();
     after.selectNodeContents(span);
     selection.removeAllRanges();
     selection.addRange(after);
+    return 'done';
   }
 
   /* The nearest span of this kind around the caret, if the caret is in

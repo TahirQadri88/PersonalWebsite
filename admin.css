@@ -606,8 +606,16 @@
   content: "Start writing…";
   color: var(--muted);
 }
+/* The bar's own line, saying why a press did nothing. It holds its
+   height whether or not there is anything to say, so the writing box
+   below does not jump up and down as the sentence comes and goes —
+   which on a phone, where the box fills the screen, reads as the page
+   lurching under the caret. */
 .writing-note {
-  margin: 8px 0 0;
+  min-height: 1.55em;
+  /* It sits between the bar and the writing now, so the air goes under
+     it rather than over it — it used to be the last thing in the box. */
+  margin: 4px 0 8px;
   color: var(--gold-on-light);
   font-size: 12.5px;
   line-height: 1.55;
