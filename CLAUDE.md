@@ -1757,6 +1757,34 @@ was the test's own trailing keypress.** Which is also the measurement
 that says the restoration is exact rather than approximate: the other
 seventy-nine came back byte for byte through fifty-three replays.
 
+**Two more of the new guards said nothing, and for two different
+reasons.** Running the whole set of restorations is what found both;
+neither was visible from the assertions.
+
+Taking the history buttons out of the bar **crashed** the run — a
+30-second Playwright click timeout, a stack trace, and no account of
+which assertion had broken. That is this file's own lesson about a
+guard that threw inside the page rather than going red, in a second
+place: a crash reads as the harness being broken, not the code. Both
+controls are found before anything presses one now, and the same fault
+reports **four** named failures.
+
+And the second layer that keeps an empty mark out of a file — the one
+in `inlineToText` — failed nothing, because with the box cleaned there
+is no empty mark left for it to catch. It was a claim with no test
+behind it. The answer is the move the ayn patch already makes for a
+combination this library has not written: **put the thing into the
+page by hand and measure it**, rather than inventing a way for the
+editor to produce one. The block is removed again afterwards, and that
+is not tidiness — the round-trip group compares the box against itself
+after a publish, and an empty mark is deliberately present on one side
+of that comparison and absent on the other.
+
+The whole set, with each fault put back one at a time: the menu
+look-up reports 3, the keys 1, the collapsed caret 1, the box cleanup
+1, the file cleanup 1, the pinned buttons 4. Before the last three
+guards existed those faults reported **0, 0 and a crash**.
+
 **Not reached, and not started:** a link inside the writing, a
 divider, paragraph spacing, and nested list levels. No font-family
 control and no point sizes, deliberately — the face follows the script

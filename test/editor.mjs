@@ -1140,6 +1140,56 @@ await page.waitForTimeout(150);
       !/<b[ >]/.test(html) && !/text-large/.test(html) && !/<sup[ >]/.test(html), html);
   }
 
+  /* A mark with no words in it must not reach a FILE, whatever put it
+     there. The cleanup above happens in the box, where `removeFormat`
+     leaves its empties; this is the second layer, in `inlineToText`,
+     which is the one path every block takes on its way out.
+
+     Restoring the fault in that layer alone failed nothing, because
+     with the box cleaned there is no empty mark left for it to catch —
+     so the layer was a claim with no test behind it. The answer is the
+     move the ayn patch already makes for a combination this library
+     has not written: put the thing into the page by hand and measure
+     it, rather than inventing a way for the editor to produce one.
+
+     The block is taken out again afterwards, and that is not tidiness:
+     the round-trip group below compares the box against itself after a
+     publish, and an empty mark is present on one side of that
+     comparison and deliberately absent on the other. */
+  await newBlock(page, 'carries an empty mark');
+  await page.evaluate((sel) => {
+    const block = document.querySelector(sel).lastElementChild;
+    block.appendChild(document.createElement('b'));
+    block.appendChild(document.createElement('sup'));
+    document.querySelector(sel).dispatchEvent(new Event('input', { bubbles: true }));
+  }, canvas);
+  await page.waitForTimeout(160);
+  t('an empty mark put into the box by hand is really there',
+    /<b><\/b>|<sup><\/sup>/.test(await inner()), await inner());
+  await page.click('#export');
+  await page.waitForSelector('#out-pages section', { timeout: 20000 });
+  await page.waitForTimeout(1200);
+  {
+    const written = await page.evaluate((post) => {
+      const sections = Array.from(document.querySelectorAll('#out-pages section'));
+      const mine = sections.find((x) => x.querySelector('h3').textContent.includes(post));
+      return mine ? mine.querySelector('textarea').value : null;
+    }, POST);
+    t('  …and no empty mark reaches the file, whatever left it behind',
+      typeof written === 'string' && !/<b><\/b>/.test(written) && !/<sup><\/sup>/.test(written),
+      typeof written === 'string'
+        ? (written.match(/<(\w+)><\/\1>/g) || []).join(' ') || 'none'
+        : 'the piece was not written');
+  }
+  await page.click('#close-dialog');
+  await page.waitForTimeout(200);
+  await page.evaluate((sel) => {
+    const canvasEl = document.querySelector(sel);
+    canvasEl.removeChild(canvasEl.lastElementChild);
+    canvasEl.dispatchEvent(new Event('input', { bubbles: true }));
+  }, canvas);
+  await page.waitForTimeout(160);
+
   /* And with nothing picked out it says so, rather than reporting
      success and doing nothing visible. `execCommand` on a collapsed
      caret sets a PENDING style — the next letter typed comes out
@@ -1198,6 +1248,25 @@ await page.waitForTimeout(150);
     document.querySelector(sel).lastElementChild.tagName, canvas);
   const textOfLast = () => page.evaluate((sel) =>
     document.querySelector(sel).lastElementChild.textContent.trim(), canvas);
+
+  /* Both controls are found before anything presses one. Without this
+     the group does not FAIL when they are missing — it CRASHES, on a
+     30-second click timeout that takes the whole run down and reports
+     nothing at all. Proved by taking the buttons out: the suite died
+     mid-group with a Playwright stack trace and no account of which
+     assertion had been broken.
+
+     This repository has written that lesson down once already, about a
+     guard that threw inside the page rather than going red. It is the
+     same mistake in a different place: a guard that crashes on the
+     fault it is for is worse than one that fails, because a crash
+     looks like the harness being broken rather than the code. */
+  const haveHistory = (await undo.count()) === 1 && (await redo.count()) === 1;
+  t('the bar carries an Undo and a Redo at all',
+    haveHistory, 'undo: ' + await undo.count() + ', redo: ' + await redo.count());
+  if (!haveHistory) {
+    t('  …so nothing below this can be measured', false, 'skipped: no history controls');
+  } else {
 
   await newBlock(page, 'a line to promote');
   await page.waitForTimeout(800);          /* let the typing settle into a step */
@@ -1318,6 +1387,7 @@ await page.waitForTimeout(150);
   t('  …and winding all the way forward again puts the piece back exactly',
     (await page.evaluate((sel) => document.querySelector(sel).innerHTML, canvas)) === before,
     'after ' + guard + ' presses the box is not what it was');
+  }
 }
 
 
