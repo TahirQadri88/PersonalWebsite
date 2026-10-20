@@ -2683,6 +2683,24 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    the numbering a reader is following through a ruling. */
 .post-body li::marker { color: inherit; }
 
+/* The divider between one part of a piece and the next — what a fatwa
+   puts between the question and the answer. Not a full-width hairline:
+   a short centred rule reads as a considered break rather than as the
+   page having been cut, and it takes the site's own gold rather than
+   the browser's grey inset border. */
+.post-body hr,
+.post-body .rule {
+  border: 0;
+  border-top: 2px solid var(--gold-rule);
+  width: 88px;
+  margin: 2em auto;
+  opacity: 0.9;
+}
+/* In the writing box the same block is a paragraph holding a `br`, so
+   its own line box would show under the rule. There is nothing to
+   read in it. */
+.post-body .rule { height: 0; overflow: hidden; padding: 0; }
+
 /* A raised or lowered run — a reference numeral, a date's ordinal.
    `line-height: 0` is the whole of why it is here: without it the
    browser counts the raised box's own line box into the line it sits
@@ -2706,6 +2724,22 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 }
 .post-body sup { top: -0.5em; }
 .post-body sub { bottom: -0.25em; }
+/* A link inside the writing. There was no rule for one until a piece
+   could carry one, so it would have been drawn in the browser's own
+   blue with a hairline under it — on a cream page whose every other
+   link is moss over a 2px rule. Matched to `.work-seealso a`, which is
+   the only other place a link sits inside prose rather than in the
+   chrome, and it sets no `font-family` for the same reason that one
+   does not: the words are the author's, not the site's. */
+.post-body a {
+  color: var(--moss);
+  text-decoration: none;
+  border-bottom: 2px solid var(--gold-rule);
+  padding-bottom: 1px;
+}
+.post-body a:hover,
+.post-body a:active { color: var(--gold-on-light); border-bottom-color: currentColor; }
+
 /* Struck through. The site's own rule weight rather than the hairline
    a browser draws, which at 15px on cream reads as a smudge — the same
    argument that doubled the rule under Share and Print. */

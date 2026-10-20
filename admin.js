@@ -565,6 +565,10 @@
          so they follow the script without anyone typing one. */
       { value: 'bullet', text: 'Bullet', title: 'An item in a bulleted list' },
       { value: 'number', text: 'Numbered', title: 'An item in a numbered list' },
+      /* What a fatwa puts between the question and the answer. Drawn
+         across the column rather than typed as a row of hyphens, which
+         is what a page without one gets instead. */
+      { value: 'rule', text: 'Divider', title: 'A line across the column, between one part and the next', cls: 'is-rule' },
       { value: 'footnote', text: 'Footnote', title: 'A citation or footnote, set apart from the body', cls: 'is-footnote' }
     ] },
     /* The marks that are reached for once a page rather than once a
@@ -587,7 +591,12 @@
       { value: '0', text: 'Plain', title: 'Take every mark off the words picked out' },
       { value: '^', text: 'Raised', title: 'Raise the words picked out — a reference numeral', cls: 'is-sup' },
       { value: '_', text: 'Lowered', title: 'Lower the words picked out', cls: 'is-sub' },
-      { value: '~', text: 'Struck', title: 'Strike through the words picked out', cls: 'is-struck' }
+      { value: '~', text: 'Struck', title: 'Strike through the words picked out', cls: 'is-struck' },
+      /* In the menu rather than as a sixth button on the rail: the rail
+         is full — Style is 46% visible at 390px — and a button added
+         here pushes Bold off it, which the ordering above exists to
+         prevent. A link is reached for once a page at most. */
+      { value: 'a', text: 'Link…', title: 'Link the words picked out, or take an existing link off', cls: 'is-link' }
     ] },
     /* Size gets a menu rather than two buttons, because a menu can show
        what the line already is and offer the way back to it. Two toggles
@@ -673,8 +682,15 @@
      them into one real list on the way out. A reader's page gets proper
      `<ul>`/`<ol>` markup; the editor keeps the flat model it is built
      on. */
+  /* A divider is the same box/file asymmetry one more time: a `p` in
+     the BOX, an `<hr>` in the FILE. An `hr` cannot be a block here at
+     all — it is a void element, so `fillEmpty` cannot give it the `br`
+     that lets a block hold a caret, and `tidy` keeps a child only when
+     its TAG is named below. A paragraph carrying the class is both
+     things a divider has to be: a line the caret can step over, and a
+     rule drawn across the column. */
   var BLOCK_TAG = { p: 'p', h2: 'h2', h3: 'h3', blockquote: 'blockquote', footnote: 'p',
-                    bullet: 'p', number: 'p' };
+                    bullet: 'p', number: 'p', rule: 'p' };
 
   /* The block the caret is in: the direct child of the box that contains
      it. Anything deeper is inside one of them. */
@@ -697,6 +713,7 @@
     else if (node.tagName === 'BLOCKQUOTE') state.kind = 'blockquote';
     else if (node.classList.contains('list-bullet')) state.kind = 'bullet';
     else if (node.classList.contains('list-number')) state.kind = 'number';
+    else if (node.classList.contains('rule')) state.kind = 'rule';
     else if (node.classList.contains('footnote')) state.kind = 'footnote';
     else state.kind = 'p';
     Object.keys(SCRIPTS).forEach(function (key) {
@@ -727,6 +744,19 @@
     if (state.kind === 'footnote') node.classList.add('footnote');
     if (state.kind === 'bullet') node.classList.add('list-bullet');
     if (state.kind === 'number') node.classList.add('list-number');
+    /* Nothing can be typed into a divider, because nothing it held
+       would survive: the file writes an `<hr>`, which carries no words.
+       A block that silently drops what is typed into it is the fault
+       this file names elsewhere as a button that does not do what it
+       says, so the caret is kept out rather than the loss discovered
+       at the next publish. It is still removable — backspace from the
+       line under it, or Style → Text. */
+    if (state.kind === 'rule') {
+      node.classList.add('rule');
+      node.setAttribute('contenteditable', 'false');
+      node.setAttribute('aria-label', 'Divider');
+      if (html != null) { fillEmpty(node); return node; }
+    }
     if (html != null) node.innerHTML = html;
     fillEmpty(node);
     return node;
@@ -815,6 +845,26 @@
     if (field !== 'language' && guessed.has(block)) guessed.add(next);
     block.parentNode.replaceChild(next, block);
     canvas.focus();
+
+    /* A divider cannot hold a caret — that is the whole point of its
+       being `contenteditable="false"` — so putting one there puts it
+       nowhere, and the next key lands wherever the browser last left
+       the selection. Found by the guard below, which tried to type the
+       answer under a rule and had no text node to aim at.
+
+       So the caret goes to the line AFTER it, and one is made when
+       there is none: inserting a divider at the foot of a piece has to
+       leave somewhere to go on writing, which is what every editor
+       does and what the author will expect. */
+    if (state.kind === 'rule') {
+      var after = next.nextElementSibling;
+      if (!after) {
+        after = makeBlock({ kind: 'p', language: blockState(next).language, align: '' }, null);
+        next.parentNode.insertBefore(after, next.nextSibling);
+      }
+      putCaret(after, 0);
+      return;
+    }
     putCaret(next, offset);
   }
 
@@ -1511,7 +1561,18 @@
         menu.addEventListener('change', function () {
           settleHistory();
           if (group.inline) say(markSelection(canvas, menu.value, true));
-          else { setBlockField(canvas, group.field, menu.value, true); say('done'); }
+          else {
+            /* A divider carries no words, so turning a line that has
+               some into one takes them. That is allowed — undo exists
+               now and is one press away — but it must be SAID, or a
+               paragraph vanishing under a press reads as the editor
+               eating it. Read before the change, since afterwards
+               there is nothing left to ask. */
+            var losing = group.field === 'kind' && menu.value === 'rule' &&
+              !!(caretBlock(canvas) || { textContent: '' }).textContent.trim();
+            setBlockField(canvas, group.field, menu.value, true);
+            say(losing ? 'words-replaced' : 'done');
+          }
           changed();
           refresh();
         });
@@ -1567,6 +1628,13 @@
       /* Said rather than left to a greyed button alone: on a phone the
          bar can be mid-swipe, and a press that lands on a disabled
          control gives no feedback at all. */
+      'words-replaced': 'A divider holds no words — Undo brings that line back.',
+      /* Cancelling is not a failure and wants nothing said. A refused
+         address is, and has to name why: a reader who typed one and
+         watched nothing happen would reasonably conclude the control
+         is broken, which is the complaint this line exists for. */
+      cancelled: '',
+      'bad-address': 'That address was not understood. Use one starting http://, https:// or mailto:.',
       'nothing-to-undo': 'Nothing to undo.',
       'nothing-to-redo': 'Nothing to redo.'
     };
@@ -1867,6 +1935,42 @@
       return had ? 'done' : 'already';
     }
 
+    /* A link, which is the one mark with two answers: the caret is
+       either in one, in which case the press takes it off, or it is
+       not, in which case it asks where to. Toggle semantics, exactly
+       as Bold has them — and deliberately NOT the `exact` "already set
+       that way" path the other menu values take, since a link already
+       there is the case this control is most often reached for.
+
+       The address is asked for with `prompt`, which is the one dialog
+       a phone draws itself. A written one would have to be built,
+       placed, dismissed and kept on the screen above a soft keyboard,
+       which is the Download lesson in a new place and worth more than
+       this control is. */
+    if (code === 'a') {
+      var inside = enclosingTag(canvas, 'A');
+      if (inside) {
+        try { document.execCommand('unlink'); } catch (error) { unwrap(inside); }
+        return 'done';
+      }
+      if (selection.isCollapsed) return 'nothing-picked';
+      var asked = window.prompt('Where should these words link to?', 'https://');
+      if (asked === null) return 'cancelled';
+      var href = safeHref(asked);
+      if (!href) return 'bad-address';
+      try { document.execCommand('styleWithCSS', false, false); } catch (error) { /* older browsers */ }
+      document.execCommand('createLink', false, href);
+      /* `createLink` writes the href and nothing else. A link in a
+         published article opens away from the piece, and `noopener`
+         goes with every target this site writes. */
+      var made = enclosingTag(canvas, 'A');
+      if (made) {
+        made.setAttribute('target', '_blank');
+        made.setAttribute('rel', 'noopener noreferrer');
+      }
+      return 'done';
+    }
+
     if (code === 'b' || code === 'i' || code === 'u') {
       try { document.execCommand('styleWithCSS', false, false); } catch (error) { /* older browsers */ }
       document.execCommand({ b: 'bold', i: 'italic', u: 'underline' }[code]);
@@ -1958,6 +2062,19 @@
     });
   }
 
+  /* The same walk as `enclosing`, asking the tag rather than a class —
+     a link is an element kind, not a class of ours. */
+  function enclosingTag(canvas, tag) {
+    var selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return null;
+    var node = selection.getRangeAt(0).commonAncestorContainer;
+    while (node && node !== canvas) {
+      if (node.nodeType === 1 && node.tagName === tag) return node;
+      node = node.parentNode;
+    }
+    return null;
+  }
+
   function unwrap(node) {
     var parent = node.parentNode;
     while (node.firstChild) parent.insertBefore(node.firstChild, node);
@@ -2002,6 +2119,13 @@
      wrong in the other two. */
   var OPEN = '\u0002';
   var CLOSE = '\u0003';
+  /* A link is the one mark that carries something besides itself. The
+     others are a single letter between OPEN and the words; this one is
+     `OPEN a <href> UNIT <words> CLOSE`, with a third control character
+     no keyboard produces holding the address apart from the text. The
+     alternative was a second table keyed by some id, which is a second
+     place for the two to drift apart. */
+  var UNIT = '\u001F';
   var INLINE = {
     b: { open: '<b>', close: '</b>' },
     i: { open: '<i>', close: '</i>' },
@@ -2029,6 +2153,7 @@
     if (tag === 'S' || tag === 'STRIKE' || tag === 'DEL') return '~';
     if (tag === 'SUP') return '^';
     if (tag === 'SUB') return '_';
+    if (tag === 'A') return 'a';
     if (el.classList.contains('text-small')) return 's';
     if (el.classList.contains('text-large')) return 'l';
     return '';
@@ -2044,6 +2169,14 @@
       if (child.nodeType !== 1) return;
       var code = inlineCode(child);
       var inner = inlineToText(child);
+      if (code === 'a') {
+        /* An address with no words in it is not a link, and an anchor
+           with no address is not one either — both are dropped to the
+           words they hold, the same rule the empty marks follow. */
+        var href = safeHref(child.getAttribute('href'));
+        out += href && inner ? OPEN + 'a' + href + UNIT + inner + CLOSE : inner;
+        return;
+      }
       /* A mark with no words in it is not a mark. This is the one place
          every block passes through on its way to a file, so stopping it
          here stops it whatever left it behind — and something always
@@ -2065,7 +2198,26 @@
       var ch = body.charAt(i);
       if (ch === OPEN) {
         out += site.escapeHtml(plain); plain = '';
-        var mark = INLINE[body.charAt(i + 1)];
+        var letter = body.charAt(i + 1);
+        if (letter === 'a') {
+          /* The address runs to the unit separator. A body hand-edited
+             into a state with no separator would otherwise swallow the
+             rest of the piece into an href, so a missing one drops the
+             mark rather than taking everything after it. */
+          var end = body.indexOf(UNIT, i + 2);
+          if (end === -1) { i += 1; continue; }
+          var href = safeHref(body.slice(i + 2, end));
+          if (href) {
+            out += '<a href="' + site.escapeHtml(href) +
+              '" target="_blank" rel="noopener noreferrer">';
+            stack.push('</a>');
+          } else {
+            stack.push('');
+          }
+          i = end;
+          continue;
+        }
+        var mark = INLINE[letter];
         if (mark) { out += mark.open; stack.push(mark.close); }
         i += 1;
       } else if (ch === CLOSE) {
@@ -2082,7 +2234,33 @@
 
   /* The same words with every mark taken out, for the search index. */
   function withoutMarks(text) {
-    return String(text || '').replace(new RegExp(OPEN + '.', 'g'), '').split(CLOSE).join('');
+    return String(text || '')
+      /* The link's address first, since it is the one mark whose
+         opener is longer than two characters — stripped as `OPEN a …
+         UNIT`. Left to the rule below, the `a` would go and the whole
+         address would stay, and a search index would be full of URLs. */
+      .replace(new RegExp(OPEN + 'a[^' + UNIT + ']*' + UNIT, 'g'), '')
+      .replace(new RegExp(OPEN + '.', 'g'), '')
+      .split(CLOSE).join('');
+  }
+
+  /* What may be written into an href. The editor publishes straight to
+     a page anybody can open, so the one scheme that must never get
+     through is `javascript:` — a link in a published article that runs
+     code is a different class of thing from a link that goes
+     somewhere. Allowed: http, https, mailto, and a plain relative path
+     so a piece can point at another page of this site.
+
+     Returns '' for anything else, and every caller treats '' as "not a
+     link" rather than as an empty one. */
+  function safeHref(raw) {
+    var href = String(raw == null ? '' : raw).trim();
+    if (!href) return '';
+    if (/^(https?:|mailto:)/i.test(href)) return href;
+    /* A relative path, which cannot carry a scheme at all. Anything
+       holding a colon before the first slash is naming one. */
+    if (/^[^:]*$/.test(href.split('/')[0]) && !/^[a-z][a-z0-9+.-]*:/i.test(href)) return href;
+    return '';
   }
 
   var SCRIPT_MARK = { arabic: '[ar] ', latin: '[en] ', urdu: '[ur] ' };
@@ -2125,6 +2303,16 @@
         Array.prototype.forEach.call(node.children, function (item) { add(item, lead); });
         return;
       }
+      /* Both shapes of a divider, because this one function reads the
+         live box AND a published page fetched back over http — the `p`
+         there, the `hr` here. `add` would drop either: it refuses a
+         block with no words in it, which is right for everything else
+         and wrong for the one block whose whole meaning is that it has
+         none. */
+      if (node.tagName === 'HR' || node.classList.contains('rule')) {
+        blocks.push('---');
+        return;
+      }
       add(node, node.tagName === 'H3' ? '### '
         : node.tagName === 'H2' ? '## '
         : node.tagName === 'BLOCKQUOTE' ? '> '
@@ -2155,6 +2343,9 @@
   function readBlock(raw) {
     var block = String(raw || '').trim();
     var kind = 'p';
+    /* Exactly three hyphens on their own: the same spelling every
+       markup language uses, and one no sentence reaches by accident. */
+    if (block === '---') return { kind: 'rule', language: '', align: '', text: '' };
     if (block.indexOf('### ') === 0) { kind = 'h3'; block = block.slice(4); }
     else if (block.indexOf('## ') === 0) { kind = 'h2'; block = block.slice(3); }
     else if (block.indexOf('> ') === 0) { kind = 'blockquote'; block = block.slice(2); }
@@ -2276,6 +2467,18 @@
             inlineToHtml(item.text.replace(/\s+/g, ' ')) + '</li>');
         });
         out.push(pad + '</' + wrap + '>');
+        continue;
+      }
+
+      /* A divider carries no words, so it takes none of the dressing
+         below — no script, no alignment, nothing to escape. The box
+         gets the paragraph the caret can step over; the page gets the
+         element that means a break in the reading. */
+      if (b.kind === 'rule') {
+        out.push(pad + (flat
+          ? '<p class="rule" contenteditable="false" aria-label="Divider"><br></p>'
+          : '<hr>'));
+        i += 1;
         continue;
       }
 

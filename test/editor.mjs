@@ -245,9 +245,27 @@ const jsErrors = [];
 page.on('pageerror', (e) => jsErrors.push(e.message));
 /* The editor asks before you leave with work in hand. Dismissing that
    one cancels the navigation, which reads later as the page refusing to
-   load; every other dialog is something nobody asked for. */
+   load; every other dialog is something nobody asked for.
+
+   Except one, now: the Link control asks for an address with `prompt`,
+   which is the one dialog a phone draws itself. `answerPrompt` is the
+   slot a test fills just before pressing it. One handler rather than a
+   `page.once` beside this one — two handlers both answer, and the
+   second throws *Cannot accept dialog which is already handled*, which
+   kills the run and reads like the editor misbehaving.
+
+   The slot is cleared as it is used, so a prompt nobody expected still
+   lands in `jsErrors` and still fails the run. A permanent "accept
+   every prompt" would have made that impossible to see. */
+let answerPrompt = null;
 page.on('dialog', async (d) => {
   if (d.type() === 'beforeunload') { await d.accept(); return; }
+  if (d.type() === 'prompt' && answerPrompt !== null) {
+    const reply = answerPrompt;
+    answerPrompt = null;
+    await d.accept(reply);
+    return;
+  }
   jsErrors.push('unexpected dialog: ' + d.message());
   await d.dismiss();
 });
@@ -815,12 +833,29 @@ async function pickOut(page, from, to) {
     let node = walker.nextNode();
     while (node && !node.length) node = walker.nextNode();
     const range = document.createRange();
-    range.setStart(node, a);
-    range.setEnd(node, Math.min(b, node.length));
+    /* A block with no words in it at all — which happens when
+       something upstream has gone wrong and the caret never reached
+       the line this was told to pick from. Selecting the block itself
+       keeps the run alive so the assertion that is actually about the
+       fault can report it.
+
+       It used to throw, and a throw here takes the whole run down with
+       a Playwright stack trace naming this helper rather than the
+       fault: restoring the divider's caret fix reported no failures at
+       all and died four assertions later. That is this file's own
+       lesson about a guard that crashes being worse than one that
+       fails, in a third place. */
+    if (!node) {
+      range.selectNodeContents(block);
+    } else {
+      range.setStart(node, Math.min(a, node.length));
+      range.setEnd(node, Math.min(b, node.length));
+    }
     const sel = window.getSelection();
     sel.removeAllRanges();
     sel.addRange(range);
     canvas.focus();
+    return !!node;
   }, [from, to]);
   await page.waitForTimeout(60);
 }
@@ -1221,6 +1256,137 @@ await page.waitForTimeout(150);
       /pick out the words/i.test((await row.locator('.writing-note').first().textContent()).trim()),
       JSON.stringify((await row.locator('.writing-note').first().textContent()).trim()));
   }
+}
+
+
+/* ---- a divider and a link, round-tripped ----
+
+   Both are what a fatwa needs and neither existed. A ruling puts a
+   break between the question and the answer; a scholarly article cites
+   a source that lives at an address.
+
+   A ROUND TRIP, not a reading of the markup, for the reason the list
+   guard already gives: `bodyToHtml` fills the published page AND the
+   writing box, and the first version of the list work taught it one
+   and forgot the other. The markup was perfect and three items came
+   back as none. A divider has exactly the same two shapes — `<hr>` in
+   the file, `p.rule` in the box — so it can fail exactly the same way. */
+{
+  const canvas = OPEN_CANVAS;
+  const style = row.locator('.writing-menu[aria-label="Style"]');
+
+  await newBlock(page, 'the question above');
+  await newBlock(page, 'a line to become the rule');
+  await style.selectOption({ label: 'Divider' });
+  await page.waitForTimeout(170);
+  /* Not `lastElementChild`: inserting a divider leaves a line under it
+     to go on writing in, so the rule is the block BEFORE the last. The
+     first version of this assertion read the last block and went red
+     on correct behaviour — and the behaviour it went red on is the fix
+     for the fault the guard below had just found. */
+  t('a line can be turned into a divider',
+    await page.evaluate((sel) =>
+      !!document.querySelector(sel).querySelector('.rule'), canvas),
+    await page.evaluate((sel) => document.querySelector(sel).innerHTML.slice(-260), canvas));
+
+  t('  …and a line is left under it to go on writing in',
+    await page.evaluate((sel) => {
+      const rule = document.querySelector(sel).querySelector('.rule');
+      const after = rule && rule.nextElementSibling;
+      return !!after && after.getAttribute('contenteditable') !== 'false';
+    }, canvas), 'nothing writable under the rule');
+
+  /* A divider carries no words, so turning a line that had some into
+     one takes them. That is allowed — undo is one press away — but it
+     has to be SAID, or a paragraph vanishing under a press reads as
+     the editor eating it. */
+  t('  …and the bar says the words went with it, rather than letting them vanish',
+    /undo brings that line back/i.test(
+      (await row.locator('.writing-note').first().textContent()).trim()),
+    JSON.stringify((await row.locator('.writing-note').first().textContent()).trim()));
+
+  /* Nothing can be typed into it, because nothing it held would
+     survive the file. A block that silently drops what is typed into
+     it is this file's own "a button that does not do what it says". */
+  t('  …and the caret is kept out of the rule, since it cannot hold words',
+    await page.evaluate((sel) =>
+      document.querySelector(sel).querySelector('.rule').getAttribute('contenteditable') === 'false',
+      canvas), 'editable');
+
+  await newBlock(page, 'and the answer below it');
+  await pickOut(page, 4, 10);
+  /* `prompt` is the one dialog a phone draws itself, so the control
+     uses it — which means the harness has to answer it. One slot read
+     by the one handler at the top of this file; a second handler
+     registered here answers the same dialog and throws. */
+  answerPrompt = 'https://example.org/ruling';
+  await use(page, row, 'Link…');
+  await page.waitForTimeout(200);
+  t('words picked out can be linked',
+    /<a [^>]*href="https:\/\/example\.org\/ruling"/.test(
+      await page.evaluate((sel) =>
+        document.querySelector(sel).lastElementChild.innerHTML, canvas)),
+    await page.evaluate((sel) => document.querySelector(sel).lastElementChild.innerHTML, canvas));
+
+  /* The whole piece written out and read back. A link is the one mark
+     carrying something besides itself — `OPEN a <href> UNIT <words>
+     CLOSE` — so it is the one that can lose half of itself in the
+     body text and still look right in the box. */
+  await page.click('#export');
+  await page.waitForSelector('#out-pages section', { timeout: 20000 });
+  await page.waitForTimeout(1200);
+  const written = await page.evaluate((post) => {
+    const sections = Array.from(document.querySelectorAll('#out-pages section'));
+    const mine = sections.find((x) => x.querySelector('h3').textContent.includes(post));
+    return mine ? mine.querySelector('textarea').value : null;
+  }, POST);
+  t('  …and the file carries the divider as an <hr>, not as a paragraph',
+    typeof written === 'string' && /<hr>/.test(written) && !/class="rule"/.test(written),
+    typeof written === 'string' ? (written.match(/<hr>|class="rule"/g) || []).join(' ') || 'neither'
+      : 'the piece was not written');
+  t('  …and the link with its address, opening away from the piece',
+    typeof written === 'string' &&
+      /<a href="https:\/\/example\.org\/ruling" target="_blank" rel="noopener noreferrer">/.test(written),
+    typeof written === 'string' ? (written.match(/<a [^>]*>/g) || []).join(' ') || 'no anchor'
+      : 'the piece was not written');
+  await page.click('#close-dialog');
+  await page.waitForTimeout(200);
+
+  /* An address that would run code must never reach a published page.
+     The editor writes straight to a file anybody can open, so this is
+     the one input here where refusing is the whole job — and refusing
+     has to SAY so, or a reader who typed one and saw nothing happen
+     concludes the control is broken. */
+  await newBlock(page, 'words offered a bad address');
+  await pickOut(page, 0, 5);
+  answerPrompt = 'javascript:alert(1)';
+  await use(page, row, 'Link…');
+  await page.waitForTimeout(200);
+  {
+    const html = await page.evaluate((sel) =>
+      document.querySelector(sel).lastElementChild.innerHTML, canvas);
+    t('an address that would run code is refused',
+      !/<a[ >]/.test(html) && !/javascript:/i.test(html), html);
+    t('  …and the bar says why it was refused',
+      /not understood/i.test((await row.locator('.writing-note').first().textContent()).trim()),
+      JSON.stringify((await row.locator('.writing-note').first().textContent()).trim()));
+  }
+
+  /* Pressing it again inside a link takes the link off — the same
+     toggle Bold has, and the case this control is most often reached
+     for after the first press. */
+  await newBlock(page, 'linked then unlinked');
+  await pickOut(page, 0, 6);
+  answerPrompt = 'https://example.org/again';
+  await use(page, row, 'Link…');
+  await page.waitForTimeout(200);
+  await pickOut(page, 0, 6);
+  await use(page, row, 'Link…');
+  await page.waitForTimeout(200);
+  t('pressing Link inside a link takes it off again',
+    !/<a[ >]/.test(await page.evaluate((sel) =>
+      document.querySelector(sel).lastElementChild.innerHTML, canvas)),
+    await page.evaluate((sel) => document.querySelector(sel).lastElementChild.innerHTML, canvas));
 }
 
 

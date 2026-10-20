@@ -1785,12 +1785,96 @@ look-up reports 3, the keys 1, the collapsed caret 1, the box cleanup
 1, the file cleanup 1, the pinned buttons 4. Before the last three
 guards existed those faults reported **0, 0 and a crash**.
 
-**Not reached, and not started:** a link inside the writing, a
-divider, paragraph spacing, and nested list levels. No font-family
-control and no point sizes, deliberately — the face follows the script
-and the sizes are steps, which is this file's own typography doctrine
-and not an omission. And a fatwa still has no written page at all,
-since `isPost` gates the writing box on `record.page`.
+**A divider and a link, which are the two of the four that a fatwa
+actually needs.** A ruling puts a break between the question and the
+answer; a scholarly article cites a source that lives at an address.
+
+**A divider is the box/file asymmetry a third time**: a `p.rule` in
+the BOX, an `<hr>` in the FILE. An `hr` cannot be a block here at all
+— it is void, so `fillEmpty` cannot give it the `br` that lets a block
+hold a caret, and `tidy` keeps a child only when its *tag* is named in
+`BLOCK_TAG`. A paragraph carrying the class is both things a divider
+has to be: a line the caret can step over, and a rule drawn across the
+column. Stored as `---`, the spelling every markup language uses and
+one no sentence reaches by accident.
+
+It is `contenteditable="false"`, because nothing typed into it would
+survive — the file writes an `<hr>`, which carries no words. A block
+that silently drops what is typed into it is this file's own *button
+that does not do what it says*. And turning a line that **had** words
+into one takes them, which is allowed now that undo exists and is one
+press away — but it is **said**, because a paragraph vanishing under a
+press otherwise reads as the editor eating it.
+
+**The guard found the fault that made it unusable.** With the caret
+put into the rule — which cannot hold one — the next key landed
+wherever the browser had last left the selection, so *you could not
+type under a divider*. The caret goes to the line after it now, and
+one is made when there is none: inserting a rule at the foot of a
+piece has to leave somewhere to go on writing.
+
+**A link is the one mark that carries something besides itself.** The
+others are a single letter between OPEN and the words; this one is
+`OPEN a <href> UNIT <words> CLOSE`, with a third control character no
+keyboard produces holding the address apart from the text. A second
+table keyed by some id was the alternative, and that is a second place
+for the two to drift apart.
+
+Three things that needed saying in code rather than reasoning:
+
+- **`withoutMarks` strips the address first.** It is the only mark
+  whose opener is longer than two characters, so the general rule
+  below it would take the `a` and leave the whole URL — and the search
+  index would fill up with them.
+- **`safeHref` refuses anything but http, https, mailto and a plain
+  relative path.** The editor publishes straight to a page anybody can
+  open, so a `javascript:` href is a different class of thing from a
+  link that goes somewhere. Refusing **says why**, because a reader who
+  typed one and saw nothing happen concludes the control is broken.
+- **A body hand-edited into a state with no unit separator** would
+  otherwise swallow the rest of the piece into an href. A missing one
+  drops the mark instead.
+
+It is in the **Mark menu**, not a sixth button: the rail is full —
+Style is 46% visible at 390px — and a button here pushes Bold off it.
+`prompt` asks for the address, which is the one dialog a phone draws
+itself; a written one would have to be built, placed, dismissed and
+kept above a soft keyboard, which is the Download lesson in a new
+place and worth more than this control is.
+
+`.post-body a` did not exist, because no piece could carry a link — so
+one would have been drawn in the browser's blue with a hairline under
+it, on a cream page whose every other link is moss over a 2px rule.
+Matched to `.work-seealso a`, the only other place a link sits inside
+prose, and setting no `font-family` for the same reason: the words are
+the author's, not the site's.
+
+**The crash-instead-of-fail lesson, in a third place.** Restoring the
+divider's caret fix reported **no failures** and then died four
+assertions later inside `pickOut`, on a Playwright stack trace naming
+the helper rather than the fault. `pickOut` threw when a block held no
+text node — which is exactly the state the fault produces. It selects
+the block itself now and the run survives, and the same fault reports
+**ten** named failures, the first being the assertion written for it.
+
+Two harness notes worth keeping. The suite's one dialog handler treats
+every dialog as an error, which was right until a control legitimately
+asked a question; it has a slot a test fills just before pressing
+Link, cleared as it is used, so an **unexpected** prompt still fails
+the run. A `page.once` beside it does not work — both handlers answer
+and the second throws *Cannot accept dialog which is already handled*,
+which kills the run and reads like the editor misbehaving.
+
+With each fault put back: the divider written as a paragraph 1, the
+divider unread on the way back in 1, the caret 10, an unchecked
+address 2, the link's payload dropped 1, the link toggle 2.
+
+**Not reached, and not started:** paragraph spacing and nested list
+levels. No font-family control and no point sizes, deliberately — the
+face follows the script and the sizes are steps, which is this file's
+own typography doctrine and not an omission. And a fatwa still has no
+written page at all, since `isPost` gates the writing box on
+`record.page`.
 
 **A guard that inspects only what is marked cannot see what is not.**
 A post's references are the quieter register — `.footnote` is 17px
