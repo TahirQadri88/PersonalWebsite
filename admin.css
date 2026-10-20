@@ -451,6 +451,17 @@
   border-bottom: 0;
   border-radius: 4px 4px 0 0;
 }
+/* The bar is two things now: a group that is always there, and a rail
+   that may be swiped. On a desktop the rail simply wraps as the whole
+   bar used to, so nothing moves; on a phone it is the scroller and
+   this group sits outside it. */
+.writing-rail { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 22px; }
+.writing-history { flex: 0 0 auto; align-self: flex-end; }
+.writing-tool:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+.writing-tool:disabled:hover { border-color: var(--line); background: var(--card); }
 .writing-group { display: flex; flex-direction: column; gap: 5px; }
 .writing-group-buttons { display: flex; flex-wrap: wrap; gap: 5px; }
 .writing-group-label {
@@ -530,6 +541,14 @@
 .writing-menu option.is-quote { font-style: italic; }
 .writing-menu option.is-smaller { font-size: 12px; }
 .writing-menu option.is-bigger { font-size: 15px; }
+/* The option shows the mark it sets, the same way Quote is shown in
+   italic and Heading in the display face — a reader who does not know
+   the word "superscript" can see which one raises. A real `sup` is not
+   available inside an `<option>`, so the shift is drawn with the two
+   properties that survive there. */
+.writing-menu option.is-sup { font-size: 11px; vertical-align: super; }
+.writing-menu option.is-sub { font-size: 11px; vertical-align: sub; }
+.writing-menu option.is-struck { text-decoration: line-through; }
 
 /* The emphasis buttons show what they do, the way the style ones do. */
 .writing-tool.is-bold { font-weight: 800; }
@@ -638,13 +657,32 @@
      top, so every row it takes is a row of the piece nobody can see.
      Swiping a toolbar is what a phone already asks of people everywhere
      else, and it costs one row. */
+  /* The bar itself no longer scrolls — the RAIL inside it does. Undo
+     and Redo sit beside the rail rather than in it, so the swipe can
+     never take them away. */
   .writing-tools {
     top: 55px;
+    flex-wrap: nowrap;
+    overflow: visible;
+    gap: 4px;
+    padding: 7px 8px;
+  }
+  .writing-rail {
+    flex: 1 1 auto;
+    min-width: 0;
     flex-wrap: nowrap;
     overflow-x: auto;
     overscroll-behavior-x: contain;
     gap: 4px;
-    padding: 7px 8px;
+  }
+  .writing-rail::-webkit-scrollbar { height: 0; }
+  .writing-rail { scrollbar-width: none; }
+  /* A hairline between what stays and what moves, so the rail reads as
+     a thing that scrolls rather than as the same row continuing. */
+  .writing-history {
+    padding-inline-end: 5px;
+    margin-inline-end: 1px;
+    border-inline-end: 1px solid var(--line);
   }
   .writing-group-buttons { flex-wrap: nowrap; }
   /* 132 is what "Sub-heading" needs to be readable in the control, and
@@ -654,8 +692,6 @@
      rail is made to fit by ordering the groups instead — see
      TOOL_GROUPS. */
   .writing-menu { max-width: 132px; height: 36px; padding: 0 4px 0 6px; font-size: 12px; }
-  .writing-tools::-webkit-scrollbar { height: 0; }
-  .writing-tools { scrollbar-width: none; }
   .writing-group-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .writing-group { flex: 0 0 auto; gap: 0; }
   .writing-group + .writing-group {

@@ -2682,6 +2682,34 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 /* The marker is the list's own ink, not a quieter aside — it carries
    the numbering a reader is following through a ruling. */
 .post-body li::marker { color: inherit; }
+
+/* A raised or lowered run — a reference numeral, a date's ordinal.
+   `line-height: 0` is the whole of why it is here: without it the
+   browser counts the raised box's own line box into the line it sits
+   in, so one superscript in a paragraph opens that line and the
+   article develops a limp. It is a real risk in this one, where the
+   Urdu body runs 21px at 2.15 and the line pitch is 45px — a line
+   that grows stands out immediately.
+
+   0.72em rather than the browser's own 0.83: at 21px that is 15px,
+   which is the size this site already sets an English aside in, and a
+   reference numeral is the quieter register by definition. The
+   `position: relative` and the explicit offsets replace
+   `vertical-align`, which is what grows the line even with the
+   line-height taken away. */
+.post-body sup,
+.post-body sub {
+  font-size: 0.72em;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+.post-body sup { top: -0.5em; }
+.post-body sub { bottom: -0.25em; }
+/* Struck through. The site's own rule weight rather than the hairline
+   a browser draws, which at 15px on cream reads as a smudge — the same
+   argument that doubled the rule under Share and Print. */
+.post-body s { text-decoration-thickness: 2px; text-decoration-color: var(--muted); }
 /* A paragraph break has to be bigger than a line break, and in Nastaliq
    it was not. 1.1em is a sane margin under a line-height of 1.5, which
    is what the English body has; the Urdu body is 21px at 2.15, so the

@@ -567,6 +567,28 @@
       { value: 'number', text: 'Numbered', title: 'An item in a numbered list' },
       { value: 'footnote', text: 'Footnote', title: 'A citation or footnote, set apart from the body', cls: 'is-footnote' }
     ] },
+    /* The marks that are reached for once a page rather than once a
+       sentence, and the one that takes them all off again. A menu
+       rather than four more buttons for the reason Size is a menu: it
+       can show what the words are already in, and four buttons at a
+       fingertip's width each would push Bold off the phone's rail,
+       which the ordering above exists to prevent.
+
+       Raised is the one with a real job here. A post's references are
+       numbered in the words themselves — the superscript digits are
+       typed as characters, which is why this repository carries a font
+       patched to draw all ten of them. A `<sup>` is what a word
+       processor offers instead, and it numbers anything, not only the
+       ten digits somebody thought to patch.
+
+       "Plain" is first because it is the default state — the one most
+       words are in — exactly as "Normal" leads Size. */
+    { field: 'mark', label: 'Mark', inline: true, menu: true, items: [
+      { value: '0', text: 'Plain', title: 'Take every mark off the words picked out' },
+      { value: '^', text: 'Raised', title: 'Raise the words picked out — a reference numeral', cls: 'is-sup' },
+      { value: '_', text: 'Lowered', title: 'Lower the words picked out', cls: 'is-sub' },
+      { value: '~', text: 'Struck', title: 'Strike through the words picked out', cls: 'is-struck' }
+    ] },
     /* Size gets a menu rather than two buttons, because a menu can show
        what the line already is and offer the way back to it. Two toggles
        could say "smaller" and "larger" but never "neither", which is the
@@ -615,6 +637,24 @@
     });
     return '<svg viewBox="0 0 16 12.6" width="17" height="13" aria-hidden="true" focusable="false" fill="currentColor">' +
       rows.join('') + '</svg>';
+  }
+
+  /* An arrow curving back on itself, mirrored for redo. Drawn rather
+     than lettered for the same reason the alignment marks are: every
+     editor anybody has used draws these two, so they need no reading
+     and no translating into whichever of three languages the author
+     happens to be typing. ↶ and ↷ exist as characters and were tried —
+     they are drawn by whatever face the device has, at whatever size
+     it thinks, which on a phone came out as two different weights
+     beside the B that sits next to them. */
+  function historyIcon(kind) {
+    var flip = kind === 'redo' ? ' transform="scale(-1,1) translate(-18,0)"' : '';
+    return '<svg viewBox="0 0 18 18" width="17" height="17" aria-hidden="true" focusable="false" ' +
+      'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" ' +
+      'stroke-linejoin="round"><g' + flip + '>' +
+      '<path d="M3.2 7.4h7.1a4.1 4.1 0 0 1 0 8.2H6.4" />' +
+      '<path d="M6.3 3.4 2.6 7.4l3.7 4" />' +
+      '</g></svg>';
   }
 
   /* A footnote is a paragraph — a citation reads as prose, just set
@@ -1296,6 +1336,155 @@
     canvas.setAttribute('aria-multiline', 'true');
     canvas.setAttribute('aria-label', 'The writing');
 
+    /* ---- Undo and redo ---------------------------------------------
+
+       The box had none, and that is not a missing convenience: almost
+       everything in here is direct DOM surgery OUTSIDE the browser's
+       own undo stack. `setBlockField`, `turn`, `adoptScript`,
+       `correctScript`, `tidy`, `splitBlock` and `pastePlain` all
+       replace elements wholesale, and the stack a browser keeps is a
+       record of ITS edits, not ours. So Ctrl+Z was not simply absent —
+       it was unpredictable, undoing a keystroke from before a block
+       was turned round and leaving the page in a state nothing had
+       ever been in.
+
+       What is remembered is the BODY TEXT, not the box's HTML. That is
+       the document's own representation — the thing `bodies` holds and
+       a file is written from — so restoring a state cannot reach a
+       shape the format could not have stored, and `bodyToHtml(…, flat)`
+       puts it back exactly as opening the post would. An innerHTML
+       stack would also have carried the browser's own scratch markup
+       back in.
+
+       The caret is kept as a block index and a character offset, the
+       same pair every other replacement here measures, because the
+       elements are rebuilt and remembering a node would remember
+       nothing.
+
+       Coalescing: a step is a burst of typing, not a keystroke. 700ms
+       of quiet closes one. Any toolbar press closes the pending one
+       first, so a press is always its own step — otherwise a word
+       typed just before pressing Bold would be undone along with it. */
+    var history = [];
+    var future = [];
+    var prior = null;
+    var pending = null;
+    var restoring = false;
+
+    function snapshot() {
+      var block = caretBlock(canvas);
+      return {
+        body: bodies[record.id] || '',
+        at: block ? Array.prototype.indexOf.call(canvas.children, block) : -1,
+        offset: block ? caretOffset(block) : 0
+      };
+    }
+
+    /* Close the step that is open, if anything is in it. Called before
+       every press, and before an undo — without that last one, pressing
+       Ctrl+Z inside the 700ms would skip the words just typed. */
+    function settleHistory() {
+      if (pending) { clearTimeout(pending); pending = null; }
+      if (!prior) { prior = snapshot(); return; }
+      if (prior.body === (bodies[record.id] || '')) return;
+      history.push(prior);
+      /* Bounded, because this lives in a phone's tab for as long as the
+         piece is open. Eighty steps of an article is far more than
+         anybody reaches back through, and the alternative is a stack
+         that grows for the length of a writing session. */
+      if (history.length > 80) history.shift();
+      future.length = 0;
+      prior = snapshot();
+    }
+
+    function remember() {
+      if (restoring) return;
+      if (pending) clearTimeout(pending);
+      pending = setTimeout(settleHistory, 700);
+    }
+
+    function apply(state) {
+      restoring = true;
+      bodies[record.id] = state.body;
+      canvas.innerHTML = bodyToHtml(state.body, 0, true);
+      tidy(canvas);
+      var block = canvas.children[Math.min(Math.max(state.at, 0), canvas.children.length - 1)];
+      if (block) { canvas.focus(); putCaret(block, state.offset); }
+      prior = snapshot();
+      restoring = false;
+      onChange();
+      refresh();
+    }
+
+    function undo() {
+      settleHistory();
+      if (!history.length) return false;
+      future.push(snapshot());
+      apply(history.pop());
+      return true;
+    }
+
+    function redo() {
+      if (pending) { clearTimeout(pending); pending = null; }
+      if (!future.length) return false;
+      history.push(snapshot());
+      apply(future.pop());
+      return true;
+    }
+
+    /* Drawn buttons, not a keyboard shortcut. The author writes on a
+       phone, where there is no Ctrl and no menu bar — so an undo that
+       exists only as Ctrl+Z exists for nobody who actually uses this.
+       The keys are bound as well, below, for the desktop.
+
+       They lead the bar and they do not scroll with it: everything
+       else on a phone is one rail that swipes sideways, and a control
+       reached for after every mistake must not be behind a swipe. That
+       is a different claim from the ordering of the rail — this one is
+       about a control you need WHEN SOMETHING HAS GONE WRONG, which is
+       the worst moment to ask somebody to go looking. */
+    var historyBox = el('div', 'writing-history');
+    var historyRow = el('div', 'writing-group-buttons');
+    var historyButtons = [];
+    [{ value: 'undo', label: 'Undo the last change', act: undo, empty: 'nothing-to-undo' },
+     { value: 'redo', label: 'Redo the change undone', act: redo, empty: 'nothing-to-redo' }]
+      .forEach(function (item) {
+        var button = el('button', 'writing-tool is-' + item.value);
+        button.type = 'button';
+        button.innerHTML = historyIcon(item.value);
+        button.title = item.label;
+        button.setAttribute('aria-label', item.label);
+        button.disabled = true;
+        /* mousedown and preventDefault, exactly as the marks do it: by
+           the time click fires the box has lost the caret to the
+           button, and the caret is what an undo has to put back. */
+        button.addEventListener('mousedown', function (event) {
+          event.preventDefault();
+          say(item.act() ? 'done' : item.empty);
+          refreshHistory();
+        });
+        historyButtons.push({ button: button, value: item.value });
+        historyRow.appendChild(button);
+      });
+    historyBox.appendChild(historyRow);
+    bar.appendChild(historyBox);
+
+    /* A button that cannot do anything says so by being disabled, which
+       is the one piece of state in this bar that a reader can see
+       before pressing rather than after. */
+    function refreshHistory() {
+      historyButtons.forEach(function (entry) {
+        entry.button.disabled = entry.value === 'undo'
+          ? !(history.length || (prior && prior.body !== (bodies[record.id] || '')))
+          : !future.length;
+      });
+    }
+
+    /* The rail: everything that may be swiped. The two buttons above sit
+       outside it, which is the whole point of their being in a box of
+       their own. */
+    var rail = el('div', 'writing-rail');
+
     TOOL_GROUPS.forEach(function (group) {
       var box = el('div', 'writing-group');
       var name = el('span', 'writing-group-label');
@@ -1320,6 +1509,7 @@
           menu.appendChild(choice);
         });
         menu.addEventListener('change', function () {
+          settleHistory();
           if (group.inline) say(markSelection(canvas, menu.value, true));
           else { setBlockField(canvas, group.field, menu.value, true); say('done'); }
           changed();
@@ -1328,7 +1518,7 @@
         menus.push({ menu: menu, field: group.field, inline: !!group.inline,
                      values: group.items.map(function (item) { return item.value; }) });
         box.appendChild(menu);
-        bar.appendChild(box);
+        rail.appendChild(box);
         return;
       }
 
@@ -1345,6 +1535,7 @@
            the selection to the button, and there is no block to act on. */
         button.addEventListener('mousedown', function (event) {
           event.preventDefault();
+          settleHistory();
           if (group.inline) say(markSelection(canvas, item.value));
           else { setBlockField(canvas, group.field, item.value); say('done'); }
           changed();
@@ -1354,21 +1545,30 @@
         row.appendChild(button);
       });
       box.appendChild(row);
-      bar.appendChild(box);
+      rail.appendChild(box);
     });
+    bar.appendChild(rail);
 
     /* Why a press did nothing, in the words a reader of the bar would
        use. An empty string for `already` is deliberate: a size that was
        already on is not a failure and wants nothing said about it. The
        line itself is built below, beside the rest of the box. */
     var WHY = {
-      'nothing-picked': 'Pick out the words first, then choose a size.',
+      /* Not "then choose a size" any more: the same sentence is now
+         reached by the Mark menu as well, and a line that names the
+         wrong control is worse than one that names none. */
+      'nothing-picked': 'Pick out the words first, then choose.',
       'could-not-wrap': 'That selection crosses two blocks — pick words inside one.',
       /* Not a failure, and it used to say nothing for that reason. But
          "nothing happened and nothing was said" is the complaint this
          line exists to answer, and a reader cannot tell a press that was
          already satisfied from one that broke. */
-      already: 'Those words are already set that way.'
+      already: 'Those words are already set that way.',
+      /* Said rather than left to a greyed button alone: on a phone the
+         bar can be mid-swipe, and a press that lands on a disabled
+         control gives no feedback at all. */
+      'nothing-to-undo': 'Nothing to undo.',
+      'nothing-to-redo': 'Nothing to redo.'
     };
     function say(outcome) {
       note.textContent = Object.prototype.hasOwnProperty.call(WHY, outcome)
@@ -1378,6 +1578,8 @@
     function changed() {
       tidy(canvas);
       bodies[record.id] = htmlToBody(canvas);
+      remember();
+      refreshHistory();
       onChange();
     }
 
@@ -1392,9 +1594,18 @@
       /* Each menu shows what the caret is actually sitting in, so it can
          be read as well as used. */
       menus.forEach(function (entry) {
-        var now = entry.inline
-          ? (marks.indexOf('s') !== -1 ? 's' : marks.indexOf('l') !== -1 ? 'l' : '')
-          : state[entry.field];
+        /* An inline menu shows whichever of ITS OWN values the caret is
+           sitting in, and falls back to its first option — which is why
+           every one of them leads with the default state: "Normal" for
+           Size, "Plain" for Mark. This used to name `s` and `l`
+           literally, so a second inline menu would silently have read
+           back the size of the words instead of its own mark. */
+        var found = entry.inline
+          ? entry.values.slice(1).filter(function (value) {
+              return marks.indexOf(value) !== -1;
+            })[0]
+          : null;
+        var now = entry.inline ? (found || entry.values[0]) : state[entry.field];
         entry.menu.value = entry.values.indexOf(now) === -1 ? entry.values[0] : now;
       });
     }
@@ -1455,9 +1666,24 @@
         }
         return;
       }
+      /* Undo and redo on the desktop. `preventDefault` whatever the
+         outcome, including when there is nothing to undo: letting the
+         key through hands the box back to the browser's own stack,
+         which has no record of the replacements this editor makes and
+         will cheerfully restore a state the document was never in.
+         That was the behaviour before this existed, and it is worse
+         than nothing happening. */
+      if ((event.ctrlKey || event.metaKey) && /^[zy]$/i.test(event.key)) {
+        event.preventDefault();
+        var back = event.key.toLowerCase() === 'z' && !event.shiftKey;
+        say((back ? undo() : redo()) ? 'done' : (back ? 'nothing-to-undo' : 'nothing-to-redo'));
+        refreshHistory();
+        return;
+      }
       /* These used to say the format could not record them. It can now. */
       if ((event.ctrlKey || event.metaKey) && /^[biu]$/i.test(event.key)) {
         event.preventDefault();
+        settleHistory();
         markSelection(canvas, event.key.toLowerCase());
         changed();
         refresh();
@@ -1510,6 +1736,15 @@
            items on the way back in. */
         canvas.innerHTML = bodyToHtml(text, 0, true);
         tidy(canvas);
+        /* The piece as it was opened is the state the first undo goes
+           back to, and the history starts empty rather than carrying
+           the previous record's — this is called again every time a
+           different row is opened. */
+        history.length = 0;
+        future.length = 0;
+        if (pending) { clearTimeout(pending); pending = null; }
+        prior = { body: bodies[record.id] || '', at: -1, offset: 0 };
+        refreshHistory();
       },
       focus: function () { canvas.focus(); }
     };
@@ -1600,9 +1835,75 @@
       if (off) { unwrap(off); return 'done'; }
       return 'already';
     }
+    /* "Plain" — every mark off the words picked out, which is the one
+       control a word processor has that undoes all the others at once.
+       It is what a paste from somewhere else needs: pasted words arrive
+       carrying whatever they were set in, and picking through four
+       buttons to take each one off again is not an answer.
+
+       `removeFormat` handles the tags; it does not touch the two sizes,
+       because those are classes of ours and the command only knows about
+       its own styling. So they are unwrapped by hand afterwards — both,
+       in a loop, since a phrase can be inside one and a word inside it
+       inside the other. */
+    if (code === '0') {
+      if (selection.isCollapsed) return 'nothing-picked';
+      var had = marksAtCaret(canvas).length;
+      try { document.execCommand('styleWithCSS', false, false); } catch (error) { /* older browsers */ }
+      document.execCommand('removeFormat');
+      var size;
+      while ((size = enclosing(canvas, 'text-small') || enclosing(canvas, 'text-large'))) {
+        had += 1;
+        unwrap(size);
+      }
+      /* `removeFormat` takes the words out of the tag and leaves the
+         TAG — `marked<b></b> up heavily`. Empty, invisible, and not
+         nothing: `inlineToText` would read it as a mark with no words
+         in it and write `<b></b>` into the published page. Found by
+         the guard below reporting the fault it was written for and
+         pointing at an element nobody had noticed. */
+      var host = caretBlock(canvas);
+      if (host) dropEmptyMarks(host);
+      return had ? 'done' : 'already';
+    }
+
     if (code === 'b' || code === 'i' || code === 'u') {
       try { document.execCommand('styleWithCSS', false, false); } catch (error) { /* older browsers */ }
       document.execCommand({ b: 'bold', i: 'italic', u: 'underline' }[code]);
+      return 'done';
+    }
+
+    /* Struck through, raised and lowered. execCommand for the same
+       reason bold uses it — a selection that begins in one element and
+       ends in another is exactly what it is good at — and with
+       styleWithCSS off so the file keeps `<sup>` rather than a span
+       carrying `vertical-align`.
+
+       Raised and lowered are the two a reader can tell apart at a
+       glance and the browser cannot: `superscript` applied inside a
+       `<sub>` nests rather than replaces on Chromium, which draws a
+       numeral both lowered and raised and reads as the control being
+       broken. So the opposite one is turned off first, deliberately,
+       the way picking one size step while the other is on swaps them
+       rather than nesting. */
+    if (code === '~' || code === '^' || code === '_') {
+      /* A menu acts on the words picked out, and with none picked out
+         it must say so. Left without this, `execCommand` sets a
+         *pending* style — nothing changes on screen, the next letter
+         typed comes out raised, and the press returns success. That is
+         the silence this bar already had to be fixed for once: four of
+         the five ways a size could fail used to return without a word.
+         The B/I/U BUTTONS keep the pending behaviour deliberately,
+         because pressing bold and then typing is what a button is for. */
+      if (selection.isCollapsed) return 'nothing-picked';
+      var on = marksAtCaret(canvas);
+      try { document.execCommand('styleWithCSS', false, false); } catch (error) { /* older browsers */ }
+      var opposite = code === '^' ? '_' : code === '_' ? '^' : '';
+      if (opposite && on.indexOf(opposite) !== -1) {
+        document.execCommand(opposite === '^' ? 'superscript' : 'subscript');
+      }
+      if (exact && on.indexOf(code) !== -1) return 'already';
+      document.execCommand({ '~': 'strikeThrough', '^': 'superscript', '_': 'subscript' }[code]);
       return 'done';
     }
 
@@ -1647,6 +1948,14 @@
       node = node.parentNode;
     }
     return null;
+  }
+
+  /* Mark elements with no words in them, taken out. Depth first, so a
+     `<b>` holding nothing but an empty `<i>` goes too. */
+  function dropEmptyMarks(root) {
+    Array.prototype.slice.call(root.querySelectorAll('*')).reverse().forEach(function (node) {
+      if (inlineCode(node) && !node.textContent) node.parentNode.removeChild(node);
+    });
   }
 
   function unwrap(node) {
@@ -1698,7 +2007,15 @@
     i: { open: '<i>', close: '</i>' },
     u: { open: '<u>', close: '</u>' },
     s: { open: '<span class="text-small">', close: '</span>' },
-    l: { open: '<span class="text-large">', close: '</span>' }
+    l: { open: '<span class="text-large">', close: '</span>' },
+    /* The codes are the characters every markup language already uses
+       for these three, which is the only reason to prefer one letter
+       over another here: nobody has to remember an arbitrary mapping to
+       read a stored body by eye. They cannot collide with a letter code
+       above, and nothing anyone can type collides with OPEN or CLOSE. */
+    '~': { open: '<s>', close: '</s>' },
+    '^': { open: '<sup>', close: '</sup>' },
+    '_': { open: '<sub>', close: '</sub>' }
   };
 
   function inlineCode(el) {
@@ -1706,6 +2023,12 @@
     if (tag === 'B' || tag === 'STRONG') return 'b';
     if (tag === 'I' || tag === 'EM') return 'i';
     if (tag === 'U') return 'u';
+    /* execCommand writes STRIKE on some engines and S on others, and a
+       page pasted in from elsewhere may carry DEL. All three mean the
+       same thing to a reader and all three are stored as one mark. */
+    if (tag === 'S' || tag === 'STRIKE' || tag === 'DEL') return '~';
+    if (tag === 'SUP') return '^';
+    if (tag === 'SUB') return '_';
     if (el.classList.contains('text-small')) return 's';
     if (el.classList.contains('text-large')) return 'l';
     return '';
@@ -1720,7 +2043,12 @@
       if (child.nodeType === 3) { out += child.textContent; return; }
       if (child.nodeType !== 1) return;
       var code = inlineCode(child);
-      out += code ? OPEN + code + inlineToText(child) + CLOSE : inlineToText(child);
+      var inner = inlineToText(child);
+      /* A mark with no words in it is not a mark. This is the one place
+         every block passes through on its way to a file, so stopping it
+         here stops it whatever left it behind — and something always
+         does: `removeFormat` empties a tag rather than removing it. */
+      out += code && inner ? OPEN + code + inner + CLOSE : inner;
     });
     return out;
   }

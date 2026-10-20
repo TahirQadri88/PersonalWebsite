@@ -805,7 +805,15 @@ async function pickOut(page, from, to) {
     const canvas = document.querySelector('.admin-row[open] .writing-canvas');
     const block = canvas.lastElementChild;
     const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, null);
-    const node = walker.nextNode();
+    /* The first text node with anything in it, not simply the first.
+       Wrapping a run leaves empty text nodes behind — `<b>` around the
+       opening word puts one before it — and a range over an empty node
+       is a COLLAPSED range. Which does not throw: `execCommand` happily
+       sets a pending style on it, nothing moves on screen, and the
+       press reports success. Two assertions chased that for a while as
+       though the editor were at fault. */
+    let node = walker.nextNode();
+    while (node && !node.length) node = walker.nextNode();
     const range = document.createRange();
     range.setStart(node, a);
     range.setEnd(node, Math.min(b, node.length));
@@ -1043,6 +1051,274 @@ await newBlock(page, 'published emphasis here');
 await pickOut(page, 10, 18);
 await use(page, row, 'B');
 await page.waitForTimeout(150);
+
+
+/* ---- the marks a word processor has and this box did not ----
+
+   Raised, lowered, struck through, and the one control that takes every
+   mark off again. All four are things a person coming from Word reaches
+   for without thinking, and none of them existed.
+
+   Raised is the one with a real job in this library. A post's references
+   are numbered in the words themselves — the superscript digits are
+   typed as characters, which is why this repository carries a font
+   subset patched to draw all ten of them. A `<sup>` numbers anything.
+
+   What is asserted is the MENU READING BACK, not just the tag landing.
+   The tag landing says `execCommand` worked, which was never in doubt;
+   the menu reading back says `inlineCode` knows the tag and the
+   generalised look-up in `refresh()` found it. That look-up used to name
+   `s` and `l` literally — with it left as it was, a second inline menu
+   silently reports the SIZE of the words instead of its own mark, and
+   every assertion about the tag still passes. */
+{
+  const canvas = OPEN_CANVAS;
+  const inner = () => page.evaluate((sel) =>
+    document.querySelector(sel).lastElementChild.innerHTML, canvas);
+
+  /* Chromium's `strikeThrough` writes `<strike>`, an older spelling of
+     the same thing; other engines write `<s>` and a paste from
+     elsewhere can bring `<del>`. All three mean one mark to a reader,
+     `inlineCode` stores all three as one, and the file is written back
+     as `<s>` whichever arrived — so the box is allowed any of them and
+     the PAGE is held to one, below. */
+  for (const [word, tags] of [['Raised', ['sup']], ['Lowered', ['sub']],
+                              ['Struck', ['s', 'strike', 'del']]]) {
+    await newBlock(page, 'see note one here');
+    await pickOut(page, 9, 12);
+    await use(page, row, word);
+    await page.waitForTimeout(140);
+    const html = await inner();
+    t('"' + word + '" sets the words picked out in <' + tags[0] + '>',
+      tags.some((tag) => new RegExp('<' + tag + '[ >]').test(html)), html);
+    t('  …and the Mark menu reads it back, so the bar is not lying about it',
+      (await showing(page, row, 'Mark')) === word,
+      await showing(page, row, 'Mark'));
+  }
+
+  /* Raised and lowered must REPLACE each other rather than nest.
+     Chromium's `superscript` applied inside a `<sub>` nests, which draws
+     a numeral both raised and lowered — and reads as the control being
+     broken rather than as two marks being on. */
+  await newBlock(page, 'raise then lower');
+  await pickOut(page, 0, 5);
+  await use(page, row, 'Raised');
+  await page.waitForTimeout(120);
+  await pickOut(page, 0, 5);
+  await use(page, row, 'Lowered');
+  await page.waitForTimeout(140);
+  {
+    const html = await inner();
+    t('picking Lowered on a raised run swaps it rather than nesting the two',
+      /<sub[ >]/.test(html) && !/<sup[ >]/.test(html), html);
+  }
+
+  /* And "Plain", which is the control a paste needs: words arrive
+     carrying whatever they were set in somewhere else, and taking four
+     marks off one at a time is not an answer. It has to reach the two
+     SIZES as well as the tags — `removeFormat` knows nothing about a
+     class of ours, so those are unwrapped by hand. */
+  await newBlock(page, 'marked up heavily');
+  await pickOut(page, 0, 6);
+  await use(page, row, 'B');
+  await page.waitForTimeout(100);
+  await pickOut(page, 0, 6);
+  await use(page, row, 'Larger');
+  await page.waitForTimeout(100);
+  await pickOut(page, 0, 6);
+  await use(page, row, 'Raised');
+  await page.waitForTimeout(120);
+  const dressed = await inner();
+  t('a run can carry a tag mark and a size mark at once',
+    /<b[ >]/.test(dressed) && /text-large/.test(dressed) && /<sup[ >]/.test(dressed), dressed);
+  await pickOut(page, 0, 6);
+  await use(page, row, 'Plain');
+  await page.waitForTimeout(160);
+  {
+    const html = await inner();
+    t('  …and Plain takes all of them off, the sizes included',
+      !/<b[ >]/.test(html) && !/text-large/.test(html) && !/<sup[ >]/.test(html), html);
+  }
+
+  /* And with nothing picked out it says so, rather than reporting
+     success and doing nothing visible. `execCommand` on a collapsed
+     caret sets a PENDING style — the next letter typed comes out
+     raised and the press returns true — which from the outside is a
+     control that did nothing without a word about why. That is the
+     complaint the note line was built for, and a new menu is exactly
+     where it comes back. */
+  await newBlock(page, 'nothing picked here');
+  await page.evaluate(() => {
+    const canvas = document.querySelector('.admin-row[open] .writing-canvas');
+    const walker = document.createTreeWalker(canvas.lastElementChild, NodeFilter.SHOW_TEXT, null);
+    let node = walker.nextNode();
+    while (node && !node.length) node = walker.nextNode();
+    const range = document.createRange();
+    range.setStart(node, 3);
+    range.collapse(true);
+    const sel = window.getSelection();
+    sel.removeAllRanges(); sel.addRange(range);
+    canvas.focus();
+  });
+  await page.waitForTimeout(60);
+  await use(page, row, 'Raised');
+  await page.waitForTimeout(150);
+  {
+    const html = await inner();
+    t('a mark chosen with nothing picked out wraps nothing',
+      !/<sup[ >]/.test(html), html);
+    t('  …and the bar says why, instead of reporting a press that did nothing',
+      /pick out the words/i.test((await row.locator('.writing-note').first().textContent()).trim()),
+      JSON.stringify((await row.locator('.writing-note').first().textContent()).trim()));
+  }
+}
+
+
+/* ---- undo and redo ----
+
+   The box had neither, and that is not a missing convenience. Almost
+   every edit in this editor is direct DOM surgery OUTSIDE the browser's
+   own undo stack — `setBlockField`, `turn`, `adoptScript`, `tidy`,
+   `splitBlock` and `pastePlain` all replace elements wholesale — so
+   Ctrl+Z was not merely absent but unpredictable, restoring a state the
+   document had never been in.
+
+   Which is why the guard that matters is the one on a STYLE change
+   rather than on typing or on Bold. Typing and Bold both go through the
+   browser's own stack, so a test of either would pass with our history
+   deleted and the key handler removed. Turning a paragraph into a
+   heading goes through `setBlockField`, which the browser has no record
+   of at all. */
+{
+  const canvas = OPEN_CANVAS;
+  const style = row.locator('.writing-menu[aria-label="Style"]');
+  const undo = row.locator('.writing-tool.is-undo');
+  const redo = row.locator('.writing-tool.is-redo');
+  const tagOfLast = () => page.evaluate((sel) =>
+    document.querySelector(sel).lastElementChild.tagName, canvas);
+  const textOfLast = () => page.evaluate((sel) =>
+    document.querySelector(sel).lastElementChild.textContent.trim(), canvas);
+
+  await newBlock(page, 'a line to promote');
+  await page.waitForTimeout(800);          /* let the typing settle into a step */
+  await style.selectOption({ label: 'Heading' });
+  await page.waitForTimeout(160);
+  t('a paragraph turned into a heading is a heading',
+    (await tagOfLast()) === 'H2', await tagOfLast());
+
+  await undo.click();
+  await page.waitForTimeout(200);
+  t('  …and Undo puts it back to a paragraph — an edit the browser never saw',
+    (await tagOfLast()) === 'P', await tagOfLast());
+  t('  …with the words still there, so it undid the change and not the line',
+    (await textOfLast()) === 'a line to promote', await textOfLast());
+
+  await redo.click();
+  await page.waitForTimeout(200);
+  t('  …and Redo makes it a heading again',
+    (await tagOfLast()) === 'H2', await tagOfLast());
+
+  /* A burst of typing is one step, not one step per key. Undoing a
+     keystroke at a time would make the control useless on the very
+     thing it is most needed for. */
+  await style.selectOption({ label: 'Text' });
+  await page.waitForTimeout(800);
+  await newBlock(page, 'words typed in one go');
+  await page.waitForTimeout(900);
+  t('a burst of typing is in the box', (await textOfLast()) === 'words typed in one go',
+    await textOfLast());
+  await undo.click();
+  await page.waitForTimeout(220);
+  t('  …and one Undo takes the whole burst, not one letter of it',
+    (await textOfLast()) !== 'words typed in one go' &&
+    !/^words typed in one g/.test(await textOfLast()),
+    await textOfLast());
+
+  /* And it says when there is nothing to do, rather than going quiet —
+     the same argument the note line settles for the rest of the bar. A
+     control that does nothing and says nothing cannot be told from a
+     broken one, which is the complaint that whole line exists to
+     answer. */
+  /* And the keys, which are a second path to the same two functions
+     and therefore a second thing that can break on its own. Restoring
+     a fault in the key handler alone left every assertion above green,
+     because all of them press the buttons — which is the whole reason
+     this one is here and not taken as covered.
+
+     `preventDefault` matters as much as the action: letting Ctrl+Z
+     through hands the box to the browser's own stack, which has no
+     record of the element replacements this editor makes. That is not
+     a smaller version of undo, it is a different document. */
+  await page.locator(OPEN_CANVAS).click();
+  await page.keyboard.press('Control+End');
+  await page.waitForTimeout(80);
+  await style.selectOption({ label: 'Quote' });
+  await page.waitForTimeout(160);
+  t('a block turned into a quotation is a quotation',
+    (await tagOfLast()) === 'BLOCKQUOTE', await tagOfLast());
+  await page.locator(OPEN_CANVAS).click();
+  await page.keyboard.press('Control+z');
+  await page.waitForTimeout(220);
+  t('  …and Ctrl+Z undoes it, so the keys reach the same history the buttons do',
+    (await tagOfLast()) !== 'BLOCKQUOTE', await tagOfLast());
+  await page.keyboard.press('Control+y');
+  await page.waitForTimeout(220);
+  t('  …and Ctrl+Y brings it back',
+    (await tagOfLast()) === 'BLOCKQUOTE', await tagOfLast());
+
+  /* ---- the empty state, and why this is the LAST thing the group does
+
+     Reaching it means winding the stack all the way back, and that
+     rewinds the WHOLE piece — including the marks an earlier group put
+     in and a later one reads out of the published page. So everything
+     is wound forward again afterwards, and the assertion that says so
+     compares the BOX against what was in it beforehand.
+
+     It did not, at first: it asked whether Redo had greyed itself out,
+     which is true the moment there is nothing left to redo — including
+     when there is nothing left because the stack was thrown away. That
+     is exactly what happened. An edit made while the history is wound
+     back clears the redo stack, deliberately, the way every editor
+     does; the key test above was sitting between the rewind and the
+     wind-forward and did precisely that. The piece never came back,
+     *the marks reach the published page* failed three groups later,
+     and the assertion written to catch that reported success.
+
+     A test that cannot fail is worse than no test, and this one could
+     not fail in the state it was written to catch.
+
+     The capture is taken at the TOP of the stack, which is not a
+     detail: with one undo still outstanding above it, winding fully
+     forward correctly replays that undo and the comparison fails on a
+     document that is perfectly restored. It did, once, and reported
+     `after 53 presses the box is not what it was` — eighty blocks
+     compared, one differing, and that one was the test's own trailing
+     keypress. Which is also what proves the restoration is exact
+     rather than approximate: the other seventy-nine came back byte for
+     byte through fifty-three replays. */
+  const before = await page.evaluate((sel) => document.querySelector(sel).innerHTML, canvas);
+  while (!(await undo.isDisabled())) { await undo.click(); await page.waitForTimeout(90); }
+  t('Undo greys itself out when there is nothing left to undo',
+    await undo.isDisabled(), 'disabled: ' + await undo.isDisabled());
+  t('  …and the piece really did wind back, so the empty state was reached by undoing',
+    (await page.evaluate((sel) => document.querySelector(sel).innerHTML, canvas)) !== before,
+    'the box is unchanged after winding all the way back');
+  await page.evaluate(() => {
+    const b = document.querySelector('.admin-row[open] .writing-tool.is-undo');
+    b.disabled = false;
+    b.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+  });
+  await page.waitForTimeout(140);
+  t('  …and says so as well, since a phone can press a control mid-swipe',
+    /nothing to undo/i.test((await row.locator('.writing-note').first().textContent()).trim()),
+    JSON.stringify((await row.locator('.writing-note').first().textContent()).trim()));
+
+  let guard = 0;
+  while (!(await redo.isDisabled()) && guard < 300) { await redo.click(); await page.waitForTimeout(70); guard += 1; }
+  t('  …and winding all the way forward again puts the piece back exactly',
+    (await page.evaluate((sel) => document.querySelector(sel).innerHTML, canvas)) === before,
+    'after ' + guard + ' presses the box is not what it was');
+}
 
 
 /* ---- a list survives being published and opened again ----
@@ -1569,7 +1845,12 @@ console.log('\nwhat a row puts first');
      decides this and no number of controls predicts it. */
   const rail = await page.evaluate(() => {
     const bar = document.querySelector('.admin-row[open] .writing-tools');
-    const edge = bar.getBoundingClientRect().right;
+    /* The RAIL, not the bar. They were the same box until Undo and Redo
+       were pinned beside the rail rather than put in it; measuring the
+       bar now measures past the scroller's own right edge, which is the
+       pixel that actually decides whether a control needs a swipe. */
+    const scroller = bar.querySelector('.writing-rail') || bar;
+    const edge = scroller.getBoundingClientRect().right;
     const reach = (sel) => {
       const e = bar.querySelector(sel);
       return e ? Math.round(e.getBoundingClientRect().right - edge) : null;
@@ -1586,17 +1867,62 @@ console.log('\nwhat a row puts first');
              underline: reach('.writing-tool.is-underline'),
              script: reach('select[aria-label="Script"]'),
              stylePast: reach('select[aria-label="Style"]'),
-             styleSeen: seen('select[aria-label="Style"]') };
+             styleSeen: seen('select[aria-label="Style"]'),
+             /* Undo and Redo are NOT measured against the rail's edge:
+                they are outside the scroller, so the question for them
+                is whether they are on the SCREEN, which they are by
+                construction. What is asserted below instead is that
+                they did not end up inside the rail after all. */
+             undoInRail: !!bar.querySelector('.writing-rail .writing-tool.is-undo'),
+             undoOnScreen: (() => {
+               const e = bar.querySelector('.writing-tool.is-undo');
+               if (!e) return null;
+               const r = e.getBoundingClientRect();
+               return Math.round(r.left) >= 0 && Math.round(r.right) <= window.innerWidth;
+             })() };
   });
   t('the script and all three emphasis marks are on the rail without a swipe',
     ['script', 'bold', 'italic', 'underline'].every((k) => rail[k] !== null && rail[k] <= 0),
     JSON.stringify(rail) + ' (px past the rail\'s right edge; 0 or less is on it)');
 
+  /* Undo is reached for when something has already gone wrong, which is
+     the worst moment to ask somebody to go hunting along a rail. So it
+     is not on the rail at all — it sits beside it and cannot be swiped
+     away. Both halves are asserted: that it is outside the scroller,
+     and that it is really on the screen at 390px. */
+  t('  …and Undo is pinned beside the rail, not in it, so no swipe can take it away',
+    rail.undoInRail === false && rail.undoOnScreen === true,
+    'in the rail: ' + rail.undoInRail + ', on screen: ' + rail.undoOnScreen);
+
   /* Style is once a section, not once a sentence, so it is allowed to
-     want a swipe — but it must be visible enough to be found, or the
-     swipe is something you have to already know about. */
-  t('  …and Style is mostly in view beside them, so the swipe is discoverable',
-    rail.styleSeen >= 80, rail.styleSeen + '% of Style visible');
+     want a swipe — but it must be visibly CUT at the edge, or the rail
+     reads as a row that ends there and the swipe is something you have
+     to already know about.
+
+     This asked for 80% and now asks for a third, and the figure moved
+     because the bar did: it carried five groups and now carries six,
+     with Undo and Redo pinned ahead of all of them. Measured at 390px,
+     Style is 46% visible — it was 80 before the Mark menu and the
+     pinned pair, 0% with Mark placed BEFORE Style, which is how the
+     ordering below was settled. A third is the floor rather than the
+     measurement, with ten points of room.
+
+     What this does NOT protect is the thing above it: a change that
+     pushed Underline off the rail would be caught there, not here. This
+     one protects the rail looking finished when it is not — and it is
+     still named for Style specifically rather than "something is cut",
+     because something is always cut and the control that has to be
+     findable is this one.
+
+     The rail is now at its limit. The next group added to it will not
+     fit, and the answer then is a second row on the phone — the four-row
+     stack this file records rejecting was 380px tall; two rows is about
+     92 and is a different proposition. Do not buy the width by
+     narrowing the buttons: they are already at the tap minimum, and
+     that was tried and measured once before. */
+  t('  …and Style is visibly cut at the edge, so the swipe is discoverable',
+    rail.styleSeen >= 33 && rail.styleSeen < 100,
+    rail.styleSeen + '% of Style visible');
 
   /* And a control has to be able to say what it is holding. Every option
      of every menu must fit the box it is shown in — "One step smaller"
