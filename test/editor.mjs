@@ -1533,6 +1533,64 @@ await page.waitForTimeout(150);
     typeof written === 'string' ? (written.match(/class="[^"]*space-below[^"]*"/g) || ['none'])[0]
       : 'the piece was not written');
 
+  /* ---- and back again, which is the direction that matters
+
+     Everything above goes box → file. The other direction is the one
+     this repository names as the thing worth the trouble: the author
+     opens a finished piece to fix a comma and finds the verse in the
+     middle of it has quietly become a paragraph. Two faults restored
+     in that direction — `inlineToText` reading a sub-list into the
+     words of the point above it, and the depth never written into the
+     body — failed **nothing** without this.
+
+     Two earlier attempts at it were both wrong, and both are worth
+     keeping because each looks like a reasonable idea:
+
+     - Setting the page's markup into the canvas and raising an edit
+       does NOT do it. `changed()` runs `tidy` first, which rebuilds
+       the `<ol>` into a paragraph before `htmlToBody` ever sees it, so
+       the probe reported 0 items on an editor that was working.
+     - Leaving these blocks in the piece for *the piece read back is
+       the piece that was written*, near the end of this file, does not
+       do it either: a later group reloads the editor, and a reload
+       discards a box that was never published. Measured — `before`
+       does not contain these words by the time that assertion runs.
+
+     So the round trip is here, where the feature is: write the file,
+     serve it back, and OPEN it, which is the real path — fetch, parse,
+     `htmlToBody`, `setText`. */
+  overlay.set(`posts/${POST}.html`, written);
+  const boxBefore = await page.evaluate((sel) =>
+    document.querySelector(sel).innerHTML, canvas);
+  row = await openEditor(page);
+  const boxAfter = await page.evaluate((sel) =>
+    document.querySelector(sel).innerHTML, canvas);
+  /* `<strike>` normalised to `<s>` on both sides before comparing, and
+     that is not a tolerance hiding something — it is a documented,
+     intended behaviour of the format being excluded from a comparison
+     that is about something else. Chromium's `strikeThrough` writes
+     `<strike>` into the box; the file stores one mark and writes
+     `<s>`; reopening therefore gives `<s>` where the box had
+     `<strike>`, which is exactly right and is the only thing this
+     comparison found. Left in, it reports a failure on correct
+     behaviour every run — a guard that cries wolf is one somebody
+     eventually deletes. */
+  const settle = (html) => html.replace(/<(\/?)strike>/g, '<$1s>');
+  t('  …and opening that page again gives back the same box',
+    settle(boxAfter) === settle(boxBefore),
+    settle(boxAfter) === settle(boxBefore) ? ''
+      : firstDifference(settle(boxBefore), settle(boxAfter)));
+  t('  …with the points and sub-points still told apart',
+    await page.evaluate((sel) => {
+      const items = [...document.querySelector(sel).children]
+        .filter((k) => k.classList.contains('list-number'));
+      return items.length === 4 &&
+        items.map((k) => (k.classList.contains('indent-1') ? 1 : 0)).join('') === '0110';
+    }, canvas),
+    await page.evaluate((sel) => [...document.querySelector(sel).children]
+      .filter((k) => k.classList.contains('list-number'))
+      .map((k) => k.className).join(' | '), canvas));
+
   /* Outdent steps back, and refuses past the margin with a word for
      why rather than in silence. */
   await page.locator(canvas).click();
@@ -1791,19 +1849,34 @@ await page.waitForTimeout(150);
   t(`  …the generated posts/${POST}.html was found to read`,
     built.length > 500, String(built.length));
   /* ONE list, not three — a run of items is gathered, so a reader is
-     told "list, three items" rather than meeting three lists of one. */
-  /* Counted INSIDE the list, not across the page: the generated header
-     is a nav of four `<li>`s, so counting the page reported seven items
-     for a list of three. The same lesson one layer down from the section
-     match above — count what you matched. */
-  const lists = (built.match(/<ol[\s>]/g) || []).length;
-  const inside = (built.match(/<ol\b[\s\S]*?<\/ol>/) || [''])[0];
-  const items = (inside.match(/<li[\s>]/g) || []).length;
-  t(`  …and the published page carries ${lists} list of ${items} items`,
-    lists === 1 && items === 3, `${lists} lists, ${items} items inside`);
+     told "list, three items" rather than meeting three lists of one.
+
+     Counted inside THIS run's own list, found by the words it was
+     written with. Counting every `<ol>` on the page was two lessons
+     waiting to be paid for: the generated header is a nav of four
+     `<li>`s, which reported seven items for a list of three; and the
+     sub-point group above this one leaves a second list in the piece,
+     which reported `3 lists` and read as a regression in the gathering
+     — when what it actually says is that another group wrote another
+     list. Count what you matched, and match on the thing that is this
+     run and nothing else. */
+  const run = await page.evaluate((html) => {
+    const holder = document.createElement('div');
+    holder.innerHTML = html;
+    const item = [...holder.querySelectorAll('li')]
+      .find((li) => li.textContent.includes('پہلی بات'));
+    const list = item && item.closest('ol');
+    if (!list) return { found: false };
+    return { found: true,
+             items: list.querySelectorAll(':scope > li').length,
+             nested: list.querySelectorAll(':scope > li > ol').length,
+             tag: list.outerHTML.slice(0, list.outerHTML.indexOf('>') + 1) };
+  }, built);
+  t('  …and the published page gathers that run into one list of 3 items',
+    run.found && run.items === 3 && run.nested === 0, JSON.stringify(run));
   t('  …with the script on the list as well as on its items, so the ' +
     'numeral sits on the side the words read from',
-    /<ol class="urdu" lang="ur" dir="rtl">/.test(built), built.slice(0, 0) || 'see page');
+    run.found && /class="urdu" lang="ur" dir="rtl"/.test(run.tag), run.tag || 'see page');
   await page.evaluate(() => document.getElementById('export-dialog').close());
   await page.waitForTimeout(150);
 }

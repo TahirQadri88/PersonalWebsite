@@ -1869,12 +1869,82 @@ With each fault put back: the divider written as a paragraph 1, the
 divider unread on the way back in 1, the caret 10, an unchecked
 address 2, the link's payload dropped 1, the link toggle 2.
 
-**Not reached, and not started:** paragraph spacing and nested list
-levels. No font-family control and no point sizes, deliberately — the
-face follows the script and the sizes are steps, which is this file's
-own typography doctrine and not an omission. And a fatwa still has no
-written page at all, since `isPost` gates the writing box on
-`record.page`.
+**Sub-points, and a bigger gap after a block.** The last two of the
+four. A ruling is built from points with sub-points under them, and
+the box held every item at one level.
+
+**An item's level is the box/file asymmetry a fourth time.** Flat in
+the box with a class saying which level it is; real nesting in the
+file — and real nesting in HTML means the inner list sits **inside**
+the `li` it belongs to, not beside it. So an item's `</li>` cannot be
+written until it is known whether a deeper item follows, which is why
+that is a small state machine rather than a map over the run.
+
+`inlineToText` had to learn to **skip a nested list**. Without it
+every sub-point is read into the words of the point above it, and a
+ruling comes back as one run-on line.
+
+**Two steps and no more.** Nothing here has ever carried a
+sub-sub-point, and an unbounded ladder is a column with no room left
+in it on a 328px phone. Indent and Outdent **step** rather than
+toggle — `setBlockField` toggles a field off when the value pressed is
+the one already there, which is right for Quote and wrong here, where
+pressing twice has to mean two steps. They say when they are at an end
+rather than going quiet, and they carry no `aria-pressed`: a step has
+no state to be in, and marking one pressed would claim the block is
+indented when all it means is that the button exists.
+
+**The box needs a second counter.** It numbers its own items, because
+the real `<ol>` exists only in the file — and one counter runs 1 2 3 4
+straight through, telling the author their ruling is numbered in a way
+it is not. `counter-reset` scopes to the element *and* its following
+siblings, which is what makes each run of sub-points start again.
+
+**Extra space is one bounded step, not a menu of sizes.** The 1.6em
+between paragraphs is not a taste but a measurement — half of it
+stopped reading as a paragraph break at all in Nastaliq, which this
+file records — and a control offering arbitrary spacing invites a
+piece to drift out of the setting the whole site is in. One step says
+*a bigger break here* and cannot say anything else.
+
+**And that class was a lie until the rule above it excused it by
+name.** `.post-body.urdu > p:not(.latin)` is **(0,3,1)** against the
+class's **(0,2,0)**, so the button left exactly the gap it always did:
+measured **33.6px before, 67.2 after**. Exactly the pattern the
+alignment defaults already use, and the reason they name their
+exceptions in the selector that sets the default rather than reaching
+for `!important` elsewhere.
+
+**The marker guard had to measure ink, and then had to look in the
+right place.** `getComputedStyle(el, '::before').content` returns the
+**declaration** — both sub-points read back
+`counter(writing-sub, urdu) "۔"` whether they draw ۱ ۲ or ۱ ۱ — so the
+first version compared two identical strings and went red on a box
+numbered correctly. A test looking at the stylesheet while claiming to
+look at the page, which is the list marker's lesson in a second place.
+
+The screenshot that replaced it clipped the **padding** rather than
+the marker: in a right-reading block the numeral is the first thing in
+the *content* box, which begins where the padding ends. Two blank
+images, equal, **144 bytes each** — and a solid-colour PNG at that size
+is the tell.
+
+**A group that adds to the piece has to put the piece back.** This one
+wrote six blocks and a later group counts the lists on the published
+page; it reported `3 list of 3 items` and read as a regression in the
+list work, which it was not. The blocks come out again at the end.
+
+Both toolbar additions went into the **Layout** group — renamed from
+Align, since it is about where the *block* sits now and not only where
+its words sit — rather than into a seventh group, because a seventh is
+what needs the two-row rail. Style is still visibly cut at 390px.
+
+**Not reached, and not started:** no font-family control and no point
+sizes, deliberately — the face follows the script and the sizes are
+steps, which is this file's own typography doctrine and not an
+omission. And a fatwa still has no written page at all, since `isPost`
+gates the writing box on `record.page`, so everything in these four
+sections reaches posts only.
 
 **A guard that inspects only what is marked cannot see what is not.**
 A post's references are the quieter register — `.footnote` is 17px
