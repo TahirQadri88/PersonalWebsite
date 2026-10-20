@@ -796,6 +796,21 @@
      its script. */
   function makeBlock(state, html) {
     var node = document.createElement(BLOCK_TAG[state.kind] || 'p');
+    /* A divider has no script, no direction and no alignment — it is a
+       rule across the column, and the file writes a bare `<hr>` that
+       can carry none of them. Built from an Urdu paragraph it used to
+       keep `urdu`, `lang` and `dir`, so the box and the file said
+       different things about the same block. They are meant to be the
+       same document: found by opening the written page again and
+       comparing, which is the only check that can see a disagreement
+       between the two. */
+    if (state.kind === 'rule') {
+      node.className = 'rule';
+      node.setAttribute('contenteditable', 'false');
+      node.setAttribute('aria-label', 'Divider');
+      fillEmpty(node);
+      return node;
+    }
     if (state.language && SCRIPTS[state.language]) {
       node.classList.add(SCRIPTS[state.language].cls);
       node.setAttribute('lang', state.language);
@@ -807,19 +822,6 @@
     if (state.kind === 'footnote') node.classList.add('footnote');
     if (state.kind === 'bullet') node.classList.add('list-bullet');
     if (state.kind === 'number') node.classList.add('list-number');
-    /* Nothing can be typed into a divider, because nothing it held
-       would survive: the file writes an `<hr>`, which carries no words.
-       A block that silently drops what is typed into it is the fault
-       this file names elsewhere as a button that does not do what it
-       says, so the caret is kept out rather than the loss discovered
-       at the next publish. It is still removable — backspace from the
-       line under it, or Style → Text. */
-    if (state.kind === 'rule') {
-      node.classList.add('rule');
-      node.setAttribute('contenteditable', 'false');
-      node.setAttribute('aria-label', 'Divider');
-      if (html != null) { fillEmpty(node); return node; }
-    }
     if (html != null) node.innerHTML = html;
     fillEmpty(node);
     return node;

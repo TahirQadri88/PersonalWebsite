@@ -1929,10 +1929,47 @@ the *content* box, which begins where the padding ends. Two blank
 images, equal, **144 bytes each** — and a solid-colour PNG at that size
 is the tell.
 
-**A group that adds to the piece has to put the piece back.** This one
-wrote six blocks and a later group counts the lists on the published
-page; it reported `3 list of 3 items` and read as a regression in the
-list work, which it was not. The blocks come out again at the end.
+**A group that adds to the piece changes what a later group counts.**
+This one writes six blocks, and a later group counted every `<ol>` on
+the published page and asserted one. It reported `3 lists` and read as
+a regression in the gathering, which it was not. That assertion now
+finds **its own** run by the words it was written with — count what
+you matched.
+
+**The file→box direction was measured by nothing, and three attempts
+at it failed before one worked.** Everything above goes box→file; the
+other direction is the one this file names as worth the trouble, and
+two faults restored in it — a sub-list read into the words of the
+point above it, and the depth never written into the body — failed
+**nothing**.
+
+- Setting the page's markup into the canvas and raising an edit does
+  not do it. `changed()` runs `tidy` first, which rebuilds the `<ol>`
+  into a paragraph before `htmlToBody` sees it: the probe reported 0
+  items on an editor that was working.
+- Leaving the blocks in the piece for *the piece read back is the
+  piece that was written*, near the end of the suite, does not either:
+  a later group reloads the editor, and a reload discards a box that
+  was never published. Measured — the words are not there by then.
+- So the round trip lives in the group that owns the feature: write
+  the file, serve it back through the overlay, **open** it. That is
+  the real path — fetch, parse, `htmlToBody`, `setText`.
+
+**And it must compare the WORDS, not the box's innerHTML.** That
+comparison was tried and needed three excuses in one assertion — a
+`<strike>` normalised to the `<s>` the format stores, an empty
+trailing paragraph the file rightly does not publish, and a `style=""`
+the browser leaves on a non-editable block. **Three excuses is the
+signal that an assertion is measuring something other than its name.**
+The same comparison is correct near the end of the suite, where the
+box has been reloaded and carries no scratch.
+
+**It found a real disagreement first, though.** A divider built from
+an Urdu paragraph kept `urdu`, `lang` and `dir`, while the file writes
+a bare `<hr>` that can carry none of them — so the box and the file
+said different things about the same block. `makeBlock` builds a rule
+clean now. Nothing but opening the written page again could have seen
+that.
 
 Both toolbar additions went into the **Layout** group — renamed from
 Align, since it is about where the *block* sits now and not only where
