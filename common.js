@@ -69,10 +69,33 @@
   function applyFace(on) {
     document.documentElement.classList.toggle('jameel', !!on);
   }
+  /* Where the READING MATTER is Urdu — one string, read here to decide
+     whether to spend 6.5MB and read again below to decide whether to
+     offer the control, so the two can never come apart.
+
+     Found live, after the default shipped: the ENGLISH vegetarianism
+     fatwa was fetching the whole font. Its page carries the اردو میں
+     پڑھیے link to its twin and five Urdu tag pills, and nothing else in
+     Urdu — fourteen characters and five labels, for 6.5MB. That is the
+     same fault this file already records about *offering* the control
+     on such a page, arriving in the default a day later, which is what
+     a condition written twice does.
+
+     The consequence, stated rather than discovered: the homepage, the
+     fatāwā index and the author page stay in Mehr. Their Urdu is titles,
+     one-line descriptions and tags — a catalogue, not reading — and the
+     front door is the worst place on the site to spend six and a half
+     megabytes. The face is for the pieces. */
+  var URDU_PROSE = '#post-body.urdu, .work-page-description.urdu, ' +
+    '.work-background-text.urdu, .work-hero h1.record-title.urdu';
+  function readsInUrdu() {
+    return !!document.querySelector(URDU_PROSE);
+  }
   /* A stored answer is an answer, in both directions — `mehr` is as much
      a decision as `jameel` and must survive being the default's
      opposite. Only the absence of one asks the connection. */
   function faceWanted() {
+    if (!readsInUrdu()) return false;
     var stored = storedFace();
     if (stored === 'jameel') return true;
     if (stored === 'mehr') return false;
@@ -1424,10 +1447,7 @@
        carry Urdu descriptions, which is a fault this codebase has
        already fixed once by asking the text instead of the field.
        `.arabic` is Amiri and this does not touch it. */
-    var urduProse = document.querySelector(
-      '#post-body.urdu, .work-page-description.urdu, ' +
-      '.work-background-text.urdu, .work-hero h1.record-title.urdu'
-    );
+    var urduProse = readsInUrdu();
 
     /* A button, not a link or a checkbox: it does something to this page
        rather than going anywhere, and `aria-pressed` is what says which

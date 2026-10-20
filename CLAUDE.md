@@ -699,6 +699,23 @@ JavaScript off keeps Mehr. That is a complete, correct page — the one
 the site shipped for years — and it is the right thing to lose, because
 the alternative spends 6.5MB with no way to decline it.
 
+**A condition written twice came apart within a day.** The default
+shipped and the live check found the **English** vegetarianism fatwa
+pulling the whole 6.57MB. Its page carries the اردو میں پڑھیے link to
+its twin and five Urdu tag pills and nothing else in Urdu — fourteen
+characters and five labels. This file already recorded that exact
+reasoning about *offering the control* on such a page; the default was
+given its own copy of the test and did not get it. One string now,
+`URDU_PROSE` in `common.js`, read to decide whether to spend the bytes
+and read again to decide whether to offer the control.
+
+The consequence, said rather than found later: **the homepage, the
+fatāwā index and the author page stay in Mehr.** Their Urdu is titles,
+one-line descriptions and tags — a catalogue, not reading — and the
+front door is the worst place on the site to spend six and a half
+megabytes. The face is for the pieces. Both cases are guarded, and
+taking the one line out fails them together.
+
 **Making it the default turned three assertions red in other groups,
 for one reason.** They named `Mehr Nastaliq Web` literally, from when it
 was the only face the site set Urdu body text in — the Latin-in-Urdu

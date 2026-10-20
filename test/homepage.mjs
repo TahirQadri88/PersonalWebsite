@@ -1986,6 +1986,60 @@ try {
       await context.close();
     }
 
+    /* ---- a page whose reading matter is NOT Urdu ----
+
+       Found live, a day after the default shipped: the English
+       vegetarianism fatwa was fetching the whole 6.5MB. Its page carries
+       the اردو میں پڑھیے link to its twin and five Urdu tag pills and
+       nothing else in Urdu — fourteen characters and five labels. The
+       condition for the control already excluded such a page; the
+       default had its own copy and did not. One string now, read for
+       both, which is why this sits in the same group. */
+    {
+      const context = await browser.newContext({ viewport: { width: 390, height: 900 } });
+      await context.route('https://fonts.g**', (r) => r.abort());
+      const page = await context.newPage();
+      page.on('pageerror', (e) => threw.push('reading face: ' + e.message));
+      const fetched = [];
+      page.on('response', (r) => {
+        if (/\.woff2(\?|$)/.test(r.url())) fetched.push(r.url().split('/').pop());
+      });
+      await page.goto(`http://127.0.0.1:${PORT}/works/vegetarianism-and-veganism.html`,
+        { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => document.fonts.ready).catch(() => {});
+      await page.waitForTimeout(600);
+      /* Count what you matched: if the page ever loses its Urdu link the
+         assertion below stops meaning anything, and this says so. */
+      t(`the English fatwa carries ${await page.locator('.urdu').count()} Urdu elements`,
+        await page.locator('.urdu').count() > 0);
+      t('…none of them reading matter, so the font is not fetched',
+        !fetched.some((f) => f === FONT), JSON.stringify(fetched));
+      t('…and no control is offered either',
+        await page.locator('.reading-face').count() === 0);
+      await context.close();
+    }
+
+    /* ---- a listing page is a catalogue, not reading ----
+
+       The homepage has two dozen Urdu elements — titles, one-line
+       descriptions, tags — and is the worst place on the site to spend
+       6.5MB, being the first thing anybody loads. */
+    {
+      const { context, page } = await open(390);
+      const fetched = [];
+      page.on('response', (r) => {
+        if (/\.woff2(\?|$)/.test(r.url())) fetched.push(r.url().split('/').pop());
+      });
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => document.fonts.ready).catch(() => {});
+      await page.waitForTimeout(600);
+      t(`the homepage shows ${await page.locator('.urdu').count()} Urdu elements`,
+        await page.locator('.urdu').count() > 10);
+      t('…and still does not fetch the reading face',
+        !fetched.some((f) => f === FONT), JSON.stringify(fetched));
+      await context.close();
+    }
+
     /* ---- the reader with no JavaScript ----
 
        Stated as a cost rather than hidden: they keep Mehr. That is a
