@@ -2632,6 +2632,56 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 
 .post-body > * { margin: 0 0 1.1em; }
 .post-body > *:last-child { margin-bottom: 0; }
+
+/* ---- lists -----------------------------------------------------------
+
+   What a fatwa's answer is built from: the ruling in numbered points.
+   The margin rule above deliberately does not reach `li` — a list wants
+   its items closer than its paragraphs, which is the shape of a list —
+   and that was written before there were any lists to prove it.
+
+   The numerals are the LIST's, never typed into the words: that way a
+   point inserted in the middle renumbers the ones under it, a screen
+   reader announces how many there are, and the figures follow the
+   script. `urdu` and `arabic-indic` are the CSS counter styles for ۱ ۲ ۳
+   and ١ ٢ ٣; English falls through to plain decimal. */
+.post-body ul,
+.post-body ol { padding-inline-start: 1.6em; }
+.post-body li { margin: 0 0 0.45em; }
+.post-body li:last-child { margin-bottom: 0; }
+/* The built-in `urdu` style numbers ۱ ۲ ۳ and follows them with a Latin
+   full stop. The fatāwā this is for write `۱۔` — the Urdu danda — so the
+   counter is declared here rather than borrowed, for the same reason the
+   rest of this file withholds a Latin glyph from an Urdu run: the
+   punctuation belongs to the script around it. */
+@counter-style urdu-points {
+  system: numeric;
+  symbols: "۰" "۱" "۲" "۳" "۴" "۵" "۶" "۷" "۸" "۹";
+  suffix: "۔ ";
+}
+.post-body li.urdu { list-style-type: urdu-points; }
+.post-body li.arabic { list-style-type: arabic-indic; }
+/* `display: list-item` put back, and this is not tidiness — a marker is
+   only drawn on a list item, and `.post-body .urdu { display: block }`
+   above (written so an inline script-marked run takes its own line)
+   matches `li.urdu` too and quietly turns the item into a plain block.
+   The computed style read `list-style-type: urdu` the whole time and
+   drew nothing, which is why the markup looked right and the page was
+   wrong: found by rendering the list and LOOKING at it, not by reading
+   the stylesheet.
+
+   Added here at (0,2,1) rather than narrowing the rule above, which
+   would change what an inline run does for a reason that has nothing to
+   do with inline runs. */
+.post-body li.urdu,
+.post-body li.arabic { display: list-item; }
+/* Nastaliq hangs a long way below its baseline, so an item needs the
+   same room between lines that a paragraph of it gets. */
+.post-body ol.urdu,
+.post-body ul.urdu { padding-inline-start: 1.9em; }
+/* The marker is the list's own ink, not a quieter aside — it carries
+   the numbering a reader is following through a ruling. */
+.post-body li::marker { color: inherit; }
 /* A paragraph break has to be bigger than a line break, and in Nastaliq
    it was not. 1.1em is a sane margin under a line-height of 1.5, which
    is what the English body has; the Urdu body is 21px at 2.15, so the

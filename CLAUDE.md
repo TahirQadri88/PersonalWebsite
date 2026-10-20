@@ -1565,6 +1565,69 @@ screenshot mid-scroll shows static text behind the sticky rail and looks
 like a fault. Measured: **0 of 40** caret positions overlapped it. Do
 not go looking for this one either.
 
+
+**A fatwa's answer is a numbered list, and the writing box had none.**
+Asked for as *extensive formatting options like my pdf fatawa*, and
+answered by reading one rather than guessing: `zakat-tax-credit-urdu`
+has an `الاستفتاء`, a named questioner, `الجواب بعون الملك الوهاب`, the
+ruling **in numbered points**, Arabic quotations in Naskh with their
+citations in the quieter register, `یعنی` renderings in Urdu, and a
+two-column attestation with seal and date. Of those, the box already
+had the quotation (`blockquote` + عربی), the citation (`.footnote`) and
+the headings. What it had no way to write was the **numbering** — which
+is the shape of the answer itself.
+
+**An item is a `p` in the box and an `li` in the file, and that
+asymmetry is the design.** Every block in the writing box is a direct
+child of the canvas: `caretBlock` walks up to it, and `tidy` rebuilds
+anything whose tag is not in `BLOCK_TAG`. Real `<ul>`/`<li>` nesting
+breaks both, and with them the caret handling this file has already
+paid for twice. So an item is flat while it is being written, told
+apart by its class exactly as a footnote is, and `bodyToHtml` gathers a
+**run** of them into one real list on the way out. A reader's page gets
+proper markup — "list, three items" to a screen reader, the numbering
+the browser's rather than typed into the words.
+
+**One function filled both, and teaching it the page broke the box.**
+`bodyToHtml` writes the published page *and* fills the canvas through
+`setText`. The first version gathered items into an `<ol>` for the page
+and forgot the second caller, so the canvas received a list element,
+`tidy` tore it down, and the items came back as one mashed paragraph.
+Written, published, reopened: **three items in, zero out.** The
+generated markup was perfect throughout. Only the round trip — box →
+file → box — showed it, which is why the guard does exactly that
+instead of reading the markup and calling it correct. `flat` is the
+parameter that separates the two jobs.
+
+**`display: block` is what was eating the numerals.**
+`.post-body .urdu { display: block }` exists so an inline script-marked
+run takes its own line — and it matches `li.urdu` too, which turns the
+item into a plain block. **A marker is only ever drawn on a list item.**
+The computed `list-style-type` read back correctly the whole time and
+the page drew nothing: the markup was right, the stylesheet was right
+to read, and the page was wrong. Found by rendering the list and
+**looking at it**. `display: list-item` is put back at (0,2,1) rather
+than narrowing the rule above, which would change what an inline run
+does for a reason that has nothing to do with inline runs. The guard
+compares **ink** — the same element with its marker suppressed must
+look different — because a declaration assertion would have passed on
+the broken page.
+
+**`urdu-points` is declared rather than borrowed.** CSS's built-in
+`urdu` counter numbers ۱ ۲ ۳ and follows them with a Latin full stop;
+the fatāwā write `۱۔` with the danda. Same argument the guillemets and
+the brackets already make: the punctuation belongs to the script around
+it.
+
+**What this does not yet reach, said plainly.** The attestation block —
+کتبہ, الجواب صحیح, the muftī's name and title, the institution, the
+reference number, the two calendar dates, the seal — is a *structured*
+thing and belongs in fields, the way an app's `verifiedBy[]` already
+does, not in free writing. And a fatwa still has no written page at
+all: `isPost` gates the writing box on `record.page`, which a fatwa
+does not carry, so today these lists can only be used in a post. Both
+are real next steps and neither is started.
+
 **A guard that inspects only what is marked cannot see what is not.**
 A post's references are the quieter register — `.footnote` is 17px
 against a 21px Urdu body — and a block that loses that mark falls

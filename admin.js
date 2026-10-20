@@ -559,6 +559,12 @@
       { value: 'h2', text: 'Heading', title: 'A section heading inside the piece', cls: 'is-heading' },
       { value: 'h3', text: 'Sub-heading', title: 'A heading under a Heading — use one of those first', cls: 'is-heading' },
       { value: 'blockquote', text: 'Quote', title: 'A quotation, set apart', cls: 'is-quote' },
+      /* What a fatwa's answer is actually built from: the ruling in
+         numbered points. The numerals are the list's own — Urdu ۱ ۲ ۳ in
+         an Urdu item, Arabic-Indic in an Arabic one, 1 2 3 in English —
+         so they follow the script without anyone typing one. */
+      { value: 'bullet', text: 'Bullet', title: 'An item in a bulleted list' },
+      { value: 'number', text: 'Numbered', title: 'An item in a numbered list' },
       { value: 'footnote', text: 'Footnote', title: 'A citation or footnote, set apart from the body', cls: 'is-footnote' }
     ] },
     /* Size gets a menu rather than two buttons, because a menu can show
@@ -615,7 +621,20 @@
      apart from the body around it — so it shares p's tag and is told
      apart by the 'footnote' class makeBlock and htmlToBody both check
      for below, the same way a block's script or alignment already is. */
-  var BLOCK_TAG = { p: 'p', h2: 'h2', h3: 'h3', blockquote: 'blockquote', footnote: 'p' };
+  /* A list item is a `p` in the BOX and an `li` in the FILE, and that
+     asymmetry is deliberate. Every block in the writing box is a direct
+     child of the canvas — `caretBlock` walks up to the canvas, `tidy`
+     keeps any child whose tag is named here and rebuilds anything else.
+     Real `<ul>`/`<li>` nesting would break both, and with them the caret
+     handling this file has already paid for twice.
+
+     So an item is flat while it is being written, told apart by its
+     class exactly as a footnote is, and `bodyToHtml` gathers a run of
+     them into one real list on the way out. A reader's page gets proper
+     `<ul>`/`<ol>` markup; the editor keeps the flat model it is built
+     on. */
+  var BLOCK_TAG = { p: 'p', h2: 'h2', h3: 'h3', blockquote: 'blockquote', footnote: 'p',
+                    bullet: 'p', number: 'p' };
 
   /* The block the caret is in: the direct child of the box that contains
      it. Anything deeper is inside one of them. */
@@ -636,6 +655,8 @@
     if (node.tagName === 'H2') state.kind = 'h2';
     else if (node.tagName === 'H3') state.kind = 'h3';
     else if (node.tagName === 'BLOCKQUOTE') state.kind = 'blockquote';
+    else if (node.classList.contains('list-bullet')) state.kind = 'bullet';
+    else if (node.classList.contains('list-number')) state.kind = 'number';
     else if (node.classList.contains('footnote')) state.kind = 'footnote';
     else state.kind = 'p';
     Object.keys(SCRIPTS).forEach(function (key) {
@@ -664,6 +685,8 @@
     }
     if (state.align && ALIGN[state.align]) node.classList.add('align-' + ALIGN[state.align]);
     if (state.kind === 'footnote') node.classList.add('footnote');
+    if (state.kind === 'bullet') node.classList.add('list-bullet');
+    if (state.kind === 'number') node.classList.add('list-number');
     if (html != null) node.innerHTML = html;
     fillEmpty(node);
     return node;
@@ -1482,7 +1505,10 @@
         canvas.setAttribute('lang', language || 'en');
       },
       setText: function (text) {
-        canvas.innerHTML = bodyToHtml(text, 0);
+        /* flat: the box holds list items as separate blocks — see
+           bodyToHtml, where leaving this off cost a published list its
+           items on the way back in. */
+        canvas.innerHTML = bodyToHtml(text, 0, true);
         tidy(canvas);
       },
       focus: function () { canvas.focus(); }
@@ -1738,9 +1764,12 @@
      touching anything produces the same file. */
   function htmlToBody(article) {
     var blocks = [];
-    Array.prototype.forEach.call(article.children, function (node) {
-      var text = inlineToText(node).trim().replace(/\s+/g, ' ');
-      if (!text) return;
+
+    /* The script and alignment a block carries, in the order bodyToHtml
+       writes them — pulled out because an `li` needs exactly the same
+       treatment as a paragraph, and two copies of this is the drift this
+       repository has paid for before. */
+    function marksOf(node) {
       var mark = '';
       ['arabic', 'latin', 'urdu'].forEach(function (name) {
         if (node.classList.contains(name)) mark += SCRIPT_MARK[name];
@@ -1748,12 +1777,33 @@
       Object.keys(ALIGN).forEach(function (key) {
         if (node.classList.contains('align-' + ALIGN[key])) mark += '[' + key + '] ';
       });
-      var lead = node.tagName === 'H3' ? '### '
+      return mark;
+    }
+
+    function add(node, lead) {
+      var text = inlineToText(node).trim().replace(/\s+/g, ' ');
+      if (!text) return;
+      blocks.push(lead + marksOf(node) + text);
+    }
+
+    Array.prototype.forEach.call(article.children, function (node) {
+      /* This function is asked of BOTH the live box, where an item is a
+         flat `p.list-number`, and a published page read back over http,
+         where the same item is an `li` inside a real `<ol>`. Both have to
+         come back as the same line or a post would change shape every
+         time it was opened and saved. */
+      if (node.tagName === 'UL' || node.tagName === 'OL') {
+        var lead = node.tagName === 'UL' ? '- ' : '1. ';
+        Array.prototype.forEach.call(node.children, function (item) { add(item, lead); });
+        return;
+      }
+      add(node, node.tagName === 'H3' ? '### '
         : node.tagName === 'H2' ? '## '
         : node.tagName === 'BLOCKQUOTE' ? '> '
+        : node.classList.contains('list-bullet') ? '- '
+        : node.classList.contains('list-number') ? '1. '
         : node.classList.contains('footnote') ? '[fn] '
-        : '';
-      blocks.push(lead + mark + text);
+        : '');
     });
     return blocks.join('\n\n');
   }
@@ -1781,6 +1831,15 @@
     else if (block.indexOf('## ') === 0) { kind = 'h2'; block = block.slice(3); }
     else if (block.indexOf('> ') === 0) { kind = 'blockquote'; block = block.slice(2); }
     else if (block.indexOf('[fn] ') === 0) { kind = 'footnote'; block = block.slice(5); }
+    else if (block.indexOf('- ') === 0) { kind = 'bullet'; block = block.slice(2); }
+    /* Written back out as `1. ` every time, whatever the numeral was: the
+       number a reader sees is the list's own counter, so storing one
+       would be a second answer to a question the markup already settles.
+       A paragraph that genuinely opens with a figure and a full stop —
+       "2024. was the year" — reads as an item here. Markdown has the same
+       ambiguity and the same remedy: it is one tap of Style to put it
+       back to Text. */
+    else if (/^\d+[.)]\s/.test(block)) { kind = 'number'; block = block.replace(/^\d+[.)]\s+/, ''); }
 
     var language = '';
     var align = '';
@@ -1805,33 +1864,102 @@
       .join(' ');
   }
 
-  function bodyToHtml(text, indent) {
+  /* `flat` is for the WRITING BOX, and the distinction is load-bearing.
+
+     A reader's page wants a real `<ul>`/`<ol>` so a screen reader
+     announces how many items there are and the browser does the
+     numbering. The box cannot hold one: every block there is a direct
+     child of the canvas — `caretBlock` walks up to it and `tidy`
+     rebuilds anything whose tag is not in BLOCK_TAG — so a list element
+     put in the canvas is torn down on the next keystroke and its items
+     come back as one mashed paragraph.
+
+     That is not hypothetical. This function fills both, and the first
+     version of the list work taught it to group for the page and
+     forgot it also fills the box. Written, published and reopened, a
+     three-item list came back as **nothing**: 0 items, the words run
+     together. Only the round trip showed it — box → file → box — which
+     is why the guard does exactly that rather than reading the markup
+     and calling it correct. */
+  function bodyToHtml(text, indent, flat) {
     var pad = ' '.repeat(indent);
-    return String(text || '')
+
+    /* What one block wears. Pulled out of the map below because a list
+       wrapper and its items both need it, and the ORDER matters: script,
+       then alignment, then the kind's own class. The box on screen and
+       the file on disk are meant to be the same document, and the test
+       that proves it compares them as text — so a class list written in
+       a different order would have to be met by loosening that test,
+       and a test loose enough to ignore the order is loose enough to
+       miss a block quietly losing its script. */
+    function dress(b, extra) {
+      var classes = [];
+      var attrs = '';
+      if (b.language) {
+        var script = SCRIPTS[b.language];
+        classes.push(script.cls);
+        attrs += ' lang="' + b.language + '" dir="' + script.dir + '"';
+      }
+      /* Alignment is a class rather than a style attribute so the
+         stylesheet keeps the say, and so a post page carries no inline
+         CSS for a content-security policy to object to later. */
+      if (b.align) classes.push('align-' + ALIGN[b.align]);
+      if (extra) classes.push(extra);
+      return classes.length ? ' class="' + classes.join(' ') + '"' + attrs : attrs;
+    }
+
+    var parsed = String(text || '')
       .split(/\n\s*\n/)
       .filter(function (raw) { return raw.trim(); })
-      .map(function (raw) {
-        var b = readBlock(raw);
-        var classes = [];
-        var attrs = '';
-        if (b.language) {
-          var script = SCRIPTS[b.language];
-          classes.push(script.cls);
-          attrs += ' lang="' + b.language + '" dir="' + script.dir + '"';
+      .map(readBlock);
+
+    var out = [];
+    var i = 0;
+    while (i < parsed.length) {
+      var b = parsed[i];
+
+      /* A run of items becomes ONE list. The editor holds them flat —
+         see BLOCK_TAG — so this is the only place the nesting exists,
+         and it is the only place it needs to: a reader's page should
+         carry real `<ul>`/`<ol>` markup so a screen reader announces
+         "list, three items" and the numbering is the browser's rather
+         than something typed into the words. */
+      if (b.kind === 'bullet' || b.kind === 'number') {
+        var wrap = b.kind === 'bullet' ? 'ul' : 'ol';
+        var itemClass = b.kind === 'bullet' ? 'list-bullet' : 'list-number';
+        var run = [];
+        while (i < parsed.length && parsed[i].kind === b.kind) { run.push(parsed[i]); i += 1; }
+        if (flat) {
+          /* The box: each item its own `p`, carrying the class that says
+             what it is — exactly how a footnote is held. */
+          run.forEach(function (item) {
+            out.push(pad + '<p' + dress(item, itemClass) + '>' +
+              inlineToHtml(item.text.replace(/\s+/g, ' ')) + '</p>');
+          });
+          continue;
         }
-        /* Alignment is a class rather than a style attribute so the
-           stylesheet keeps the say, and so a post page carries no inline
-           CSS for a content-security policy to object to later. */
-        if (b.align) classes.push('align-' + ALIGN[b.align]);
-        /* A footnote's tag is p — BLOCK_TAG says so — so it needs the
-           class that tells it apart from an ordinary paragraph, the
-           same way makeBlock adds it in the live box. */
-        if (b.kind === 'footnote') classes.push('footnote');
-        if (classes.length) attrs = ' class="' + classes.join(' ') + '"' + attrs;
-        var tag = BLOCK_TAG[b.kind] || 'p';
-        return pad + '<' + tag + attrs + '>' + inlineToHtml(b.text.replace(/\s+/g, ' ')) + '</' + tag + '>';
-      })
-      .join('\n');
+        /* The wrapper takes the first item's script, and it must: the
+           marker sits on the side the LIST reads from, not the side the
+           item does, so an `ol` left `ltr` around Urdu items puts its
+           numerals on the wrong edge. */
+        out.push(pad + '<' + wrap + dress({ language: run[0].language, align: '' }) + '>');
+        run.forEach(function (item) {
+          out.push(pad + '  <li' + dress(item) + '>' +
+            inlineToHtml(item.text.replace(/\s+/g, ' ')) + '</li>');
+        });
+        out.push(pad + '</' + wrap + '>');
+        continue;
+      }
+
+      /* A footnote's tag is p — BLOCK_TAG says so — so it needs the
+         class that tells it apart from an ordinary paragraph, the same
+         way makeBlock adds it in the live box. */
+      var tag = BLOCK_TAG[b.kind] || 'p';
+      out.push(pad + '<' + tag + dress(b, b.kind === 'footnote' ? 'footnote' : '') + '>' +
+        inlineToHtml(b.text.replace(/\s+/g, ' ')) + '</' + tag + '>');
+      i += 1;
+    }
+    return out.join('\n');
   }
 
   /* ---- The header every generated page wears -------------------------

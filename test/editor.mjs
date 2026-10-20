@@ -1044,6 +1044,77 @@ await pickOut(page, 10, 18);
 await use(page, row, 'B');
 await page.waitForTimeout(150);
 
+
+/* ---- a list survives being published and opened again ----
+
+   A fatwa's answer is a numbered list — the PDFs this library publishes
+   are built that way — and the writing box had no lists at all.
+
+   An item is a flat `p` in the BOX and an `li` in the FILE. That
+   asymmetry is deliberate: every block in the box is a direct child of
+   the canvas, `caretBlock` walks up to it and `tidy` rebuilds anything
+   whose tag is not in BLOCK_TAG, so a real list element put in the
+   canvas is torn down on the next keystroke.
+
+   Which is the whole reason this guard is a ROUND TRIP rather than a
+   reading of the markup. `bodyToHtml` fills both the page and the box,
+   and the first version taught it to gather items into an `<ol>` for the
+   page and forgot it also fills the box. The generated markup was
+   perfect. Written, published and reopened, a three-item list came back
+   as **nothing** — 0 items, the words run together into a paragraph. A
+   guard that stopped at the markup would have called that correct. */
+{
+  const canvas = OPEN_CANVAS;
+  const style = row.locator('.writing-menu[aria-label="Style"]');
+  for (const words of ['پہلی بات', 'دوسری بات', 'تیسری بات']) {
+    await newBlock(page, words);
+    await style.selectOption({ label: 'Numbered' });
+    await page.waitForTimeout(110);
+  }
+  await newBlock(page, 'اور یہ ایک عام پیراگراف ہے۔');
+  t('three points can be set as a numbered list',
+    await page.locator(canvas + ' > .list-number').count() === 3,
+    String(await page.locator(canvas + ' > .list-number').count()));
+  /* Flat in the box, which is what keeps the caret working. */
+  t('  …held flat in the box, not nested inside a list element',
+    await page.locator(canvas + ' > ol, ' + canvas + ' > ul').count() === 0);
+
+  await page.click('#export');
+  await exported(page);
+  /* Matched on the section's own FILE NAME, the way the export tests
+     above already do it — not on "a section mentioning this post",
+     which is several of them: content.js names it, so does the sitemap,
+     so does the homepage. The first version of this searched by text,
+     picked one of those, and reported `0 lists, 4 items` — the four
+     being a nav's `<li>`s. Count what you matched, and match on the
+     thing that is unique. */
+  const built = await page.evaluate((name) => {
+    const section = [...document.querySelectorAll('#out-pages section')]
+      .find((s) => s.querySelector('h3') &&
+        s.querySelector('h3').textContent.trim() === 'posts/' + name + '.html');
+    const box = section && section.querySelector('textarea');
+    return box ? box.value : '';
+  }, POST);
+  t(`  …the generated posts/${POST}.html was found to read`,
+    built.length > 500, String(built.length));
+  /* ONE list, not three — a run of items is gathered, so a reader is
+     told "list, three items" rather than meeting three lists of one. */
+  /* Counted INSIDE the list, not across the page: the generated header
+     is a nav of four `<li>`s, so counting the page reported seven items
+     for a list of three. The same lesson one layer down from the section
+     match above — count what you matched. */
+  const lists = (built.match(/<ol[\s>]/g) || []).length;
+  const inside = (built.match(/<ol\b[\s\S]*?<\/ol>/) || [''])[0];
+  const items = (inside.match(/<li[\s>]/g) || []).length;
+  t(`  …and the published page carries ${lists} list of ${items} items`,
+    lists === 1 && items === 3, `${lists} lists, ${items} items inside`);
+  t('  …with the script on the list as well as on its items, so the ' +
+    'numeral sits on the side the words read from',
+    /<ol class="urdu" lang="ur" dir="rtl">/.test(built), built.slice(0, 0) || 'see page');
+  await page.evaluate(() => document.getElementById('export-dialog').close());
+  await page.waitForTimeout(150);
+}
+
 /* ---- the Site & About panel -----------------------------------------
 
    The homepage's words are in content.js now, and this is the form that

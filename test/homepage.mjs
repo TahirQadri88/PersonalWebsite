@@ -2449,6 +2449,79 @@ try {
     t(`the stand-in sample is ${px} bytes, well under 6KB`, px < 6144, String(px));
   }
 
+
+  /* ---- a numbered ruling is numbered by the page ----
+
+     What a fatwa's answer is built from: the ruling in numbered points.
+     The numerals belong to the LIST, never typed into the words — so a
+     point inserted in the middle renumbers the ones under it, a screen
+     reader announces how many there are, and the figures follow the
+     script.
+
+     No post carries a list yet, so the guard writes one into the page
+     and measures that — the same move the ayn and the background rules
+     already make for a combination the library has not written. A rule
+     with no page to stand on is how a rule rots.
+
+     The fault this is for was invisible in the markup:
+     `.post-body .urdu { display: block }`, written so an inline
+     script-marked run takes its own line, also matches `li.urdu` and
+     turns the item into a plain block. A marker is only ever drawn on a
+     list item. The computed `list-style-type` read `urdu-points`
+     throughout and the page drew nothing — found by rendering it and
+     looking. Hence the last assertion, which compares ink rather than
+     declarations. */
+  group('a numbered ruling is numbered by the page, not by the words');
+  {
+    const { context, page } = await open(390, '/posts/hunar-nahin-amanat.html');
+    const made = await page.evaluate(() => {
+      const body = document.getElementById('post-body');
+      const list = document.createElement('ol');
+      list.id = 'probe-list';
+      list.className = 'urdu';
+      list.setAttribute('lang', 'ur');
+      list.setAttribute('dir', 'rtl');
+      ['پہلی بات', 'دوسری بات', 'تیسری بات'].forEach((words) => {
+        const item = document.createElement('li');
+        item.className = 'urdu';
+        item.setAttribute('lang', 'ur');
+        item.setAttribute('dir', 'rtl');
+        item.textContent = words;
+        list.appendChild(item);
+      });
+      body.appendChild(list);
+      const item = list.firstElementChild;
+      const cs = getComputedStyle(item);
+      return {
+        display: cs.display,
+        counter: cs.listStyleType,
+        dir: getComputedStyle(list).direction,
+        /* Room for the marker to sit in, on the side the list reads
+           from — without it the numeral is drawn outside the column. */
+        gutter: Math.round(parseFloat(getComputedStyle(list).paddingInlineStart))
+      };
+    });
+    t('an item is a list item, which is the only thing that draws a marker',
+      made.display === 'list-item', JSON.stringify(made));
+    t('…numbered in the script it reads in',
+      /urdu/.test(made.counter), made.counter);
+    t('…reading right to left, so the numeral sits on the right',
+      made.dir === 'rtl', made.dir);
+    t(`…with ${made.gutter}px of gutter for it`, made.gutter > 20, String(made.gutter));
+
+    /* Ink, not declarations. The same element with its marker taken away
+       must look different; if it does not, nothing was being painted. */
+    const numbered = await page.locator('#probe-list').screenshot();
+    await page.evaluate(() => {
+      document.querySelectorAll('#probe-list, #probe-list li')
+        .forEach((node) => { node.style.listStyle = 'none'; });
+    });
+    const bare = await page.locator('#probe-list').screenshot();
+    t(`…and the numeral is really painted (${numbered.length} bytes against ${bare.length})`,
+      !numbered.equals(bare), `${numbered.length} vs ${bare.length}`);
+    await context.close();
+  }
+
   /* ---- the rhythm between sections ---- */
   group('the page breathes without falling apart');
   {
