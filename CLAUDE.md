@@ -2098,6 +2098,26 @@ read perfectly well; a check that refuses to publish the library as it
 already stands is a check nobody can keep, and the temptation is then
 to delete it rather than narrow it.
 
+**A footnote came down a step, and the pair moved together.** Reported
+as clutter: at **19px** an Arabic reference in an Urdu piece is 0.90 of
+the 21px body, which on a phone reads as another paragraph rather than
+as a note — the Bukhari citation ran six lines directly under the
+prose. It is **17/15** now (Arabic reference / own-script note) against
+the 21px body, keeping the +2 the file already records for Naskh over
+Nastaliq.
+
+Settled by rendering 19/17, 18/16, 17/15 and 16/14 on the real page and
+**looking at the four together**, which is how every size here has been
+settled. 17/15 drops that reference to four lines and is plainly
+subordinate; at 16/14 the Nastaliq line starts to close up, which is the
+floor this site keeps meeting. The guard did not have to move — it asks
+that a footnote be smaller than its prose, which was true before and is
+true now, so it could not have caught this and is not the thing that
+should.
+
+**Print was left where it was**, the same reasoning as the leading: no
+printed page was looked at, and the report was about a phone.
+
 **A standfirst is a field, not the first block of the writing.**
 `subtitle` on a record becomes `.record-subtitle` in the hero, directly
 under the title and above the date. Written as the opening block of the

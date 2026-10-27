@@ -2487,10 +2487,18 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    quotation size above: 23px against a 21px body. Measured on
    `log-barabar-kyun-nahin`.
 
-   19px keeps the same +2 over the own-script footnote's 17 that the
+   17px keeps the same +2 over the own-script footnote's 15 that the
    quotation keeps over the body — Naskh reading smaller than Nastaliq is
    the same argument either way — and stays under the body, which is the
    whole point of a footnote.
+
+   It was 19/17 and came down a step, reported as clutter: at 19px an
+   Arabic reference is 0.90 of the 21px body, which on a phone reads as
+   another paragraph rather than as a note. Four pairs were rendered and
+   LOOKED at — 19/17, 18/16, 17/15, 16/14 — because a size is not
+   settled by arithmetic. 17/15 drops the Bukhari reference from six
+   lines to four and is plainly subordinate; at 16/14 the Nastaliq line
+   starts to close up, which is the floor this site keeps running into.
 
    The third time this fault has appeared: the headings had it, a Latin
    citation had it, and this is the combination neither covered. A
@@ -2499,7 +2507,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    smaller than the prose it sits in. */
 .post-body.urdu > .arabic.footnote,
 .post-body.arabic > .urdu.footnote {
-  font-size: 19px;
+  font-size: 17px;
   line-height: 1.9;
 }
 /* Straight edges on both sides, not just the one the text starts from
@@ -2937,8 +2945,8 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    was published louder than the prose it was a note on. The size here
    belongs to the piece's own script; a block in another keeps its own,
    and only the colour and the rule above the first one are shared. */
-.post-body.urdu .footnote:not(.latin):not(.arabic) { font-size: 17px; line-height: 1.9; }
-.post-body.arabic .footnote:not(.latin):not(.urdu) { font-size: 17px; }
+.post-body.urdu .footnote:not(.latin):not(.arabic) { font-size: 15px; line-height: 1.9; }
+.post-body.arabic .footnote:not(.latin):not(.urdu) { font-size: 15px; }
 .post-body > :not(.footnote) + .footnote {
   margin-top: 1.6em;
   padding-top: 1.1em;
