@@ -410,6 +410,18 @@ window.siteContent = {
       blurb: "Shorter pieces written as they come.",
       works: [
         {
+          id: "zaban-ki-hifazat",
+          title: "زبان کی حفاظت",
+          language: "ur",
+          subtitle: "‏ایک کلمہ درجات بلند کر دیتا ہے، ایک کلمہ جہنم میں جا گراتا ہے۔",
+          kind: "مضمون",
+          date: "2026-10-27",
+          description: "Two hadīths on the weight of a single word: one raises a man's rank, the other drops him into the Fire.",
+          descriptionUr: "‏زبان سے نکلنے والا ہر لفظ اہم ہے۔ ایک کلمہ درجات بلند کر دیتا ہے اور ایک کلمہ جہنم میں جا گراتا ہے۔",
+          tags: ["حفظِ لسان", "حدیث", "سوشل میڈیا پوسٹ"],
+          page: "posts/zaban-ki-hifazat.html"
+        },
+        {
           id: "technology-shapes-people",
           title: "Technology Shapes People",
           language: "en",
@@ -685,6 +697,9 @@ window.siteContent = {
    posts get an entry: a work or a fatwa's content is inside a PDF, which
    this cannot read into. */
 window.siteContent.searchIndex = {
+  "zaban-ki-hifazat": {
+    "text": "‏رسول اللہ ﷺ نے ارشاد فرمایا: ‏عَنْ أَبِي هُرَيْرَةَ رضي الله عنه، عَنِ النَّبِيِّ ﷺ قَالَ: ‏«إِنَّ الْعَبْدَ لَيَتَكَلَّمُ بِالْكَلِمَةِ مِنْ رِضْوَانِ اللَّهِ لَا يُلْقِي لَهَا بَالًا، يَرْفَعُ اللَّهُ بِهَا دَرَجَاتٍ، وَإِنَّ الْعَبْدَ لَيَتَكَلَّمُ بِالْكَلِمَةِ مِنْ سَخَطِ اللَّهِ لَا يُلْقِي لَهَا بَالًا، يَهْوِي بِهَا فِي جَهَنَّمَ» ‏ترجمہ: بے شک، بندہ کبھی اللہ تعالیٰ کی خوشنودی کی کوئی بات کہہ دیتا ہے، حالاں کہ وہ اس بات کو زیادہ اہمیت بھی نہیں دیتا، مگر اللہ تعالیٰ اسی بات کے سبب اس کے درجات بلند فرما دیتا ہے۔ اور کبھی بندہ اللہ تعالیٰ کی ناراضی کی کوئی بات کہہ بیٹھتا ہے، حالاں کہ اسے اس کی سنگینی کا احساس بھی نہیں ہوتا، مگر وہی بات اسے جہنم میں جا گراتی ہے۔ ‏حوالہ: صحیح البخاری، کتاب الرقاق، باب حفظ اللسان، حدیث ۶۴۷۸ (۸/۱۰۱، طبعۂ سلطانیہ)۔ ‏ایک اور حدیثِ مبارک میں رسول اللہ ﷺ نے ارشاد فرمایا: ‏«إِنَّ الرَّجُلَ لَيَتَكَلَّمُ بِالْكَلِمَةِ لَا يَرَى بِهَا بَأْسًا، يَهْوِي بِهَا سَبْعِينَ خَرِيفًا فِي النَّارِ» ‏ترجمہ: آدمی کبھی ایسی بات کہہ دیتا ہے جسے وہ معمولی سمجھتا ہے اور اس میں کوئی حرج نہیں جانتا، مگر اسی بات کے سبب وہ ستر سال کی مسافت تک جہنم میں جا گرتا ہے۔ ‏حوالہ: جامع الترمذی، ابواب الزہد، باب فیمن تکلم بکلمۃ یضحک بہا الناس، حدیث ۲۳۱۴ (۴/۱۴۶، تحقیق بشار عواد)۔ امام ترمذی رحمہ اللہ نے اسے حسن غریب قرار دیا ہے۔ ‏زبان سے نکلنے والا ہر لفظ اہم ہے۔ بولنے سے پہلے سوچیے کہ کہیں ہماری کوئی بات اللہ تعالیٰ کی ناراضی کا سبب تو نہیں بن رہی۔ اپنی زبان کو خیر، سچائی اور نیکی کا ذریعہ بنائیے۔ ‏اللہ تعالیٰ ہمیں اپنی زبان کی حفاظت کرنے، سوچ سمجھ کر بات کرنے اور اپنی رضا کے مطابق کلام کرنے کی توفیق عطا فرمائے۔ آمین یا رب العالمین!"
+  },
   "technology-shapes-people": {
     "text": "If you work in tech, this one is for you. Our ancestors had the wheel and fire. Those were tools: they did their job and stopped there. What we build today goes much further. It shapes what people believe, what they want and how they feel. Social media showed the world Palestine in a way no newspaper ever had. The same apps have left millions anxious and unable to stay with a single thought. Now AI is fast becoming the filter through which people read, write and learn. So before we ask whether something works, we should ask what it does to the person on the other side of the screen. Imām al-Ghazālī رحمه الله set the measure nine centuries ago: وَمَقْصُودُ الشَّرْعِ مِنَ الْخَلْقِ خَمْسَةٌ: أَنْ يَحْفَظَ عَلَيْهِمْ دِينَهُمْ وَنَفْسَهُمْ وَعَقْلَهُمْ وَنَسْلَهُمْ وَمَالَهُمْ “The Sharīʿah aims to protect five things in people: their faith, their life, their mind, their family line and their wealth. Whatever protects these is good. Whatever destroys them is harm.” By that measure, an app designed to steal attention is harming the mind, and a platform that carries truth is serving the dīn. Build with that in mind, and let the world see the goodness of Islam in what we make. 📚 al-Mustaṣfā, Imām al-Ghazālī, p. 174 (Dār al-Kutub al-ʿIlmiyyah, 1st ed., 1413/1993)"
   },
