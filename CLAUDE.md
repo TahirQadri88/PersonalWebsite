@@ -2128,9 +2128,12 @@ itself to a screen reader as Urdu. `tagMarkup`, three functions below,
 has always written `lang="en"` on a Latin tag, and that asymmetry is what
 says this was an omission rather than a decision.
 
-Found on the Halloween pamphlet, which is the case that shows it: its
+Found on the Halloween pamphlet, which is the case that showed it: its
 three sheets are English end to end while the record is `language: "ur"`,
-so the whole English half of its page was mislabelled. **`buildWork` had
+so the whole English half of its page was mislabelled. A background was
+written for it in both languages and then **taken out again at the
+author's word** — the fault it exposed is in `proseMarkup` and stands
+whatever that one record carries. **`buildWork` had
 the same omission twice more** — `.work-date` and the *See also* line,
 both the site's own English, both silent — which only turned up because
 the new guard looked.

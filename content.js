@@ -279,18 +279,6 @@ window.siteContent = {
           kind: "معلوماتی پمفلٹ",
           description: "What Muslims should know about Halloween.",
           descriptionUr: "ہیلو وین کے تہوار کے بارے میں مسلمانوں کے لیے ضروری معلومات۔",
-          background: [
-            "Halloween began as Samhain, the festival of the Celts of ancient Britain and Ireland. In the seventh century Pope Boniface IV set All Saints' Day on 13 May. The following century it was moved to 1 November, perhaps to put a Christian observance in the older festival's place. The evening before it is the hallowed eve, and that is where the name comes from.",
-            "The three sheets are written for Muslim parents and their children. The first asks what the festival is and where it came from. The other two set out nine points about it, from the ḥadīth on imitating a people to the crime and the road deaths the night is known for.",
-            "Two of those points meet a child directly. The sheets call trick-or-treat a form of begging, and say that a costume is a disguise and a frightening painted face a change made to Allah's creation.",
-            "The conclusion is printed on every sheet. Muslim parents and children should refuse to take part."
-          ],
-          backgroundUr: [
-            "ہیلو وین کی ابتدا Samhain سے ہوئی، جو قدیم برطانیہ اور آئرلینڈ کے Celtic قبائل کا تہوار تھا۔ ساتویں صدی عیسوی میں پوپ بونیفیس چہارم نے All Saints' Day ۱۳ مئی کو مقرر کیا۔ اگلی صدی میں اسے یکم نومبر کر دیا گیا، غالباً اس لیے کہ پرانے تہوار کی جگہ کوئی عیسائی دن لے لے۔ اسی دن سے پہلے کی شام hallowed eve کہلاتی ہے، اور نام یہیں سے بنا۔",
-            "یہ تین اوراق مسلمان والدین اور ان کے بچوں کے لیے لکھے گئے ہیں۔ پہلے ورق میں یہ بتایا گیا ہے کہ تہوار ہے کیا اور کہاں سے آیا۔ باقی دو میں نو باتیں درج ہیں، مشابہت والی حدیثِ مبارک سے لے کر ان جرائم اور حادثات تک جو اس رات کے ساتھ جڑے ہوئے ہیں۔",
-            "ان میں سے دو باتیں براہِ راست بچے سے متعلق ہیں۔ اوراق میں trick-or-treat کو مانگنے کی ایک صورت کہا گیا ہے، اور یہ کہ بھیس بدلنا ایک فریب ہے اور چہرے کی ڈراؤنی رنگائی اللہ کی تخلیق میں تبدیلی۔",
-            "نتیجہ ہر ورق پر لکھا ہے۔ مسلمان والدین اور بچوں کو اس تہوار میں شریک ہونے سے انکار کرنا چاہیے۔"
-          ],
           tags: ["عصری مسائل"],
           files: [
             { label: "Part 1", url: "files/social-media-posts-and-pamphlets/halloween-part-1.jpg", preview: "files/social-media-posts-and-pamphlets/halloween-part-1-preview.jpg" },
