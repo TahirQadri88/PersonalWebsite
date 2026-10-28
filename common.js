@@ -948,10 +948,19 @@
     /* dir is always written out, never left to be inherited. The work
        page sets itself right to left for an Urdu work, and an English
        paragraph that said nothing about itself was inheriting that and
-       coming out reversed. */
+       coming out reversed.
+
+       And `lang` is written out for the same reason, which this rule
+       made for `dir` and then did not apply to itself: the Latin branch
+       wrote none, so an English description or background on an Urdu
+       record inherited `lang="ur"` from the page and announced itself to
+       a screen reader as Urdu. Found on the Halloween pamphlet, whose
+       three sheets are English end to end. `tagMarkup`, three functions
+       below, has always written `lang="en"` on a Latin tag; that
+       asymmetry is what says this was an omission, not a decision. */
     return (
       '<p' + (classes ? ' class="' + classes + '"' : '') +
-      (rtl ? ' lang="' + tongue + '" dir="rtl"' : ' dir="ltr"') + '>' +
+      (rtl ? ' lang="' + tongue + '" dir="rtl"' : ' lang="en" dir="ltr"') + '>' +
       (rtl ? escapeHtml(text) : mixedMarkup(text)) +
       '</p>'
     );

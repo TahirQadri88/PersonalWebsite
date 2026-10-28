@@ -1987,10 +1987,22 @@ t('  …and it lands inside the introduction, not loose on the page',
     reached.content.includes('updated: "' + stamp + '"'), stamp);
   /* In the author's own day, not UTC's. Karachi is five hours ahead, so
      a post written before five in the morning used to be stamped
-     yesterday. */
+     yesterday.
+
+     This scanned the WHOLE of content.js for yesterday's date and failed
+     the day after any real publish: the library legitimately holds
+     records the author stamped yesterday, and that says nothing about
+     which clock `today()` reads. It is scoped to the record this suite
+     edited now.
+
+     And it is a companion rather than a guard, which the comment has to
+     say: this container runs on UTC, so a `today()` built from
+     `toISOString()` and one built from local parts give the same string
+     here and nothing in the run could tell them apart. What it does hold
+     is that the stamp is today's at all. */
+  const edited = (reached.content.split('id: "' + POST + '"')[1] || '').slice(0, 800);
   t('  …in the day where the editor is, not UTC\u2019s',
-    !reached.content.includes('updated: "' + new Date(Date.now() - 864e5).toISOString().slice(0, 10) + '"') ||
-    stamp === new Date(Date.now() - 864e5).toISOString().slice(0, 10), stamp);
+    edited.includes('updated: "' + stamp + '"'), stamp);
 }
 
 t('  …and the generated content.js still parses after all of that',

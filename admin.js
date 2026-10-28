@@ -2872,7 +2872,7 @@
          otherwise inherit dir="rtl" with no strong character of its own
          to anchor it, and the bidi algorithm moves the leading day number
          to the end: "3 August 2026" renders as "August 2026 3". */
-      pretty ? '        <p class="work-date" dir="ltr">' + e(pretty) + '</p>' : null,
+      pretty ? '        <p class="work-date" lang="en" dir="ltr">' + e(pretty) + '</p>' : null,
       /* The way across, written in the language it goes *to* — whoever
          wants it reads that language, so offering it in the one they are
          already reading helps nobody. This is not the "a kind is shown in
@@ -3865,7 +3865,7 @@
       /* Same reasoning as buildPost: formatDate's month name is always
          English, so this needs its own dir="ltr" or an RTL article
          reorders "3 August 2026" into "August 2026 3". */
-      pretty ? '        <p class="work-date" dir="ltr">' + e(pretty) + '</p>' : null,
+      pretty ? '        <p class="work-date" lang="en" dir="ltr">' + e(pretty) + '</p>' : null,
       /* Above the descriptions, where a reader who has landed on the
          wrong language should meet it before reading a paragraph of it. */
       altLine(twin, rtl, 'work-alt'),
@@ -3893,7 +3893,12 @@
       (function () {
         var target = record.seeAlso ? relatedOf(record.seeAlso) : null;
         if (!target) return null;
-        return '        <p class="work-seealso" dir="ltr">See also ' +
+        /* `lang` beside `dir`, for the reason `proseMarkup` gives: both
+           are written in the same breath and neither may be left out.
+           "See also" is the site's own English, and on an Urdu work this
+           line was inheriting `lang="ur"` from the page. The title inside
+           the link carries its own script through `titleMarkup`. */
+        return '        <p class="work-seealso" lang="en" dir="ltr">See also ' +
           '<a href="' + e('../' + site.ownPage(target.record)) + '">' +
           site.titleMarkup(target.record) + '</a></p>';
       })(),

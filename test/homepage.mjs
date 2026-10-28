@@ -3172,6 +3172,40 @@ try {
     t('there are prose blocks in both scripts to measure', counted >= 25, 'counted ' + counted);
     t('no passage is marked as the script it is not written in',
       wrong.length === 0, wrong.slice(0, 4).join('\n      '));
+
+    /* The mirror, and it had to be written because the group above reads
+       `p.urdu, p.arabic` — a guard that inspects only what is marked
+       cannot see what is not, which is this file's own lesson and was
+       exactly the hole. `proseMarkup` wrote `dir="ltr"` on an English
+       paragraph and NO `lang`, so on an Urdu record every English
+       description and background inherited `lang="ur"` from the page and
+       announced itself to a screen reader as Urdu. Found on the Halloween
+       pamphlet, whose three sheets are English end to end.
+
+       What is asserted is the rule the function itself follows: a
+       paragraph that declares its direction declares its language. Both
+       are written in the same breath, so neither may be left out. */
+    let ltr = 0;
+    const silent = [];
+    for (const path of PAGES) {
+      const { context, page } = await open(1440, path);
+      await page.evaluate(() => {
+        document.querySelectorAll('.work').forEach((w) => { w.open = true; });
+      });
+      const found = await page.evaluate(() =>
+        [...document.querySelectorAll('p[dir="ltr"]')].map((p) => ({
+          lang: p.getAttribute('lang'),
+          text: (p.textContent || '').slice(0, 40)
+        })));
+      await context.close();
+      for (const block of found) {
+        ltr += 1;
+        if (!block.lang) silent.push(path + ' ' + JSON.stringify(block));
+      }
+    }
+    t('there are left-reading prose blocks to measure', ltr >= 20, 'counted ' + ltr);
+    t('every one of them says which language it is in',
+      silent.length === 0, silent.slice(0, 4).join('\n      '));
   }
 
   /* ---- the background to the question ---------------------------------

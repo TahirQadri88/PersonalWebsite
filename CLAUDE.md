@@ -2118,6 +2118,46 @@ should.
 **Print was left where it was**, the same reasoning as the leading: no
 printed page was looked at, and the report was about a phone.
 
+**An English paragraph on an Urdu page said nothing about itself.**
+`proseMarkup` writes `dir` on every paragraph and had a comment saying
+why — *"dir is always written out, never left to be inherited"* — and
+then did not apply that to `lang`. The RTL branch wrote `lang="ur"`; the
+Latin branch wrote none. So on an Urdu record every English description,
+blurb and background inherited `lang="ur"` from the page and announced
+itself to a screen reader as Urdu. `tagMarkup`, three functions below,
+has always written `lang="en"` on a Latin tag, and that asymmetry is what
+says this was an omission rather than a decision.
+
+Found on the Halloween pamphlet, which is the case that shows it: its
+three sheets are English end to end while the record is `language: "ur"`,
+so the whole English half of its page was mislabelled. **`buildWork` had
+the same omission twice more** — `.work-date` and the *See also* line,
+both the site's own English, both silent — which only turned up because
+the new guard looked.
+
+**The group that should have caught it reads `p.urdu, p.arabic`.** A
+guard that inspects only what is marked cannot see what is not, for the
+third time in this file. The mirror asserts the rule the function itself
+follows: a paragraph that declares its direction declares its language.
+Restoring the one line reports the homepage's category blurbs and every
+English description in an open library row.
+
+**A `git checkout` undid the fix while the fault was being proved**, and
+the suite then failed for a reason that looked like the code. The fix was
+unstaged, so restoring the file restored the *fault* rather than the fix.
+Stage a fix before restoring a fault on top of it, or keep the
+restoration in a patch rather than in the working tree.
+
+**And one assertion in `test/editor.mjs` failed for its own reasons.**
+*in the day where the editor is, not UTC's* scanned the whole of
+`content.js` for yesterday's date, so it went red the day after any real
+publish — the library legitimately holds records the author stamped
+yesterday, which says nothing about which clock `today()` reads. Scoped
+to the record the suite itself edits now. It is also a **companion rather
+than a guard** and the comment says so: this container runs on UTC, so a
+`today()` built from `toISOString()` and one built from local parts
+produce the same string here and nothing in the run can tell them apart.
+
 **A standfirst is a field, not the first block of the writing.**
 `subtitle` on a record becomes `.record-subtitle` in the hero, directly
 under the title and above the date. Written as the opening block of the
