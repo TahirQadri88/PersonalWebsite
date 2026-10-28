@@ -279,6 +279,16 @@ window.siteContent = {
           kind: "معلوماتی پمفلٹ",
           description: "What Muslims should know about Halloween.",
           descriptionUr: "ہیلو وین کے تہوار کے بارے میں مسلمانوں کے لیے ضروری معلومات۔",
+          background: [
+            "Halloween began as Samhain, the festival of the Celts of ancient Britain and Ireland. In the seventh century Pope Boniface IV set All Saints' Day on 13 May. A century later it was moved to 1 November, and the evening before it became the hallowed eve.",
+            "The three sheets ask what the night is and what it asks a Muslim child to do. They begin with the ḥadīth that whoever imitates a people is counted one of them. They then go through the festival itself: its delight in magic and the dead, trick-or-treat as a form of begging, costumes and face paint, and the theft, vandalism and road deaths the night is known for.",
+            "The pamphlet's own conclusion is printed on every sheet. Muslim parents and children should refuse to take part."
+          ],
+          backgroundUr: [
+            "ہیلو وین کی ابتدا قدیم برطانیہ اور آئرلینڈ کے سیلٹک قبائل کے تہوار ”سمہین“ سے ہوئی۔ ساتویں صدی عیسوی میں پوپ بونیفیس چہارم نے یومِ اولیاء ۱۳ مئی کو مقرر کیا، اور اگلی صدی میں اسے یکم نومبر کر دیا گیا۔ اسی دن سے پہلے کی شام ”ہیلوڈ ایو“ یعنی ہیلو وین کہلائی۔",
+            "ان تین اوراق میں وہ باتیں جمع کی گئی ہیں جو ایک مسلمان ماں باپ کو معلوم ہونی چاہئیں۔ بنیاد وہ حدیثِ مبارک ہے کہ جو کسی قوم کی مشابہت اختیار کرے، وہ انہی میں سے ہے۔ اس کے بعد خود تہوار کے اجزا کا جائزہ ہے: جادو اور ارواح سے دلچسپی، ”ٹرک اور ٹریٹ“ کی صورت میں مانگنا، بھیس اور چہروں کی رنگائی، اور اس رات ہونے والی چوری، توڑ پھوڑ اور سڑک کے حادثات۔",
+            "پمفلٹ کا اپنا نتیجہ ہر صفحے پر درج ہے۔ مسلمان والدین اور بچوں کو اس تہوار میں شرکت سے انکار کرنا چاہیے۔"
+          ],
           tags: ["عصری مسائل"],
           files: [
             { label: "Part 1", url: "files/social-media-posts-and-pamphlets/halloween-part-1.jpg", preview: "files/social-media-posts-and-pamphlets/halloween-part-1-preview.jpg" },
