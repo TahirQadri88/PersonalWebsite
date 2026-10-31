@@ -2161,6 +2161,43 @@ than a guard** and the comment says so: this container runs on UTC, so a
 `today()` built from `toISOString()` and one built from local parts
 produce the same string here and nothing in the run can tell them apart.
 
+**An outside design checklist was run over the site, and most of it did
+not apply.** `unslop` (heydamir, CC BY 4.0) audits for AI-looking UI —
+purple gradients, glows, gradient text, emoji labels, `transition: all`,
+hover scaling, looping motion, uppercase tracked labels — and then fixes
+a screen in nine passes. It was **read, not installed**, and run by hand.
+Measured: no gradient text, no coloured glow, no `transition: all`, no
+`infinite` animation, and the four `scale()` uses are all `:active`
+press feedback, which is the thing this file records adding deliberately
+for touchscreens rather than the hover scaling the checklist objects to.
+One emoji in the whole library, now gone.
+
+**Two of its three findings did not survive being measured, and one of
+those was mine.** Called the radii "the one real craft gap" before
+checking; walking every rendered element on four pages found **exactly
+one** nested radius pair on the site, because the library rows, work
+panels and cards are square. A rule with one instance is not a gap. And
+that one pair was then rendered both ways and the **eye preferred the
+8px the site already had** over the 4px the nesting arithmetic computes
+— the panel's own corner is 10px, so 8 sits closer to it than 4 does.
+The measurement and the eye disagreed and the eye won, which is this
+file's own recorded pattern, in the direction that ships nothing.
+
+`.record-meta` was the second: the checklist flags uppercase tracked
+labels, and that line is 12px/700/0.6px tracking. Set four ways and
+looked at, the current one is right — the tracking is what says *this is
+metadata, not prose*, and at 13px sentence case it competes with the
+title above it. A false positive, withdrawn.
+
+**What it was worth, stated plainly:** one emoji removed, and a
+confirmation that the audit finds nothing else. The confirmation is the
+part worth having, since the alternative was assuming. Its rules on
+weight (nothing above 600) and icon size are written for Latin dashboard
+UI and do not survive this library's Naskh and Nastaliq — the same
+lesson as `71% → 78%`. Its motion pass would delete the
+recently-added carousel's auto-advance, which the author asked for
+twice. **An outside checklist is advice to weigh, not a thing to apply.**
+
 **A standfirst is a field, not the first block of the writing.**
 `subtitle` on a record becomes `.record-subtitle` in the hero, directly
 under the title and above the date. Written as the opening block of the
