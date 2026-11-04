@@ -77,7 +77,7 @@
      and a word in a label cannot come out in a different face from the
      same word in the prose. 12KB for both weights; the ten-character cut
      was measured at 4.6KB and the difference buys that parity. */
-  --font-ui: "DM Sans", "Latin marks sans", system-ui, -apple-system, sans-serif;
+  --font-ui: "DM Sans", "Latin marks sans", "Arrow marks sans", system-ui, -apple-system, sans-serif;
   /* Mehr first — closer to traditional Nastaliq calligraphy than Noto's
      own, which is why it's here at all — but Noto Nastaliq Urdu, already
      loaded for this same fallback role, catches it if Mehr's file (self-
@@ -95,7 +95,7 @@
      @font-face. Both are scoped by unicode-range to the characters they
      are for and can draw nothing else. */
   --font-urdu: "Mehr", "Latin in Urdu", "Ayn and hamza", "Urdu guillemets",
-               "Noto Nastaliq Urdu", serif;
+               "Urdu dashes", "Noto Nastaliq Urdu", serif;
   /* A record's own title, and an in-prose subheading inside a post —
      see `.record-title` and `.post-body h2` below. Bold reads better
      than Nastaliq at heading weight, which is the same reasoning Jameel
@@ -326,7 +326,7 @@ img { max-width: 100%; }
    --font-urdu-heading says this already, about Jameel Noori by name. */
 :root.jameel {
   --font-urdu: "Jameel Noori Nastaleeq", "Latin in Urdu", "Ayn and hamza",
-               "Urdu guillemets", "Mehr", "Noto Nastaliq Urdu", serif;
+               "Urdu guillemets", "Urdu dashes", "Mehr", "Noto Nastaliq Urdu", serif;
 }
 
 /* Aslam — bold Naskh, used here for the same reason Jameel Noori
@@ -425,6 +425,46 @@ img { max-width: 100%; }
   unicode-range: U+00AB, U+00BB;
 }
 
+/* The dashes, for the same reason as the guillemets above and found the
+   same way — off the wire, not by looking.
+
+   Mehr holds neither – nor — (211 code points, checked), so both fell
+   past `Latin in Urdu`, whose range is letters, to Noto Nastaliq Urdu —
+   and the browser really fetches Noto's 20,492-byte subset to draw a
+   short horizontal line. Measured: it is pulled on the homepage, the
+   author page, the fatāwā page and choice-of-words. 223 em-dashes
+   across the repository, 64 in content.js.
+
+   CLAUDE.md records deciding NOT to patch this, on the grounds that a
+   dash is a horizontal bar in every serif and nothing visible changed.
+   That was right about the shape and is still right. It weighed the
+   appearance and never weighed the 20KB, because the probe asked which
+   face drew the dash rather than what fetching that face cost.
+
+   A file of its own rather than more code points on a face already
+   here, which measurement forced: Aslam is not fetched on the author
+   page, and `latin-in-urdu` is not fetched on the homepage, the fatāwā
+   page or choice-of-words, so there is no shared file on all four and
+   sharing would have traded Noto's 20KB for a 53KB Aslam fetch on the
+   page carrying the most dashes.
+
+   Cut from Noto Sans and not from Aslam, which is the face CLAUDE.md
+   had costed for it: Aslam's dash has a side bearing of exactly zero,
+   so its bar touches the glyphs on both sides and reads tighter than
+   the Noto Nastaliq it replaces. Drawn in a real bio line at 19px and
+   looked at. See files/fonts/urdu-dashes-NOTICE.txt.
+
+   No size-adjust, the same argument the guillemets make: a dash belongs
+   to the Urdu clause, and at 78% it would be a shorter bar than that
+   clause wants. */
+@font-face {
+  font-family: "Urdu dashes";
+  src: url("files/fonts/urdu-dashes-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+2013, U+2014;
+}
+
 /* The ayn and the hamza, and nothing else — the same shape as the face
    above, for the same kind of reason: one face cannot draw everything a
    line needs, so the gap is named and filled deliberately rather than
@@ -499,6 +539,44 @@ img { max-width: 100%; }
   font-weight: 700;
   font-display: swap;
   unicode-range: U+02BE-02BF, U+1E00-1E9F;
+}
+
+/* The arrows, and nothing else — the fourth face patched in for the
+   same reason as the three above it, found the same way.
+
+   Every arrow on this site is in the chrome, so every one of them is
+   DM Sans's to draw: "Browse the works →", "Read →", "← All works",
+   "All of <category> →". Read off the file Google serves, DM Sans
+   holds U+2191 ↑ and U+2193 ↓ and does not hold U+2190 ← or U+2192 →.
+   Two of the four. So 71 → and 33 ← across the repository fell to the
+   device — measured live, 122 glyphs of the container's Inter — and a
+   fallback does not carry DM Sans's weight with it, so what a reader
+   sees is a thin pale arrow beside heavy bold letters.
+
+   `latin-marks-sans` could not simply be extended: Noto Sans, which it
+   is cut from, has no arrows either. Four candidates were cut and
+   drawn beside DM Sans at the real 14px and 15px; Figtree and Work
+   Sans were indistinguishable and Figtree is half the bytes. See
+   files/fonts/arrow-marks-sans-NOTICE.txt.
+
+   Named after DM Sans rather than before it, which is safe here and is
+   NOT the superscript-digits case: that patch had to come first
+   because Gentium holds four of the ten digits and would have won them
+   on order. DM Sans holds neither arrow, so there is nothing to lose
+   the race to. */
+@font-face {
+  font-family: "Arrow marks sans";
+  src: url("files/fonts/arrow-marks-sans-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+2190, U+2192;
+}
+@font-face {
+  font-family: "Arrow marks sans";
+  src: url("files/fonts/arrow-marks-sans-700.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+  unicode-range: U+2190, U+2192;
 }
 
 h1, h2, h3 {
@@ -683,8 +761,24 @@ h1, h2, h3 {
 }
 
 /* .document-link sets --font-ui and is declared after .urdu, so it wins on
-   source order. These have to name the script font again to take it back. */
+   source order. These have to name the script font again to take it back.
+
+   `.text-link` is the OTHER half of that same rule and was left out of
+   this one for as long as it has existed. DM Sans holds no Arabic
+   script at all, so the اردو میں پڑھیے link — the only Urdu on five
+   English pages — was handed to it and drawn by whatever the device
+   had: measured live, 12 glyphs of a system Naskh, 88x26px where Mehr
+   gives 62x33. Naskh where this site's one emphatic rule is that Urdu
+   is Nastaliq. Same shape as `Ayn and hamza` being named in one stack
+   and not the other, and the fix is the same: name it here beside its
+   sibling rather than in a rule of its own, so the two cannot drift
+   again.
+
+   No size is lost by doing it that way: every such link sits inside
+   `.post-alt` or `.work-alt`, whose own 17px is declared at 2601 and
+   2614 and wins this block's 15px on source order. */
 .document-link.urdu,
+.text-link.urdu,
 .button.urdu {
   font-family: var(--font-urdu);
   font-size: 15px;
@@ -692,6 +786,7 @@ h1, h2, h3 {
   font-weight: 500;
 }
 .document-link.arabic,
+.text-link.arabic,
 .button.arabic {
   font-family: var(--font-arabic);
   font-size: 15px;
@@ -2037,10 +2132,13 @@ body.is-searching .rulings h2 { margin-bottom: 26px; }
    row rather than wherever the description happened to stop. */
 .ruling-body { display: flex; flex-direction: column; gap: 16px; }
 .ruling-foot { display: flex; flex-direction: column; gap: 8px; }
+.ruling h2,
 .ruling h3 { font-size: 20px; line-height: 1.3; color: var(--moss-deep); }
 /* 1.3 is a Latin leading. Nastaliq and Naskh keep their own, or a
    two-line Urdu title collides with itself. */
+.ruling h2.urdu,
 .ruling h3.urdu { font-size: 22px; line-height: 2.05; }
+.ruling h2.arabic,
 .ruling h3.arabic { font-size: 25px; line-height: 1.65; }
 /* On paper now, so these take the on-light values. The section's own
    heading and note stay on the green and keep the on-dark ones — which

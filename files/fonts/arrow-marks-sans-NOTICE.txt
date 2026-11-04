@@ -1,0 +1,49 @@
+Arrow marks sans
+
+A subset of Figtree carrying U+2190 (←) and U+2192 (→), and nothing
+else. 2 code points, 788 bytes at 400 and 792 at 700.
+
+Figtree is licensed under the SIL Open Font License, Version 1.1:
+https://scripts.sil.org/OFL — Copyright 2022 The Figtree Project
+Authors (https://github.com/erikdkennedy/figtree). The copyright
+declares no Reserved Font Name, so subsetting and redistribution are
+permitted. The family has been renamed from "Figtree" to "Arrow marks
+sans" inside the font, because this is a modified subset and must not
+be mistaken for Figtree entire. Instanced from the variable file at
+wght 400 and 700, which are the two weights the site's chrome draws.
+
+Why it exists, and it is the same fault as the two patches beside it
+in one more place. DM Sans sets this site's chrome, and every arrow on
+the site lives in the chrome: "Browse the works →", "Read →", "← All
+works", "All of <category> →". Read off the served file's cmap, DM
+Sans holds U+2191 (↑) and U+2193 (↓) and does NOT hold U+2190 or
+U+2192 — two of the four, which is the sort of thing only a cmap read
+will tell you. So 71 → and 33 ← across the repository were drawn by
+whatever sans the device happened to have: measured live with
+getPlatformFontsForNode, 122 glyphs of the container's Inter.
+
+What that looks like is a thin, pale arrow sitting beside heavy bold
+letters, because a fallback face does not take DM Sans's weight with
+it. Rendered side by side at the real 14px and 15px, the ↓ that DM
+Sans does hold is plainly heavier than the → it does not.
+
+Four faces were measured as candidates, by reading cmaps rather than
+by reputation — Noto Sans, the source of `latin-marks-sans` beside
+this, turns out not to hold the arrows either, so that patch could not
+simply be extended. Figtree, IBM Plex Sans, Source Sans 3 and Work
+Sans all have both at a weight axis. All four were cut, drawn beside
+DM Sans at 400 and 700 and looked at: Figtree and Work Sans are
+indistinguishable there, and Figtree is half the bytes. Both are
+geometric sans faces, which is what DM Sans is.
+
+Scoped by unicode-range in styles.css so it can only ever draw those
+two marks; everything else is DM Sans's. The range declares exactly
+what the files hold — 2 of 2, checked by reading the cmap back out of
+the woff2 after writing it — because this repository's own lesson is
+that a declaration which overstates what is inside is worse than no
+declaration at all.
+
+Note that `.category-arrow`'s › is deliberately NOT covered here. It
+is a <button>, which does not inherit font-family, so it has always
+drawn in the UA default; CLAUDE.md records that as intentional, and
+naming it would change a glyph this had no business touching.

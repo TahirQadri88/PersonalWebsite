@@ -1,0 +1,52 @@
+Urdu dashes
+
+A subset of Noto Sans carrying U+2013 (–) and U+2014 (—), and nothing
+else. 2 code points, 980 bytes (948 before the rename).
+
+Noto Sans is licensed under the SIL Open Font License, Version 1.1:
+https://scripts.sil.org/OFL — the copyright carries no Reserved Font
+Name, so subsetting and redistribution are permitted; this is the same
+clearance `latin-marks-sans` beside it records. The family has been
+renamed from "Noto Sans" to "Urdu dashes" inside the font, because this
+is a modified subset and must not be mistaken for Noto Sans entire.
+
+Why it exists, and this one is about WEIGHT ON THE WIRE rather than
+about the shape. CLAUDE.md records looking at a patched em-dash against
+an unpatched one and deciding it was not worth a file, because a dash
+is a horizontal bar in every serif and nothing visible changed. That
+judgement about the shape was right and still is.
+
+What it did not weigh is what the missing glyph COSTS. Mehr holds
+neither dash (211 code points, checked). The fallback behind it in
+--font-urdu is Noto Nastaliq Urdu, so the browser really fetches Noto's
+subset — 20,492 bytes — to draw a short horizontal line. Measured off
+the wire, it is fetched on the homepage, the author page, the fatāwā
+page and choice-of-words. That is exactly the "20KB over the wire to
+draw two characters" that the `Urdu guillemets` rule was added to
+prevent, in the one character the guillemets range does not cover.
+There are 223 em-dashes across the repository, 64 in content.js alone.
+
+Three candidate sources were cut and drawn in a real bio line at 19px
+and looked at, because the thing that decides this is the side bearing
+and no stack says what that is:
+
+  Aslam      908 B   advance 1.000em, side bearing 0.000em
+  Noto Sans  948 B   advance 1.000em, side bearing 0.040em
+  Gentium  4,580 B   advance 0.778em, side bearing 0.028em
+
+Aslam is the face CLAUDE.md had costed for this, and it is the wrong
+one: with no side bearing at all its bar touches the glyphs on both
+sides and reads tighter than the Noto Nastaliq it replaces. Noto Sans
+has air on both sides and reads best of the three; Gentium is close but
+five times the bytes, because its em-dash drags extra tables with it.
+
+A file of its own rather than more code points on an existing face,
+and that was forced by measurement too. Aslam is not fetched on the
+author page; `latin-in-urdu` is not fetched on the homepage, the
+fatāwā page or choice-of-words. There is no already-present file on
+all four, so sharing one would have traded Noto's 20KB for a 53KB
+Aslam fetch on the page with the most dashes on the site.
+
+It carries NO size-adjust, for the reason `Urdu guillemets` gives: a
+dash belongs to the Urdu clause around it, and at `Latin in Urdu`'s 78%
+it would be a shorter bar than that clause wants.

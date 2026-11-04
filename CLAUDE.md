@@ -59,6 +59,12 @@ files/fonts/    Mehr Nastaliq Web (CC BY-SA, credited in the footer) and Aslam
                   Also ayn-and-hamza-400/700.woff2 — two glyphs, 672 and 664
                   bytes, cut from Cardo under the OFL because Gentium has
                   neither. See its NOTICE.txt and the rule below.
+                  arrow-marks-sans-400/700.woff2 — ← and →, 788 and 792
+                  bytes, cut from Figtree, because DM Sans holds ↑ and ↓
+                  and not these two. urdu-dashes-400.woff2 — – and —, 980
+                  bytes, cut from Noto Sans, because Mehr holds neither
+                  and the fallback behind it really fetched Noto
+                  Nastaliq's 20KB to draw a horizontal line.
 ```
 
 ## Rules that matter
@@ -757,11 +763,37 @@ question was measured on the live site with a cold cache before the
 default moved:
 
 ```
- 3G  ~0.4 Mbps   words on screen while waiting: yes   Jameel usable  33.7s
- slow 4G ~1.6    words on screen while waiting: yes   Jameel usable  31.8s
+ 3G  ~0.4 Mbps   words on screen while waiting: yes   Jameel usable 151.5s
+ slow 4G ~1.6    words on screen while waiting: yes   Jameel usable  38.8s
  4G  ~8 Mbps     words on screen while waiting: yes   Jameel usable   9.1s
  wifi ~40        words on screen while waiting: yes   Jameel usable   2.9s
 ```
+
+**The 3G row used to read 33.7s and that was impossible.** 6.57MB at
+0.4 Mbps has a floor of 131 seconds; no measurement can beat the
+arithmetic. The tell was sitting in the table all along — 33.7 and 31.8
+are within two seconds of each other across a **fourfold** difference in
+bandwidth, which cannot be true of a download that is bandwidth-bound.
+Re-measured with CDP's own throttling, the figures are **151.5s on 3G
+and 38.8s on slow 4G**, and 38.8 against a 32.8s arithmetic floor is
+what a real measurement looks like. The slow-4G row was right; the 3G
+row was out by 4.5x, and most likely came from Chrome's "Fast 3G"
+preset, which is 1.6 Mbps and is the row below.
+
+**Nothing in the conclusion moves, and that is worth saying plainly so
+the correction is not read as a reversal.** First contentful paint was
+measured at the same time: **1.6s on slow 4G and 4.0s on 3G**, with
+`#post-body` painted at 0.5s and 0.75s. Nobody waits to read, exactly as
+the paragraph below says. What changes is the stated price to the reader
+the Save-Data branch exists for: two and a half minutes of their data
+in the background, not thirty seconds.
+
+**Lighthouse scores these pages 55 and reports FCP as 37.4s. Ignore
+it.** Its mobile run uses simulated (lantern) throttling, which folds
+the 6.5MB font into the critical path; the real first paint is the 1.6s
+above, measured with the network actually throttled. Accessibility 100,
+best practices 100 and SEO 100 on the same runs are worth having. The
+performance number on a post or work page is not.
 
 **Nobody ever waits to read**, and that is the whole of why the default
 is safe. `font-display: swap` with **`Mehr` named inside the same
@@ -1148,6 +1180,194 @@ serif, where a missing `ḥ` is a different letterform mid-word. The
 measurement and the eye disagreed and the eye won, which is the same
 lesson as `pretty` beating `balance` on paper and losing on screen — in
 the direction that saves a font file rather than spending one.
+
+**That paragraph was right about the shape and wrong about the cost, and
+the dash is patched now.** It asked which face drew the dash and never
+asked what fetching that face cost. Mehr holds neither mark, so both fall
+to **Noto Nastaliq Urdu**, which is in `--font-urdu` as the last resort —
+and the browser really pulls its **20,492-byte** subset to draw a short
+bar. Counted off the wire: fetched on the homepage, the author page, the
+fatāwā page and `choice-of-words`. That is precisely the
+"20KB-over-the-wire-for-two-characters" the `Urdu guillemets` rule was
+added to stop, in the one character its range does not cover. 223
+em-dashes across the repository, 64 in `content.js`.
+
+`Urdu dashes` is **980 bytes**, and the eye still decides which face it is
+cut from. Three were drawn in a real bio line at 19px and looked at,
+because what settles this is the side bearing and no stack states one:
+
+```
+ Aslam      908 B   advance 1.000em, side bearing 0.000em
+ Noto Sans  948 B   advance 1.000em, side bearing 0.040em
+ Gentium  4,580 B   advance 0.778em, side bearing 0.028em
+```
+
+**Aslam is the face the paragraph above had costed, and it is the wrong
+one**: a side bearing of exactly zero puts its bar against the glyphs on
+both sides, reading *tighter* than the Noto Nastaliq it replaces. Noto
+Sans has air on both sides and reads best; Gentium is close and five
+times the bytes, its em-dash dragging extra tables along.
+
+**A file of its own rather than more code points on a face already here,
+and that was forced by measurement.** Sharing was the elegant answer and
+does not survive the wire: **Aslam is not fetched on the author page**,
+and `latin-in-urdu` is not fetched on the homepage, the fatāwā page or
+`choice-of-words`. No already-present file is on all four, so sharing
+would have traded Noto's 20KB for a **53KB** Aslam fetch on the page
+carrying the most dashes on the site. The one-fetch trick the guillemets
+play is not available here.
+
+Jameel holds both dashes itself, so on a page where it has landed this is
+never reached. What it serves is the Mehr pages — the catalogue, which
+this file says stays on Mehr deliberately — and the swap window on every
+Jameel page.
+
+**And DM Sans holds ↑ and ↓ and does not hold ← or →.** Two of the four,
+which is the sort of thing only a cmap read tells you, and the fifth time
+this repository has paid for *a font stack is a claim worth measuring*.
+Every arrow on the site is in the chrome and therefore DM Sans's to draw
+— `Browse the works →`, `Read →`, `← All works`, `All of <category> →` —
+so **71 `→` and 33 `←`** were drawn by whatever sans the device had: 122
+glyphs of the container's Inter, measured with
+`getPlatformFontsForNode`. A fallback does not carry DM Sans's weight
+with it, so what a reader sees is a thin pale arrow beside heavy bold
+letters; rendered side by side at the real 14px and 15px, the `↓` DM Sans
+*does* hold is plainly heavier than the `→` it does not.
+
+`latin-marks-sans` could not simply be extended: **Noto Sans, which it is
+cut from, has no arrows either.** Four candidates with both at a weight
+axis were cut and drawn beside DM Sans — Figtree, IBM Plex Sans, Source
+Sans 3, Work Sans. Figtree and Work Sans are indistinguishable there and
+Figtree is half the bytes; both are geometric, which is what DM Sans is.
+`Arrow marks sans` is 788 and 792 bytes.
+
+Named **after** DM Sans in `--font-ui`, which is safe here and is *not*
+the superscript-digits case: that patch had to come first because Gentium
+holds four of the ten digits and would have won them on source order. DM
+Sans holds neither arrow, so there is nothing to lose the race to.
+`.category-arrow`'s `›` is still deliberately untouched — a `<button>`
+does not inherit `font-family`, which this file already records as
+intentional.
+
+**`.text-link` was handing Urdu to DM Sans, and the fix was already in
+the file for its sibling.** `.urdu` and `.text-link` are both `(0,1,0)`
+and `.text-link` is declared later, so it won the family and the
+اردو میں پڑھیے link — the only Urdu on five English pages — computed
+`"DM Sans", "Latin marks sans", system-ui` with **no Urdu face in it at
+all**. DM Sans has no Arabic script, so the device drew it: 12 glyphs of
+a system **Naskh**, 88×26px where Mehr gives 62×33, on a site whose one
+emphatic rule is that Urdu is Nastaliq. Looked at, not just measured —
+the live link is flat Naskh beside the cascading Nastaliq it should be.
+
+The take-it-back rule at `.document-link.urdu` has existed since the day
+that rule was written and `.text-link` was simply never added to it —
+`Ayn and hamza` named in one stack and not the other, exactly. It is
+named there now beside its sibling rather than in a rule of its own, so
+the two cannot part again. No size is lost: every such link sits inside
+`.post-alt`/`.work-alt`, whose own 17px is declared later and wins that
+block's 15px on source order.
+
+`.button.urdu` was already in that block and was never broken; the fault
+was specific to the one pair. **The faces sweep had never looked at
+either** — its page list held no work with Urdu file labels, so six
+`.button.urdu` controls went unmeasured for as long as the sweep has
+existed. Widen the page list before trusting a sweep's silence.
+
+**axe-core and Lighthouse were run over the live site and found almost
+nothing, which is worth recording as plainly as the faults.** axe 4.10.2
+(WCAG 2.0/2.1 A+AA plus best-practice) over eight templates at two widths
+with every `<details>` forced open: **one** violation. Lighthouse 12 on
+four pages: accessibility 100/100/100/98, best practices 100, SEO 100.
+
+That one violation was heading order, and it is **not** geometry, which
+is why nothing in the suite had anything to say. `/fatawa/` ran `h1` then
+nine `h3` cards with no `h2`; two posts put sub-headings before their
+first heading. The homepage is deliberately not in that list — the same
+card sits under `<h2>Islamic rulings</h2>` there, so `h3` is right on
+that page and wrong where the same words are the `<h1>`. `.ruling h2` is
+named beside `.ruling h3` for the reason `.intro h1` is named beside
+`.intro h2`: a heading must not change size because its level did.
+
+For the two posts the level change does move something, and it was looked
+at rather than assumed: an Urdu `h3` is 17px Aslam at 390px and an `h2`
+is 20px in the same face, so nine section headings on the stocks article
+and one on `hunar-nahin-amanat` grew 3px. They read as headings now
+rather than as slightly larger body text, which is what the author chose
+the control for.
+
+**A proofreading fault is not geometry either, and the suite could not
+see one.** 1,382 blocks of rendered text were read off all 38 pages. An
+unclosed straight quotation mark that opened and never shut; eight
+straight apostrophes among 29 typographic ones, with one page using both
+forms; a post title carrying a question mark inside quotation marks for a
+statement, baked into its tab title, `og:title`, JSON-LD, share card and
+the *More in* list on four other posts; `قران` for `قرآن`; `Sūrat` and
+`Sūrah` for the same sūrah in one post; `al-Nasafi` beside `al-Qurṭubī`
+and `al-Rāzī`; `hadith` bare in a sentence that also says `Ṣaḥīḥ
+al-Bukhārī`; 10 double spaces and 27 spaces before an Urdu `،` or `۔`.
+And one post numbered its references `[1]`–`[7]` where the rest of the
+site uses superscripts — **a repository that carries a font subset built
+to draw all ten of those digits**.
+
+That post's reference entries also carried **no `.footnote` class at
+all**, so all seven rendered at 17px, the body's own size. The guard that
+exists for this reads `.footnote`, so it had nothing to measure — "a
+guard that inspects only what is marked cannot see what is not" — and
+`unmarkedReferences` in `admin.js` missed them because it only knows
+superscript numerals, not `[n]`.
+
+*the words are set as this library sets words* in `test/homepage.mjs` is
+the mirror. It reads the committed source rather than the page, so it
+covers `content.js`, where a description lives before any page is
+generated from it.
+
+**Three things it had to learn, each from its own first run.** Block
+comments in `content.js` document the format and are full of English
+contractions and example keys in straight quotes; eight of those were
+reported as faults, so a comment is not prose and is stripped. A `"` is
+the **delimiter** of a JS string and of every JSON-LD value, so the
+character is structural there and prose only inside it — that check reads
+string contents for `.js` and drops `<script>` bodies for `.html`, and
+those bodies must come off the **raw** html before the tags do, or
+`prose()` has already erased the `<script>` and the JSON-LD survives
+whole. The apostrophe check deliberately keeps looking inside those
+bodies, and that is not an inconsistency: **seven straight apostrophes
+were still sitting in `og:description` and JSON-LD after `content.js` had
+been corrected**, which is what a crawler and a share sheet read.
+
+**The search index is generated from a post's own words, so correcting a
+post leaves it disagreeing.** `window.siteContent.searchIndex` still held
+every pre-fix form — the straight quote, the `[n]` markers, `Sūrat`,
+`al-Nasafi`, `قران`. *the content.js it writes is the content.js in the
+branch* in `test/editor.mjs` is what caught the last of it, and caught a
+real mistake of mine inside the correction: the index joins blocks with a
+space, and replacing `' [1]'` with `'¹'` ate that join on all seven list
+entries — `Sources¹` where the editor writes `Sources ¹`. The in-text
+markers correctly have no space, so the two cases are not
+distinguishable by pattern and the generator is the only authority.
+**When a hand-edit touches a generated region, the generator decides, not
+the pattern.**
+
+**One claim from this round was withdrawn after checking the sources.**
+Footnote `²` looked like it was doing two jobs — a hadith source and
+al-Qurṭubī on ijārah. Reading the list says `²` **is** al-Qurṭubī
+(تفسير القرطبي) and `³` is al-Ḥākim; the citation was right and the
+reading was wrong. `⁴` twice is one source, Sharḥ al-Shifā, for two
+statements about the same thing. Seven footnotes, nine markers, nothing
+to fix.
+
+**Lighthouse's own performance number is the one thing from this audit to
+ignore**, and it is written up under the Jameel table above: 55 with an
+FCP of 37.4s on a post page, against 1.6s measured with the network
+really throttled. A simulated-throttling artefact that folds the 6.5MB
+font into the critical path.
+
+**With each fault put back, one at a time:** `.text-link` **4** (naming
+`drawn by FreeSerif + DM Sans 9pt`), the arrows **1** (`drawn by Inter`),
+the dashes **2** (`drawn by Noto Nastaliq Urdu + Mehr Nastaliq Web` — the
+20KB fetch named in the failure), the fatāwā cards back to `h3` **1**,
+`.ruling h2` deleted **1**, and four text faults one of each kind **4**.
+The suites are 441 and 224.
 
 **Urdu in a left-reading column.** This one rule has been broken eight
 times, so it is stated once here rather than told as eight stories.

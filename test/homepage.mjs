@@ -1723,7 +1723,15 @@ try {
     const sizes = {
       'latin-marks-sans-400.woff2': 8192,
       'latin-marks-sans-700.woff2': 8192,
-      'superscript-digits-400.woff2': 2048
+      'superscript-digits-400.woff2': 2048,
+      /* Two glyphs each, for the same reason as the three above: a cap is
+         what stops a whole family being swapped in behind a patch's
+         name. The arrows are ← → cut from Figtree; the dashes are – —
+         cut from Noto Sans, and that one replaces a 20,492-byte Noto
+         Nastaliq fetch, which is the whole argument for it. */
+      'arrow-marks-sans-400.woff2': 1536,
+      'arrow-marks-sans-700.woff2': 1536,
+      'urdu-dashes-400.woff2': 2048
     };
     for (const [file, cap] of Object.entries(sizes)) {
       const n = (await stat(join(ROOT, 'files/fonts/' + file))).size;
@@ -1808,9 +1816,16 @@ try {
        but that no system face is: a term half in Gentium and half in the
        device's sans is the fault, not a lesser version of it. Mehr draws
        the Urdu around it, so both are expected and nothing else is. */
+    /* `Ayn and hamza` belongs in this list and was only missing because
+       the probed paragraph had no ayn in it when the group was written.
+       It does now — `Shariah screening` was corrected to `Sharīʿah
+       screening`, which is the same transliteration the rest of the post
+       uses — so the patch below draws that one mark. Both are named in
+       --font-urdu, which is what this assertion is really asking. The
+       sibling group under it has always allowed both. */
     t('…and by nothing the site has not named',
       !!drewLatin && drewLatin.every((f) =>
-        ['Latin in Urdu'].concat(URDU_BODY_FACES).includes(f)),
+        ['Latin in Urdu', 'Ayn and hamza'].concat(URDU_BODY_FACES).includes(f)),
       JSON.stringify(drewLatin));
 
     /* The ayn is written into the page by the guard, because there is no
@@ -2001,6 +2016,188 @@ try {
      SCREENSHOTTED and compared byte for byte. Identical is the claim:
      an italic that draws nothing different is an italic the face does
      not have. With the rule taken out the two buffers differ. */
+  /* ---- the Urdu on an English page ----
+
+     `.urdu` and `.text-link` are both (0,1,0) and `.text-link` is
+     declared later, so it won the font-family and handed the
+     اردو میں پڑھیے link — the only Urdu on five English pages — to DM
+     Sans, which holds no Arabic script at all. Measured live before the
+     fix: 12 glyphs of a system Naskh, 88x26px where Mehr gives 62x33.
+     Naskh, where this site's one emphatic rule is that Urdu is
+     Nastaliq.
+
+     The sibling half of that same rule, `.document-link`, has had a
+     take-it-back rule since the day it was written; `.text-link` was
+     simply never added to it. Measurable here for the reason the
+     Latin-in-Urdu group gives: Mehr is self-hosted, so the browser
+     really draws it and really says so. Take `.text-link.urdu` out of
+     that block and the face assertion reports the container's serif. */
+  group('urdu in a link is still set in an urdu face');
+  {
+    const PAGES = ['/posts/technology-shapes-people.html',
+                   '/works/vegetarianism-and-veganism.html'];
+    let checked = 0;
+    for (const path of PAGES) {
+      const { context, page } = await open(390, path);
+      const cdp = await context.newCDPSession(page);
+      await cdp.send('DOM.enable');
+      await cdp.send('CSS.enable');
+      const link = await page.evaluate(() => {
+        const a = document.querySelector('a.text-link.urdu, a.text-link.arabic');
+        if (!a) return null;
+        a.id = 'probe-alt-link';
+        const cs = getComputedStyle(a);
+        const r = a.getBoundingClientRect();
+        return { family: cs.fontFamily, size: cs.fontSize,
+                 w: Math.round(r.width), h: Math.round(r.height),
+                 text: a.textContent.trim() };
+      });
+      t(`${path.split('/').pop()} carries a cross-language link`,
+        !!link, String(link));
+      if (!link) { await context.close(); continue; }
+      checked++;
+      /* The computed stack first, because it names the fault exactly:
+         the broken state is a stack with no Urdu face anywhere in it. */
+      t('…its stack names an Urdu face at all',
+        /Mehr|Jameel/.test(link.family), link.family);
+      /* …and then what actually painted the glyphs, which is the thing
+         a declaration cannot promise. */
+      const { root } = await cdp.send('DOM.getDocument');
+      const { nodeId } = await cdp.send('DOM.querySelector',
+        { nodeId: root.nodeId, selector: '#probe-alt-link' });
+      const { fonts } = nodeId
+        ? await cdp.send('CSS.getPlatformFontsForNode', { nodeId })
+        : { fonts: [] };
+      const drew = fonts.filter((f) => f.glyphCount > 0).map((f) => f.familyName);
+      t(`…and is drawn by ${drew.join(' + ') || 'nothing'}`,
+        drew.length > 0 && drew.every((f) => URDU_BODY_FACES.includes(f)),
+        JSON.stringify(drew));
+      /* The size must survive the fix. The take-it-back block carries
+         15px; every such link sits inside `.post-alt`/`.work-alt`, whose
+         own 17px is declared later and wins on source order. If that
+         ordering is ever disturbed this is what says so. */
+      t('…at the 17px its hero gives it, not the block default of 15',
+        link.size === '17px', link.size);
+      await context.close();
+    }
+    t(`${checked} cross-language links measured`, checked === PAGES.length,
+      'checked ' + checked);
+  }
+
+  /* ---- the arrows ----
+
+     Read off the file Google serves, DM Sans holds U+2191 ↑ and U+2193
+     ↓ and does NOT hold U+2190 ← or U+2192 →. Two of the four, which is
+     the kind of thing only a cmap read will tell you — the stack looked
+     right and the suite had nothing to say. So 71 → and 33 ← across the
+     repository were drawn by whatever sans the device had (122 glyphs
+     of Inter, measured), and a fallback does not carry DM Sans's weight
+     with it: what a reader sees is a thin pale arrow beside heavy bold
+     letters.
+
+     Measurable here because the patch is self-hosted. Take `Arrow marks
+     sans` out of --font-ui and this reports the container's own sans. */
+  group('an arrow is drawn by a face the site names');
+  {
+    const { context, page } = await open(390, '/');
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('DOM.enable');
+    await cdp.send('CSS.enable');
+    /* Measured on the arrow the page already carries, not a planted one:
+       the hero's button is the one a reader meets first. The arrow is in
+       its own <span aria-hidden>, which is the element that OWNS the
+       character — so no shaping run is split by asking about it. */
+    const where = await page.evaluate(async () => {
+      const spans = [...document.querySelectorAll('.hero span, .ruling-open, .text-link span')];
+      const hit = spans.find((e) => /[←→]/.test(e.textContent));
+      if (!hit) return null;
+      hit.id = 'probe-arrow';
+      await document.fonts.load('700 14px "Arrow marks sans"', '→');
+      await document.fonts.ready;
+      return { text: hit.textContent.trim(), weight: getComputedStyle(hit).fontWeight };
+    });
+    t('the homepage has an arrow in its chrome to measure', !!where, String(where));
+    const { root } = await cdp.send('DOM.getDocument');
+    const { nodeId } = where
+      ? await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector: '#probe-arrow' })
+      : { nodeId: 0 };
+    const { fonts } = nodeId
+      ? await cdp.send('CSS.getPlatformFontsForNode', { nodeId })
+      : { fonts: [] };
+    const drew = fonts.filter((f) => f.glyphCount > 0).map((f) => f.familyName);
+    t(`the arrow is drawn by ${drew.join(' + ') || 'nothing'}`,
+      drew.length > 0 && drew.every((f) => f === 'Arrow marks sans'),
+      JSON.stringify(drew));
+    /* The range must declare only what the file holds — this
+       repository's own lesson, and the whole reason the fault existed
+       in DM Sans. 2 of 2, which the NOTICE records reading back out of
+       the woff2 after writing it. */
+    const css = await readFile(join(ROOT, 'styles.css'), 'utf8');
+    t('…and its unicode-range declares exactly those two characters',
+      /font-family:\s*"Arrow marks sans";[\s\S]{0,220}?unicode-range:\s*U\+2190,\s*U\+2192;/.test(css));
+    await context.close();
+  }
+
+  /* ---- the dashes ----
+
+     This one is about weight on the wire rather than about shape, and
+     CLAUDE.md records deciding NOT to patch it on exactly that
+     confusion: a dash is a horizontal bar in every serif and nothing
+     visible changed, which was true and is still true. What was never
+     weighed is that Mehr holds neither dash, so both fell to Noto
+     Nastaliq Urdu and the browser really fetched its 20,492-byte subset
+     to draw a short line — on the homepage, the author page, the fatāwā
+     page and choice-of-words, measured off the wire.
+
+     Noto cannot be reached in this suite at all, because `open()` turns
+     Google's CDN away, so the fault state here is the container's serif
+     rather than Noto. That is the ayn group's argument in one more
+     place: what can be asserted is that the self-hosted patch draws it
+     and that nothing unnamed does. Take the rule out and this reports a
+     system face. */
+  group('an em-dash in urdu is drawn by a face the site names');
+  {
+    for (const path of ['/', '/author/index.html']) {
+      const { context, page } = await open(390, path);
+      const cdp = await context.newCDPSession(page);
+      await cdp.send('DOM.enable');
+      await cdp.send('CSS.enable');
+      const found = await page.evaluate(async () => {
+        document.querySelectorAll('details').forEach((d) => { d.open = true; });
+        let n = 0, marked = false;
+        for (const el of document.querySelectorAll('body *')) {
+          const own = [...el.childNodes].filter((x) => x.nodeType === 3)
+            .map((x) => x.textContent).join('');
+          if (!/[–—]/.test(own)) continue;
+          if (!/Mehr|Jameel/.test(getComputedStyle(el).fontFamily)) continue;
+          n++;
+          if (!marked) { el.id = 'probe-dash'; marked = true; }
+        }
+        /* The character as well as the family: a unicode-range'd face is
+           fetched only for text that needs it, and the one-argument form
+           assumes a probe string with no dash in it. */
+        await document.fonts.load('400 19px "Urdu dashes"', '—');
+        await document.fonts.ready;
+        return { n, marked };
+      });
+      t(`${path} has ${found.n} em-dashes in urdu-set text`,
+        found.n > 0 && found.marked, JSON.stringify(found));
+      const { root } = await cdp.send('DOM.getDocument');
+      const { nodeId } = found.marked
+        ? await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector: '#probe-dash' })
+        : { nodeId: 0 };
+      const { fonts } = nodeId
+        ? await cdp.send('CSS.getPlatformFontsForNode', { nodeId })
+        : { fonts: [] };
+      const drew = fonts.filter((f) => f.glyphCount > 0).map((f) => f.familyName);
+      t(`…drawn by ${drew.join(' + ') || 'nothing'}`,
+        drew.includes('Urdu dashes')
+          && drew.every((f) => ['Urdu dashes'].concat(URDU_BODY_FACES).includes(f)),
+        JSON.stringify(drew));
+      await context.close();
+    }
+  }
+
   group('urdu is never sheared into an italic it has not got');
   {
     const POST = '/posts/hunar-nahin-amanat.html';
@@ -4358,6 +4555,205 @@ try {
     t('  …with an edge that stands off the page behind it',
       m.border >= 2 && far(m.colour, m.page), m.border + 'px ' + m.colour + ' on ' + m.page);
     await context.close();
+  }
+
+  /* ---- heading levels ----
+
+     axe-core and Lighthouse both reported this and the suite had
+     nothing to say about it, because it is not geometry: `/fatawa/` ran
+     h1 then nine h3 cards with no h2 anywhere, and two posts put
+     sub-headings before their first heading. A reader does not see it;
+     a screen reader announces a missing level and a crawler reads a
+     broken outline.
+
+     The homepage is deliberately not in this list and must not be: the
+     same ruling card sits under `<h2>Islamic rulings</h2>` there, so h3
+     is correct on that page and wrong on the fatāwā page where the same
+     words are the `<h1>`. That is why `.ruling h2` is named beside
+     `.ruling h3` in styles.css rather than replacing it — the size must
+     not move when the level does.
+
+     Read off the committed files rather than the rendered page, because
+     these pages are generated: what is asserted is what a publish
+     wrote. */
+  group('no page skips a heading level');
+  {
+    const pages = ['fatawa/index.html', 'author/index.html', 'index.html']
+      .concat(readdirSync(join(ROOT, 'posts')).filter((f) => f.endsWith('.html'))
+        .map((f) => 'posts/' + f))
+      .concat(readdirSync(join(ROOT, 'works')).filter((f) => f.endsWith('.html'))
+        .map((f) => 'works/' + f));
+    const bad = [];
+    let seen = 0;
+    for (const rel of pages) {
+      const html = await readFile(join(ROOT, rel), 'utf8');
+      const levels = (html.match(/<h[1-6][\s>]/g) || []).map((m) => Number(m[2]));
+      if (!levels.length) continue;
+      seen++;
+      let prev = 0;
+      for (const l of levels) {
+        if (prev && l > prev + 1) { bad.push(`${rel}: h${prev} -> h${l}`); break; }
+        prev = l;
+      }
+    }
+    t(`${seen} committed pages have headings to check`, seen > 30, 'seen ' + seen);
+    t('none of them skips a level', bad.length === 0, bad.join('\n      '));
+    /* The sizes are what make the level change safe, so they are
+       asserted too: take `.ruling h2` out of styles.css and the fatāwā
+       cards shrink to the default heading size while this stays green
+       on the outline alone. */
+    const css = await readFile(join(ROOT, 'styles.css'), 'utf8');
+    t('a ruling card is the same size at h2 as at h3',
+      /\.ruling h2,\s*\n\.ruling h3 \{/.test(css)
+      && /\.ruling h2\.urdu,\s*\n\.ruling h3\.urdu \{/.test(css)
+      && /\.ruling h2\.arabic,\s*\n\.ruling h3\.arabic \{/.test(css));
+  }
+
+  /* ---- the words themselves ----
+
+     Everything else in this file measures where something landed. This
+     one reads the text, because a proofreading fault is not geometry
+     either and nothing here could see one: an unclosed quotation mark,
+     a straight apostrophe among 29 typographic ones, a space before an
+     Urdu comma, the same sūrah spelt two ways in one post. All of these
+     were in the published pages while every assertion above was green.
+
+     Read off the committed source so it covers `content.js` too, which
+     is where a description lives before any page is generated from it. */
+  group('the words are set as this library sets words');
+  {
+    const files = ['content.js', 'index.html', 'fatawa/index.html', 'author/index.html']
+      .concat(readdirSync(join(ROOT, 'posts')).filter((f) => f.endsWith('.html'))
+        .map((f) => 'posts/' + f))
+      .concat(readdirSync(join(ROOT, 'works')).filter((f) => f.endsWith('.html'))
+        .map((f) => 'works/' + f));
+    const text = {};
+    for (const rel of files) text[rel] = await readFile(join(ROOT, rel), 'utf8');
+    t(`${files.length} files read`, files.length > 30, 'files ' + files.length);
+
+    /* The HTML attributes of a generated page are full of straight
+       quotes and must not be mistaken for prose, so every check below
+       looks only at what sits between tags. `content.js` is scanned as
+       a whole, since its strings are the prose. */
+    /* `content.js` is mostly prose, but its block comments are not —
+       they document the format, and they are full of English
+       contractions and of example keys in straight quotes ("A work looks
+       like this: { id: \"unique-english-slug\" }"). The first run of this
+       group reported eight of those as faults. A comment is not
+       published, so it is not prose: strip `/* … *\/` before looking.
+       Only block comments; a `//` rule would eat the `https://` inside
+       a real string. */
+    const prose = (rel) => rel.endsWith('.js')
+      ? text[rel].replace(/\/\*[\s\S]*?\*\//g, '\u0001')
+      : text[rel].replace(/<[^>]*>/g, '\u0001');
+
+    const hits = (re, only) => {
+      const out = [];
+      for (const rel of files) {
+        if (only && !only(rel)) continue;
+        for (const m of prose(rel).matchAll(re)) {
+          out.push(`${rel}: …${prose(rel).slice(Math.max(0, m.index - 40), m.index + 40)
+            .replace(/[\u0001\n]+/g, ' ').trim()}…`);
+        }
+      }
+      return out;
+    };
+
+    /* An apostrophe is typographic everywhere on this site but eight
+       places, and one page used both forms. */
+    const straight = hits(/[A-Za-zāīūʿḥṣṭẓḍ][''](?=[A-Za-z\s])/g);
+    t('no straight apostrophe in the prose', straight.length === 0,
+      straight.slice(0, 4).join('\n      '));
+    /* An unclosed one is the worse half of the same fault: the post that
+       carried it opened a quotation and never shut it.
+
+       `"` cannot be looked for the way `'` can, and the first run of
+       this group reported every string in `content.js` because of it: a
+       double quote is the DELIMITER of a JS string and of every value
+       in a JSON-LD block, so the character is structural there and
+       prose only inside it. So this one reads the string CONTENTS for
+       .js and drops the <script> bodies for .html.
+
+       The apostrophe check above deliberately keeps looking inside
+       those script bodies, and that is not an inconsistency: seven
+       straight apostrophes were still sitting in og:description and
+       JSON-LD after content.js had been corrected, which is what a
+       crawler and a share sheet read. */
+    /* The <script> bodies have to come off the RAW html, BEFORE the
+       tags do — `prose()` has already turned every tag into \u0001 by
+       then, so there is no `<script>` left to match and the JSON-LD
+       survives with all its delimiters. The first run of this reported
+       fatawa/index.html for exactly that. */
+    const words = (rel) => rel.endsWith('.js')
+      ? [...prose(rel).matchAll(/"((?:[^"\\\n]|\\.)*)"/g)].map((m) => m[1]).join('\u0001')
+      : text[rel].replace(/<script[\s\S]*?<\/script>/gi, '\u0001')
+                 .replace(/<[^>]*>/g, '\u0001');
+    const dq = [];
+    for (const rel of files) {
+      const w = words(rel);
+      for (const m of w.matchAll(/"/g)) {
+        dq.push(`${rel}: …${w.slice(Math.max(0, m.index - 40), m.index + 40)
+          .replace(/[\u0001\n]+/g, ' ').trim()}…`);
+      }
+    }
+    t('no straight double quote in the prose', dq.length === 0,
+      dq.slice(0, 4).join('\n      '));
+    /* Counting the pair is what catches the unclosed one specifically: a
+       straight quote changed to a curly opener and still never closed
+       would pass the check above and fail this. */
+    for (const rel of files) {
+      const p2 = words(rel);
+      const open = (p2.match(/\u201c/g) || []).length;
+      const close = (p2.match(/\u201d/g) || []).length;
+      if (open !== close) t(`${rel} closes every quotation it opens`, false,
+        `\u201c${open} \u201d${close}`);
+    }
+
+    /* References are superscript here, and there is a font subset in the
+       repository that exists to draw all ten digits. One post used
+       [1]–[7] instead and its entries carried no `.footnote` either, so
+       they read at the body's own size. */
+    const brackets = hits(/\[[1-9]\]/g);
+    t('no reference is marked with [n] instead of a superscript',
+      brackets.length === 0, brackets.slice(0, 4).join('\n      '));
+
+    /* Urdu punctuation attaches to the word before it, exactly as
+       English punctuation does. */
+    const beforeMark = hits(/[؀-ۿ][ \t]+[،۔]/g);
+    t('no space before an urdu comma or danda', beforeMark.length === 0,
+      beforeMark.slice(0, 4).join('\n      '));
+    const dbl = hits(/[؀-ۿ][ \t]{2,}[؀-ۿ]/g);
+    t('no double space inside urdu text', dbl.length === 0,
+      dbl.slice(0, 4).join('\n      '));
+
+    /* Qurʾān carries its madda. One post had قران, which is a different
+       word. */
+    const qiran = hits(/قران(?=\s|ک)/g);
+    t('the Qurʾān is spelt قرآن', qiran.length === 0,
+      qiran.slice(0, 3).join('\n      '));
+
+    /* Transliteration carries its diacritics — which is the whole reason
+       three font subsets are in this repository. The citations are
+       excluded by name, because a published title is reproduced as
+       printed: FTSE, S&P and AAOIFI all spell it Shariah on their own
+       covers. */
+    const bare = [];
+    for (const rel of files) {
+      const p2 = prose(rel);
+      for (const m of p2.matchAll(/\bShariah\b/g)) {
+        const around = p2.slice(Math.max(0, m.index - 90), m.index + 40);
+        if (/FTSE|S&P|AAOIFI|Dow Jones|Yasaar/.test(around)) continue;
+        bare.push(`${rel}: …${around.replace(/[\u0001\n]+/g, ' ').trim()}…`);
+      }
+    }
+    t('Sharīʿah keeps its diacritics outside a cited title',
+      bare.length === 0, bare.slice(0, 4).join('\n      '));
+    const nisba = hits(/al-Nasafi\b|\bSūrat al-Qaṣaṣ/g);
+    t('a nisba and a sūrah are spelt one way each',
+      nisba.length === 0, nisba.slice(0, 4).join('\n      '));
+    const hadith = hits(/\bhadith\b/g);
+    t('ḥadīth keeps its diacritics', hadith.length === 0,
+      hadith.slice(0, 3).join('\n      '));
   }
 
   group('nothing pushes the page sideways');

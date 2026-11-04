@@ -4108,7 +4108,17 @@
           ' data-id="' + e(ruling.id) + '"' +
           ' data-search="' + e(words) + '" data-skeleton="' + e(site.skeleton(words)) + '">',
         '            <div class="ruling-body">',
-        '              ' + site.titleMarkup(ruling, 'h3'),
+        /* h2, not h3. On the homepage this same card sits under
+           <h2>Islamic rulings</h2>, so h3 is right there and
+           script.js still writes one. Here the same words are the
+           page's own <h1>, so an h3 card skips a level — which axe
+           and Lighthouse both report, nine times over. The size does
+           not move: `.ruling h2` is named beside `.ruling h3` in
+           styles.css for exactly the reason `.intro h1` is named
+           beside `.intro h2` — the same block is a section of one
+           page and the whole of another, and a heading must not
+           change size for that. */
+        '              ' + site.titleMarkup(ruling, 'h2'),
         '              ' + site.proseBlock(ruling),
         '            </div>',
         '            <div class="ruling-foot">',
