@@ -2032,6 +2032,100 @@ try {
      Latin-in-Urdu group gives: Mehr is self-hosted, so the browser
      really draws it and really says so. Take `.text-link.urdu` out of
      that block and the face assertion reports the container's serif. */
+  /* ---- the Arabic title while Amiri is still coming ----
+
+     Reported from the author's desktop: the Arabic work titles were in
+     NASTALIQ. Nothing was wrong with the settled page — every probe
+     that waits for `document.fonts.ready` sees Amiri, which is why it
+     took a while to find. The fault is the window before Amiri lands.
+
+     Amiri is Google's and carries `font-display: swap`, so for about
+     1.2s on a 5 Mbps line the title is painted by whatever comes next
+     in --font-arabic, and that used to end in a bare `serif`. On
+     Windows 8 and later the machine can answer that with **Urdu
+     Typesetting**, which Microsoft's font list calls "based on the
+     Nastaliq style". A phone answers with Noto Naskh Arabic, a Naskh —
+     which is why mobile looked right and the desktop did not.
+
+     It opens its own context and turns Amiri away itself, rather than
+     leaning on `open()` to have done it. That is not caution for its
+     own sake: `open()`'s pattern stopped working at some point and this
+     guard found it (see the group below), so a guard whose whole
+     condition is "Amiri is missing" has to create that condition and
+     not inherit it.
+
+     Restore the bare `serif` and this reports the container's own
+     answer — `DejaVu Sans + Liberation Serif`, measured — in place of
+     Aslam. */
+  group('an arabic title falls back to a naskh, never to the device');
+  {
+    /* Three of the four Arabic works, and the fourth is on the homepage
+       row. The hero is the biggest Arabic type on the site, so it is
+       the one a reader notices. */
+    const PAGES = ['/works/bustan-bani-amir.html',
+                   '/works/bay-al-hayawan.html',
+                   '/works/al-ithaf-fazail-tawaf.html'];
+    let seen = 0;
+    for (const path of PAGES) {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
+      /* A real regex, not a glob. Amiri only — the rest of the page is
+         left alone so nothing else about it changes. */
+      await context.route(/fonts\.gstatic\.com\/s\/amiri/, (r) => r.abort());
+      const page = await context.newPage();
+      page.on('pageerror', (e) => threw.push('arabic-fallback: ' + e.message));
+      await page.goto(`http://127.0.0.1:${PORT}${path}`, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => document.fonts.ready);
+      await page.waitForTimeout(150);
+      const cdp = await context.newCDPSession(page);
+      await cdp.send('DOM.enable');
+      await cdp.send('CSS.enable');
+      const title = await page.evaluate(() => {
+        const h = document.querySelector('.work-hero h1');
+        return h && /[؀-ۿ]/.test(h.textContent)
+          ? { cls: h.className, stack: getComputedStyle(h).fontFamily } : null;
+      });
+      if (!title) { await context.close(); continue; }
+      seen++;
+      const { root } = await cdp.send('DOM.getDocument');
+      const { nodeId } = await cdp.send('DOM.querySelector',
+        { nodeId: root.nodeId, selector: '.work-hero h1' });
+      const { fonts } = nodeId
+        ? await cdp.send('CSS.getPlatformFontsForNode', { nodeId })
+        : { fonts: [] };
+      const drew = fonts.filter((f) => f.glyphCount > 0).map((f) => f.familyName);
+      /* Aslam is the site's own Naskh and is self-hosted, so the browser
+         really fetches and really draws it here. Anything else means the
+         title reached the device. */
+      t(`${path.split('/').pop()} falls back to ${drew.join(' + ') || 'nothing'}`,
+        drew.length > 0 && drew.every((f) => f === 'Aslam'), JSON.stringify(drew));
+      await context.close();
+    }
+    t(`${seen} arabic hero titles measured`, seen === PAGES.length, 'seen ' + seen);
+
+    /* And the stack itself, because the two local names are the half
+       this suite can never exercise: no Windows face exists in this
+       container, so `Traditional Arabic` is correct and latent exactly
+       as the ayn patch is. What can be asserted is that it is named,
+       that Amiri still leads, and — the part that would actually hurt —
+       that no Nastaliq face has been let into an Arabic stack. */
+    const css = await readFile(join(ROOT, 'styles.css'), 'utf8');
+    const stack = (css.match(/--font-arabic:([^;]*);/) || [])[1] || '';
+    t('the arabic stack still leads with Amiri',
+      /^\s*"Amiri"/.test(stack), stack.replace(/\s+/g, ' ').trim());
+    t('…then names a Naskh the machine may already have',
+      /"Noto Naskh Arabic"/.test(stack) && /"Traditional Arabic"/.test(stack),
+      stack.replace(/\s+/g, ' ').trim());
+    t('…and the site’s own Naskh behind them, so `serif` is never the answer',
+      /"Aslam"\s*,\s*serif/.test(stack), stack.replace(/\s+/g, ' ').trim());
+    /* Urdu Typesetting and Aldhabi are the two Windows ships that are
+       not Naskh; Noto Nastaliq and Jameel are the site's own. None of
+       them belongs in a stack for Arabic. */
+    const nastaliq = ['Urdu Typesetting', 'Aldhabi', 'Noto Nastaliq', 'Jameel', 'Mehr', 'Gulzar']
+      .filter((f) => stack.includes(f));
+    t('…and no Nastaliq face is named in it at all',
+      nastaliq.length === 0, nastaliq.join(', '));
+  }
+
   group('urdu in a link is still set in an urdu face');
   {
     const PAGES = ['/posts/technology-shapes-people.html',

@@ -115,7 +115,42 @@
      is what the other faces here already draw. */
   --font-urdu-heading: "Aslam", "Noto Nastaliq Urdu", serif;
   --space-urdu-heading: 0.22em;
-  --font-arabic: "Amiri", "Noto Naskh Arabic", serif;
+  /* The last resort used to be a bare `serif`, and `serif` is not a
+     typeface — it is a question put to the reader's machine. Reported
+     from the author's desktop: the Arabic work titles came out in
+     NASTALIQ. Amiri is Google's and carries `font-display: swap`, so
+     for the ~1.2s before it lands (measured at 5 Mbps) the title is
+     painted by whatever comes next — and on Windows 8 and later that
+     can be **Urdu Typesetting**, which Microsoft's own font list calls
+     "based on the Nastaliq style of Arabic calligraphy, in the Eastern
+     or Pakistani tradition". A phone answers the same question with
+     Noto Naskh Arabic, which is a Naskh and looks near enough to Amiri
+     that nothing seems wrong — which is exactly why it was a desktop
+     report and not a mobile one, and why every probe that waits for
+     `document.fonts.ready` had said the page was fine.
+
+     So the gap is filled the way every other gap in this file is: name
+     what should draw it rather than leave it to the device. Two free
+     local Naskh faces first, then the site's own.
+
+     `Traditional Arabic` is named and `Simplified Arabic` is not, and
+     that asymmetry is deliberate: Microsoft's page says the first "is
+     in the traditional Naskh style" and says nothing at all about the
+     second's style, and this file does not name a face it has not
+     checked. `Urdu Typesetting` and `Aldhabi` are the two to keep OUT —
+     Nastaliq, and Diwani with Nastaliq features, respectively.
+
+     `Aslam` behind them is the real floor, and it is not a guess about
+     anybody's device: it is the site's own bold Naskh, self-hosted, and
+     it covers all four Arabic titles in content.js with nothing missing
+     (411 codepoints, read off the cmap). It costs 53KB only on a page
+     that reaches it — Amiri loaded means it is never asked for, and on
+     the machines where the Nastaliq risk actually lives the two local
+     names above answer first and cost nothing.
+
+     Amiri stays first, so nothing about the settled page changes. */
+  --font-arabic: "Amiri", "Noto Naskh Arabic", "Traditional Arabic",
+                 "Aslam", serif;
 
   --gutter: clamp(20px, 8vw, 152px);
   /* --block is what a full-bleed section takes above and below itself.

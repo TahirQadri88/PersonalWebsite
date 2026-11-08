@@ -215,6 +215,84 @@ paragraph, so they carry no `.arabic` class, inherit `--font-display`,
 and fell out of it to DejaVu Sans. `Amiri` is last in that stack now. It
 sits after Gentium and both patches, so it is never reached for Latin.
 
+**And `--font-arabic` ended in a bare `serif`, which is not a typeface
+but a question put to the reader's machine.** Reported as *the Arabic
+titles are in Nastaliq* — on the **desktop**, with mobile fine, which is
+the detail that solves it.
+
+Amiri comes from Google with `font-display: swap`, so for about **1.2s**
+on a 5 Mbps line (measured; Amiri lands at 1.2s, well ahead of Jameel at
+13s, so it is not being starved) the title is painted by whatever comes
+next in the stack. `Noto Naskh Arabic` is not on most desktops, so it
+reached `serif` — and **Windows 8 and later ship Urdu Typesetting**,
+which Microsoft's own font list calls "based on the Nastaliq style of
+Arabic calligraphy, in the Eastern or Pakistani tradition". A phone
+answers the same question with Noto Naskh Arabic, a Naskh that looks
+near enough to Amiri that nothing seems wrong. **Desktop Nastaliq,
+mobile fine, same page, same CSS.**
+
+**Every probe in this repository had said the page was perfect**, and
+all of them were right: they wait for `document.fonts.ready` before
+measuring, so they only ever see the settled page. The fault lives
+entirely in the window before it. Four separate sweeps — 69
+Arabic-dominant elements across 38 live pages, the work heroes, the
+search suggestion rows, a before/after render of the hero that came back
+**byte-identical** — all reported Amiri, because all of them looked
+after the swap. When a report says a face is wrong and the measurement
+says it is right, **ask when the measurement was taken.**
+
+The stack is `"Amiri", "Noto Naskh Arabic", "Traditional Arabic",
+"Aslam", serif`. Two free local Naskh faces first, then the site's own.
+
+`Traditional Arabic` is named and `Simplified Arabic` is not: Microsoft
+says the first "is in the traditional Naskh style" and says **nothing**
+about the second's, and this file does not name a face it has not
+checked. The two to keep out are `Urdu Typesetting` and `Aldhabi`
+(Nastaliq, and Diwani with Nastaliq features) — and the guard asserts
+their absence, because letting one in would be the fault itself.
+
+`Aslam` behind them is the floor, and it is the part that is not a guess
+about anybody's device: the site's own bold Naskh, self-hosted, covering
+all four Arabic titles in `content.js` with nothing missing (411
+codepoints, read off the cmap). 53KB, and only on a page that reaches
+it — three of the four Arabic work pages do not fetch it today, and on
+Windows the local names answer first and cost nothing.
+
+Measured with Amiri turned away: **before, `DejaVu Sans + Liberation
+Serif`; after, `Aslam`.** With Amiri served, `Amiri:45` either way, so
+the settled page does not move.
+
+**The guard creates its own condition instead of inheriting one, and
+that is how the next thing was found.** It needs Amiri to be absent.
+`open()` is documented here and in its own comment as turning Google's
+CDN away, so the obvious thing was to lean on that — and the first run
+reported `Amiri`, present.
+
+**`open()`'s `context.route('https://fonts.g**', …)` has stopped
+matching anything.** Playwright tightened its glob handling; on 1.56.1
+that pattern lets all six gstatic requests through, while
+`**fonts.gstatic.com**` and a plain RegExp both block them. So this
+file's assertions have been measured with Google's real faces served,
+which is the opposite of what its own comments and the notes above
+assert as long-standing fact. **A glob is a claim about some matcher's
+dialect, and this one expired in silence** — the same shape as a
+`unicode-range` that declares what a file does not hold.
+
+**It is NOT fixed here, deliberately.** Replacing all sixteen with a
+RegExp really does block the CDN and leaves the suite at one failure:
+*the two are the same pixels, so nothing was sheared*, the Nastaliq
+italic guard. That one is worth care rather than a quick patch — with
+the CDN blocked the italic run is still `Jameel Noori Nastaleeq:121`
+with `font-synthesis-style: none` on both clones, so no shear is
+occurring and the byte comparison is reporting something else. A
+standalone reproduction then disagreed with the suite in both
+directions and placed its two clones 719px apart, which is this file's
+own rule arriving on schedule: when a fresh probe disagrees that
+sharply, suspect the probe. Bundling a test-infrastructure change with
+a typography fix, on an investigation that is not finished, is how a
+guard gets weakened to make a run green. **Left as the next piece of
+work, written down so it is not rediscovered.**
+
 **`document.fonts.load()` without its second argument is the subtlest
 trap here, and it had caught three faces.** It fetches only the files the
 text it is given needs, and the text it assumes is `BESbswy`. So
