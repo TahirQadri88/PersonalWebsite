@@ -22,12 +22,10 @@ import { readFile, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, extname, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = Number(process.env.PORT || 4321);
-const PASS = 'open';
 
 /* Playwright is a developer's tool, not a dependency of anything the site
    serves. Where it lives varies — beside this folder, or installed once
@@ -48,12 +46,22 @@ if (!chromium) {
   process.exit(1);
 }
 
-/* ---- the site, with two things stood in for --------------------------
+/* ---- the site, with one thing stood in for ---------------------------
 
    admin.js as shipped signs in against Firebase, which wants a real
-   password from a real person. Blanking the key drops it back to the
-   passphrase latch, and a known hash opens that. Nothing else is
-   altered, so what is tested is the file that gets deployed.
+   password from a real person. There used to be a second door: blanking
+   the key dropped the editor back to a passphrase latch, and a known hash
+   opened it. That latch is gone — it was a fail-open with a crackable
+   hash in a public repository — so the way in here is the one the real
+   editor uses once a sign-in has happened: the gate's own session
+   shortcut, planted before the page runs.
+
+   `plantSession` below is what every test comes in through. It is not a
+   weaker check stood in for a stronger one; it is the state a signed-in
+   author's browser is actually in, and `freshToken` reads the planted ID
+   token exactly as it would a real one. What is NOT tested this way is
+   the sign-in itself, which needs Google — said plainly rather than left
+   to look covered.
 
    Served from memory rather than copied to a temp folder: the repository
    is never written to, so a test that dies half way leaves nothing
@@ -62,21 +70,38 @@ const overlay = new Map();
 
 async function patchedAdminJs() {
   const source = await readFile(join(ROOT, 'admin.js'), 'utf8');
-  const hash = createHash('sha256').update(PASS).digest('hex');
-  const out = source
-    .replace(/var PASS_HASH = '[a-f0-9]*';/, `var PASS_HASH = '${hash}';`)
-    .replace(/apiKey: '[^']*',/, "apiKey: '',")
-    /* The third stand-in. BACKEND is only set over https on an admin.*
-       host, which a test server is not, and without it the publish path
-       goes straight to GitHub instead of the Worker — so the answer the
-       Worker gives when nothing differs is unreachable, and that answer
-       is exactly what the tests below are about. */
-    .replace(/var BACKEND = [^;]+;/, "var BACKEND = '/publish';");
-  if (!out.includes(`var PASS_HASH = '${hash}';`) || !out.includes("apiKey: '',") ||
-      !out.includes("var BACKEND = '/publish';")) {
-    throw new Error('could not stand in for the gate — admin.js has changed shape');
+  /* The one stand-in. BACKEND is only set over https on an admin.* host,
+     which a test server is not, and without it the publish path goes
+     straight to GitHub instead of the Worker — so the answer the Worker
+     gives when nothing differs is unreachable, and that answer is exactly
+     what the tests below are about. */
+  const out = source.replace(/var BACKEND = [^;]+;/, "var BACKEND = '/publish';");
+  if (!out.includes("var BACKEND = '/publish';")) {
+    throw new Error('could not stand in for the backend — admin.js has changed shape');
   }
   return out;
+}
+
+/* The two keys the gate's shortcut reads, planted on whatever origin the
+   page is about to load from. `addInitScript` rather than an `evaluate`
+   after the fact, so they are there before admin.js runs and the page
+   opens straight into the editor — and as an IIFE, because that script
+   is run as a SCRIPT: a bare arrow function would be an expression that
+   evaluates to a function and is never called, which this file has
+   already been bitten by once on the Save-Data seed. */
+const PLANTED_TOKEN = 'planted-id-token';
+async function plantSession(target) {
+  await target.addInitScript(`(() => {
+    try {
+      sessionStorage.setItem('editor-firebase-session', JSON.stringify({
+        idToken: ${JSON.stringify(PLANTED_TOKEN)},
+        refreshToken: 'planted-refresh',
+        expiresAt: Date.now() + 3600000,
+        email: 'tests@example.invalid'
+      }));
+      sessionStorage.setItem('editor-open', '1');
+    } catch (error) { /* private mode */ }
+  })();`);
 }
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -184,12 +209,6 @@ const CARET = () => {
 async function openEditor(page) {
   await page.goto(`http://127.0.0.1:${PORT}/admin.html`, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(150);
-  /* The gate stays open for the rest of the browser session, so a reload
-     part way through does not ask again — and there is nothing to fill. */
-  if (await page.locator('#pass').isVisible()) {
-    await page.fill('#pass', PASS);
-    await page.click('#gate-form button[type="submit"]');
-  }
   await page.waitForSelector('.admin-row');
   const row = page.locator('.admin-row').filter({ hasText: POST }).first();
   await row.locator('summary').click();
@@ -253,6 +272,9 @@ const context = await browser.newContext({ viewport: { width: 1280, height: 1000
    arriving — only on which family the stylesheet asks for, which is
    readable whether or not the file loads. */
 await context.route('https://fonts.g**', (r) => r.abort());
+/* Every page in this context opens straight into the editor. See
+   `plantSession` above for why this is the way in rather than a latch. */
+await plantSession(context);
 const page = await context.newPage();
 const jsErrors = [];
 page.on('pageerror', (e) => jsErrors.push(e.message));
@@ -271,31 +293,12 @@ page.on('pageerror', (e) => jsErrors.push(e.message));
    lands in `jsErrors` and still fails the run. A permanent "accept
    every prompt" would have made that impossible to see. */
 let answerPrompt = null;
-/* A second slot on the same rule, for the same reason, because Sign out
-   asks before it throws the session away. One handler, two slots — a
-   `page.once` beside this one does not work: both answer, and the second
-   throws "Cannot accept dialog which is already handled", which kills the
-   run and reads like the editor misbehaving. */
-let answerConfirm = null;
-let confirmSaid = '';
 page.on('dialog', async (d) => {
   if (d.type() === 'beforeunload') { await d.accept(); return; }
   if (d.type() === 'prompt' && answerPrompt !== null) {
     const reply = answerPrompt;
     answerPrompt = null;
     await d.accept(reply);
-    return;
-  }
-  if (d.type() === 'confirm' && answerConfirm !== null) {
-    const reply = answerConfirm;
-    answerConfirm = null;
-    /* Kept, not only answered. What a confirmation SAYS is half of what
-       it is for, and the sentence below is the only place a reader learns
-       that signing out here does not revoke the sign-in at Google. Read
-       in this handler rather than in a second listener, because by the
-       time another listener runs the dialog has already been answered. */
-    confirmSaid = d.message();
-    if (reply) await d.accept(); else await d.dismiss();
     return;
   }
   jsErrors.push('unexpected dialog: ' + d.message());
@@ -2865,18 +2868,6 @@ t('the page really is on an insecure origin before anything is concluded from it
   reallyInsecure.secure === false && reallyInsecure.protocol === 'http:',
   JSON.stringify(reallyInsecure));
 
-/* The latch cannot be used to get in here, and the reason is worth
-   writing down because it looks like a fault the first time: `crypto.subtle`
-   is not exposed in an insecure context at all, so `digest()` throws and
-   the passphrase can never match. It costs the real editor nothing —
-   Firebase is configured there, so signing in is a `fetch` and the latch
-   is never reached — but it does mean this group has to come in by the
-   other door, the gate's own session shortcut. Which also keeps the
-   measurement off the latch, where it has no business being. */
-await page.evaluate(() => {
-  try { sessionStorage.setItem('editor-open', '1'); } catch (error) { /* private mode */ }
-});
-await page.reload({ waitUntil: 'domcontentloaded' });
 /* Caught rather than left to throw. A guard that dies inside the harness
    reports nothing and reads as the harness being broken — this file has
    paid for that twice, once on a 30-second click timeout that named a
@@ -2917,6 +2908,76 @@ await page.evaluate(() => {
   if (dialog && dialog.open) dialog.close();
 });
 
+/* ---- an editor with no sign-in configured does not open --------------
+
+   What used to be here was a passphrase latch: the typed words hashed and
+   compared against a SHA-256 constant in admin.js, taken whenever
+   Firebase was not configured. It was dead code — Firebase has been
+   configured for months — and a liability while it sat there. A bare,
+   unsalted hash of a human-chosen phrase in a PUBLIC repository is an
+   offline crack of a few minutes, and it may name a phrase used
+   elsewhere. Worse, it was a fail-open: a typo in the project id, or a
+   key cleared while debugging, and the latch quietly became the whole
+   lock. That is the exact shape of the Worker's own EDITOR_EMAIL fault,
+   which this repository has already paid for once.
+
+   So an unconfigured editor refuses. Both halves are asserted — that it
+   stays shut, and that the constant is gone from the file, since a
+   deleted branch with the hash still sitting above it would have left the
+   phrase readable. */
+console.log('\nan editor with no sign-in configured does not open');
+
+/* The CONSTANT, not the word. The first version of this grepped for
+   `PASS_HASH` and failed on the comment that explains why the latch is
+   gone — which is the same mistake the homepage suite's text audit made
+   and fixed: a comment is not code. What must not be in the file is an
+   assignment, or a loose 64-character hex literal, which is what a
+   SHA-256 digest looks like however it is named. */
+const adminSource = await readFile(join(ROOT, 'admin.js'), 'utf8');
+const adminCode = adminSource.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const hexLiteral = adminCode.match(/['"][0-9a-f]{64}['"]/);
+t('no passphrase hash is left in the file for anyone to crack',
+  !/PASS_HASH\s*=/.test(adminCode) && !hexLiteral,
+  hexLiteral ? 'a 64-char hex literal is still there: ' + hexLiteral[0]
+             : (adminCode.match(/.*PASS_HASH.*/) || ['(absent)'])[0]);
+
+const shutContext = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
+await shutContext.route('https://fonts.g**', (r) => r.abort());
+/* Planted exactly as every other page here is, which is the point: even
+   with the session key present, an editor that cannot check a sign-in
+   must not open. That is the corner the old condition left behind. */
+await plantSession(shutContext);
+const shutPage = await shutContext.newPage();
+overlay.set('admin.js', (await patchedAdminJs()).replace(/apiKey: '[^']*',/, "apiKey: '',"));
+await shutPage.goto(`http://127.0.0.1:${PORT}/admin.html`, { waitUntil: 'domcontentloaded' });
+await shutPage.waitForTimeout(800);
+const shut = await shutPage.evaluate(() => ({
+  locked: document.body.classList.contains('is-locked'),
+  rows: document.querySelectorAll('.admin-row').length
+}));
+t('  …it stays shut rather than falling open on the latch that used to be there',
+  shut.locked === true && shut.rows === 0, JSON.stringify(shut));
+
+/* And it says so, rather than refusing a typed passphrase in silence. */
+await shutPage.evaluate(() => {
+  const pass = document.getElementById('pass');
+  if (pass) pass.value = 'anything';
+  document.getElementById('gate-form').dispatchEvent(
+    new Event('submit', { bubbles: true, cancelable: true }));
+});
+await shutPage.waitForTimeout(300);
+const shutSays = await shutPage.evaluate(
+  () => (document.getElementById('gate-error') || {}).textContent || '');
+t('  …and names what is missing instead of just saying no',
+  /no sign-in configured/.test(shutSays) && /FIREBASE/.test(shutSays),
+  shutSays || '(nothing said)');
+await shutContext.close();
+/* The blanked key goes back, or every group after this one is testing an
+   editor that cannot open. Its own first run failed six assertions three
+   groups later for exactly that — a group that changes a served file owns
+   putting it back. */
+overlay.set('admin.js', await patchedAdminJs());
+
 /* ---- signing out puts the session down -------------------------------
 
    Two tokens come back from a Firebase sign-in, and the refresh token is
@@ -2932,19 +2993,37 @@ await page.evaluate(() => {
    button's own confirmation says so. */
 console.log('\nsigning out puts the session down');
 
-/* The real admin.js, not the stand-in: `apiKey` is blanked in the patched
-   copy, so `firebaseConfigured()` is false there and the button is
-   correctly never shown. This group is about the configuration the author
-   actually runs in. */
-const realAdminJs = await readFile(join(ROOT, 'admin.js'), 'utf8');
-overlay.set('admin.js', realAdminJs);
-await page.goto(`http://127.0.0.1:${PORT}/admin.html`, { waitUntil: 'domcontentloaded' });
-await page.waitForTimeout(300);
+/* Its own context, and that is forced rather than tidy: every other page
+   here is planted with a session by `addInitScript`, which runs again on
+   every navigation — and signing out ends with `location.reload()`. The
+   session would be put straight back, and the assertion below would
+   report it still there on code that works perfectly. So this group gets
+   a context with nothing planted, plants by hand once, and is closed at
+   the end. */
+const outContext = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
+await outContext.route('https://fonts.g**', (r) => r.abort());
+const outPage = await outContext.newPage();
+let outConfirmSaid = '';
+let outAnswer = null;
+outPage.on('dialog', async (d) => {
+  if (d.type() === 'confirm' && outAnswer !== null) {
+    const reply = outAnswer;
+    outAnswer = null;
+    outConfirmSaid = d.message();
+    if (reply) await d.accept(); else await d.dismiss();
+    return;
+  }
+  await d.accept();
+});
+
+await outPage.goto(`http://127.0.0.1:${PORT}/admin.html`, { waitUntil: 'domcontentloaded' });
+await outPage.waitForTimeout(200);
 
 /* Signed in, as far as the page can tell — the gate's shortcut reads
-   exactly these two keys, which is also what makes this the right thing
-   to plant rather than driving a real Firebase password. */
-await page.evaluate(() => {
+   exactly these two keys, which is what makes this the right thing to
+   plant rather than driving a real Firebase password. The GitHub token
+   goes in beside them because Sign out has to take that too. */
+await outPage.evaluate(() => {
   sessionStorage.setItem('editor-firebase-session', JSON.stringify({
     idToken: 'planted', refreshToken: 'planted-refresh',
     expiresAt: Date.now() + 3600000, email: 'someone@example.com'
@@ -2952,11 +3031,11 @@ await page.evaluate(() => {
   sessionStorage.setItem('editor-open', '1');
   localStorage.setItem('editor-github-token', 'github_pat_planted');
 });
-await page.reload({ waitUntil: 'domcontentloaded' });
-await page.waitForSelector('.admin-row');
-await page.waitForTimeout(400);
+await outPage.reload({ waitUntil: 'domcontentloaded' });
+await outPage.waitForSelector('.admin-row');
+await outPage.waitForTimeout(400);
 
-const signOutShown = await page.evaluate(() => {
+const signOutShown = await outPage.evaluate(() => {
   const b = document.getElementById('sign-out');
   if (!b) return { there: false };
   const box = b.getBoundingClientRect();
@@ -2973,17 +3052,16 @@ t('  …and it is a control a finger can hit',
 
 /* The confirmation has to be answered, and it also has to be the right
    sentence: the one thing a reader cannot learn anywhere else is that
-   this does not revoke the sign-in at Google. The handler at the top
-   keeps what it said. */
-answerConfirm = true;
-await page.evaluate(() => { document.getElementById('sign-out').click(); });
-await page.waitForTimeout(300);
+   this does not revoke the sign-in at Google. */
+outAnswer = true;
+await outPage.evaluate(() => { document.getElementById('sign-out').click(); });
+await outPage.waitForTimeout(300);
 t('  …having said that this does not revoke the sign-in at Google',
-  /does not revoke/.test(confirmSaid) && /password/.test(confirmSaid),
-  confirmSaid || '(nothing asked)');
-await page.waitForTimeout(800);
+  /does not revoke/.test(outConfirmSaid) && /password/.test(outConfirmSaid),
+  outConfirmSaid || '(nothing asked)');
+await outPage.waitForTimeout(800);
 
-const afterSignOut = await page.evaluate(() => ({
+const afterSignOut = await outPage.evaluate(() => ({
   session: sessionStorage.getItem('editor-firebase-session'),
   open: sessionStorage.getItem('editor-open'),
   token: localStorage.getItem('editor-github-token') ||
@@ -3005,17 +3083,12 @@ t('  …and the GitHub token too',
 t('  …and the page is locked again rather than left open on an empty session',
   afterSignOut.locked === true, JSON.stringify(afterSignOut));
 
-/* Back to the stood-in backend AND back through the gate for whatever
-   follows. Sign out did its job, so the page is locked and this origin's
-   storage is empty — which is the group's own result and not something to
-   leave behind. Every group below starts from an open editor. */
+await outContext.close();
+
+/* Back onto the main page and the stood-in backend for whatever follows.
+   The main context was never signed out, so there is no gate to pass. */
 overlay.set('admin.js', await patchedAdminJs());
 await page.goto(`http://127.0.0.1:${PORT}/admin.html`, { waitUntil: 'domcontentloaded' });
-await page.waitForTimeout(150);
-if (await page.locator('#pass').isVisible()) {
-  await page.fill('#pass', PASS);
-  await page.click('#gate-form button[type="submit"]');
-}
 await page.waitForSelector('.admin-row');
 await page.waitForTimeout(400);
 

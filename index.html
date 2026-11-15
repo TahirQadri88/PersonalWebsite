@@ -3,6 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- GitHub Pages cannot set a response header, so the policy has to ride
+         in the page. What it is worth: nothing a reader types reaches markup
+         unescaped today, so this is the backstop for the day a sink is added
+         rather than a fix for one that exists. `script-src` is the whole
+         point of it, and getting there cost the four inline
+         `onload="this.media='all'"` handlers, which are scripts — that swap
+         lives in common.js now.
+
+         `frame-ancestors` is deliberately absent: a meta policy cannot carry
+         it. The Worker sets X-Frame-Options itself, for the pages it
+         serves; these are served by GitHub Pages and cannot be given one.
+         admin.html carries no policy yet and that is said rather than
+         overlooked — it talks to three Google and GitHub hosts and hands
+         files to a download, so its policy wants writing and measuring on
+         its own rather than borrowing this one. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'" />
     <title>Scholarly Works and Research — Abul Laith Muhammad Tahir Qadri An-Naeemi</title>
     <meta name="description" content="Booklets, edited manuscripts, charts, articles and fatawa in Urdu, Arabic and English by Abul Laith Muhammad Tahir Qadri An-Naeemi of Jamia tun Noor, Karachi." />
     <meta name="author" content="Abul Laith Muhammad Tahir Qadri An-Naeemi" />
@@ -27,7 +43,7 @@
          fallback fonts and swaps when these arrive, rather than holding the
          first paint for a round trip to another origin. -->
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" media="print" onload="this.media='all'" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" media="print" data-font-css />
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" /></noscript>
     <link rel="stylesheet" href="styles.css" />
   </head>

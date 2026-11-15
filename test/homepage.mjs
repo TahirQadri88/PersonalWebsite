@@ -1005,7 +1005,22 @@ try {
        anchoring, not clamping, and the number is 301. It passed for a
        fortnight on one container and failed three times out of three on
        the next. A false account of a fault is worse than none. */
-    await page.addStyleTag({ content: '*, *::before, *::after { overflow-anchor: none; }' });
+    /* A constructed stylesheet, not `page.addStyleTag`, and the policy is
+       why. The pages carry a meta Content-Security-Policy with
+       `style-src 'self'`, and `addStyleTag` injects a `<style>` element —
+       which that directive forbids, so the harness's own control was
+       refused and the run died with Chromium's refusal message. The CSP
+       working as intended, reported as the suite being broken.
+
+       A `CSSStyleSheet` built in script and adopted is CSSOM rather than
+       inline markup, so no policy gates it. The control is identical; only
+       the route in changed. Anything else this suite ever needs to inject
+       comes the same way. */
+    await page.evaluate(() => {
+      const sheet = new CSSStyleSheet();
+      sheet.replaceSync('*, *::before, *::after { overflow-anchor: none; }');
+      document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+    });
     await page.waitForTimeout(60);
     const parked = await page.evaluate(() => Math.round(window.scrollY));
     await page.evaluate(() => {
@@ -1616,6 +1631,82 @@ try {
       [...urls].every((u) => u.includes('Gentium+Book+Plus')), [...urls].join('\n'));
     t('…and no longer names Newsreader',
       [...urls].every((u) => !u.includes('Newsreader')), [...urls].join('\n'));
+
+    /* ---- the policy every page carries ----
+
+       GitHub Pages cannot set a response header — the live apex sends no
+       nosniff, no referrer policy and no HSTS — so a Content-Security-Policy
+       here has to ride in the page as a meta. It is written in five places:
+       index.html, work.html and 404.html by hand, and the four page
+       builders in admin.js, which share one `CSP` constant between them.
+       Five copies is five chances for one to drift, which is the same walk
+       the font URL above already makes for the same reason.
+
+       What it is worth, stated rather than implied: nothing a reader types
+       reaches markup unescaped today — the whole XSS pass is clean — so
+       this is the backstop for the day a sink is added rather than a fix
+       for one that exists. `script-src` is the point of it, and reaching
+       `'self'` with no `'unsafe-inline'` cost the four inline
+       `onload="this.media='all'"` attributes, which are scripts. That swap
+       is in common.js now, and 404.html, which loads no script at all,
+       went to `script-src 'none'`.
+
+       admin.html deliberately carries none, and that is asserted too so it
+       reads as a decision: it talks to three Google and GitHub hosts and
+       hands files to a download, so its policy wants writing and measuring
+       on its own rather than borrowing this one. The Worker sets real
+       headers on everything it serves, which is the half of this that can
+       be done properly. */
+    const policies = new Map();
+    for (const p of pages) {
+      const html = await readFile(join(ROOT, p), 'utf8');
+      const m = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]*)"/);
+      if (m) policies.set(p, m[1]);
+    }
+    /* share-card.html is the source for one screenshot and is served to
+       nobody; it carries a <style> block, so it would want its own policy
+       for no reader's benefit. admin.html is the decision above. */
+    const EXEMPT = new Set(['share-card.html', 'admin.html']);
+    const wanted = pages.filter((p) => !EXEMPT.has(p));
+    t(`${wanted.length} pages carry a content policy`,
+      wanted.every((p) => policies.has(p)),
+      wanted.filter((p) => !policies.has(p)).join(', ') || 'all of them');
+    t('…and admin.html does not, which is a decision and not an oversight',
+      !policies.has('admin.html'), policies.get('admin.html') || '(none)');
+
+    const distinct = new Set([...policies.values()]);
+    /* Two: the reader pages, and 404.html, which needs no script at all. */
+    t(`…and there are ${distinct.size} distinct policies, the reader one and 404's`,
+      distinct.size === 2, [...distinct].join('\n\n'));
+    t('…every one of them forbids inline script',
+      [...distinct].every((c) => /script-src '(self|none)'/.test(c) && !/unsafe-inline/.test(c)),
+      [...distinct].join('\n\n'));
+    t('…and 404.html, which loads no script, allows none',
+      /script-src 'none'/.test(policies.get('404.html') || ''), policies.get('404.html'));
+    t('…and each one still lets the font CDN serve CSS and woff2',
+      [...distinct].every((c) => c.includes('style-src \'self\' https://fonts.googleapis.com') &&
+        c.includes('font-src \'self\' https://fonts.gstatic.com')),
+      [...distinct].join('\n\n'));
+
+    /* The four builders write the policy from one constant; the three
+       hand-written reader pages each hold their own copy. This is what
+       says the copies have not parted. */
+    const adminSource = await readFile(join(ROOT, 'admin.js'), 'utf8');
+    const built = (adminSource.match(/var CSP = ([\s\S]*?);\n/) || [])[1] || '';
+    const builtPolicy = [...built.matchAll(/"([^"]*)"/g)].map((m) => m[1]).join('');
+    t('…and the generated pages carry exactly what the hand-written ones do',
+      builtPolicy === (policies.get('index.html') || ''),
+      'builder: ' + builtPolicy + '\nindex.html: ' + policies.get('index.html'));
+
+    /* The handlers the policy made impossible. Four of them, and a fifth
+       would be shipped by whoever next copies a page's <head>. */
+    const inlineHandlers = [];
+    for (const p of pages) {
+      const html = await readFile(join(ROOT, p), 'utf8');
+      for (const m of html.matchAll(/\son[a-z]+="/g)) inlineHandlers.push(p + m[0].trim());
+    }
+    t('no page carries an inline event handler for the policy to forbid',
+      inlineHandlers.length === 0, inlineHandlers.join(', '));
   }
 
   /* ---- the other two gaps, and why a stack is not evidence ----

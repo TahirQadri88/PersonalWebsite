@@ -2129,6 +2129,31 @@
     slot.innerHTML = icon(slot.getAttribute('data-icon'), slot.getAttribute('data-icon-class') || '');
   });
 
+  /* The font stylesheet, let in once the page has been painted.
+
+     Three pages ask for it as `media="print"`, which fetches it without
+     holding up the first paint, and then switch it on. That switch used
+     to be an `onload="this.media='all'"` attribute on the link itself —
+     an inline event handler, which is a script, and which a
+     Content-Security-Policy worth having cannot allow. Four of them
+     across the site were the only thing standing between these pages and
+     `script-src 'self'`.
+
+     Here instead, keyed on a data attribute rather than on the href, so
+     nothing has to repeat that 200-character Google URL a fifth time. It
+     runs in the same synchronous pass as everything else in this file,
+     from the end of `<body>`, which is after the stylesheet has been
+     asked for and almost always after it has arrived — so the swap is the
+     same swap, at the same moment, by a different route. A reader with
+     JavaScript off is unaffected: the `<noscript>` link beside it has
+     always been what serves them, and still is.
+
+     The 34 generated pages do not come this way — they ask for the
+     stylesheet plainly, as they always have. */
+  document.querySelectorAll('link[data-font-css][media="print"]').forEach(function (link) {
+    link.media = 'all';
+  });
+
   /* Footer year and the mailto link, on every page that has them. */
   var year = document.getElementById('year');
   if (year) year.textContent = new Date().getFullYear();

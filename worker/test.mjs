@@ -30,6 +30,7 @@ let gh=[], blobBodies=[];
 /* What the branch already holds, as the tree API would list it. Tests set
    this to say "this file is unchanged" and watch it not be sent. */
 let alreadyThere=[], treeSent='{}';
+let siteAsked = null;
 globalThis.fetch = async (url, opts={}) => {
   url=String(url);
   if(url.includes('googleapis.com/service_accounts/v1/jwk/securetoken'))
@@ -47,8 +48,12 @@ globalThis.fetch = async (url, opts={}) => {
     if(/\/git\/commits$/.test(url)) return j({sha:'c0ffee1234567890'});
     if(/\/git\/refs\/heads\//.test(url)) return j({});
   }
-  if(url.startsWith('https://tahirqadri.com.pk'))
+  if(url.startsWith('https://tahirqadri.com.pk')){
+    /* What the pass-through actually sent upstream, so a test can ask
+       whether a sign-in credential travelled with it. */
+    siteAsked = new Headers(opts.headers || {});
     return new Response('<!doctype html><title>editor</title>',{status:200,headers:{'content-type':'text/html'}});
+  }
   throw new Error('unexpected fetch: '+url);
 };
 
@@ -287,6 +292,53 @@ const page = await worker.fetch(new Request('https://admin.tahirqadri.com.pk/adm
 t('the editor is served through the Worker', page.status===200);
 t('  …and told not to be indexed', /noindex/.test(page.headers.get('x-robots-tag')||''));
 t('  …and not to be cached', /no-store/.test(page.headers.get('cache-control')||''));
+
+/* The pass-through used to forward `request.headers` wholesale, so every
+   fetch of a stylesheet or a font through this host handed the editor's
+   own sign-in credential to GitHub Pages' edge. That edge serves the
+   author's own site and the token is only ever accepted by this Worker,
+   so nothing was leaking to a third party — it was a credential
+   travelling further than it needs to, which is reason enough.
+
+   Asserted on the headers the upstream actually received, not on the
+   code that builds them. */
+t('  …and the sign-in does not travel upstream with it',
+  siteAsked && !siteAsked.get('authorization') && !siteAsked.get('cf-access-jwt-assertion'),
+  siteAsked ? JSON.stringify([...siteAsked]) : 'the site was never asked');
+
+/* GitHub Pages cannot set a header at all — the live apex sends no
+   nosniff, no referrer policy and no HSTS — so the static half makes do
+   with a meta CSP. This half is a Worker and simply sets them. */
+for (const [name, value] of [['x-content-type-options','nosniff'],
+                             ['referrer-policy','no-referrer'],
+                             ['x-frame-options','DENY']]) {
+  t('  …and carries ' + name,
+    (page.headers.get(name)||'').toLowerCase() === value.toLowerCase(),
+    name + ': ' + (page.headers.get(name) || '(absent)'));
+  t('  …on an answer it writes itself too (' + name + ')',
+    (ver.headers.get(name)||'').toLowerCase() === value.toLowerCase(),
+    name + ': ' + (ver.headers.get(name) || '(absent)'));
+}
+
+/* An HttpError is a sentence written for whoever is reading it, and
+   several name the Cloudflare setting that fixes the thing — those must
+   keep going out whole. Anything else is the runtime talking, in wording
+   nobody here composed, and it must not.
+
+   The condition is made rather than waited for: a SITE_ORIGIN the stub
+   has never heard of makes the pass-through's own fetch throw, which is
+   exactly the shape of an unforeseen failure — and the message it throws,
+   'unexpected fetch: https://…', is precisely the sort of internal text
+   this is here to keep in. */
+const blew = await worker.fetch(new Request('https://admin.tahirqadri.com.pk/styles.css'),
+  {...env, SITE_ORIGIN:'https://nowhere.invalid'});
+const blewBody = await blew.json();
+t('an unforeseen failure answers 500 without describing itself',
+  blew.status===500 && blewBody.message==='something went wrong', JSON.stringify(blewBody));
+t('  …while a written error still names its own remedy',
+  /SITE_ORIGIN/.test((await (await worker.fetch(
+    new Request('https://admin.tahirqadri.com.pk/styles.css'),
+    {...env, SITE_ORIGIN:''})).json()).message));
 
 /* ---- the Firebase way in ---- */
 r = await postFb([{path:'content.js',text:GOOD}], null);

@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'" />
     <title>Page not found — Scholarly Works and Research</title>
     <meta name="robots" content="noindex" />
     <link rel="icon" type="image/png" sizes="32x32" href="files/images/logo-circle-32.png" />
@@ -10,12 +11,12 @@
     <link rel="apple-touch-icon" href="files/images/logo-circle-180.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- Asked for early but not waited on: the browser paints the page in the
-         fallback fonts and swaps when these arrive, rather than holding the
-         first paint for a round trip to another origin. -->
+    <!-- Asked for plainly here, the way the generated pages ask for it. The
+         three pages that fetch it as `media="print"` and switch it on
+         afterwards do that from common.js, and this page deliberately loads
+         no script at all — see the footer and the policy above. -->
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" media="print" onload="this.media='all'" />
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" /></noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -36,11 +37,8 @@
       </section>
     </main>
     <footer>
-      <span>© <span id="year">2026</span> Abul Laith Muhammad Tahir Qadri An-Naeemi</span>
+      <span>© Abul Laith Muhammad Tahir Qadri An-Naeemi</span>
       <a href="index.html">Home</a>
     </footer>
-    <!-- This page loads none of the site's scripts — it needs no content —
-         so the year it prints would otherwise stay at whatever was typed. -->
-    <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
   </body>
 </html>

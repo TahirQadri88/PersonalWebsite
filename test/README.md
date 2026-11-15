@@ -291,3 +291,29 @@ that can write to the repository.
 It names the check and prints the response it got. Every case is a request
 the Worker either accepted or refused, so the fix is nearly always in
 `WRITABLE` or in the sign-in checks above it.
+
+## The Playwright version is pinned, and to the one that was measured
+
+`package.json` names `1.56.1` exactly, not `^1.56.1`, and
+`package-lock.json` is committed beside it. Two reasons, and the second
+is the one that matters here.
+
+A range plus no lockfile means a fresh `npm i` installs whatever is
+current, and these suites measure the browser's behaviour rather than a
+function's return value — so the thing being measured can change without
+anything in this repository changing. `^1.56.1` resolved to **1.65.1**
+the day this was pinned: nine minor versions of browser behaviour nobody
+here had ever run.
+
+And Playwright's own behaviour has already moved under this suite once.
+`open()` in `homepage.mjs` turns Google's font CDN away with
+`context.route('https://fonts.g**', …)`, and on 1.56.1 that glob **stops
+matching** — so every assertion in that file has been measured with the
+real faces served, which is the opposite of what its comments claim. See
+CLAUDE.md for the whole account; it is written down as the next piece of
+work rather than patched in passing. A pin does not fix that, but it does
+mean the next such change arrives when somebody chooses it instead of on
+whichever morning they happened to reinstall.
+
+Playwright is a developer's tool and never reaches a reader: the site
+ships no dependencies at all. So this guards the tests, not the site.

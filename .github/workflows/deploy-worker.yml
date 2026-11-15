@@ -83,8 +83,29 @@ jobs:
       # uploads the code and *then* fails reconciling the route in
       # wrangler.toml — so the Worker is live and the run is red, which is
       # the one outcome this workflow exists to make impossible.
+      # Pinned to a commit, not to `v3`, because this is the step that is
+      # handed CLOUDFLARE_API_TOKEN — a token that can edit the Worker and
+      # its routes. A tag is a pointer somebody else can move, so `v3`
+      # means "whatever Cloudflare points it at the next time this runs";
+      # a sha means the code that was read. 9acf94a is what `v3` resolved
+      # to on 15 November 2026, which is deliberately the same code that
+      # was already running: pinning it changed nothing about this deploy,
+      # which is the point. Worth knowing that `v3` has moved ahead of the
+      # last numbered release (v3.9.0, October 2024), so there is no
+      # version tag to pin to instead.
+      #
+      # To update: `git ls-remote https://github.com/cloudflare/wrangler-action v3`,
+      # read what changed, then put the new sha here.
+      #
+      # actions/checkout and actions/setup-node are left on their tags
+      # deliberately. They are GitHub's own, they are handed no secret,
+      # and nothing here watches for dependency updates — so pinning them
+      # would freeze them at whatever was current the day somebody last
+      # remembered, which is worse than a moving tag from the host of the
+      # runner itself. The one that receives the key is the one that is
+      # pinned.
       - name: Deploy
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

@@ -12,28 +12,26 @@
 (function () {
   'use strict';
 
-  /* ---- The latch ----------------------------------------------------
+  /* ---- The way in ---------------------------------------------------
 
-     A static site has no server, so this cannot be a lock. The passphrase
-     is compared against a SHA-256 digest held below; anyone who opens the
-     browser's developer tools can read past it. What it does do is keep a
-     casual visitor out of the editor, and that is all it is claimed to do.
+     One, and only one: the Firebase sign-in at the foot of this file. The
+     words go to Google, what comes back is an ID token, and the Worker
+     verifies its signature before it will commit anything.
 
-     It is enough here because the editor holds nothing private — every
-     word in it is already published — and it can save nothing. The thing
-     that actually protects the library is that only you can push to
-     GitHub.
+     A passphrase latch stood beside it for a long time and is gone —
+     `PASS_HASH`, a SHA-256 constant compared against what was typed. It
+     was dead already, since the branch only ran when Firebase was not
+     configured, and it was a liability while it sat here: a bare,
+     unsalted hash of a human-chosen phrase, in a PUBLIC repository, which
+     is an offline crack of a few minutes and may name a phrase used
+     elsewhere. Worse, it was a fail-open — unconfigure Firebase by
+     accident and the latch quietly became the whole lock, which is the
+     exact shape of the Worker's own EDITOR_EMAIL fault.
 
-     To change the passphrase, open any page of the site, paste this in the
-     browser console, and put the line it prints in place of PASS_HASH:
-
-       crypto.subtle.digest('SHA-256', new TextEncoder().encode('your new words'))
-         .then(h => console.log([...new Uint8Array(h)]
-           .map(b => b.toString(16).padStart(2,'0')).join('')))
-
-     For real protection, put the site behind Cloudflare Access — free,
-     and it authenticates before the page is ever served. */
-  var PASS_HASH = '747402f385b5ce61e73972374c7749ecc86fda520bb7f0980deae111611d7207';
+     An editor with no sign-in configured now refuses to open at all.
+     `Files…` still works and needs no sign-in: it hands over the files to
+     paste in by hand, which is the right fallback because it writes
+     nothing anywhere by itself. */
 
   /* Each set in the script it names, so the button for Urdu is written in
      Nastaleeq and the choice can be made by looking rather than by
@@ -2792,6 +2790,7 @@
       '  <head>',
       '    <meta charset="UTF-8" />',
       '    <meta name="viewport" content="width=device-width, initial-scale=1.0" />',
+      '    <meta http-equiv="Content-Security-Policy" content="' + CSP + '" />',
       '    <title>' + e(record.title) + ' — ' + e(author) + '</title>',
       record.description ? '    <meta name="description" content="' + e(record.description) + '" />' : null,
       '    <meta name="author" content="' + e(author) + '" />',
@@ -3039,6 +3038,7 @@
       '  <head>',
       '    <meta charset="UTF-8" />',
       '    <meta name="viewport" content="width=device-width, initial-scale=1.0" />',
+      '    <meta http-equiv="Content-Security-Policy" content="' + CSP + '" />',
       '    <title>' + e(record.title) + ' — ' + e(author) + '</title>',
       record.description ? '    <meta name="description" content="' + e(record.description) + '" />' : null,
       '    <meta name="author" content="' + e(author) + '" />',
@@ -3791,6 +3791,7 @@
       '  <head>',
       '    <meta charset="UTF-8" />',
       '    <meta name="viewport" content="width=device-width, initial-scale=1.0" />',
+      '    <meta http-equiv="Content-Security-Policy" content="' + CSP + '" />',
       '    <title>' + e(record.title) + ' — ' + e(author) + '</title>',
       record.description ? '    <meta name="description" content="' + e(record.description) + '" />' : null,
       '    <meta name="author" content="' + e(author) + '" />',
@@ -4005,6 +4006,7 @@
       '  <head>',
       '    <meta charset="UTF-8" />',
       '    <meta name="viewport" content="width=device-width, initial-scale=1.0" />',
+      '    <meta http-equiv="Content-Security-Policy" content="' + CSP + '" />',
       '    <title>' + e(settings.title) + '</title>',
       '    <meta name="description" content="' + e(settings.description) + '" />',
       '    <meta name="author" content="' + e(settings.author) + '" />',
@@ -6577,6 +6579,20 @@
      post was lost to it. */
   var EDITOR_VERSION = '2026-11-15.1';
 
+  /* The policy every generated page carries, as one string rather than
+     four copies of it. Four builders each keep their own <head>, which is
+     exactly the drift this file records paying for once — a standfirst
+     patched in one builder and left in the other while the test went
+     green. GitHub Pages cannot set a response header, so a meta policy is
+     the only kind these pages can have; `frame-ancestors` cannot ride in
+     one and is therefore absent. It must stay identical to the policy in
+     index.html, work.html and 404.html, and there is a guard that says so. */
+  var CSP = "default-src 'none'; script-src 'self'; " +
+    "style-src 'self' https://fonts.googleapis.com; " +
+    "font-src 'self' https://fonts.gstatic.com; " +
+    "img-src 'self' data:; connect-src 'self'; " +
+    "base-uri 'none'; form-action 'none'";
+
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */
   var WRITES = ['content.js', 'sitemap.xml', 'index.html', 'posts/a.html', 'works/a.html',
@@ -7234,14 +7250,6 @@
 
   /* ---- Unlocking ---- */
 
-  function digest(text) {
-    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)).then(function (buffer) {
-      return Array.prototype.map
-        .call(new Uint8Array(buffer), function (byte) { return byte.toString(16).padStart(2, '0'); })
-        .join('');
-    });
-  }
-
   function unlock() {
     document.body.classList.remove('is-locked');
     try { sessionStorage.setItem('editor-open', '1'); } catch (error) { /* private mode */ }
@@ -7311,22 +7319,49 @@
       return;
     }
 
-    digest(passInput.value).then(function (hash) {
-      if (hash === PASS_HASH) {
-        unlock();
-      } else {
-        gateError.textContent = 'Not that one.';
-        passInput.select();
-      }
-    });
+    /* There is no second way in, and that is the point.
+
+       What stood here was a passphrase latch: the typed words hashed and
+       compared against a SHA-256 constant in this file. Its own comment
+       was honest about it — a static site has no server, so anyone who
+       opens the developer tools reads straight past it — and it was
+       already dead code, since Firebase has been configured for months
+       and `firebaseConfigured()` takes the branch above.
+
+       Two reasons it is gone rather than left harmlessly sitting there.
+       The constant was a bare, unsalted hash of a human-chosen phrase in
+       a PUBLIC repository, which is cracked offline in minutes and tells
+       anyone who does so a phrase the author may have used elsewhere. And
+       if Firebase were ever unconfigured — a typo in the project id, a
+       key cleared while debugging — the latch would silently become the
+       only gate again, which is the fail-open shape this codebase has
+       already been bitten by once in the Worker's EDITOR_EMAIL.
+
+       So an unconfigured editor refuses instead. `Files…` is unaffected
+       and needs no sign-in at all, which is the honest fallback: it hands
+       over the files to paste in by hand. */
+    gateError.textContent = 'This editor has no sign-in configured, so it cannot be' +
+      ' opened. Set FIREBASE in admin.js. Files… needs no sign-in.';
   });
 
   /* Stays open for the rest of the browser session, so a reload while
-     writing does not ask again. With Firebase that shortcut is only taken
-     when there is still a session to go with it — otherwise the page
-     would open and the first publish would fail on a token it never had. */
+     writing does not ask again — but only while there is a session to go
+     with it. Otherwise the page would open and the first publish would
+     fail on a token it never had.
+
+     The condition used to read `firebaseConfigured() && !readSession()`,
+     which was right while the passphrase latch existed: with no Firebase
+     there was no session to want, and the latch was what had opened the
+     page. With the latch gone a sign-in is the only way in, so BOTH have
+     to hold — a sign-in configured, and a session to go with it.
+
+     Requiring only the session was tried first and the guard caught it:
+     with Firebase unconfigured, a session left in storage still opened
+     the editor, 42 rows and all. A session is a thing that is merely
+     *there*; whether it can be checked at all is a separate question, and
+     that is the one the latch used to answer wrongly. */
   var alreadyOpen = false;
   try { alreadyOpen = sessionStorage.getItem('editor-open') === '1'; } catch (error) { /* private mode */ }
-  if (firebaseConfigured() && !readSession()) alreadyOpen = false;
+  if (!firebaseConfigured() || !readSession()) alreadyOpen = false;
   if (alreadyOpen) unlock();
 })();

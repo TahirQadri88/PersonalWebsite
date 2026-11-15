@@ -3887,6 +3887,192 @@ would not fail closed: the check is `if (env.EDITOR_EMAIL && …)`, so an
 empty value drops the second publish lock altogether. `worker/test.mjs`
 refuses to pass if any var in the file is `""`, which stops the deploy.
 
+**The passphrase latch is gone, and it was the fail-open shape this file
+already warns about.** `PASS_HASH` was a bare SHA-256 of a human-chosen
+phrase in a **public** repository — an offline crack of minutes, naming a
+phrase the author may use elsewhere — and it was already dead code, since
+`firebaseConfigured()` has taken the other branch for months. The reason
+to remove rather than ignore it: unconfigure Firebase by accident, a typo
+in the project id or a key cleared while debugging, and the latch quietly
+became the **whole lock**. That is the Worker's own `EDITOR_EMAIL` fault
+in the page instead of the Worker.
+
+An unconfigured editor refuses to open now, and says which constant to
+set. `Files…` still works and needs no sign-in, which is the honest
+fallback: it hands over the files to paste in by hand and writes nothing
+anywhere by itself.
+
+**Requiring the session was not enough, and the guard caught it.** The
+gate's shortcut read `firebaseConfigured() && !readSession()`, which was
+right while the latch existed. The first fix made it `!readSession()`
+alone — and with Firebase unconfigured, a session left in storage still
+opened the editor, **42 rows and all**. Both have to hold: a sign-in
+configured, and a session to go with it. A session is a thing that is
+merely *there*; whether it can be checked at all is the separate question
+the latch used to answer wrongly.
+
+**It took the test suite's only way in with it, and the replacement is
+better than what it replaced.** `patchedAdminJs` blanked `apiKey` to drop
+the editor back to the latch and opened it with a known hash. With no
+latch, `plantSession` writes the two keys the gate's shortcut reads, as
+an `addInitScript` **IIFE** — that script is run as a *script*, so a bare
+arrow function would evaluate to a function and never be called, which
+this file records costing a green run once already on the Save-Data seed.
+It is not a weaker check stood in for a stronger one: it is the state a
+signed-in author's browser is actually in, and `freshToken` reads the
+planted ID token exactly as it would a real one. What is **not** covered
+this way is the sign-in itself, which needs Google — said plainly rather
+than left looking guarded. One stand-in remains, `BACKEND`.
+
+**Two groups need a context with nothing planted, and that is forced
+rather than tidy.** `addInitScript` runs again on **every navigation**,
+and signing out ends in `location.reload()` — so the session would be put
+straight back and the assertion would report it still there on code that
+works. The sign-out group and the unconfigured-editor group each get
+their own context and close it. The unconfigured one plants anyway, which
+is the point: even with the session key present, an editor that cannot
+check a sign-in must not open.
+
+**The hash check grepped for the word and failed on the comment
+explaining its own removal.** `PASS_HASH` appears in prose now, so the
+assertion reads the file with comments stripped and looks for an
+assignment *or* a loose 64-character hex literal — which is what a
+SHA-256 looks like however it is named. The homepage suite's text audit
+learned the same thing: **a comment is not code.**
+
+**And a group that changes a served file owns putting it back.** The
+unconfigured-editor group sets `apiKey: ''` in the overlay, and its first
+run failed **six** assertions three groups later because it never
+restored it. Same shape as the `page.once` dialog trap: the damage lands
+somewhere that reads like an unrelated regression.
+
+**The Worker sets the headers GitHub Pages cannot.** Read off the live
+apex: no `x-content-type-options`, no `referrer-policy`, no HSTS, and no
+way to add them — Pages serves headers of its own and takes no
+configuration. The Worker half has no such excuse, so every answer it
+writes and everything it passes through now carries `nosniff`,
+`no-referrer` and `X-Frame-Options: DENY`. `nosniff` matters most on the
+pass-through, which serves whatever the public site serves.
+
+**The pass-through was handing the sign-in to GitHub's edge.** It sent
+`request.headers` wholesale, so every fetch of a stylesheet or a font
+through the admin host carried `Authorization: Bearer <Firebase ID
+token>` — and under Access would have carried the Access assertion too —
+to GitHub Pages' Fastly. Not a leak to a third party: that edge serves
+the author's own site, and the token is only ever accepted by this
+Worker. It was a credential travelling further than it needs to, which is
+reason enough. Three names are deleted and everything else still goes,
+because the upstream is a static file server and needs the method, the
+range and the conditional headers. The guard reads the headers the
+upstream **received**, not the code that builds them, and with the fault
+restored it prints the whole JWT.
+
+**A written error names its remedy; an unforeseen one must not describe
+itself.** The catch-all returned `error.message` for *any* throw. The
+deliberate `HttpError` messages are the good half of this file and go out
+whole — the refused-token one names the Cloudflare dashboard path, the
+missing `SITE_ORIGIN` one names the variable. A `TypeError` from the
+runtime is wording nobody here composed. It gets one fixed sentence now,
+with the real text in `console.error`.
+
+The guard **makes** its condition instead of waiting for one: a
+`SITE_ORIGIN` the stub has never heard of makes the pass-through's own
+fetch throw, and the message it throws — `unexpected fetch:
+https://nowhere.invalid/styles.css` — is exactly the sort of internal
+text this exists to keep in. Restored, that is what the failure prints.
+
+**A Content-Security-Policy rides in the page, because it has nowhere
+else to ride.** GitHub Pages cannot set a header, so it is a
+`<meta http-equiv>`: 40 pages carry one, in two forms — the reader policy,
+and 404.html's, which allows **no script at all** because that page loads
+none.
+
+**What it is worth, said rather than implied.** Nothing a reader types
+reaches markup unescaped today; the XSS pass over every `innerHTML` sink
+came back clean, `highlightText` escapes both the match and the text
+between matches, and the one URL parameter is resolved by lookup. So this
+is the backstop for the day a sink is added, not a fix for one that
+exists. `script-src 'self'` with no `'unsafe-inline'` is the whole point
+of it.
+
+**Reaching that cost four inline `onload="this.media='all'"` attributes,
+which are scripts.** They were the async font trick on the four
+hand-written pages — fetch the stylesheet as `media="print"`, switch it on
+when it lands. The switch is in `common.js` now, keyed on a
+`data-font-css` attribute so the 200-character Google URL is not repeated
+a fifth time, and it runs in the same synchronous pass as everything else
+in that file. A reader with JavaScript off is unaffected: the `<noscript>`
+link beside it has always been what serves them. The 34 generated pages
+never came that way — they ask for the stylesheet plainly — and 404.html
+now does too, so it has **zero script** and gave up its one inline line,
+the footer year. A missing year beats a wrong one on a page nobody should
+reach.
+
+**admin.html deliberately carries no policy, and the guard asserts its
+absence so it reads as a decision.** It talks to three Google and GitHub
+hosts and hands files to a download; its policy wants writing and
+measuring on its own rather than borrowing the reader one. The Worker's
+real headers cover it meanwhile. `share-card.html` is exempt for its own
+reason — it is the source for one screenshot, served to nobody, and
+carries a `<style>` block.
+
+**Five copies of one policy, so the walk that guards the font URL guards
+this too.** Three hand-written pages hold their own; the four page
+builders in `admin.js` share one `CSP` constant, which is the fix for the
+thing this file already records paying for — a standfirst patched in one
+builder and left in the other while the test went green. The guard holds
+the constant against `index.html`'s copy, and with one character changed
+in the builder it reports the drift.
+
+**The regeneration is the proof that it is faithful: 37 files, 37
+insertions.** Changing four builders means every committed page is now
+out of step with what the editor writes, and *the editor writes what is
+committed* would have caught it. A one-off harness opened the editor with
+a planted session, pressed `Files…`, and wrote back every text page it
+offered. The diff is **one line per page and nothing else** — which is
+better evidence than any assertion that nothing was disturbed.
+
+**The policy's first real act was to break the test suite, and that was
+the proof it works.** `page.addStyleTag` injects a `<style>` element,
+`style-src 'self'` forbids one, and the scroll-anchoring **control** —
+the `overflow-anchor: none` this file argues for at length — was refused.
+The run died on Chromium's refusal message, which reads exactly like the
+suite being broken rather than like the page being protected. It is a
+constructed `CSSStyleSheet` adopted into the document now: CSSOM, which
+no policy gates. The control is identical; only the route in changed.
+
+**With each fault put back, one at a time:** the upstream headers **1**,
+printing the forwarded JWT; the raw 500 **1**, printing `unexpected
+fetch: https://nowhere.invalid/styles.css`; the security headers **6**; a
+generated page missing its policy **1**; the builder's constant drifting
+**1**; an `onload` returning **1**. Suites **460**, **238** and the
+Worker's.
+
+**Playwright is pinned, and to the version that was measured.**
+`^1.56.1` with no lockfile resolved to **1.65.1** the day this was
+checked — nine minors of browser behaviour nobody here had run — and
+these suites measure the browser rather than a return value. It is
+`1.56.1` exactly with `test/package-lock.json` committed. It changes
+nothing about the site, which ships no dependencies at all.
+
+**The deploy action that receives the key is pinned to a commit.**
+`cloudflare/wrangler-action` is handed `CLOUDFLARE_API_TOKEN`, and a tag
+is a pointer somebody else can move. `9acf94a` is what `v3` resolved to
+on 15 November 2026 — deliberately the code that was already running, so
+pinning changed nothing about the deploy, which is the point. Worth
+knowing that `v3` has moved **ahead of the last numbered release**
+(v3.9.0, October 2024), so there is no version tag to pin instead.
+`actions/checkout` and `actions/setup-node` stay on their tags on
+purpose: GitHub's own, handed no secret, and nothing here watches for
+dependency updates — pinning them would freeze them at whatever was
+current the day somebody last remembered.
+
+**What the audit left for the author, and none of it is in this
+repository.** Ticking **Enforce HTTPS** in the Pages settings;
+restricting the Firebase web key in Google Cloud Console; checking the
+Auth authorized domains; turning on email-enumeration protection. The
+first is one click and is the other half of the plaintext-token fix.
+
 **The Worker's two locks are both required, and one of them was not.**
 `verifyIdentity` refuses outright when no sign-in service is configured —
 "a Worker holding a token that can write to the repository must never

@@ -117,10 +117,36 @@ class HttpError extends Error {
   }
 }
 
+/* Headers every answer from here carries, whatever it is.
+
+   GitHub Pages cannot set a header at all — read off the live site, the
+   apex sends no `x-content-type-options`, no `referrer-policy` and no
+   HSTS — so the static half of the site has to make do with a meta CSP.
+   This half is a Worker and can simply set them, so it does.
+
+   `nosniff` matters most on the pass-through, which serves whatever the
+   public site serves; `no-referrer` rather than a softer value because
+   nothing here has an outbound link worth a referrer, and the admin
+   host's own path should not travel; `DENY` because there is no reason
+   to frame the editor and every reason not to. */
+const SAFE_HEADERS = {
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'no-referrer',
+  'x-frame-options': 'DENY'
+};
+
+function harden(headers) {
+  for (const name of Object.keys(SAFE_HEADERS)) headers.set(name, SAFE_HEADERS[name]);
+  return headers;
+}
+
 function json(status, body) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }
+    headers: harden(new Headers({
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'no-store'
+    }))
   });
 }
 
@@ -524,13 +550,33 @@ async function passThrough(request, env) {
   const target = new URL(incoming.pathname + incoming.search, env.SITE_ORIGIN);
   if (incoming.pathname === '/') target.pathname = '/admin.html';
 
+  /* Not `request.headers` wholesale, which is what this used to send.
+     The editor's own requests to this host carry
+     `Authorization: Bearer <Firebase ID token>`, and under Access they
+     would carry `Cf-Access-Jwt-Assertion` as well — so every fetch of a
+     stylesheet or a font handed a sign-in credential to GitHub Pages'
+     edge, which has no use for it and no business seeing it. Not a leak
+     to a third party, since that edge serves the author's own site, and
+     the token is only ever accepted by this Worker; it is simply a
+     credential travelling further than it needs to, which is the whole
+     of the reason to stop.
+
+     Named rather than allowlisted: the upstream is a static file server,
+     so anything it genuinely needs — the method, the range, the
+     conditional headers — still goes, and only what identifies a person
+     is held back. */
+  const upstream = new Headers(request.headers);
+  upstream.delete('authorization');
+  upstream.delete('cf-access-jwt-assertion');
+  upstream.delete('cookie');
+
   const response = await fetch(target.toString(), {
     method: request.method,
-    headers: request.headers,
+    headers: upstream,
     redirect: 'follow',
     cf: { cacheTtl: 0 }
   });
-  const headers = new Headers(response.headers);
+  const headers = harden(new Headers(response.headers));
   /* The editor must never be cached or indexed, wherever it is served. */
   headers.set('cache-control', 'no-store');
   headers.set('x-robots-tag', 'noindex, nofollow');
@@ -564,8 +610,18 @@ export default {
       }
       return await passThrough(request, env);
     } catch (error) {
-      const status = error instanceof HttpError ? error.status : 500;
-      return json(status, { message: error.message || 'something went wrong' });
+      /* An `HttpError` is a sentence written for whoever is reading it,
+         and several of them name the Cloudflare setting that fixes the
+         thing — those go out as they are. Anything else is the runtime
+         talking: a TypeError, a failed URL parse, wording nobody here
+         composed and which can carry internal detail. That gets one
+         fixed sentence, and the real text stays in the Worker's own logs
+         where it is useful and private. */
+      if (error instanceof HttpError) {
+        return json(error.status, { message: error.message || 'something went wrong' });
+      }
+      console.error('unhandled', error && error.stack ? error.stack : error);
+      return json(500, { message: 'something went wrong' });
     }
   }
 };
