@@ -12,3 +12,6 @@ desktop.ini
 node_modules/
 *.log
 tmp/
+
+# Security audit notes — never commit: GitHub Pages serves this repo
+AUDIT.md
