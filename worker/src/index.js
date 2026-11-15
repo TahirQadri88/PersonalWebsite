@@ -8,9 +8,27 @@
 
    The second is what makes the first simple. The editor is served through
    this Worker rather than from the public address, so the page and the
-   endpoint share an origin: no CORS, no preflight, and Cloudflare Access
-   stands in front of both. A visitor who has not signed in never receives
-   admin.html at all, let alone reaches /publish.
+   endpoint share an origin: no CORS and no preflight.
+
+   What guards it, exactly, because this comment used to claim more than
+   the deployment delivers. It said Cloudflare Access stood in front of
+   both and that a visitor who had not signed in never received admin.html
+   at all. That is true of the Access configuration and FALSE of the one
+   that is live: `FIREBASE_PROJECT` is set and the two `ACCESS_*` are not,
+   so Access is not in the path, and an anonymous GET of this host returns
+   admin.html — checked against the running Worker, not inferred.
+
+   So the single lock is `identify()` below: the Firebase ID token's
+   signature verified against Google's own JWKS, and then the one address
+   in EDITOR_EMAIL. Nothing stands in front of it. That is enough, and it
+   is enough for a reason worth stating rather than assuming — the page it
+   hands out holds only words that are already published, and it can write
+   nothing by itself. But it is ONE lock, so the comment must not read as
+   though it were two. A reader who believes Access is here will weigh a
+   change to `identify()` as though something else were behind it.
+
+   Put Access in front of this host and both halves become true again;
+   until then this is the honest account.
 
    The GitHub token lives here as a Worker secret. It is never sent to a
    browser and never stored on a phone or a laptop, which is the whole

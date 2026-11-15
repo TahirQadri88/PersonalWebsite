@@ -234,7 +234,20 @@ async function newBlock(page, text) {
 const server = await serve();
 overlay.set('admin.js', await patchedAdminJs());
 
-const browser = await chromium.launch();
+/* One name mapped, for one group. `insecureOrigin` in admin.js asks the
+   browser `isSecureContext`, which is true for https, for `file://` AND
+   for http on a loopback host — that last one deliberately, since the
+   editor has to be opened over http to read a post's page back and
+   `python -m http.server` is the documented way. So every test here, on
+   127.0.0.1, is a SECURE context, and a guard for the insecure case
+   cannot be written against this server as it stands: it would pass
+   whatever the code did.
+   `editor.test` is a reserved TLD that resolves nowhere real, pointed at
+   the same server. Same files, same port, non-loopback host — which is
+   the one thing that makes the context insecure. */
+const browser = await chromium.launch({
+  args: [`--host-resolver-rules=MAP editor.test 127.0.0.1`]
+});
 const context = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
 /* Fonts are somebody else's server and nothing here depends on the glyphs
    arriving — only on which family the stylesheet asks for, which is
@@ -258,12 +271,31 @@ page.on('pageerror', (e) => jsErrors.push(e.message));
    lands in `jsErrors` and still fails the run. A permanent "accept
    every prompt" would have made that impossible to see. */
 let answerPrompt = null;
+/* A second slot on the same rule, for the same reason, because Sign out
+   asks before it throws the session away. One handler, two slots — a
+   `page.once` beside this one does not work: both answer, and the second
+   throws "Cannot accept dialog which is already handled", which kills the
+   run and reads like the editor misbehaving. */
+let answerConfirm = null;
+let confirmSaid = '';
 page.on('dialog', async (d) => {
   if (d.type() === 'beforeunload') { await d.accept(); return; }
   if (d.type() === 'prompt' && answerPrompt !== null) {
     const reply = answerPrompt;
     answerPrompt = null;
     await d.accept(reply);
+    return;
+  }
+  if (d.type() === 'confirm' && answerConfirm !== null) {
+    const reply = answerConfirm;
+    answerConfirm = null;
+    /* Kept, not only answered. What a confirmation SAYS is half of what
+       it is for, and the sentence below is the only place a reader learns
+       that signing out here does not revoke the sign-in at Google. Read
+       in this handler rather than in a second listener, because by the
+       time another listener runs the dialog has already been answered. */
+    confirmSaid = d.message();
+    if (reply) await d.accept(); else await d.dismiss();
     return;
   }
   jsErrors.push('unexpected dialog: ' + d.message());
@@ -2803,8 +2835,189 @@ await page.evaluate(() => {
   if (dialog && dialog.open) dialog.close();
 });
 
-/* Back to the stood-in backend for whatever follows. */
+/* ---- and on plain http it must not ask at all -------------------------
+
+   The dialog above is correct where it appears: an https page that has no
+   Worker behind it has to ask for a token, and does. Over plain http it
+   is a different thing entirely. That page is one anybody on the network
+   can rewrite, and the genuine version of it asks for a token that can
+   write to the whole repository — so a reader cannot tell the real dialog
+   from a planted one, and the real one is asking for the thing worth
+   stealing. Found by reading the live site: http://tahirqadri.com.pk/
+   answers 200 with no redirect, and admin.html is served at that address.
+
+   The protocol alone is not the test, and that is the point of standing
+   on `editor.test` rather than on 127.0.0.1 — see the resolver rule at
+   the launch. */
+console.log('\nand on plain http it must not ask at all');
+
+await page.goto(`http://editor.test:${PORT}/admin.html`, { waitUntil: 'domcontentloaded' });
+await page.waitForTimeout(150);
+
+/* Before anything is concluded from it. A guard whose condition quietly
+   failed to take is a green run that says the opposite of the truth, and
+   this file has paid for that once already with an addInitScript that
+   evaluated a function and never called it. If this origin is secure
+   after all, every assertion below would pass on code that does nothing. */
+const reallyInsecure = await page.evaluate(
+  () => ({ secure: window.isSecureContext, protocol: location.protocol, host: location.hostname }));
+t('the page really is on an insecure origin before anything is concluded from it',
+  reallyInsecure.secure === false && reallyInsecure.protocol === 'http:',
+  JSON.stringify(reallyInsecure));
+
+/* The latch cannot be used to get in here, and the reason is worth
+   writing down because it looks like a fault the first time: `crypto.subtle`
+   is not exposed in an insecure context at all, so `digest()` throws and
+   the passphrase can never match. It costs the real editor nothing —
+   Firebase is configured there, so signing in is a `fetch` and the latch
+   is never reached — but it does mean this group has to come in by the
+   other door, the gate's own session shortcut. Which also keeps the
+   measurement off the latch, where it has no business being. */
+await page.evaluate(() => {
+  try { sessionStorage.setItem('editor-open', '1'); } catch (error) { /* private mode */ }
+});
+await page.reload({ waitUntil: 'domcontentloaded' });
+/* Caught rather than left to throw. A guard that dies inside the harness
+   reports nothing and reads as the harness being broken — this file has
+   paid for that twice, once on a 30-second click timeout that named a
+   helper instead of the fault. */
+let httpOpened = true;
+try {
+  await page.waitForSelector('.admin-row', { timeout: 10000 });
+} catch (error) {
+  httpOpened = false;
+}
+t('  …and the editor opens there at all, so what follows is measuring something',
+  httpOpened, 'the editor never unlocked on the insecure origin');
+await page.waitForTimeout(600);
+
+const httpBox = await page.evaluate(() => {
+  const box = document.getElementById('worker-status');
+  return box.hidden ? '(nothing shown)' : box.textContent;
+});
+t('it says on load that http is why it will not ask for a token',
+  /over http/.test(httpBox) && /must not ask for a GitHub token/.test(httpBox), httpBox);
+
+await page.evaluate(() => { document.getElementById('publish').click(); });
+await page.waitForTimeout(600);
+const httpPublish = await page.evaluate(() => ({
+  dialogOpen: !!(document.getElementById('token-dialog') || {}).open,
+  status: (document.getElementById('publish-status') || {}).textContent || ''
+}));
+t('  …and pressing Publish does not open the token dialog',
+  httpPublish.dialogOpen === false, JSON.stringify(httpPublish));
+/* Refusing in silence is the fault this editor has already been fixed
+   for once, in the toolbar. A control that does nothing and says nothing
+   is indistinguishable from a broken one. */
+t('  …it says why instead of going quiet',
+  /over http/.test(httpPublish.status), httpPublish.status || '(nothing said)');
+
+await page.evaluate(() => {
+  const dialog = document.getElementById('token-dialog');
+  if (dialog && dialog.open) dialog.close();
+});
+
+/* ---- signing out puts the session down -------------------------------
+
+   Two tokens come back from a Firebase sign-in, and the refresh token is
+   the one that matters: it does not expire, and anything that can read
+   this origin's storage goes on minting ID tokens with it. Until this
+   button existed the only way to put the session down was to close the
+   tab.
+
+   What is asserted is that the keys are gone from the device. NOT that
+   the sign-in was revoked at Google — no endpoint a web client may call
+   does that, so neither the code nor this guard claims it. The remedy for
+   a lost device is a password change in the Firebase console, and the
+   button's own confirmation says so. */
+console.log('\nsigning out puts the session down');
+
+/* The real admin.js, not the stand-in: `apiKey` is blanked in the patched
+   copy, so `firebaseConfigured()` is false there and the button is
+   correctly never shown. This group is about the configuration the author
+   actually runs in. */
+const realAdminJs = await readFile(join(ROOT, 'admin.js'), 'utf8');
+overlay.set('admin.js', realAdminJs);
+await page.goto(`http://127.0.0.1:${PORT}/admin.html`, { waitUntil: 'domcontentloaded' });
+await page.waitForTimeout(300);
+
+/* Signed in, as far as the page can tell — the gate's shortcut reads
+   exactly these two keys, which is also what makes this the right thing
+   to plant rather than driving a real Firebase password. */
+await page.evaluate(() => {
+  sessionStorage.setItem('editor-firebase-session', JSON.stringify({
+    idToken: 'planted', refreshToken: 'planted-refresh',
+    expiresAt: Date.now() + 3600000, email: 'someone@example.com'
+  }));
+  sessionStorage.setItem('editor-open', '1');
+  localStorage.setItem('editor-github-token', 'github_pat_planted');
+});
+await page.reload({ waitUntil: 'domcontentloaded' });
+await page.waitForSelector('.admin-row');
+await page.waitForTimeout(400);
+
+const signOutShown = await page.evaluate(() => {
+  const b = document.getElementById('sign-out');
+  if (!b) return { there: false };
+  const box = b.getBoundingClientRect();
+  return { there: true, hidden: b.hidden, width: Math.round(box.width), height: Math.round(box.height) };
+});
+t('a signed-in editor offers a way out of it',
+  signOutShown.there && signOutShown.hidden === false && signOutShown.width > 0,
+  JSON.stringify(signOutShown));
+/* The one control reached for when something has already gone wrong, so
+   it has to be a real target rather than a word. The 44px floor is the
+   same one the reading-face control is held to. */
+t('  …and it is a control a finger can hit',
+  signOutShown.height >= 36, JSON.stringify(signOutShown));
+
+/* The confirmation has to be answered, and it also has to be the right
+   sentence: the one thing a reader cannot learn anywhere else is that
+   this does not revoke the sign-in at Google. The handler at the top
+   keeps what it said. */
+answerConfirm = true;
+await page.evaluate(() => { document.getElementById('sign-out').click(); });
+await page.waitForTimeout(300);
+t('  …having said that this does not revoke the sign-in at Google',
+  /does not revoke/.test(confirmSaid) && /password/.test(confirmSaid),
+  confirmSaid || '(nothing asked)');
+await page.waitForTimeout(800);
+
+const afterSignOut = await page.evaluate(() => ({
+  session: sessionStorage.getItem('editor-firebase-session'),
+  open: sessionStorage.getItem('editor-open'),
+  token: localStorage.getItem('editor-github-token') ||
+         sessionStorage.getItem('editor-github-token'),
+  locked: document.body.classList.contains('is-locked')
+}));
+t('  …and it takes the sign-in with it, refresh token and all',
+  afterSignOut.session === null, JSON.stringify(afterSignOut));
+/* A person pressing Sign out means "this device is done". Leaving behind
+   the key that writes to the repository would answer half the request. */
+t('  …and the GitHub token too',
+  !afterSignOut.token, JSON.stringify(afterSignOut));
+/* A companion rather than a guard, and the comment says so for the
+   reason this repository keeps writing it down: dropping `editor-open`
+   alone relocks the page, so this stays green in the faulty state where
+   the session and the token are both left behind. It is worth having —
+   an editor left open on a session that has been thrown away is its own
+   fault — but it is not what catches this one. The two above are. */
+t('  …and the page is locked again rather than left open on an empty session',
+  afterSignOut.locked === true, JSON.stringify(afterSignOut));
+
+/* Back to the stood-in backend AND back through the gate for whatever
+   follows. Sign out did its job, so the page is locked and this origin's
+   storage is empty — which is the group's own result and not something to
+   leave behind. Every group below starts from an open editor. */
 overlay.set('admin.js', await patchedAdminJs());
+await page.goto(`http://127.0.0.1:${PORT}/admin.html`, { waitUntil: 'domcontentloaded' });
+await page.waitForTimeout(150);
+if (await page.locator('#pass').isVisible()) {
+  await page.fill('#pass', PASS);
+  await page.click('#gate-form button[type="submit"]');
+}
+await page.waitForSelector('.admin-row');
+await page.waitForTimeout(400);
 
 
 /* ---- a homepage the editor cannot splice ----------------------------

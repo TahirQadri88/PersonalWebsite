@@ -6528,16 +6528,25 @@
 
   /* ---- Where a publish goes ------------------------------------------
 
-     Served from admin.tahirqadri.com.pk, the editor is sitting behind
-     Cloudflare Access and a Worker is on the same origin. Publishing then
-     means posting the files to /publish and letting the Worker commit
-     them: the GitHub token lives there as a secret and never touches this
-     device. The Access cookie is what identifies you, so there is nothing
-     to type and nothing to keep.
+     Served from admin.tahirqadri.com.pk, the editor has a Worker on its
+     own origin. Publishing then means posting the files to /publish and
+     letting the Worker commit them: the GitHub token lives there as a
+     secret and never touches this device. The sign-in is what identifies
+     you, so there is nothing to type and nothing to keep.
+
+     This used to say the page was sitting behind Cloudflare Access and
+     that the Access cookie identified you. Neither is true of what is
+     deployed — the Worker is on its Firebase path, Access is not
+     configured, and that host serves this page to anyone who asks. What
+     checks who you are is the Firebase ID token this page sends and the
+     Worker verifies. Said here as well as in the Worker because this is
+     the end that decides whether to ask for a token at all.
 
      Opened any other way — from the file system, or from the public
      address — there is no Worker to call, so it falls back to asking for
-     a GitHub token as before. `Files…` works everywhere regardless. */
+     a GitHub token as before, unless the page is on plain http, where it
+     refuses to ask at all; see `insecureOrigin`. `Files…` works
+     everywhere regardless. */
   var BACKEND = location.protocol === 'https:' && /^admin\./.test(location.hostname)
     ? '/publish'
     : '';
@@ -6566,7 +6575,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-10-19.1';
+  var EDITOR_VERSION = '2026-11-15.1';
 
   /* One of each kind of file a publish sends, as a specimen to test the
      Worker's own list against — not real names, just shapes. */
@@ -6670,7 +6679,43 @@
     return !BACKEND && /^https?:$/.test(location.protocol);
   }
 
+  /* A page served over plain http is a page anybody on the network can
+     rewrite, and this one legitimately asks for a token that can write to
+     the repository. The two together are the whole of the danger: a
+     reader on a café or university network cannot tell the real dialog
+     from one an attacker put there, and the real one is asking for
+     exactly the thing worth stealing.
+
+     `isSecureContext` is the browser's own answer rather than our guess
+     at one, and it is the answer we want in all four cases. https is
+     secure. `file://` is secure — opened from the file system there is no
+     Worker anywhere and the token is the right and only answer, which is
+     why this is not simply "refuse unless https". `http://localhost` is
+     secure too, which matters: the editor has to be opened over http to
+     read a post's page back, and `python -m http.server` is the
+     documented way to do it. http on a real host is the one case left,
+     and it is the one case refused.
+
+     The stored token cannot leak this way either, and that is the
+     browser's doing rather than ours: http://tahirqadri.com.pk and
+     https://tahirqadri.com.pk are separate origins, so they hold
+     separate storage, and a token typed into the https copy was never
+     readable from the http one. This is about the token not being asked
+     for in a place it can be taken. */
+  function insecureOrigin() {
+    return location.protocol === 'http:' && !window.isSecureContext;
+  }
+
+  var INSECURE_WHY = 'This page is being served over http, which anyone on' +
+    ' the same network can read and rewrite — so it must not ask for a' +
+    ' GitHub token. Open ' + EDITOR_HOME + ' and publishing needs no token' +
+    ' at all. Files… still works here.';
+
   function checkAddress() {
+    if (insecureOrigin()) {
+      warnOnLoad(INSECURE_WHY);
+      return;
+    }
     if (!wrongAddress()) return;
     warnOnLoad('This is the public copy of the editor, at ' + location.host +
       '. Publishing from here has to ask for a GitHub token, because the' +
@@ -6733,6 +6778,42 @@
     try {
       sessionStorage.setItem(SIGNED_IN, JSON.stringify(session));
     } catch (error) { /* private mode */ }
+  }
+
+  /* What the session holds, and why there has to be a way to put it down.
+
+     Two tokens come back from a sign-in. The ID token is the one the
+     Worker checks, it lasts an hour, and `freshToken` below swaps it
+     early rather than late. The refresh token beside it is the one that
+     matters here: it does not expire, and anything that can read this
+     origin's storage can go on minting ID tokens with it — a borrowed
+     laptop left open, an extension, a fault in this page. `sessionStorage`
+     is the right shelf for it (it goes when the tab does, unlike the
+     GitHub token's "keep it on this device"), but until this function
+     existed the only way to put the session down was to close the tab,
+     and nobody closes a tab to be safe.
+
+     What this CANNOT do, said plainly rather than implied: it does not
+     revoke the refresh token at Google. There is no endpoint for that a
+     web client may call — revoking is the Admin SDK's `revokeRefreshTokens`,
+     which needs a service-account key, and putting one of those in the
+     Worker would add a secret far more dangerous than the thing it
+     guards. So this removes the token from the device, which is the whole
+     of what this page can honestly offer. If a device is actually lost,
+     the remedy is to change the password in the Firebase console: that
+     invalidates every refresh token the account has issued. It is written
+     on the button's own confirmation rather than in a README, for the
+     reason the Worker's errors already follow — the fix is no use where
+     nobody looks for it. */
+  function signOut() {
+    try { sessionStorage.removeItem(SIGNED_IN); } catch (error) { /* private mode */ }
+    try { sessionStorage.removeItem('editor-open'); } catch (error) { /* private mode */ }
+    /* The GitHub token too. It is a different key to a different thing,
+       but a person pressing Sign out means "this device is done", and
+       leaving the one that writes to the repository behind would answer
+       half the request. */
+    forgetToken();
+    location.reload();
   }
 
   function identityCall(url, body) {
@@ -7093,7 +7174,7 @@
            said plainly on the line above — reload and sign in again for
            the second, a new `wrangler secret put GITHUB_TOKEN` for the
            first, worker/README.md has both. */
-        if (!BACKEND && !(error && error.silent) && /token/.test(error.message)) {
+        if (!BACKEND && !insecureOrigin() && !(error && error.silent) && /token/.test(error.message)) {
           tokenError.textContent = error.message;
           tokenDialog.showModal();
         }
@@ -7116,6 +7197,15 @@
       publish('');
       return;
     }
+    /* Before the token is read as well as before it is asked for. A
+       token stored by the https copy is not readable here — separate
+       origins, separate storage — but refusing early means there is one
+       answer to "may this page use a token" rather than two. */
+    if (insecureOrigin()) {
+      say(INSECURE_WHY, 'bad');
+      return;
+    }
+
     var token = readToken();
     if (token) {
       publish(token);
@@ -7171,6 +7261,23 @@
      latch: the email and password go to Google, and what comes back is a
      token the Worker can check. The passphrase, which only ever hid the
      page from passers-by, is not asked for at all. */
+  var signOutButton = document.getElementById('sign-out');
+  if (signOutButton && firebaseConfigured()) {
+    signOutButton.hidden = false;
+    signOutButton.addEventListener('click', function () {
+      /* The one dialog a phone draws itself, the same argument the Link
+         control already makes. What it says is the part that cannot go in
+         a README: removing the session here does not revoke it at Google. */
+      var ok = window.confirm(
+        'Sign out of this device?\n\n' +
+        'This removes the sign-in and any stored GitHub token from this ' +
+        'browser. It does not revoke the sign-in at Google — if this ' +
+        'device is lost, change the password in the Firebase console, ' +
+        'which invalidates every session the account has issued.');
+      if (ok) signOut();
+    });
+  }
+
   if (firebaseConfigured()) {
     document.getElementById('email-label').hidden = false;
     emailInput.hidden = false;

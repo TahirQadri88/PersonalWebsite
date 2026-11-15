@@ -1894,6 +1894,118 @@ malfunctioning. `checkAddress` says so on load, and the token dialog now
 says why it is asking. Same rule as the Worker's own errors: an error
 should name its own remedy.
 
+**And on plain http it must not ask at all, which the paragraph above
+got wrong by omission.** Saying *why* the public copy asks for a token
+is right and was not enough: it is still asking, and over `http://` it
+must not. Read off the live site — `http://tahirqadri.com.pk/` answers
+**200 with no redirect and no HSTS**, so "Enforce HTTPS" is simply
+unticked in the Pages settings, and `admin.html` is served at that
+address. That is a page anybody on a café or university network can
+rewrite, and the genuine version of it asks for a token that can write
+to the whole repository. A reader cannot tell the real dialog from a
+planted one, and the real one is asking for the thing worth stealing.
+
+`insecureOrigin` refuses, and what it asks is **`isSecureContext`, the
+browser's own answer, rather than `protocol === 'https:'`**, which would
+have broken two cases that must keep working. `file://` is a secure
+context — opened from the file system there is no Worker anywhere and
+the token is the right and only answer. `http://localhost` is one too,
+which matters more: the editor has to be opened over http to read a
+post's page back, and `python -m http.server` is the documented way to
+do it. http on a real host is the one case left, and the one refused.
+
+The stored token could not have leaked this way regardless, and that is
+the browser's doing rather than ours: `http://tahirqadri.com.pk` and
+`https://tahirqadri.com.pk` are **separate origins with separate
+storage**, so a token typed into the https copy was never readable from
+the http one. This is about the token not being *asked for* in a place
+it can be taken. It refuses out loud — the silent-control fault this bar
+has already been fixed for once.
+
+**The ticking of Enforce HTTPS is the other half and is not in this
+repository.** One click in the Pages settings. Until it happens the
+plaintext page still exists, it just no longer asks for anything.
+
+**`crypto.subtle` does not exist in an insecure context, which looked
+like a fault in the new guard.** The latch compares a SHA-256, so
+`digest()` throws on a plaintext origin and the passphrase can never
+match — the guard's first run timed out waiting for `.admin-row` and
+read as the editor being broken there. It costs the real editor nothing,
+since Firebase is configured and signing in is a `fetch`, but the guard
+has to come in through the gate's own session shortcut instead. Which is
+better anyway: it keeps the measurement off the latch, where it has no
+business being.
+
+**The guard needed a host, not a protocol, and that is why there is a
+resolver rule at the launch.** Every test in `test/editor.mjs` runs on
+`127.0.0.1`, which is a **secure** context, so an assertion written
+against that server would pass whatever the code did — a test that
+cannot fail. `--host-resolver-rules=MAP editor.test 127.0.0.1` points a
+reserved TLD at the same server: same files, same port, non-loopback
+host. And the group asserts `isSecureContext === false` **before
+anything is concluded from it**, the same rule the Save-Data seed
+already follows, because a condition that quietly fails to take turns a
+green run into a lie.
+
+**Signing out was impossible, and that is not a missing convenience.**
+Two tokens come back from a Firebase sign-in. The ID token is the one
+the Worker checks, lasts an hour, and `freshToken` swaps it early. The
+**refresh token** beside it does not expire, and anything that can read
+that origin's storage goes on minting ID tokens with it. `sessionStorage`
+is the right shelf — it goes when the tab does, unlike the GitHub
+token's "keep it on this device" — but until the button existed the only
+way to put the session down was to close the tab, and nobody closes a
+tab to be safe.
+
+**What it does not do is the part worth writing down.** It does not
+revoke the refresh token at Google, because **no endpoint a web client
+may call does that** — revoking is the Admin SDK's `revokeRefreshTokens`,
+which needs a service-account key, and putting one of those in the
+Worker would add a secret far more dangerous than the thing it guards.
+So the button removes the keys from the device, which is the whole of
+what this page can honestly offer, and the remedy for a device actually
+lost is a **password change in the Firebase console**, which invalidates
+every refresh token the account has issued. That sentence is on the
+button's own confirmation rather than in a README, for the reason the
+Worker's errors already follow. The guard reads it back: a confirmation
+that does not say it fails.
+
+It takes the GitHub token too. A person pressing Sign out means *this
+device is done*, and leaving behind the key that writes to the
+repository would answer half the request.
+
+**The lock-again assertion is a companion, not a guard, and says so.**
+Dropping `editor-open` alone relocks the page, so it stays green in the
+faulty state where the session and the token are both left behind. With
+the fault restored the other two report the planted
+`"refreshToken":"planted-refresh"` and `github_pat_planted` still
+sitting there, which is the fault in one line.
+
+**The Worker's own header comment claimed a lock that is not deployed.**
+It said Cloudflare Access stood in front of both the page and `/publish`,
+and that a visitor who had not signed in never received `admin.html` at
+all. True of the Access configuration; **false of the live one** —
+`FIREBASE_PROJECT` is set and the two `ACCESS_*` are not, and an
+anonymous GET of `admin.tahirqadri.com.pk` returns the editor page.
+Checked against the running Worker, not inferred. `admin.js`'s `BACKEND`
+comment said the same thing about the Access cookie identifying you.
+
+The single lock is `identify()`: the Firebase ID token verified against
+Google's JWKS, then the one address in `EDITOR_EMAIL`. That is enough —
+the page holds only published words and can write nothing by itself —
+but it is **one** lock, and a comment claiming two gets counted twice by
+whoever next changes `identify()`. Both comments now say what is
+actually there. **This one has no guard and cannot have one: it is
+prose, and the thing it was wrong about is not observable from inside
+the code it describes.** What can be checked is the live deployment, by
+hand, which is how it was found.
+
+Verified live at the same time, and worth keeping so the posture is not
+re-derived: anonymous `POST /publish` →
+`401 {"message":"not signed in — sign in and try again"}`, `GET /publish`
+→ `405`, and nothing written. `verifyJwt` pins `alg` to RS256, matches
+on `kid`, and checks `exp`, `nbf`, `aud` and `iss`.
+
 **The toolbar's order is a claim about what is reached for while
 writing.** On a phone it is one rail that swipes sideways — deliberate,
 because stacked it stood 380px tall on an 820px screen — and the rail
