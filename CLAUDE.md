@@ -1897,13 +1897,21 @@ should name its own remedy.
 **And on plain http it must not ask at all, which the paragraph above
 got wrong by omission.** Saying *why* the public copy asks for a token
 is right and was not enough: it is still asking, and over `http://` it
-must not. Read off the live site — `http://tahirqadri.com.pk/` answers
-**200 with no redirect and no HSTS**, so "Enforce HTTPS" is simply
-unticked in the Pages settings, and `admin.html` is served at that
+must not. Read off the live site at the time — `http://tahirqadri.com.pk/`
+answered **200 with no redirect and no HSTS**, so "Enforce HTTPS" was
+unticked in the Pages settings, and `admin.html` was served at that
 address. That is a page anybody on a café or university network can
 rewrite, and the genuine version of it asks for a token that can write
 to the whole repository. A reader cannot tell the real dialog from a
 planted one, and the real one is asking for the thing worth stealing.
+
+**Enforce HTTPS is on now** — 16 November 2026, checked rather than
+assumed: the apex, a deep page and `admin.html` each answer **301** to
+the https address. So `insecureOrigin` should never fire on this domain
+again, and it stays, because what it guards is the setting being
+untoggled, a second domain, or a copy of the editor opened over http
+anywhere else. A fix whose condition has stopped occurring is not a fix
+to remove.
 
 `insecureOrigin` refuses, and what it asks is **`isSecureContext`, the
 browser's own answer, rather than `protocol === 'https:'`**, which would
@@ -1922,9 +1930,15 @@ the http one. This is about the token not being *asked for* in a place
 it can be taken. It refuses out loud — the silent-control fault this bar
 has already been fixed for once.
 
-**The ticking of Enforce HTTPS is the other half and is not in this
-repository.** One click in the Pages settings. Until it happens the
-plaintext page still exists, it just no longer asks for anything.
+**The ticking of Enforce HTTPS was the other half and was not in this
+repository.** It is done. What it does **not** bring is HSTS: GitHub
+Pages sends no `strict-transport-security` on a custom domain and there
+is no way to add one, so a reader's **first** request of the day over
+`http://` is still made in the clear before the 301 lands. The redirect
+closes the common case and not the first-visit case. Closing that one
+means proxying the domain through Cloudflare and setting the header
+there — a DNS change, not a repository change, and the same answer this
+file already gives for `Cache-Control` on the fonts.
 
 **`crypto.subtle` does not exist in an insecure context, which looked
 like a fault in the new guard.** The latch compares a SHA-256, so
@@ -4068,10 +4082,11 @@ dependency updates — pinning them would freeze them at whatever was
 current the day somebody last remembered.
 
 **What the audit left for the author, and none of it is in this
-repository.** Ticking **Enforce HTTPS** in the Pages settings;
-restricting the Firebase web key in Google Cloud Console; checking the
-Auth authorized domains; turning on email-enumeration protection. The
-first is one click and is the other half of the plaintext-token fix.
+repository.** **Enforce HTTPS is done** (16 November 2026, verified:
+301 on the apex, on a deep page and on `admin.html`). Still open, all
+three console settings: restricting the Firebase web key in Google Cloud
+Console; checking the Auth authorized domains; turning on
+email-enumeration protection.
 
 **The Worker's two locks are both required, and one of them was not.**
 `verifyIdentity` refuses outright when no sign-in service is configured —
