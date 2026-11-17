@@ -4111,7 +4111,14 @@ came back as **dull**, and was. That is the finding: **warming it was
 half the answer and taking the chroma out was the wrong half.** The fault
 was never the hue on its own, it was a pale colour with nothing in it, and
 a second round at raised chroma and lightness is what reads warm *and*
-alive. `#B0C794` — hue 128, chroma 0.040 → **0.075** — is what shipped.
+alive. `#B0C794` — hue 128, chroma 0.040 → 0.075 — was that round's
+answer, and it came back **dull in its turn**. It was still a pale colour:
+the chroma had gone up and the **lightness had not**. `#BBDF99` is
+L 0.80 → **0.86** with chroma 0.075 → **0.100**, and that is what shipped.
+Three rounds, and the lesson only arrived on the third — *warm* was one
+axis, *chroma* a second, and **lightness** the one never moved. The two
+yellow-leaning candidates beside it were refused again, for the reason
+below.
 
 **The two gold-leaning candidates were the ones to refuse, and that is a
 rule rather than a preference.** `#C5C184` and `#C5CB82` look lively
@@ -4214,6 +4221,60 @@ between the fault and the setting rather than on today's numbers.
 With each fault put back, one at a time: the flat surfaces **2**, the
 black shadow **1** (naming the shadow it read), the cream search box
 **1**. Suite **476 → 481**.
+
+**A ground that does not change theme must not carry contents that do,
+and the hero broke that in every element it has.** Reported as *hero
+colors and design*. The hero is a photograph and a gradient: dark in
+daylight and dark at night, the one surface on the site whose ground
+genuinely never moves. The night block dimmed the whole `--on-dark*`
+family — eight inks — **and** `--hero-a/b/c` beneath them, together. The
+contrast between them barely moved, so **no sweep could see it**: 780
+elements measured, none below AA, and every colour on the front door a
+step muddier than it should be. That is what a reader means by dull, and
+it is not a contrast fault.
+
+**The call to action is the one that mattered.** `.button` reads
+`--button-face-warm`, which flips — correctly, because everywhere *else*
+a button sits on cream that really does become dark at night. On the hero
+it does not. Measured against the hero's own painted pixels, sampling the
+fill away from its own glyphs:
+
+```
+  Browse the works, against the hero around it
+    day     7.26 worst   10.46 best
+    night   1.02 worst    1.22 best
+```
+
+**1.02 is the same luminance as the ground behind it.** The site's primary
+action was readable at night only by its own words. The first sample
+taken was `1.89`, and that number was wrong: it read the *centre* of the
+button, which is its own text. Sample a fill away from its glyphs.
+
+**The fix for the inks is a deletion**, which is the best kind: the
+`--on-dark*` family, `--hero-a/b/c` and `--gold-pale` are simply not
+redefined in the night blocks any more, so they keep the values that were
+always right for a dark ground. 24 overrides removed. The button is two
+tokens **pinned on `.hero` itself** rather than a second button rule —
+the region states what it is, and the rule that draws the button is left
+alone and cannot drift from it.
+
+**The guard is the general rule rather than the button**, and it names no
+value, so it holds whatever the hero is next painted in: open the hero in
+both schemes and compare every element's background, colour and border.
+Ten of ten changed before; nothing changes now. Restoring either fault —
+the pin removed, or two of the dimmed inks put back — reports it.
+
+Measured after: the hero is **identical in both themes, 0 of 10 elements
+differing**, and daylight across five pages is byte-identical through all
+of it, **1895 elements, 0 differing**.
+
+The footer is the same kind of surface and was the same fault in
+miniature; its inks are fixed now too. Its *ground* still shifts four
+points, which is left deliberately — a ground may move, and this one is
+what the theme pill's pressed state is drawn against.
+
+With each fault put back: the hero pin **1**, the dimmed inks **1**.
+Suite **481 → 483**.
 
 **Weight is a design decision, and the test measures it.** The homepage was
 961KB: a decorative 518KB PNG inside the collapsed bio, and two fonts
