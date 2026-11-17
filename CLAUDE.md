@@ -43,6 +43,7 @@ files/images/   the seal used as favicon and header mark, and the calligraphed n
 files/cards/    one link-preview picture per post/work/fatwa, drawn by admin.js
 files/fonts/    Mehr Nastaliq Web, Aslam, and four small patch faces
 ```
+
 ## Where the long memory lives
 
 Everything this project has learned — every rule, measurement and mistake, word
@@ -134,8 +135,7 @@ suite for the files you touched, once, at the end, before you push.
 ## Working on this
 
 - Preview: open `index.html` directly, or `python -m http.server 4173`.
-- Check Urdu at mobile width (~380px) after any layout change — that is where
-  Nastaliq breaks first.
+- Check Urdu at ~380px after any layout change — that is where Nastaliq breaks first.
 - Search with `grep` and read only the parts of files you need; these files are large.
 - Work on a branch. Small commits, plain language — the author reads the history.
 - The address `https://tahirqadri.com.pk/` is written in five places that change
