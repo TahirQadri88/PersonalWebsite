@@ -5209,6 +5209,38 @@ try {
     await context.close();
   }
 
+  /* The general rule, which is worth more than the button that prompted it:
+     the hero is a photograph and a gradient and is DARK IN BOTH THEMES, so
+     nothing drawn on it may follow the theme. It all did — ten elements out
+     of ten — because the night block dimmed the whole `--on-dark*` family
+     and the hero gradient together. Contrast stayed flat and every colour
+     went muddier, which is what a reader calls dull and no contrast sweep
+     can report.
+
+     The button is the one that mattered: measured against the hero's own
+     painted pixels it stood 7.26:1 off its surroundings by day and 1.02:1
+     at night — the same luminance as the ground behind it.
+
+     This compares the two themes element by element rather than naming any
+     value, so it holds whatever the hero is next painted in. */
+  {
+    const read = async (scheme) => {
+      const { context, page } = await open(390, '/index.html', scheme);
+      const rows = await page.evaluate(() => [...document.querySelectorAll('.hero, .hero *')].map((e) => {
+        const s = getComputedStyle(e);
+        return [e.tagName.toLowerCase(), s.backgroundColor, s.color, s.borderColor].join(' | ');
+      }));
+      await context.close();
+      return rows;
+    };
+    const day = await read('light'), night = await read('dark');
+    t('the hero has something on it to measure', day.length >= 8, day.length + ' elements');
+    const moved = day.filter((row, i) => row !== night[i]);
+    t('nothing on the hero follows the theme, because its ground does not',
+      day.length === night.length && moved.length === 0,
+      moved.length + ' changed, e.g. day ' + (moved[0] || '-') + ' / night ' + (night[day.indexOf(moved[0])] || '-'));
+  }
+
   t('nothing threw along the way', threw.length === 0, threw.join(' | '));
 } finally {
   await browser.close();

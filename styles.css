@@ -1394,6 +1394,16 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   border-radius: 50%;
 }
 .hero > * { position: relative; z-index: 1; }
+/* The hero is dark in both themes, so the primary call to action on it
+   must not follow the theme — and it did. Measured against the hero's own
+   painted pixels, `Browse the works` stood 7.26:1 off its surroundings by
+   day and 1.02:1 at night: the same luminance as the ground behind it,
+   readable only by its own words. `.button` is right to flip, because
+   everywhere ELSE it sits on cream that really does become dark; what is
+   wrong is applying that here. So the two tokens it reads are pinned to
+   their daylight values for this region only, which leaves the rule that
+   draws the button untouched and cannot drift from it. */
+.hero { --button-face-warm: #f4eddc; --ink-title: #15342b; }
 
 .hero h1 {
   max-width: 10.5em;
@@ -2300,7 +2310,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
     --gold-wash-strong: rgba(232, 200, 130, 0.20);
     --gold-rule-soft: rgba(232, 200, 130, 0.30);
     --mark-brand: invert(76%) sepia(20%) saturate(650%) hue-rotate(0deg);
-    --mark-intro: invert(65%) sepia(70%) saturate(125%) hue-rotate(45deg);
+    --mark-intro: invert(71%) sepia(75%) saturate(150%) hue-rotate(50deg);
     --paper: #17211C;
     --card: #2E3C35;
     --paper-warm: #2B3731;
@@ -2331,7 +2341,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
        candidates beside it, which would have made a second gold out of the
        one register this palette keeps for crossings and the site's own
        voice. Worst ground 6.76 on --paper-warm, where the mint was 5.40. */
-    --moss: #B0C794;            /* ink only: 4 colour uses, never a ground */
+    --moss: #BBDF99;            /* ink only: 4 colour uses, never a ground */
     /* Measured on the rendered page: in daylight a ruling card stands
        13.26:1 off the slab it floats on and the slab stands 12.69:1 off the
        page. At night those were 1.06 and 1.23 — the site's one dramatic
@@ -2351,6 +2361,13 @@ details[open] > summary .toggle { transform: rotate(45deg); }
        floor. This keeps a trace of green rather than going literally black,
        because the green is the site's identity and black is the absence of
        a decision. */
+    /* The `--on-dark*` family, `--hero-a/b/c` and `--gold-pale` are
+       deliberately NOT redefined here. They name ink on a ground that is
+       dark in BOTH themes — the hero, the footer, the slab — so a night
+       value for them is a claim that the ground moved, and it did not.
+       Giving them one dimmed eight inks and the hero gradient together:
+       contrast stayed flat while every colour went muddier, which is
+       exactly what a reader means by dull. The fix is a deletion. */
     --panel-deep: #050B08;
     --field: #2E3C35;
     --lift: 0 0 0 1px #46564D, 0 10px 26px rgba(0, 0, 0, 0.5);
@@ -2363,30 +2380,18 @@ details[open] > summary .toggle { transform: rotate(45deg); }
     
     --moss-deep: #1A3428;
     --footer-ground: #14241D;
-    --hero-a: #10211B;
-    --hero-b: #1A3A30;
-    --hero-c: #1F4639;
     --button-face: #273229;
     --button-face-warm: #2D3830;
     --chip: #2A352E;
     /* The ground under these is dark in BOTH themes, so they barely move;
        what changes is that at night they are no longer the brightest
        thing on the page. */
-    --on-dark-bright: #F2EEE5;
-    --on-dark: #E2DED5;
-    --on-dark-panel: #DED9D0;
-    --on-dark-urdu: #CFDAD4;
-    --on-dark-copy: #C6D1CB;
-    --on-dark-count: #B8C5BE;
-    --on-dark-footer: #AFBCB5;
-    --on-dark-meta: #A3AFA8;
     /* The roles swap, and the raw tokens do not. gold-on-light measures
        2.92 on the night card — it is unusable there, exactly as
        gold-on-dark is unusable on paper. */
     --gold: var(--gold-on-dark);
     --gold-rule: #C9A05A;
     --gold-mark: var(--gold-on-dark);
-    --gold-pale: #F0DEBC;
     --gold-dim: #C8B795;
     --gold-deep: #E4CFA4;
     --lapis: var(--lapis-on-dark);
@@ -2404,7 +2409,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
     --gold-wash-strong: rgba(232, 200, 130, 0.20);
     --gold-rule-soft: rgba(232, 200, 130, 0.30);
     --mark-brand: invert(76%) sepia(20%) saturate(650%) hue-rotate(0deg);
-    --mark-intro: invert(65%) sepia(70%) saturate(125%) hue-rotate(45deg);
+    --mark-intro: invert(71%) sepia(75%) saturate(150%) hue-rotate(50deg);
     --paper: #17211C;
     --card: #2E3C35;
     --paper-warm: #2B3731;
@@ -2435,7 +2440,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
        candidates beside it, which would have made a second gold out of the
        one register this palette keeps for crossings and the site's own
        voice. Worst ground 6.76 on --paper-warm, where the mint was 5.40. */
-    --moss: #B0C794;            /* ink only: 4 colour uses, never a ground */
+    --moss: #BBDF99;            /* ink only: 4 colour uses, never a ground */
     /* Measured on the rendered page: in daylight a ruling card stands
        13.26:1 off the slab it floats on and the slab stands 12.69:1 off the
        page. At night those were 1.06 and 1.23 — the site's one dramatic
@@ -2455,6 +2460,13 @@ details[open] > summary .toggle { transform: rotate(45deg); }
        floor. This keeps a trace of green rather than going literally black,
        because the green is the site's identity and black is the absence of
        a decision. */
+    /* The `--on-dark*` family, `--hero-a/b/c` and `--gold-pale` are
+       deliberately NOT redefined here. They name ink on a ground that is
+       dark in BOTH themes — the hero, the footer, the slab — so a night
+       value for them is a claim that the ground moved, and it did not.
+       Giving them one dimmed eight inks and the hero gradient together:
+       contrast stayed flat while every colour went muddier, which is
+       exactly what a reader means by dull. The fix is a deletion. */
     --panel-deep: #050B08;
     --field: #2E3C35;
     --lift: 0 0 0 1px #46564D, 0 10px 26px rgba(0, 0, 0, 0.5);
@@ -2467,30 +2479,18 @@ details[open] > summary .toggle { transform: rotate(45deg); }
     
     --moss-deep: #1A3428;
     --footer-ground: #14241D;
-    --hero-a: #10211B;
-    --hero-b: #1A3A30;
-    --hero-c: #1F4639;
     --button-face: #273229;
     --button-face-warm: #2D3830;
     --chip: #2A352E;
     /* The ground under these is dark in BOTH themes, so they barely move;
        what changes is that at night they are no longer the brightest
        thing on the page. */
-    --on-dark-bright: #F2EEE5;
-    --on-dark: #E2DED5;
-    --on-dark-panel: #DED9D0;
-    --on-dark-urdu: #CFDAD4;
-    --on-dark-copy: #C6D1CB;
-    --on-dark-count: #B8C5BE;
-    --on-dark-footer: #AFBCB5;
-    --on-dark-meta: #A3AFA8;
     /* The roles swap, and the raw tokens do not. gold-on-light measures
        2.92 on the night card — it is unusable there, exactly as
        gold-on-dark is unusable on paper. */
     --gold: var(--gold-on-dark);
     --gold-rule: #C9A05A;
     --gold-mark: var(--gold-on-dark);
-    --gold-pale: #F0DEBC;
     --gold-dim: #C8B795;
     --gold-deep: #E4CFA4;
     --lapis: var(--lapis-on-dark);
