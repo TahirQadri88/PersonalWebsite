@@ -802,3 +802,31 @@
 }
 .draft-offer[hidden] { display: none; }
 .draft-offer-text { flex: 1 1 14em; font-size: 14px; }
+
+/* The "rebuild everything" choice. A reading-sized tap target rather than
+   a bare 17px checkbox, because it is pressed with a thumb on a phone,
+   and its reason sits beside it rather than in a title attribute — a
+   title never appears on a phone, which this project has already paid
+   for once on the reading-face control. */
+.admin-rebuild {
+  margin: 0 0 18px;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--ink);
+}
+.admin-rebuild label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.admin-rebuild input { width: 20px; height: 20px; }
+.admin-rebuild-why {
+  display: block;
+  max-width: 54em;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}

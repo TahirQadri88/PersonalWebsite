@@ -216,6 +216,88 @@
     record.updated = today();
   }
 
+  /* ---- What a publish actually has to send ---- */
+
+  /* A publish rebuilds every page and redraws every share card, because a
+     page is purely derived from content.js and there is therefore no "has
+     this changed" question to answer about one. That invariant is right
+     and is kept: the building is unchanged.
+
+     What was wrong is that all of it was then SENT. Measured on this
+     library, one corrected typo uploaded 75 files and 2.3MB from the
+     author's phone, and 1.8MB of that was 35 JPEG share cards redrawn one
+     canvas at a time. The Worker commits only what differs, so nearly all
+     of that drawing and uploading was thrown away at the far end — paid
+     for on mobile data and a phone's battery, for nothing.
+
+     So the SENDING is narrowed: a record's page and card go only when
+     that record has really changed since the editor opened or since the
+     last publish. content.js, sitemap.xml and the three generated landing
+     pages always go, because each is built from the whole library and
+     changes whenever anything does.
+
+     The danger this has to answer is a change to a BUILDER rather than to
+     a record — a new line in buildWork, a different drawCard, the CSP
+     constant — which must reach every page and would otherwise reach
+     none. The editor cannot detect that, so it is not guessed at: any
+     change outside the records themselves rebuilds the lot (see
+     siteSignature), `Rebuild every page` beside Publish says the rest
+     plainly, and `Files…` always hands over everything. */
+  var baseline = null;
+
+  function recordSignature(entry) {
+    var title = entry.category ? entry.category.title
+      : isPost(entry) ? 'Posts, Notes & Reflections' : 'Islamic rulings';
+    var body = bodies[entry.record.id];
+    /* The category's title is in here because a card is drawn with it —
+       renaming a category has to redraw the cards under it. */
+    return JSON.stringify(entry.record) + '\u0000' + title +
+      '\u0000' + (body === undefined ? '' : body);
+  }
+
+  /* Everything in the model that is NOT a record. A category renamed, a
+     line changed in the author's introduction, a new header link: each
+     reaches pages no single record owns, so any change here rebuilds
+     everything rather than trying to work out which pages care. */
+  function siteSignature() {
+    var copy = JSON.parse(JSON.stringify(model));
+    (copy.categories || []).forEach(function (category) { category.works = []; });
+    copy.rulings = [];
+    return JSON.stringify(copy);
+  }
+
+  function takeBaseline() {
+    var records = {};
+    allRecords().forEach(function (entry) {
+      records[entry.record.id] = recordSignature(entry);
+    });
+    baseline = { site: siteSignature(), records: records };
+  }
+
+  /* One record is back in step with what is committed. Called when a
+     post's page has just been read back and nothing has been edited —
+     without it, merely opening a row would mark that post changed. */
+  function rebaseRecord(id) {
+    if (!baseline) return;
+    allRecords().forEach(function (entry) {
+      if (entry.record.id === id) baseline.records[id] = recordSignature(entry);
+    });
+  }
+
+  function recordChanged(entry) {
+    /* No baseline means nothing is known, so nothing is skipped. A record
+       the baseline has never seen is new, which counts as changed. */
+    if (!baseline) return true;
+    return baseline.records[entry.record.id] !== recordSignature(entry);
+  }
+
+  function mustRebuildAll() {
+    if (!baseline) return true;
+    if (baseline.site !== siteSignature()) return true;
+    var box = document.getElementById('rebuild-all');
+    return !!(box && box.checked);
+  }
+
   /* ---- Small builders ---- */
 
   function el(tag, className, text) {
@@ -3754,14 +3836,17 @@
       var categoryTitle = entry.category
         ? entry.category.title
         : post ? 'Posts, Notes & Reflections' : 'Islamic rulings';
-      out.push({ record: entry.record, categoryTitle: categoryTitle });
+      out.push({ record: entry.record, categoryTitle: categoryTitle, entry: entry });
     });
     return out;
   }
 
-  function buildCardFiles() {
+  function buildCardFiles(onlyChanged) {
+    var targets = cardTargets().filter(function (target) {
+      return !onlyChanged || recordChanged(target.entry);
+    });
     return Promise.all(
-      cardTargets().map(function (target) {
+      targets.map(function (target) {
         return renderCardBase64(target.record, target.categoryTitle).then(function (base64) {
           return { path: 'files/cards/' + target.record.id + '.jpg', text: base64, binary: true };
         });
@@ -5303,6 +5388,10 @@
             var parsed = new DOMParser().parseFromString(html, 'text/html');
             var article = parsed.getElementById('post-body');
             bodies[record.id] = article ? htmlToBody(article) : '';
+            /* This is the committed text arriving, not an edit. Without it,
+               merely OPENING a post would mark it changed and put its page
+               and its card into every later publish. */
+            rebaseRecord(record.id);
             writing.setText(bodies[record.id]);
             bodyNote.textContent = '';
             offerDraft(bodies[record.id]);
@@ -6721,7 +6810,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-11-17.1';
+  var EDITOR_VERSION = '2026-11-18.1';
 
   /* The policy every generated page carries, as one string rather than
      four copies of it. Four builders each keep their own <head>, which is
@@ -7139,7 +7228,7 @@
   /* A Promise, not a plain array — rendering every card is the one part
      of a publish that can't happen synchronously, since it waits on
      fonts and on the canvas itself. */
-  function filesToCommit() {
+  function filesToCommit(onlyChanged) {
     var out = [{ path: 'content.js', text: buildContent() }, { path: 'sitemap.xml', text: buildSitemap() }];
     /* problems() has already refused a publish that could not splice this,
        so reaching here with no text means there was nothing to write. */
@@ -7155,6 +7244,10 @@
     out.push({ path: 'fatawa/index.html', text: buildFatawa() });
     out.push({ path: 'author/index.html', text: buildAuthor() });
     allRecords().forEach(function (entry) {
+      /* The one line this whole change turns on. Everything above is built
+         from the whole library and always goes; a record's own page and
+         card are its author's words and go only when those have moved. */
+      if (onlyChanged && !recordChanged(entry)) return;
       if (isApp(entry)) {
         /* Regenerated in full every publish, like a work's own page:
            nothing about an app lives anywhere but content.js, so there is
@@ -7167,7 +7260,7 @@
         out.push({ path: 'works/' + entry.record.id + '.html', text: buildWork(entry.record, entry) });
       }
     });
-    return buildCardFiles().then(function (cards) { return out.concat(cards); });
+    return buildCardFiles(onlyChanged).then(function (cards) { return out.concat(cards); });
   }
 
   function commitAll(token, files, message) {
@@ -7256,7 +7349,12 @@
     busy(true, 'Drawing…');
     say('Drawing this publish’s cards…');
 
-    filesToCommit()
+    var everything = mustRebuildAll();
+    say(everything
+      ? 'Rebuilding every page and card…'
+      : 'Drawing the cards for what you changed…');
+
+    filesToCommit(!everything)
       .then(function (files) {
         var content = files[0].text;
         try {
@@ -7291,6 +7389,11 @@
            that second state the words still exist nowhere but here, so
            throwing the backup away would be the one moment it was needed. */
         if (commit.sha) dropAllDrafts();
+        /* What is on the branch now is what the editor holds, so the next
+           publish measures against this. Only after a real commit: a
+           publish that failed changed nothing, and moving the baseline
+           there would make the next one skip the files that never went. */
+        if (commit.sha) takeBaseline();
         /* The Worker sends back what it actually wrote, which is not what
            it was handed: the whole library goes over, and only the files
            that differ from the branch are committed. Saying "3 files"
@@ -7404,6 +7507,9 @@
     document.body.classList.remove('is-locked');
     try { sessionStorage.setItem('editor-open', '1'); } catch (error) { /* private mode */ }
     render();
+    /* After render, so every record is in the model, and before anything
+       can have been edited. */
+    takeBaseline();
     loadIndex();
     checkWorker();
     checkEditor();
