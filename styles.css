@@ -77,6 +77,58 @@
   --hero-b: #17483c;
   --hero-c: #1c5346;
 
+  /* The two golds must never collapse — each fails where the other works,
+     which is measured a few sections down and guarded. But a call site
+     should not be CHOOSING between them either, or every new rule
+     re-argues it and the second place is the one left behind. `--gold`
+     resolves to the right raw token per theme; both raw tokens stay
+     defined and keep their own guard. The accent pair below works the
+     same way, for the same reason. */
+  --gold: var(--gold-on-light);
+
+  /* Lapis is the pigment of Qur'anic illumination and Timurid manuscript
+     work, so it belongs to this subject rather than being a third colour
+     chosen to look modern. It is a PAIR, and that was forced by
+     measurement, not taste: swept at the lapis hue, no single value
+     clears 4.5 on both grounds — the crossover sits at 4.04 light and
+     3.85 dark, marginal on both, which is exactly the `--gold-rule`
+     mistake this file already records. Computed: lapis-on-light 6.72 on
+     paper and 2.31 at night; lapis-on-dark 2.51 on paper and 6.19 at
+     night. Each fails where the other works. */
+  --lapis-on-light: #2B5991;
+  --lapis-on-dark: #71A1DF;
+  --lapis: var(--lapis-on-light);
+
+  /* Two tokens were doing two jobs each, which only showed when a theme
+     asked them to move in opposite directions. `--moss-deep` is 17 inks
+     and 4 surfaces: as a title colour it has to go light at night, as the
+     fatawa panel it has to stay dark. `--button-face` is the FACE of a
+     light button and the TEXT on a dark one. A token used as both a
+     surface and an ink cannot have one night value, and in the light
+     theme nothing ever says so — both read correctly, which is why this
+     survived until the first thing that moved them. */
+  --ink-title: #15342b;
+  --on-button-dark: #f6f1e4;
+
+  /* The SECOND class of literal, and the one a hex sweep cannot see: an
+     rgba(). The sticky header is a translucent veil of the page colour,
+     and the carousel's fade ends at the page colour with zero alpha — so
+     both had cream baked into them and neither would ever have followed a
+     theme. 20 distinct rgba values on screen, and they are not one kind:
+     veils and fades must flip, gold washes must follow the gold, and the
+     SHADOWS are deliberately left alone — a shadow is dark on both
+     themes and flipping one would make it glow. */
+  --header-veil: rgba(250, 248, 242, 0.95);
+  --card-veil: rgba(255, 253, 248, 0.96);
+  --fade-from: rgb(255, 253, 248);
+  --fade-to: rgba(255, 253, 248, 0);
+  --gold-wash: rgba(134, 96, 31, 0.10);
+  --gold-wash-mid: rgba(134, 96, 31, 0.16);
+  --gold-wash-strong: rgba(134, 96, 31, 0.18);
+  --gold-rule-soft: rgba(184, 134, 58, 0.28);
+
+  color-scheme: light;
+
   /* Gentium Book Plus sets the English and, which is the point of it,
      the Arabic transliteration this library is full of. Newsreader was
      here and had no glyph for eight of the characters that transliteration
@@ -723,7 +775,7 @@ h1, h2, h3 {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--gold-on-light);
+  color: var(--gold);
 }
 /* The author's name, above the heading. It was the gold used for small
    labels, which reads as a caption; it is the one name on the page and
@@ -835,7 +887,7 @@ h1, h2, h3 {
    title — the default yellow reads as a highlighter mark left by
    accident, not something the page meant to show. */
 .record-title mark {
-  background: rgba(184, 134, 58, 0.28);
+  background: var(--gold-rule-soft);
   color: inherit;
   border-radius: 3px;
   padding: 0 1px;
@@ -922,7 +974,7 @@ h1, h2, h3 {
   gap: 12px;
   padding: 14px 22px;
   background: var(--button-face-warm);
-  color: var(--moss-deep);
+  color: var(--ink-title);
   font-weight: 700;
   font-size: 14px;
   text-decoration: none;
@@ -930,7 +982,7 @@ h1, h2, h3 {
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 .button:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(0, 0, 0, 0.16); }
-.button-dark { background: var(--moss-deep); color: var(--button-face); }
+.button-dark { background: var(--moss-deep); color: var(--on-button-dark); }
 
 /* 2px, not 1. The search box was reported as *mixed with the website*
    when it sat behind a 1px border, and the answer there was a 2px rule —
@@ -1003,10 +1055,10 @@ button.text-link {
   inset: -13px -8px;
 }
 .text-link:hover,
-.document-link:hover { color: var(--gold-on-light); }
+.document-link:hover { color: var(--gold); }
 
 .toggle {
-  color: var(--gold-on-light);
+  color: var(--gold);
   font-family: var(--font-ui);
   font-size: 24px;
   line-height: 1;
@@ -1087,7 +1139,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .search-icon {
   display: inline-flex;
   flex: none;
-  color: var(--gold-on-light);
+  color: var(--gold);
   font-size: 19px;
 }
 
@@ -1113,7 +1165,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   gap: 20px;
   height: 72px;
   padding: 0 var(--gutter);
-  background: rgba(250, 248, 242, 0.95);
+  background: var(--header-veil);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
 }
@@ -1164,7 +1216,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 /* Vertical only — the gap between these shrinks to 12px on a phone, so
    widening them sideways would make neighbours overlap. */
 .header-nav a::after { content: ""; position: absolute; inset: -8px 0; }
-.header-nav a:hover { color: var(--moss-deep); border-bottom-color: var(--gold-rule); }
+.header-nav a:hover { color: var(--ink-title); border-bottom-color: var(--gold-rule); }
 
 /* The strip holds more categories than fit on a phone. Nothing used to
    say so — it simply ran off the edge mid-word. The bar around it now
@@ -1174,7 +1226,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   position: sticky;
   top: 72px;
   z-index: 19;
-  background: rgba(255, 253, 248, 0.96);
+  background: var(--card-veil);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
 }
@@ -1192,11 +1244,11 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 }
 .category-bar::before {
   left: 0;
-  background: linear-gradient(to right, rgb(255, 253, 248) 46%, rgba(255, 253, 248, 0));
+  background: linear-gradient(to right, var(--fade-from) 46%, var(--fade-to));
 }
 .category-bar::after {
   right: 0;
-  background: linear-gradient(to left, rgb(255, 253, 248) 46%, rgba(255, 253, 248, 0));
+  background: linear-gradient(to left, var(--fade-from) 46%, var(--fade-to));
 }
 .category-bar[data-more-before="true"]::before,
 .category-bar[data-more-after="true"]::after { opacity: 1; }
@@ -1220,7 +1272,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   border-radius: 999px;
   background: var(--paper);
   box-shadow: 0 4px 14px rgba(24, 40, 34, 0.12);
-  color: var(--gold-on-light);
+  color: var(--gold);
   font-size: 24px;
   line-height: 1;
   cursor: pointer;
@@ -1265,7 +1317,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   text-decoration: none;
   transition: background 0.18s ease, border-color 0.18s ease;
 }
-.category-nav a:hover { background: var(--paper-warm); border-color: var(--gold-dim); color: var(--moss-deep); }
+.category-nav a:hover { background: var(--paper-warm); border-color: var(--gold-dim); color: var(--ink-title); }
 /* The section you are in, marked as you scroll. Deliberately the hover
    state made permanent, with the gold rule under it: the strip already
    had this vocabulary, so being in a section looks like being about to
@@ -1273,7 +1325,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .category-nav a[aria-current] {
   background: var(--paper-warm);
   border-color: var(--gold-dim);
-  color: var(--moss-deep);
+  color: var(--ink-title);
   font-weight: 700;
   box-shadow: inset 0 -2px 0 var(--gold-rule);
 }
@@ -1378,7 +1430,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   padding: 20px 0;
   cursor: pointer;
   list-style: none;
-  color: var(--moss-deep);
+  color: var(--ink-title);
 }
 .bio > summary::-webkit-details-marker { display: none; }
 .bio > summary .section-label { display: block; margin-bottom: 4px; }
@@ -1390,7 +1442,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
    heading level follows the outline of the page it is on, and the look
    does not follow the level. */
 .bio-heading h2,
-.bio-heading h3 { color: var(--moss-deep); font-size: inherit; }
+.bio-heading h3 { color: var(--ink-title); font-size: inherit; }
 .bio-byline { color: var(--muted); font-size: clamp(15px, 1.4vw, 19px); margin: 10px 0 0; }
 .bio-prose p { margin: 0 0 26px; color: var(--ink-prose); }
 
@@ -1412,7 +1464,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   font-weight: 500;
   letter-spacing: normal;
   text-transform: none;
-  color: var(--gold-on-light);
+  color: var(--gold);
   direction: rtl;
   text-align: right;
 }
@@ -1428,7 +1480,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   padding: 14px 0;
   cursor: pointer;
   list-style: none;
-  color: var(--moss-deep);
+  color: var(--ink-title);
 }
 .bio-panels summary::-webkit-details-marker { display: none; }
 .bio-panels ol,
@@ -1497,11 +1549,11 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 }
 .recent-rail::before {
   left: 0;
-  background: linear-gradient(to right, var(--paper), rgba(255, 253, 248, 0));
+  background: linear-gradient(to right, var(--paper), var(--fade-to));
 }
 .recent-rail::after {
   right: 0;
-  background: linear-gradient(to left, var(--paper), rgba(255, 253, 248, 0));
+  background: linear-gradient(to left, var(--paper), var(--fade-to));
 }
 .recent-rail[data-more-before="true"]::before,
 .recent-rail[data-more-after="true"]::after { opacity: 1; }
@@ -1651,7 +1703,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   width: 20px;
   height: 20px;
   margin-top: 1px;
-  color: var(--gold-on-light);
+  color: var(--gold);
 }
 
 .recent-card-body { display: grid; gap: 6px; min-width: 0; }
@@ -1729,8 +1781,8 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   background: var(--on-dark-bright);
   border: 2px solid var(--gold-rule);
   border-radius: 6px;
-  box-shadow: 0 3px 0 rgba(134, 96, 31, 0.10), 0 10px 24px rgba(24, 40, 34, 0.07);
-  color: var(--gold-on-light);
+  box-shadow: 0 3px 0 var(--gold-wash), 0 10px 24px rgba(24, 40, 34, 0.07);
+  color: var(--gold);
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 .search-box .icon { width: 21px; height: 21px; }
@@ -1748,7 +1800,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
    appears for `:focus-visible`. */
 .search-box:focus-within {
   border-color: var(--gold-on-light);
-  box-shadow: 0 3px 0 rgba(134, 96, 31, 0.18), 0 10px 26px rgba(134, 96, 31, 0.16);
+  box-shadow: 0 3px 0 var(--gold-wash-strong), 0 10px 26px var(--gold-wash-mid);
   outline: 2px solid var(--gold-on-light);
   outline-offset: 3px;
 }
@@ -1806,7 +1858,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   border-radius: 6px;
   /* The same shadow the box above it carries, so the two read as one
      control rather than as a box with a card dropped under it. */
-  box-shadow: 0 3px 0 rgba(134, 96, 31, 0.10), 0 10px 24px rgba(24, 40, 34, 0.07);
+  box-shadow: 0 3px 0 var(--gold-wash), 0 10px 24px rgba(24, 40, 34, 0.07);
   /* Eight rows is about 420px, and a phone with a keyboard up has roughly
      450 of content under the box. Past that it scrolls rather than running
      off the screen — and the row that scrolls is this one, never the
@@ -1882,14 +1934,14 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .work-category-names { min-width: 0; }
 .work-category-count {
   flex: none;
-  color: var(--gold-on-light);
+  color: var(--gold);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 .work-category-head h3 { font-size: clamp(21px, 2.3vw, 29px); color: var(--ink-strong); }
-.category-urdu { margin: 2px 0 0; color: var(--gold-on-light); font-size: clamp(16px, 1.6vw, 21px); }
+.category-urdu { margin: 2px 0 0; color: var(--gold); font-size: clamp(16px, 1.6vw, 21px); }
 .category-blurb { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
 
 .work { border-bottom: 1px solid var(--line); transition: background 0.18s ease; }
@@ -2006,7 +2058,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   font-family: var(--font-urdu);
   font-size: 15px;
   line-height: 1.9;
-  color: var(--gold-on-light);
+  color: var(--gold);
   text-align: right;
   direction: rtl;
 }
@@ -2170,7 +2222,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .file-download {
   position: relative;
   flex: none;
-  color: var(--gold-on-light);
+  color: var(--gold);
   font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 700;
@@ -2182,10 +2234,157 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 /* The same invisible 44px the other small links carry, so a thumb can
    land on it. Narrower than theirs — these two sit 20px apart. */
 .file-download::after { content: ""; position: absolute; inset: -12px -6px; }
-.file-download:hover { color: var(--moss-deep); }
+.file-download:hover { color: var(--ink-title); }
 .work-pending summary { opacity: 0.72; }
 
 .empty-state { padding: 28px; background: var(--card); border: 1px solid var(--line); color: var(--muted); }
+
+
+/* ── Night ──────────────────────────────────────────────────────────────
+   Built at the site's own moss hue (162) rather than as a generic black:
+   at night this should still read as this library. Every value below was
+   derived in OKLCH so the lightness steps are even, and every pair was
+   computed — body text lands at 12.31:1, deliberately NOT the 14.5 a
+   blacker ground would give, because pure-black grounds halate on OLED
+   and this is a site read on a phone at night.
+
+   The @media block answers a reader who has never touched the control;
+   the [data-theme] blocks are the override, and they are written as two
+   explicit selectors rather than one so that choosing "Day" on a device
+   set to dark really does come back. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --header-veil: rgba(23, 33, 28, 0.95);
+    --card-veil: rgba(34, 45, 39, 0.96);
+    --fade-from: rgb(23, 33, 28);
+    --fade-to: rgba(23, 33, 28, 0);
+    --gold-wash: rgba(232, 200, 130, 0.10);
+    --gold-wash-mid: rgba(232, 200, 130, 0.16);
+    --gold-wash-strong: rgba(232, 200, 130, 0.20);
+    --gold-rule-soft: rgba(232, 200, 130, 0.30);
+    --paper: #17211C;
+    --card: #222D27;
+    --paper-warm: #2B3731;
+    --paper-hover: #1E2922;
+    --line: #3E4B44;
+    --line-panel: #35423B;
+    --line-dot: #3E4B44;
+    --line-search: #46534B;
+    --ink: #E2DED5;
+    --ink-strong: #DAD6CD;
+    --ink-prose: #D2CEC5;
+    --ink-list: #CCC8BF;
+    --ink-body: #C6C2B9;
+    --ink-quiet: #BDBAB1;
+    --muted: #ABB4AF;
+    --muted-dot: #ABB4AF;
+    --muted-faint: #99A29D;
+    --ink-subtitle: #B4BDB8;
+    --moss: #8FB3A2;            /* ink only: 4 colour uses, never a ground */
+    --ink-title: #DCE4DF;
+    --on-button-dark: #E8E4DB;  /* the dark button STAYS dark at night, so its
+                                   text stays light — the trap here was assuming
+                                   every token flips. A surface that does not
+                                   move must not move its ink either. */
+    
+    --moss-deep: #1A3428;
+    --footer-ground: #14241D;
+    --hero-a: #10211B;
+    --hero-b: #1A3A30;
+    --hero-c: #1F4639;
+    --button-face: #273229;
+    --button-face-warm: #2D3830;
+    --chip: #2A352E;
+    /* The ground under these is dark in BOTH themes, so they barely move;
+       what changes is that at night they are no longer the brightest
+       thing on the page. */
+    --on-dark-bright: #F2EEE5;
+    --on-dark: #E2DED5;
+    --on-dark-panel: #DED9D0;
+    --on-dark-urdu: #CFDAD4;
+    --on-dark-copy: #C6D1CB;
+    --on-dark-count: #B8C5BE;
+    --on-dark-footer: #AFBCB5;
+    --on-dark-meta: #A3AFA8;
+    /* The roles swap, and the raw tokens do not. gold-on-light measures
+       2.92 on the night card — it is unusable there, exactly as
+       gold-on-dark is unusable on paper. */
+    --gold: var(--gold-on-dark);
+    --gold-rule: #C9A05A;
+    --gold-mark: var(--gold-on-dark);
+    --gold-pale: #F0DEBC;
+    --gold-dim: #C8B795;
+    --gold-deep: #E4CFA4;
+    --lapis: var(--lapis-on-dark);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+    --header-veil: rgba(23, 33, 28, 0.95);
+    --card-veil: rgba(34, 45, 39, 0.96);
+    --fade-from: rgb(23, 33, 28);
+    --fade-to: rgba(23, 33, 28, 0);
+    --gold-wash: rgba(232, 200, 130, 0.10);
+    --gold-wash-mid: rgba(232, 200, 130, 0.16);
+    --gold-wash-strong: rgba(232, 200, 130, 0.20);
+    --gold-rule-soft: rgba(232, 200, 130, 0.30);
+    --paper: #17211C;
+    --card: #222D27;
+    --paper-warm: #2B3731;
+    --paper-hover: #1E2922;
+    --line: #3E4B44;
+    --line-panel: #35423B;
+    --line-dot: #3E4B44;
+    --line-search: #46534B;
+    --ink: #E2DED5;
+    --ink-strong: #DAD6CD;
+    --ink-prose: #D2CEC5;
+    --ink-list: #CCC8BF;
+    --ink-body: #C6C2B9;
+    --ink-quiet: #BDBAB1;
+    --muted: #ABB4AF;
+    --muted-dot: #ABB4AF;
+    --muted-faint: #99A29D;
+    --ink-subtitle: #B4BDB8;
+    --moss: #8FB3A2;            /* ink only: 4 colour uses, never a ground */
+    --ink-title: #DCE4DF;
+    --on-button-dark: #E8E4DB;  /* the dark button STAYS dark at night, so its
+                                   text stays light — the trap here was assuming
+                                   every token flips. A surface that does not
+                                   move must not move its ink either. */
+    
+    --moss-deep: #1A3428;
+    --footer-ground: #14241D;
+    --hero-a: #10211B;
+    --hero-b: #1A3A30;
+    --hero-c: #1F4639;
+    --button-face: #273229;
+    --button-face-warm: #2D3830;
+    --chip: #2A352E;
+    /* The ground under these is dark in BOTH themes, so they barely move;
+       what changes is that at night they are no longer the brightest
+       thing on the page. */
+    --on-dark-bright: #F2EEE5;
+    --on-dark: #E2DED5;
+    --on-dark-panel: #DED9D0;
+    --on-dark-urdu: #CFDAD4;
+    --on-dark-copy: #C6D1CB;
+    --on-dark-count: #B8C5BE;
+    --on-dark-footer: #AFBCB5;
+    --on-dark-meta: #A3AFA8;
+    /* The roles swap, and the raw tokens do not. gold-on-light measures
+       2.92 on the night card — it is unusable there, exactly as
+       gold-on-dark is unusable on paper. */
+    --gold: var(--gold-on-dark);
+    --gold-rule: #C9A05A;
+    --gold-mark: var(--gold-on-dark);
+    --gold-pale: #F0DEBC;
+    --gold-dim: #C8B795;
+    --gold-deep: #E4CFA4;
+    --lapis: var(--lapis-on-dark);
+    color-scheme: dark;
+  }
 
 /* 8 ── Fatawa ─────────────────────────────────────────────── */
 
@@ -2313,7 +2512,7 @@ body.is-searching .rulings h2 { margin-bottom: 26px; }
 .ruling-body { display: flex; flex-direction: column; gap: 16px; }
 .ruling-foot { display: flex; flex-direction: column; gap: 8px; }
 .ruling h2,
-.ruling h3 { font-size: 20px; line-height: 1.3; color: var(--moss-deep); }
+.ruling h3 { font-size: 20px; line-height: 1.3; color: var(--ink-title); }
 /* 1.3 is a Latin leading. Nastaliq and Naskh keep their own, or a
    two-line Urdu title collides with itself. */
 .ruling h2.urdu,
@@ -2342,7 +2541,7 @@ body.is-searching .rulings h2 { margin-bottom: 26px; }
 .ruling p.urdu,
 .ruling p.arabic { -webkit-line-clamp: 2; line-clamp: 2; }
 
-.ruling-open { color: var(--gold-on-light); font-size: 14px; font-weight: 700; }
+.ruling-open { color: var(--gold); font-size: 14px; font-weight: 700; }
 
 /* 9 ── Contact ────────────────────────────────────────────── */
 
@@ -2407,7 +2606,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
    with تحفظات alone on the second line, which reads as a mistake rather
    than a heading. Where it is not understood the title simply wraps as
    it did. */
-.work-hero h1 { max-width: 22ch; color: var(--moss-deep); font-size: clamp(32px, 4.4vw, 58px); text-wrap: balance; }
+.work-hero h1 { max-width: 22ch; color: var(--ink-title); font-size: clamp(32px, 4.4vw, 58px); text-wrap: balance; }
 /* max-width: 22ch above is measured in Aslam's own digit width, which
    is much narrower than Newsreader's or Amiri's — the same 22ch comes
    out to 264px in Aslam against 308px in Noto Nastaliq Urdu, so a
@@ -2460,7 +2659,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
 }
 .work-background-heading {
   margin: 0 0 10px;
-  color: var(--moss-deep);
+  color: var(--ink-title);
   font-size: 20px;
   line-height: 1.35;
 }
@@ -2504,7 +2703,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
   text-align: right;
 }
 .work-page-files { display: flex; flex-wrap: wrap; gap: 14px 22px; margin-top: 22px; }
-.work-page-files .button { background: var(--moss-deep); color: var(--button-face); }
+.work-page-files .button { background: var(--moss-deep); color: var(--on-button-dark); }
 /* Here the pair stacks: the button reads it, the line under it saves it.
    Side by side, six charts would have made twelve things in a row. */
 /* Read-online and Download stack here, and each carries a pad 13px
@@ -2698,7 +2897,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
 
 .work-date {
   margin: 10px 0 0;
-  color: var(--gold-on-light);
+  color: var(--gold);
   font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 700;
@@ -2932,7 +3131,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
   padding-bottom: 2px;
 }
 .work-seealso a:hover,
-.work-seealso a:active { color: var(--gold-on-light); }
+.work-seealso a:active { color: var(--gold); }
 .work-seealso .record-title { font-size: 16px; line-height: 1.45; }
 .work-seealso .record-title.urdu { font-size: 18px; line-height: 1.95; }
 .work-seealso .record-title.arabic { font-size: 19px; line-height: 1.6; }
@@ -3076,7 +3275,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
   padding-bottom: 1px;
 }
 .post-body a:hover,
-.post-body a:active { color: var(--gold-on-light); border-bottom-color: currentColor; }
+.post-body a:active { color: var(--gold); border-bottom-color: currentColor; }
 
 /* Struck through. The site's own rule weight rather than the hairline
    a browser draws, which at 15px on cream reads as a smudge — the same
@@ -3129,7 +3328,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
   margin-top: 1.7em;
   font-size: 1.32em;
   line-height: 1.35;
-  color: var(--moss-deep);
+  color: var(--ink-title);
 }
 /* Same heading face as a record's own title, one size down — an
    in-prose subheading is still a heading, just not the piece's own.
@@ -3154,7 +3353,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
   margin-top: 1.5em;
   font-size: 1.1em;
   line-height: 1.4;
-  color: var(--moss-deep);
+  color: var(--ink-title);
 }
 /* `h1, h2, h3` up at the top set `text-wrap: balance`, and text-wrap is
    inherited, so every heading inside a post got it too. Balance evens
@@ -3355,7 +3554,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
   flex: 1 0 100%;
   margin: 0;
   min-height: 1.4em;
-  color: var(--gold-on-light);
+  color: var(--gold);
   font-family: var(--font-ui);
   font-size: 13px;
 }
@@ -3387,7 +3586,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
   font-size: 15px;
   font-weight: 600;
   line-height: 1;
-  color: var(--moss-deep);
+  color: var(--ink-title);
   background: var(--paper-warm);
   border: 2px solid var(--gold-rule);
   border-radius: 8px;
@@ -3494,7 +3693,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
   font-family: var(--font-ui);
   font-size: 12.5px;
   line-height: 1.45;
-  color: var(--gold-on-light);
+  color: var(--gold);
 }
 .work-hero[dir="rtl"] .page-tools { direction: rtl; }
 
@@ -3506,7 +3705,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
   flex: 1 0 100%;
   min-height: 1.4em;
   margin: 0;
-  color: var(--gold-on-light);
+  color: var(--gold);
   font-family: var(--font-ui);
   font-size: 13px;
 }
@@ -3550,7 +3749,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
   margin: 6px 0 0;
   font-size: clamp(26px, 3vw, 38px);
   line-height: 1.5;
-  color: var(--moss-deep);
+  color: var(--ink-title);
 }
 
 .app-open { margin: 24px 0 0; }
@@ -3569,7 +3768,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
 .app-cta {
   margin: 12px 0 0;
   max-width: 29em;
-  color: var(--gold-on-light);
+  color: var(--gold);
   font-size: clamp(17px, 1.7vw, 20px);
   line-height: 1.9;
 }
@@ -3594,7 +3793,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--gold-on-light);
+  color: var(--gold);
 }
 /* The value is the answer and should read as one: the UI face at a real
    weight against its own label, not the body face at the same weight as
@@ -3681,7 +3880,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
   line-height: 1.9;
   letter-spacing: normal;
   text-transform: none;
-  color: var(--gold-on-light);
+  color: var(--gold);
 }
 .app-credits dd {
   margin: 4px 0 0;
@@ -3697,7 +3896,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
   word-spacing: var(--space-urdu-heading);
   font-size: 18px;
   line-height: 1.8;
-  color: var(--moss-deep);
+  color: var(--ink-title);
 }
 /* The title under a name is prose, not a heading, so it goes back to
    Mehr — and it is long, so it gets a measure it can be read across. */
@@ -3877,7 +4076,7 @@ footer {
 }
 .more-like h2 {
   margin: 0 0 6px;
-  color: var(--moss-deep);
+  color: var(--ink-title);
   font-size: 15px;
   font-weight: 700;
   font-family: var(--font-ui);
@@ -3896,8 +4095,8 @@ footer {
   color: var(--ink);
   text-decoration: none;
 }
-.more-like li a:hover { color: var(--gold-on-light); }
-.more-like li a:active { color: var(--gold-on-light); }
+.more-like li a:hover { color: var(--gold); }
+.more-like li a:active { color: var(--gold); }
 /* The record's own title face and script, the same helper the library
    row and the share card use — so a work cannot be named one way here
    and another way one page up. */
@@ -3976,7 +4175,7 @@ footer {
 .text-link:active,
 .document-link:active,
 .file-download:active,
-.back-link:active { color: var(--gold-on-light); }
+.back-link:active { color: var(--gold); }
 .rulings .text-link:active,
 .rulings .back-link:active { color: var(--on-dark-bright); }
 
