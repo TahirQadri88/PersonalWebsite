@@ -3254,6 +3254,120 @@ t('  …and nothing was sent — it did not report a publish',
 
 t('nothing threw along the way', jsErrors.length === 0, jsErrors.join(' | '));
 
+console.log('\nevery control answers a finger');
+
+/* Measured by walking `elementFromPoint` out from each control's centre,
+   never by its box. The box says 25px for every one of these and says
+   nothing useful: `.text-link::after` is `inset: -13px -8px`, so the thing
+   a finger hits is nothing like the thing getBoundingClientRect reports.
+   This project has already recorded a census of boxes calling four healthy
+   controls broken and the claim having to be withdrawn.
+
+   What the tapping found is that the pad only works where there is room
+   for it. 26px of clear space is needed between two stacked `.text-link`s,
+   and three places in the editor gave less: the four Add buttons wrap onto
+   two lines 18px apart at 390px, `.admin-row-tools` had a 14px gap and
+   `.admin-file` an 8px one. Each pad reached into its neighbour and
+   elementFromPoint handed the tap to whatever was there. */
+{
+  const tapContext = await browser.newContext({
+    viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  await tapContext.route('https://fonts.g**', (r) => r.abort());
+  await plantSession(tapContext);
+  overlay.set('admin.js', await patchedAdminJs());
+  const tapPage = await tapContext.newPage();
+  await openEditor(tapPage);
+  /* This page scrolls smoothly, and smooth scrolling is asynchronous — two
+     frames is not enough and the probe then measures a stale rectangle. */
+  await tapPage.addStyleTag({ content: 'html{scroll-behavior:auto !important}' });
+  /* Open rows until one of them actually carries a file block: `Remove`
+     only exists where there are files, and which row that is depends on
+     the library the suite is working with rather than on a fixed index. */
+
+  const reach = async (label) => tapPage.evaluate(async (label) => {
+    /* A row that is shut still LAYS ITS CHILDREN OUT here — they have real
+       boxes and are not reachable — so the first match by text is often one
+       nothing can tap. The control has to be in an open row, or in no row
+       at all. An earlier census that skipped this reported 94% of the
+       editor's controls "covered" and meant nothing by it. */
+    const el = [...document.querySelectorAll('button')].find((e) => {
+      if (e.textContent.trim() !== label) return false;
+      if (!e.getBoundingClientRect().height) return false;
+      const row = e.closest('details');
+      return !row || row.open;
+    });
+    if (!el) return { label, found: false };
+    const owns = (x, y) => {
+      const h = document.elementFromPoint(x, y);
+      return h && (h === el || el.contains(h) || h.contains(el));
+    };
+    /* Placing the control is its own problem, and getting it wrong reads
+       exactly like the control being broken. A sticky bar can cover the
+       middle of the screen, and a scroll near either end of the document
+       is clamped, so one offset is not enough: try a few and keep the
+       first that really answers at its own centre. */
+    let b = null, cx = 0, cy = 0, placed = false;
+    for (const share of [0.5, 0.62, 0.38, 0.75, 0.25]) {
+      window.scrollTo(0, Math.max(0, el.getBoundingClientRect().top + scrollY - innerHeight * share));
+      await new Promise((r) => setTimeout(r, 60));
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      b = el.getBoundingClientRect();
+      cx = b.x + b.width / 2; cy = b.y + b.height / 2;
+      if (cy > 60 && cy < innerHeight - 60 && owns(cx, cy)) { placed = true; break; }
+    }
+    if (!placed) return { label, found: true, placed: false, tapH: 0 };
+    let up = 0, dn = 0;
+    while (up < 40 && owns(cx, cy - up - 1)) up++;
+    while (dn < 40 && owns(cx, cy + dn + 1)) dn++;
+    return { label, found: true, placed: true, tapH: up + dn, boxH: Math.round(b.height) };
+  }, label);
+
+  /* The ones that were short, each for its own container's reason. */
+  /* `Remove` is deliberately NOT in this list, and that is worth saying
+     rather than leaving it looking guarded. It only exists where a record
+     has a file, and by this point in the suite the fixture has none —
+     opening every row and pressing "+ Add a file" was tried and the
+     control still could not be reached. A guard that cannot find its
+     subject asserts nothing. The `.admin-file` half of this fix is
+     verified outside the suite instead, by a census that walked all 25
+     reachable controls on a clean editor and found none under 44px. */
+  /* `+ Add a fatwa` is a COMPANION, not a guard, and the comment says so
+     because it has never been red. It was added believing the four Add
+     buttons' pads collided when they wrap — 18px apart against the 26px
+     two pads want — and the tapping says otherwise, before and after.
+     The `.admin-toolbar` change that belief produced was taken out again.
+     What it still does is notice if that control ever stops answering a
+     finger at all, which is cheap to keep.
+
+     `↑ Move up` is the real guard: restoring its 14px row gap turns it
+     red. It is measured after a row is opened, which is the only state
+     it exists in. */
+  for (const [label, needsOpenRow] of [['+ Add a fatwa', false], ['↑ Move up', true]]) {
+    if (needsOpenRow) {
+      await tapPage.evaluate(async () => {
+        document.querySelectorAll('.admin-row')[0].open = true;
+        await new Promise((r) => setTimeout(r, 250));
+      });
+      await tapPage.waitForTimeout(900);
+    }
+    const m = await reach(label);
+    /* Found first: a control this cannot locate would pass every height
+       assertion below by never making one. */
+    t(`the editor still has a "${label}" control`, m.found, JSON.stringify(m));
+    if (m.found) {
+      /* Placed first, for the same reason as found: a control the probe
+         could not put on the screen must fail as a probe problem rather
+         than quietly as a size one. */
+      t(`"${label}" could be placed on the screen to measure`, m.placed, JSON.stringify(m));
+      if (m.placed) {
+        t(`"${label}" answers a finger over 44px`, m.tapH >= 44,
+          `${m.tapH}px to a finger, box ${m.boxH}px`);
+      }
+    }
+  }
+  await tapContext.close();
+}
+
 console.log('\na publish sends what changed, not the whole library');
 
 /* A publish rebuilds every page and redraws every card, because a page is

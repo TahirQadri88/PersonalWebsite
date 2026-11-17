@@ -830,3 +830,31 @@
   font-size: 13px;
   line-height: 1.5;
 }
+
+/* Two places in the editor where `.text-link` buttons stack more tightly
+   than the pad they carry. `.text-link::after` is `inset: -13px -8px`, so
+   a stacked pair needs 26px of clear space between them or each pad
+   reaches into its neighbour and `elementFromPoint` hands the tap to
+   whatever is there instead.
+
+   Measured at 390px by walking out from each control's centre — the box
+   says 25px for all of these and says nothing useful, which this project
+   has already recorded as the wrong instrument: `Remove` answered a
+   finger over **34px** and `↑ Move up` over **42**, against the 44 held
+   everywhere else. `.admin-row-tools` had a 14px gap and `.admin-file`
+   an 8px one.
+
+   The gap is raised rather than the pad, because widening a pad that is
+   already overlapping makes the stealing worse, not better.
+
+   A THIRD change was made here and taken out again, which is worth more
+   than the two that stayed. `.admin-toolbar` has an 18px gap, and the four
+   Add buttons wrap onto two lines at 390px — 18px apart, inside the 26px
+   two pads need. That arithmetic is correct and the fault it predicts does
+   not exist: walking out from "+ Add a fatwa" reported 44px or better
+   before the change and after it, and restoring the 18px gap left the
+   guard green. A gap smaller than two pads is not the same as a tap being
+   stolen, and this project's rule is the measurement rather than the
+   inference. The row-gap came back out. */
+.admin-row-tools { row-gap: 28px; }
+.admin-file .text-link { margin-block: 10px; }
