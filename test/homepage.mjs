@@ -5072,6 +5072,51 @@ try {
     await context.close();
   }
 
+  /* A kind label is a label, and it is the same label on every surface —
+     so it must be one size, and that size must not change because the
+     viewport did. `.work-kind` is (0,1,0), and so is `.urdu`, which is
+     declared later and carries the Urdu BODY size: under 620px a phone
+     drew the library row's kind at 20px while the desktop drew the 15px
+     the stylesheet's own comment asks for. The recent card escaped that
+     only by specificity accident and sat at 13px, where Nastaliq's joins
+     close up.
+
+     The assertion is the SIZE, read off the rendered element, at widths
+     either side of the 620px boundary where the bleed lives. Reading the
+     declaration would not do: both faults were a cascade outcome, and
+     `.work-kind` says 15px in the file in both of them. */
+  group('a kind label is one size wherever it is shown');
+  const KIND_PX = 15;
+  for (const width of [390, 620, 1280]) {
+    const { context, page } = await open(width, '/index.html');
+    await page.evaluate(() => document.querySelectorAll('details').forEach(d => { d.open = true; }));
+    const kinds = await page.evaluate(() => {
+      const out = [];
+      document.querySelectorAll('.work-kind, .more-kind').forEach(el => {
+        if (!el.getBoundingClientRect().width) return;
+        /* An English kind is the meta line's own 12px by deliberate rule —
+           this is about the Nastaliq one. */
+        if (!el.classList.contains('urdu') && !el.classList.contains('arabic')) return;
+        out.push({
+          where: el.closest('.recent-card') ? 'recent card'
+               : el.closest('.more-like') ? 'more-in'
+               : el.closest('details') ? 'library row' : 'other',
+          px: parseFloat(getComputedStyle(el).fontSize),
+          text: el.textContent.trim()
+        });
+      });
+      return out;
+    });
+    /* Count what you matched: a selector that found nothing would pass
+       every assertion below it. */
+    t(`${width}: there are Nastaliq kind labels to measure`, kinds.length > 0,
+      'found none — the selector stopped matching');
+    const wrong = kinds.filter(k => Math.abs(k.px - KIND_PX) > 0.5);
+    t(`${width}: every one of them is ${KIND_PX}px`, wrong.length === 0,
+      wrong.map(w => `${w.where} "${w.text}" drawn at ${w.px}px`).join('; '));
+    await context.close();
+  }
+
   group('nothing pushes the page sideways');
   for (const width of [1920, 1440, 1280, 1024, 900, 768, 620, 420, 380]) {
     const { context, page } = await open(width);

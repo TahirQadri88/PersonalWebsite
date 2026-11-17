@@ -1615,7 +1615,13 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 /* One line, and it stays one line: the card is 268px and the kind sits
    beside the date rather than above it. */
 .recent-card-body .work-line { gap: 2px 8px; margin-top: 2px; }
-.recent-card-body .work-kind { font-size: 13px; line-height: 1.7; }
+/* The size comes from `.work-kind.urdu` now, at 15px like everywhere else.
+   13px closed up the ض dot-cluster and read as a smudge beside the date —
+   and the "stays one line" it was protecting was already false: at 320px
+   all eight cards wrapped at 13px too, and at 390px, the width this file
+   measures at, 15px wraps exactly as many as 13px did. Only the leading
+   is the card's own. */
+.recent-card-body .work-kind { line-height: 1.7; }
 .recent-card-body .record-meta { font-size: 12px; letter-spacing: 0.05em; }
 
 /* Arriving as you reach them. The class carries the movement and the
@@ -1951,6 +1957,18 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   text-align: right;
   direction: rtl;
 }
+.work-kind.urdu,
+.work-kind.arabic {
+  font-size: 15px;
+}
+/* And the size above has to be taken back, exactly as `.section-label.urdu`
+   and `.more-kind.urdu` already take theirs. `.work-kind` is (0,1,0) and so
+   is `.urdu`, which is declared later and carries the Urdu BODY size — so
+   under 620px a phone drew this label at 20px, reading size, above a 12px
+   uppercase meta line. Nobody chose that: the comment above says 15px and
+   the desktop obeyed it while the phone did not. This file's own rule —
+   never put `.urdu` on something that has a size of its own, it brings
+   both — in the one place it had not been carried back to. */
 /* An English record carries an English kind — "Essay", not مضمون — and it
    must not take the Nastaliq the rule above sets. Given the metadata
    line's own proportions rather than the Urdu label's, so the second line
@@ -2118,9 +2136,31 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 
 /* 8 ── Fatawa ─────────────────────────────────────────────── */
 
+/* The ten-fold rosette is the Zakat calculator's own geometry, the same
+   path the app draws in its header, so the two carry one hand rather than
+   two. It is an inline data URI — 843 bytes in the stylesheet and no extra
+   request, the same argument `ICONS` already makes against an icon font.
+
+   White at 8% is the app's own stroke opacity and it is doing the work a
+   decoration should: it is the ground, never the figure. It is placed, not
+   tiled, because a repeat at this scale reads as wallpaper and this panel
+   has to stay a page of rulings. `img-src 'self' data:` already allows it,
+   so the policy needed no widening.
+
+   On the dark surfaces ONLY. On cream an 8% white stroke is invisible, and
+   darkening it to show up would put a pattern behind reading matter, which
+   is the thing the site's whole typography argument is against. */
+:root { --rosette: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cpath d='M61.0 50.0L68.5 37.0L83.5 37.0L91.0 50.0L83.5 63.0L68.5 63.0ZM58.9 56.5L72.6 50.4L84.7 59.2L83.2 74.1L69.5 80.2L57.3 71.4ZM53.4 60.5L68.1 63.6L72.7 77.8L62.7 89.0L48.0 85.9L43.4 71.6ZM46.6 60.5L56.6 71.6L52.0 85.9L37.3 89.0L27.3 77.8L31.9 63.6ZM41.1 56.5L42.7 71.4L30.5 80.2L16.8 74.1L15.3 59.2L27.4 50.4ZM39.0 50.0L31.5 63.0L16.5 63.0L9.0 50.0L16.5 37.0L31.5 37.0ZM41.1 43.5L27.4 49.6L15.3 40.8L16.8 25.9L30.5 19.8L42.7 28.6ZM46.6 39.5L31.9 36.4L27.3 22.2L37.3 11.0L52.0 14.1L56.6 28.4ZM53.4 39.5L43.4 28.4L48.0 14.1L62.7 11.0L72.7 22.2L68.1 36.4ZM58.9 43.5L57.3 28.6L69.5 19.8L83.2 25.9L84.7 40.8L72.6 49.6Z' fill='none' stroke='%23fff' stroke-opacity='.08' stroke-width='.9' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+
 .rulings {
   padding: var(--block) var(--gutter);
-  background: var(--moss-deep);
+  background-color: var(--moss-deep);
+  background-image: var(--rosette);
+  background-repeat: no-repeat;
+  /* Off the corner, so what shows is an arc of the figure rather than a
+     stamp sitting in the margin. */
+  background-position: right -72px top -72px;
+  background-size: 300px;
   color: #f6f3ea;
 }
 
@@ -2273,7 +2313,15 @@ footer {
   justify-content: space-between;
   gap: 14px;
   padding: 24px var(--gutter);
-  background: #10281f;
+  /* The same rosette, smaller and on the other side, so the foot of the
+     page answers the fatawa panel instead of repeating it. The footer is
+     short, so most of the figure is cropped away and what is left is an
+     arc — which is the intent, not an accident of the box. */
+  background-color: #10281f;
+  background-image: var(--rosette);
+  background-repeat: no-repeat;
+  background-position: left -58px center;
+  background-size: 190px;
   color: #b6c2ba;
   font-size: 13px;
 }

@@ -2154,6 +2154,35 @@ judgements about how the site should read rather than faults:
   in Latin whatever the piece is, and for taking the kind **out** of the
   suggestion row, is that Nastaliq at that size cannot be read. That
   reasoning was never carried back to the kind label itself.
+
+  **That paragraph was wrong about two of the three, and the correction
+  is the finding.** Measured on the rendered page rather than read off
+  the cascade: the work hero is `.section-label.urdu` at **16px**, the
+  *More in* block `.more-kind.urdu` at **15px**, and only the recent
+  card was 13. All three are **(0,2,0)** and chose their size. The
+  library row's `.work-kind` is **(0,1,0)** — and so is `.urdu`, which
+  is declared later and carries the Urdu **body** size, so under 620px a
+  phone drew that label at **20px** while a desktop drew the 15px the
+  rule's own comment asks for. Nobody chose 20. It is this file's own
+  rule — *never put `.urdu` on something that has a size of its own, it
+  brings both* — in the one place it had never been carried back to, and
+  the fix is the move `.section-label.urdu` and `.more-kind.urdu` each
+  already make.
+
+  **The 13px was protecting a claim that was already false.** Its
+  comment says *"one line, and it stays one line"*. Wrapped cards, swept
+  at every width: at **320px all eight wrap at 13px too**, and at 390 —
+  the width this file measures at — 15px wraps exactly as many as 13 did
+  (1 of 8). It costs one extra card at 360, 620 and 1280. So the size
+  was buying almost nothing, while closing up the ض dot-cluster until
+  `مضمون` read as a smudge beside the date. Settled the way every size
+  here is settled: rendered at 13, 15, 16 and 17 and **looked at**.
+
+  15px, which the site had already chosen twice. The hero's 16 stays —
+  one label per page, deliberate. The guard reads the **size off the
+  rendered element** at 390, 620 and 1280, because both faults were a
+  cascade outcome and `.work-kind` says 15px in the file in both of
+  them; a declaration assertion would have passed on the broken page.
 - **There is no `prefers-color-scheme` anywhere** — zero occurrences. A
   reading site that is full-bleed cream at every hour, including for a
   reader on a phone at night.
@@ -3865,6 +3894,41 @@ part of that was measured rather than assumed:
 Twelve files at 1.41MB replaced eight at 2.33MB, with half as much again
 in content. `IMAGE_FILE` in `common.js` already matched `png`, so the
 gallery needed no telling.
+
+**The one decoration on the site is the Zakat app's own geometry.** The
+app at `zakathisab.web.app` draws a **ten-fold rosette** — a hexagon
+ringed by ten petals — faintly in its header band, and the site now
+carries the same path. Not a new ornament drawn to match: the literal
+`d` attribute, read off the running app, so the two carry one hand
+rather than two that resemble each other.
+
+It is an inline `data:` URI in `styles.css` — **843 bytes, no extra
+request** — which is the argument `ICONS` already makes against an icon
+font, and `img-src 'self' data:` was already in the policy, so nothing
+had to be widened for it.
+
+**Three decisions, each of which could have gone the other way:**
+
+- **On the dark surfaces only**, `.rulings` and the footer. The stroke
+  is white at the app's own 8%, which on cream is invisible; darkening
+  it to show up there would put a pattern behind reading matter, which
+  is what this site's whole typography argument is against.
+- **Placed, not tiled.** `background-repeat: no-repeat`, off the corner,
+  so what shows is an arc of the figure rather than a stamp sitting in
+  the margin. A repeat at this scale reads as wallpaper, and the fatāwā
+  panel has to stay a page of rulings.
+- **Measured before shipping, not after.** An 8% white stroke lightens
+  the ground under it, so every text colour on both surfaces was
+  computed against the stroke as well as the plain ground: footer body
+  **8.48 → 6.71**, footer link 15.61 → 12.35, the rulings' own text
+  12.15 → 9.55. The pattern costs contrast and nothing comes near the
+  4.5 floor. Worth doing because the footer's rosette sits **behind** the
+  copyright line on a phone, which a screenshot shows and arithmetic
+  settles.
+
+The three cases need no asking here and that is the point: it is a
+static background, so no JavaScript, no observer and
+`prefers-reduced-motion` all leave it exactly as it should look.
 
 **Weight is a design decision, and the test measures it.** The homepage was
 961KB: a decorative 518KB PNG inside the collapsed bio, and two fonts
