@@ -2941,6 +2941,133 @@ t('no passphrase hash is left in the file for anyone to crack',
   hexLiteral ? 'a 64-char hex literal is still there: ' + hexLiteral[0]
              : (adminCode.match(/.*PASS_HASH.*/) || ['(absent)'])[0]);
 
+/* ── a draft survives the tab ─────────────────────────────────────────
+   `bodies` is a plain variable, so until now an hour of writing was one
+   background-tab eviction from gone. These assert the three things that
+   have to hold, and each is a branch that fails SILENTLY if it breaks:
+   the writing is kept, a kept draft is OFFERED rather than applied, and
+   a device that refuses storage SAYS so instead of pretending to save.
+
+   Its own context, because a draft is deliberately durable: leaving one
+   in localStorage would change what a later group's editor opens with,
+   which is the lesson the apiKey group already paid for here. */
+console.log('\nwriting survives the tab being thrown away');
+const draftContext = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
+await draftContext.route('https://fonts.g**', (r) => r.abort());
+await plantSession(draftContext);
+overlay.set('admin.js', await patchedAdminJs());
+const draftPage = await draftContext.newPage();
+
+await openEditor(draftPage);
+await draftPage.waitForFunction(
+  () => !/Loading the current text/.test(document.body.textContent), null, { timeout: 20000 });
+
+const MARK = 'DRAFTMARKER' + Date.now();
+await draftPage.evaluate((mark) => {
+  const canvas = document.querySelector('.admin-row[open] .writing-canvas');
+  const block = canvas.querySelector('p');
+  block.textContent = mark + ' ' + block.textContent;
+  canvas.dispatchEvent(new Event('input', { bubbles: true }));
+}, MARK);
+/* 700ms is the debounce the editor itself uses; wait past it rather than
+   guessing, since a sleep that is usually long enough is a flake. */
+await draftPage.waitForFunction(
+  (mark) => {
+    try { return (localStorage.getItem('editor-drafts') || '').includes(mark); }
+    catch (error) { return false; }
+  }, MARK, { timeout: 5000 }).catch(() => {});
+
+const kept = await draftPage.evaluate(() => {
+  try { return localStorage.getItem('editor-drafts') || ''; } catch (error) { return ''; }
+});
+t('an edit is written to the device, not only to a variable',
+  kept.includes(MARK), kept ? kept.slice(0, 160) : '(nothing stored)');
+
+/* The real test of the whole feature: throw the page away exactly as an
+   OS discarding a tab would, and come back. A reload is the honest
+   stand-in — `bodies` is gone either way, which is the only thing that
+   matters to the code under test. */
+await draftPage.reload({ waitUntil: 'domcontentloaded' });
+await draftPage.waitForSelector('.admin-row');
+const row2 = draftPage.locator('.admin-row').filter({ hasText: POST }).first();
+await row2.locator('summary').click();
+await row2.locator('.writing-canvas').waitFor();
+await draftPage.waitForFunction(
+  () => !/Loading the current text/.test(document.body.textContent), null, { timeout: 20000 });
+await draftPage.waitForTimeout(600);
+
+const afterReload = await draftPage.evaluate(() => {
+  const offer = document.querySelector('.admin-row[open] .draft-offer');
+  const canvas = document.querySelector('.admin-row[open] .writing-canvas');
+  return {
+    offered: !!(offer && !offer.hidden),
+    says: offer ? offer.textContent.trim() : '',
+    hasRestore: !!(offer && offer.querySelector('.draft-restore')),
+    inBox: canvas ? canvas.textContent : ''
+  };
+});
+t('  …and after the tab is thrown away the editor offers it back',
+  afterReload.offered && afterReload.hasRestore, JSON.stringify(afterReload).slice(0, 200));
+/* Offered, NOT applied. A draft is what this device was writing; the
+   committed page is what the site says. Silently preferring the draft
+   would overwrite a publish made from another device. */
+t('  …offered rather than applied, so the box still matches what is published',
+  afterReload.offered && !afterReload.inBox.includes(MARK),
+  'the box already holds the draft: ' + afterReload.inBox.slice(0, 120));
+
+await draftPage.click('.admin-row[open] .draft-restore');
+await draftPage.waitForTimeout(250);
+const restored = await draftPage.evaluate(() => {
+  const canvas = document.querySelector('.admin-row[open] .writing-canvas');
+  const offer = document.querySelector('.admin-row[open] .draft-offer');
+  return { text: canvas.textContent, gone: !offer || offer.hidden };
+});
+t('  …and Restore puts the writing back', restored.text.includes(MARK) && restored.gone,
+  restored.text.slice(0, 160));
+
+/* The branch that fails silently, and the reason this item was ranked
+   first. An editor that believes it is saving while the device refuses
+   must SAY so — the same rule the toolbar was already fixed for once. */
+const refuseContext = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
+await refuseContext.route('https://fonts.g**', (r) => r.abort());
+await plantSession(refuseContext);
+await refuseContext.addInitScript(`(() => {
+  const boom = () => { const e = new Error('denied'); e.name = 'SecurityError'; throw e; };
+  try {
+    Object.defineProperty(window, 'localStorage', { configurable: true, get: boom });
+  } catch (e) { /* some engines refuse the redefine; the assertion below says so */ }
+})();`);
+const refusePage = await refuseContext.newPage();
+await openEditor(refusePage);
+await refusePage.waitForFunction(
+  () => !/Loading the current text/.test(document.body.textContent), null, { timeout: 20000 });
+/* Assert the seed really took before concluding anything from it — a
+   condition that quietly fails to apply turns a green run into a lie. */
+const reallyRefused = await refusePage.evaluate(() => {
+  try { localStorage.getItem('x'); return false; } catch (error) { return true; }
+});
+t('  …(the page really cannot reach storage)', reallyRefused === true,
+  'the seed did not take — everything below it would pass regardless');
+
+await refusePage.evaluate(() => {
+  const canvas = document.querySelector('.admin-row[open] .writing-canvas');
+  const block = canvas.querySelector('p');
+  block.textContent = 'refused-write ' + block.textContent;
+  canvas.dispatchEvent(new Event('input', { bubbles: true }));
+});
+await refusePage.waitForTimeout(1100);
+const toldThem = await refusePage.evaluate(() =>
+  (document.querySelector('.admin-row[open] .writing-note') || {}).textContent || '');
+t('  …a device that refuses to keep a backup says so rather than going quiet',
+  /\S/.test(toldThem) && /backup/i.test(toldThem), toldThem || '(the bar said nothing)');
+/* And the editor must still WORK without storage — the writing box is
+   not allowed to depend on a backup it could not take. */
+const stillTypes = await refusePage.evaluate(() =>
+  document.querySelector('.admin-row[open] .writing-canvas').textContent.includes('refused-write'));
+t('  …and the writing box still works without it', stillTypes === true);
+await refuseContext.close();
+await draftContext.close();
+
 const shutContext = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
 await shutContext.route('https://fonts.g**', (r) => r.abort());
 /* Planted exactly as every other page here is, which is the point: even

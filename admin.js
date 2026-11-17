@@ -459,6 +459,79 @@
   var POSTS_CATEGORY = 'posts';
   var bodies = {};
 
+  /* `bodies` is a plain variable, and that is the whole problem this
+     solves: a phone evicting a background tab takes an hour of writing
+     with it, and `beforeunload` — the only protection there was — does
+     not reliably fire when an OS discards a tab. So every edit is also
+     written to the device.
+
+     **localStorage, not sessionStorage**, and the difference is exactly
+     the case being guarded: sessionStorage dies with the tab, which is
+     the event we are trying to survive. The token sits in sessionStorage
+     for the opposite reason — it is a key to the repository and should
+     go when the tab does. A draft is the author's own words.
+
+     **Nothing is ever restored without being offered.** A draft is what
+     this device was writing; the committed page is what the site says.
+     Silently preferring the draft would overwrite a publish made from
+     another device, so the author is shown that the two differ and
+     chooses. That is also why a draft matching the committed page is
+     dropped rather than offered — there is nothing to decide. */
+  var DRAFTS = 'editor-drafts';
+
+  /* Every read and write is wrapped, because this is the branch that
+     fails silently: private mode, a refused origin, or a full quota all
+     throw, and an editor that believes it is saving while it is not is
+     worse than one that never claimed to. `draftsBroken` carries the
+     reason so the writing box can SAY so rather than go quiet — the same
+     rule the toolbar had to be fixed for once. */
+  var draftsBroken = '';
+
+  function allDrafts() {
+    try {
+      return JSON.parse(localStorage.getItem(DRAFTS) || '{}') || {};
+    } catch (error) { return {}; }
+  }
+
+  function readDraft(id) {
+    var found = allDrafts()[id];
+    return found && typeof found.body === 'string' ? found : null;
+  }
+
+  function writeDraft(id, body) {
+    try {
+      var all = allDrafts();
+      all[id] = { body: body, at: Date.now() };
+      localStorage.setItem(DRAFTS, JSON.stringify(all));
+      draftsBroken = '';
+      return true;
+    } catch (error) {
+      /* QuotaExceededError on a phone that is full, SecurityError in
+         private mode. Either way the author must be told, because the
+         thing they would otherwise assume is that their work is safe. */
+      draftsBroken = (error && error.name === 'QuotaExceededError')
+        ? 'This device has no room left to keep a backup of your writing — publish soon.'
+        : 'This browser will not let the editor keep a backup of your writing — publish soon.';
+      return false;
+    }
+  }
+
+  function dropDraft(id) {
+    try {
+      var all = allDrafts();
+      if (!Object.prototype.hasOwnProperty.call(all, id)) return;
+      delete all[id];
+      localStorage.setItem(DRAFTS, JSON.stringify(all));
+    } catch (error) { /* nothing kept means nothing to clear */ }
+  }
+
+  /* Cleared only by a publish that really committed — `commit.sha`. A
+     publish that reached the repository and wrote nothing leaves the
+     drafts alone, because in that state the words are still only here. */
+  function dropAllDrafts() {
+    try { localStorage.removeItem(DRAFTS); } catch (error) { /* as above */ }
+  }
+
   /* The homepage as it currently stands, read back so a publish can write
      its own blocks into it and leave every other line exactly as it is.
      The same reason a post's writing is read back before it is edited:
@@ -1709,6 +1782,12 @@
        already on is not a failure and wants nothing said about it. The
        line itself is built below, beside the rest of the box. */
     var WHY = {
+      /* The one line here that is not about a toolbar press. A backup
+         that cannot be written must say so, because the thing the author
+         would otherwise assume is that their work is safe — and this bar
+         has already had to be fixed once for a control that failed in
+         silence. Filled from `draftsBroken`, which names the reason. */
+      storage: '',
       /* Not "then choose a size" any more: the same sentence is now
          reached by the Mark menu as well, and a line that names the
          wrong control is worse than one that names none. */
@@ -1735,13 +1814,29 @@
       'nothing-to-redo': 'Nothing to redo.'
     };
     function say(outcome) {
+      if (outcome === 'storage') { note.textContent = draftsBroken; return; }
       note.textContent = Object.prototype.hasOwnProperty.call(WHY, outcome)
         ? WHY[outcome] : '';
+    }
+
+    /* Debounced rather than per keystroke: writing to storage on a phone
+       at every key is work nobody needs doing 60 times a sentence, and
+       700ms is the quiet that already closes an undo step here, so the
+       two agree about what "a burst of typing" is. */
+    var draftTimer = null;
+    function keepDraft() {
+      if (draftTimer) clearTimeout(draftTimer);
+      draftTimer = setTimeout(function () {
+        draftTimer = null;
+        writeDraft(record.id, bodies[record.id] || '');
+        if (draftsBroken) say('storage');
+      }, 700);
     }
 
     function changed() {
       tidy(canvas);
       bodies[record.id] = htmlToBody(canvas);
+      keepDraft();
       remember();
       refreshHistory();
       onChange();
@@ -5156,6 +5251,43 @@
          be read back before they can be edited. Over file:// the browser
          refuses, and the box stays empty rather than silently wiping the
          post on export. */
+      /* A draft this device kept is OFFERED, never applied. It is shown
+         below the writing rather than swapped into it, so what the box
+         holds always matches what a publish would send until the author
+         says otherwise. `offerDraft` is called once the committed text is
+         known, because "differs" cannot be decided before then. */
+      var draftRow = el('div', 'draft-offer');
+      draftRow.hidden = true;
+      bodyField.appendChild(draftRow);
+
+      function offerDraft(committed) {
+        var draft = readDraft(record.id);
+        if (!draft) return;
+        /* Identical to what is published is not a decision to put to
+           anybody — it is just a stale copy, so it goes. */
+        if (draft.body === committed) { dropDraft(record.id); return; }
+        draftRow.hidden = false;
+        draftRow.appendChild(el('span', 'draft-offer-text',
+          'This device has unpublished writing for this piece' +
+          (draft.at ? ', last edited ' + new Date(draft.at).toLocaleString() : '') + '.'));
+        var restore = el('button', 'button draft-restore', 'Restore it');
+        restore.type = 'button';
+        restore.addEventListener('click', function () {
+          bodies[record.id] = draft.body;
+          writing.setText(draft.body);
+          markDirty();
+          draftRow.hidden = true;
+        });
+        var discard = el('button', 'text-link draft-discard', 'Discard it');
+        discard.type = 'button';
+        discard.addEventListener('click', function () {
+          dropDraft(record.id);
+          draftRow.hidden = true;
+        });
+        draftRow.appendChild(restore);
+        draftRow.appendChild(discard);
+      }
+
       if (record.page && bodies[record.id] === undefined) {
         bodyNote.textContent = 'Loading the current text…';
         fetch(record.page)
@@ -5169,12 +5301,20 @@
             bodies[record.id] = article ? htmlToBody(article) : '';
             writing.setText(bodies[record.id]);
             bodyNote.textContent = '';
+            offerDraft(bodies[record.id]);
           })
           .catch(function () {
             bodies[record.id] = undefined;
             bodyNote.textContent =
               'Could not read ' + record.page + ' — open this editor over http, not from a file, to edit an existing post. Leaving this empty will not change the post.';
+            /* The page could not be read, so there is nothing to compare
+               against — and that is exactly when a draft is worth most,
+               since the box is otherwise empty. Offered against '' so any
+               kept writing is offered rather than lost. */
+            offerDraft('');
           });
+      } else {
+        offerDraft(bodies[record.id] || '');
       }
       return finish();
     }
@@ -6577,7 +6717,7 @@
      differing, and the publish reports success while the edit sits in a
      browser nobody reloads. That is not a hypothetical: an update to a
      post was lost to it. */
-  var EDITOR_VERSION = '2026-11-15.1';
+  var EDITOR_VERSION = '2026-11-17.1';
 
   /* The policy every generated page carries, as one string rather than
      four copies of it. Four builders each keep their own <head>, which is
@@ -7141,6 +7281,12 @@
         var hadEdits = dirty;
         dirty = false;
         dirtyNote.textContent = '';
+        /* Only a publish that really committed clears the kept drafts.
+           `commit.sha` is the same signal the block below reads to tell a
+           real publish from one that sent 46 identical files — and in
+           that second state the words still exist nowhere but here, so
+           throwing the backup away would be the one moment it was needed. */
+        if (commit.sha) dropAllDrafts();
         /* The Worker sends back what it actually wrote, which is not what
            it was handed: the whole library goes over, and only the files
            that differ from the branch are committed. Saying "3 files"

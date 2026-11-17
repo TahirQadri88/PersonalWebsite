@@ -784,3 +784,21 @@
    does. It came down from 3.2em with the Urdu leading, and the page's
    own rule is in section 11 of styles.css beside the reasoning. */
 .writing-canvas > .space-below { margin-bottom: 2.6em; }
+
+/* The kept-draft offer. It sits below the writing rather than above it:
+   the box already holds what a publish would send, and this is a question
+   about something else, so it must not read as a banner over the words.
+   Hidden until there is genuinely a difference to decide. */
+.draft-offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--gold-rule, #b8863a);
+  border-radius: 8px;
+  background: #fdf8ec;
+}
+.draft-offer[hidden] { display: none; }
+.draft-offer-text { flex: 1 1 14em; font-size: 14px; }

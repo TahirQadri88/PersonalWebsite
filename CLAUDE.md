@@ -3930,6 +3930,66 @@ The three cases need no asking here and that is the point: it is a
 static background, so no JavaScript, no observer and
 `prefers-reduced-motion` all leave it exactly as it should look.
 
+**Writing is kept on the device now, and `bodies` being a plain
+variable was the one outstanding item whose absence destroyed
+something.** An hour of writing was one background-tab eviction from
+gone: `beforeunload` was the only protection and a phone's OS
+discarding a tab does not reliably fire it. The author writes on a
+phone, which is the device that evicts.
+
+**localStorage, not sessionStorage, and the difference *is* the case
+being guarded.** sessionStorage dies with the tab — the exact event
+this exists to survive. The GitHub token sits in sessionStorage for the
+opposite reason: it is a key to the repository and should go when the
+tab does. A draft is the author's own words.
+
+**Offered, never applied, and that is the decision the whole thing
+turns on.** A draft is what *this device* was writing; the committed
+page is what the *site* says. Silently preferring the draft would
+overwrite a publish made from another device — so the box still holds
+what a publish would send, and a line below it says the two differ and
+offers Restore or Discard. A draft that matches the committed page is
+dropped rather than offered: there is nothing to decide. The compare
+happens in the `.then` of the fetch that reads the page back, because
+"differs" cannot be known before then; when that fetch *fails* the
+draft is offered against `''`, which is exactly when it is worth most,
+since the box is otherwise empty.
+
+**Cleared only by a publish that really committed** — `commit.sha`,
+the same signal that already tells a real publish from one that sent
+46 identical files. In that second state the words still exist nowhere
+but here, so throwing the backup away would be the one moment it was
+needed.
+
+**The branch that fails silently is the reason this ranked first, and
+it is the one the guard is built around.** Private mode, a refused
+origin and a full quota all throw, and an editor that believes it is
+saving while it is not is worse than one that never claimed to. Every
+read and write is wrapped; a *write* failure sets `draftsBroken` and
+the writing box **says** it, naming which of the two it was. That is
+the silent-control rule this bar has already been fixed for once.
+
+Debounced at **700ms**, which is the same quiet that closes an undo
+step here, so the two agree about what a burst of typing is — rather
+than writing to storage sixty times a sentence on a phone.
+
+**With each fault put back:** no save at all reports **3** (and masks
+the third, since nothing is written so nothing can fail to be written);
+applying the draft instead of offering it reports *offered rather than
+applied, so the box still matches what is published*; and taking out
+the one line that reports a refused write reports **exactly 1**, *a
+device that refuses to keep a backup says so rather than going quiet* —
+which had to be isolated from the first fault to be proved at all.
+Suite **238 → 245**.
+
+**The guard gets its own context**, because a draft is deliberately
+durable: one left in `localStorage` would change what a later group's
+editor opens with, which is the lesson the `apiKey` group already paid
+for in this file. It asserts the storage refusal **really took** before
+concluding anything from it, the same rule the Save-Data seed follows.
+And it asserts the editor still works without storage at all — the
+writing box may not depend on a backup it could not take.
+
 **Weight is a design decision, and the test measures it.** The homepage was
 961KB: a decorative 518KB PNG inside the collapsed bio, and two fonts
 shipped as TTF. It is ~320KB now — the fonts are woff2 (58% smaller,
@@ -4369,17 +4429,11 @@ bigger gap after a block, and undo. **Almost none of it can be used on
 a fatwa**, and the thing that can lose an article outright is still
 unbuilt. Both of those outrank adding anything else.
 
-**1. Nothing saves a draft, and that can lose work.** `bodies[record.id]`
-is a plain JavaScript variable. Nothing in `admin.js` writes to
-`localStorage` or `sessionStorage` — the only protection is a
-`beforeunload` warning, which a phone evicting a background tab does
-not reliably fire. An hour of writing is one eviction from gone. This
-is small, self-contained, and the only item here whose absence
-destroys something: autosave `bodies` under the record's id, offer it
-back on load when it differs from the committed page, clear it on a
-publish that really committed. Guard the branch that matters — storage
-refused or full — the way the reading-face control already does, since
-that is the path that fails silently.
+**1. ~~Nothing saves a draft~~ — done, 17 November 2026.** Written up
+above under *Writing is kept on the device now*. `bodies` is still the
+live copy; every edit is also written to `localStorage`, offered back
+on load when it differs from the committed page, and cleared by a
+publish that really committed.
 
 **2. A fatwa cannot be written at all**, which is what makes items 1
 and everything above it matter less than they should. `isPost` gates
