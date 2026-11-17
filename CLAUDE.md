@@ -4068,6 +4068,33 @@ hand-edit touches a generated region the generator decides. The diff is
 **37 pages, one added line each, zero removals**, which is better
 evidence than any assertion that nothing else moved.
 
+**A `filter:` chain is the THIRD kind of colour literal, and neither
+earlier sweep could see one.** Both seals are a black-ink PNG tinted by
+arithmetic — `.brand-mark` to `--gold-on-light`, `.intro-mark` to
+`--moss` — so at night they kept their daytime colour and the big seal
+went nearly invisible on the dark ground. Reported from a phone, which
+is how the hex literals and the `rgba()`s were found too: **three kinds
+of literal, three sweeps, and each one only looked for the kind the
+previous fault had been.**
+
+A chain can be a custom property, so `--mark-brand` and `--mark-intro`
+follow the theme like everything else rather than needing a second rule.
+The night chains were **solved by rendering and reading the pixel**, the
+way the comment on the originals says the first ones were: within 6 of
+765 on target. Measured after: the brand mark goes to **10.37** ink
+against ground at night and the big seal to **5.41**, and the light
+chains are byte-identical to what shipped, so day is untouched.
+
+**And the hero em reported 1.02 and the page was perfectly fine.** The
+pixel probe clips the element's box, and `.hero h1 em` overlaps the line
+above it — so it sampled *"A library of"*, which is cream, against the
+em's own cream-gold. Clipped to the em's own line it is **9.77 at night
+and 7.78 by day**. This file's own rule, arriving for the third time in
+one sitting: a ratio near 1.00 on text means the probe is wrong, not the
+page. The night sweep is also the reason it needed checking at all — it
+SKIPS the 49 elements on gradients, so the whole hero had never been
+measured at night until it was done by pixel.
+
 **Weight is a design decision, and the test measures it.** The homepage was
 961KB: a decorative 518KB PNG inside the collapsed bio, and two fonts
 shipped as TTF. It is ~320KB now — the fonts are woff2 (58% smaller,

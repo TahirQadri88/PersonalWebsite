@@ -110,6 +110,19 @@
   --ink-title: #15342b;
   --on-button-dark: #f6f1e4;
 
+  /* The THIRD kind of colour literal, and the one neither a hex sweep nor
+     an rgba sweep can see: a `filter:` chain. Both seals are a black-ink
+     PNG tinted by arithmetic, so at night they kept their daytime colour
+     and the big one went nearly invisible — reported from a phone, which
+     is how the first two kinds were found as well.
+
+     A chain can be a custom property, so it follows the theme like
+     everything else rather than needing a second rule. Both night chains
+     were SOLVED by rendering and reading the pixel, the way the comment
+     on the original ones says they were: within 6 of 765 on target. */
+  --mark-brand: invert(53%) sepia(49%) saturate(486%) hue-rotate(-1deg) brightness(68%) contrast(112%);
+  --mark-intro: invert(8%) sepia(74%) saturate(974%) hue-rotate(123deg) brightness(186%) contrast(65%);
+
   /* The SECOND class of literal, and the one a hex sweep cannot see: an
      rgba(). The sticky header is a translucent veil of the page colour,
      and the carousel's fade ends at the page colour with zero alpha — so
@@ -1196,7 +1209,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   /* Black ink to exactly --gold-on-light. The chain was guessed before and
      landed on var(--gold-mark) when it meant var(--gold-rule); these numbers were solved for,
      and the rendered pixels were checked against the value afterwards. */
-  filter: invert(53%) sepia(49%) saturate(486%) hue-rotate(-1deg) brightness(68%) contrast(112%);
+  filter: var(--mark-brand);
 }
 
 .header-nav { display: flex; gap: 22px; }
@@ -1406,7 +1419,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   height: var(--seal);
   object-fit: contain;
   /* black ink -> exactly --moss, the colour of the headings beside it */
-  filter: invert(8%) sepia(74%) saturate(974%) hue-rotate(123deg) brightness(186%) contrast(65%);
+  filter: var(--mark-intro);
 }
 /* h1 as well as h2: the same block is a section of the homepage, where
    the page's h1 is the hero, and the whole of author/index.html, where
@@ -2265,6 +2278,8 @@ details[open] > summary .toggle { transform: rotate(45deg); }
     --gold-wash-mid: rgba(232, 200, 130, 0.16);
     --gold-wash-strong: rgba(232, 200, 130, 0.20);
     --gold-rule-soft: rgba(232, 200, 130, 0.30);
+    --mark-brand: invert(76%) sepia(20%) saturate(650%) hue-rotate(0deg);
+    --mark-intro: invert(58%) sepia(70%) saturate(100%) hue-rotate(105deg);
     --paper: #17211C;
     --card: #222D27;
     --paper-warm: #2B3731;
@@ -2332,6 +2347,8 @@ details[open] > summary .toggle { transform: rotate(45deg); }
     --gold-wash-mid: rgba(232, 200, 130, 0.16);
     --gold-wash-strong: rgba(232, 200, 130, 0.20);
     --gold-rule-soft: rgba(232, 200, 130, 0.30);
+    --mark-brand: invert(76%) sepia(20%) saturate(650%) hue-rotate(0deg);
+    --mark-intro: invert(58%) sepia(70%) saturate(100%) hue-rotate(105deg);
     --paper: #17211C;
     --card: #222D27;
     --paper-warm: #2B3731;
