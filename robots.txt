@@ -1,4 +1,22 @@
+# The site itself: everything a reader should find.
 User-agent: *
 Allow: /
+
+# The working notes and the test and Worker code are committed to this
+# repository, and GitHub Pages serves a repository whole — so they are
+# reachable on the public site whether or not anyone wants them indexed.
+# These are the paths that are for building the site, not for reading it.
+#
+# Note on what is NOT listed here: admin.html carries its own `noindex`
+# meta tag, which is the stronger tool and the right one for an HTML page.
+# Disallowing it here would be worse than leaving it out — a crawler told
+# not to fetch a page never sees the noindex inside it, so the page can
+# still be listed from a link somewhere else. A .md file cannot carry a
+# meta tag at all, which is why those need this file instead.
+Disallow: /CLAUDE.md
+Disallow: /docs/
+Disallow: /test/
+Disallow: /worker/
+Disallow: /README.md
 
 Sitemap: https://tahirqadri.com.pk/sitemap.xml
