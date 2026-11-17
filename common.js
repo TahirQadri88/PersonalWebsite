@@ -2086,8 +2086,35 @@
       var faceBox = readingFace('../');
       var postHero = document.querySelector('.post-hero, .work-hero');
       var afterDate = postHero && postHero.querySelector('.post-date, .work-date');
-      if (afterDate) afterDate.insertAdjacentElement('afterend', faceBox);
-      else if (postHero) postHero.appendChild(faceBox);
+      if (afterDate) {
+        afterDate.insertAdjacentElement('afterend', faceBox);
+      } else if (postHero) {
+        /* No date, which is not a rare shape: the twenty-two works carry
+           none, and that is on this project's own outstanding list. The
+           fallback used to be `postHero.appendChild`, which put a reading
+           SETTING at the very end of the hero — below the file buttons,
+           below Share, below the tags.
+
+           Measured before this line existed: 50% down qata-taalluq, 64%
+           down saa-ki-tahqeeq, 85% down halloween, against 3-10% on every
+           page that happens to have a date. That is the same fault this
+           file already records fixing once — "it sat 2259px down a 2970px
+           article, 76% of the way, offered after the reader had read the
+           whole piece in whatever face they got". The fix was real and
+           simply never reached the pages with no date to hang it on.
+
+           So the anchor is no longer the date. It is whatever the reader
+           meets FIRST of the things the control has to precede, because
+           a setting offered after the reading has been done is not a
+           setting. `#work-page-files` is on exactly one element whichever
+           of its three shapes a work page takes — buttons, gallery, or
+           the availability note — which this file records arranging
+           deliberately for Share, so it is a dependable anchor here too. */
+        var beforeThis = postHero.querySelector(
+          '#work-page-files, #post-body, .work-page-gallery, .availability-note, .page-tools');
+        if (beforeThis) beforeThis.insertAdjacentElement('beforebegin', faceBox);
+        else postHero.appendChild(faceBox);
+      }
     }
 
     var postBody = document.getElementById('post-body');

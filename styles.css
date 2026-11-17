@@ -253,9 +253,43 @@ img { max-width: 100%; }
    display on something the code hides needs this line. */
 [hidden] { display: none !important; }
 
+/* The focus ring collapsed the two golds, which is the one thing this
+   file says must never be done to them.
+
+   It used `--gold-rule` (#b8863a), a third gold sitting between the
+   other two — and a colour that is between them is marginal on both
+   grounds rather than right on either. Measured against every ground a
+   focus ring actually lands on here:
+
+                            #b8863a   --gold-on-light   --gold-on-dark
+     --paper                   3.04         5.33             1.52
+     card (#fffdf8)            3.17         5.57             1.59
+     --paper-warm              2.72 FAIL    4.77             1.36
+     moss panel                4.18         2.38             8.35
+     footer                    4.84         2.76             9.67
+
+   WCAG 2.2 SC 1.4.11 asks 3:1 of a focus indicator against what is
+   behind it. On `--paper-warm` the old ring was **2.72 and failed** —
+   three real stops, found by tabbing the page rather than by reading
+   this stylesheet: the bio's own summary, "The full profile →", and the
+   contact Email button. Everywhere else it passed by four hundredths,
+   which this file already calls a failure of the guard rather than a
+   pass: green here, red on the next rendering, for a page that is at
+   the line.
+
+   So the ring takes the same two golds the text does, for the same
+   reason the text does — each fails where the other works. The dark
+   sections name theirs below. The worst case goes 2.72 → 4.77, and the
+   usual one 3.04 → 5.33. */
 :focus-visible {
-  outline: 2px solid var(--gold-rule);
+  outline: 2px solid var(--gold-on-light);
   outline-offset: 3px;
+}
+/* The moss panel and the footer, where `--gold-on-light` is 2.38 and
+   2.76 and would be the same fault pointing the other way. */
+.rulings :focus-visible,
+footer :focus-visible {
+  outline-color: var(--gold-on-dark);
 }
 
 .skip-link {
@@ -1552,7 +1586,10 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   box-shadow: 0 6px 20px rgba(26, 46, 39, 0.07);
   transform: translateY(-2px);
 }
-.recent-card:focus-visible { outline: 2px solid var(--gold-rule); outline-offset: 3px; }
+/* Its own copy of the global ring, and it carried the old gold after the
+   rule above had moved on — the second place is always the one that gets
+   left behind. It sits on `--paper`, where #b8863a measured 3.04. */
+.recent-card:focus-visible { outline: 2px solid var(--gold-on-light); outline-offset: 3px; }
 /* Deliberately not .category-icon. The drawings on the category headings
    draw themselves on as you reach them; a card's mark is not a heading,
    and one sitting off the right-hand end of a rail would never come into
@@ -1639,10 +1676,25 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 }
 .search-box .icon { width: 21px; height: 21px; }
 .search-box:hover { border-color: var(--gold-on-light); }
+/* The input carries `outline: 0` above, deliberately, because the box
+   around it is what should show the focus. What the box showed was the
+   border going from `--gold-rule` to `--gold-on-light` — two golds six
+   points apart — plus a slightly deeper shadow. Screenshotted focused
+   and unfocused and put side by side, that change is barely visible,
+   and this is the one control the whole library is reached through.
+
+   The ring is the same one every other control gets, so arriving here
+   by keyboard looks like arriving anywhere else. The border and shadow
+   change stays: it is what a POINTER user sees, and an outline only
+   appears for `:focus-visible`. */
 .search-box:focus-within {
   border-color: var(--gold-on-light);
   box-shadow: 0 3px 0 rgba(134, 96, 31, 0.18), 0 10px 26px rgba(134, 96, 31, 0.16);
+  outline: 2px solid var(--gold-on-light);
+  outline-offset: 3px;
 }
+/* On the moss panel, where the light gold is 2.38 against the ground. */
+.rulings .search-box:focus-within { outline-color: var(--gold-on-dark); }
 /* The placeholder used to carry the whole sentence — "Search titles,
    subjects, descriptions — Urdu, Arabic or English" — and a phone showed
    "Search titles, subjects, descriptio". A placeholder that is cut off
@@ -3852,6 +3904,29 @@ footer {
   .post-foot,
   .page-tools .text-link,
   .page-tools-note,
+  /* The row itself, not only the two links inside it. Hiding the
+     children left an empty flex box holding its own margin, so the
+     printed page kept a gap where the controls had been. */
+  .page-tools,
+  /* Looked at for the first time, by rendering a post in print media
+     and reading the page. Three things that are purely screen furniture
+     were printing:
+
+     `.reading-face` is the Aa control — a drawn, gold-bordered box
+     offering to change the Urdu face, in the middle of a sheet of
+     paper. That is this file's own phrase for why Print is withheld
+     from an app page: "a button that does nothing on paper".
+
+     `.more-like` is four links to sibling records. On a four-page
+     article the last thing printed was a list of addresses a reader
+     cannot follow.
+
+     `.post-alt` is the cross-language link. It names a page without
+     naming where it is, which on paper tells a reader nothing they can
+     act on. */
+  .reading-face,
+  .more-like,
+  .post-alt,
   .header-nav,
   footer {
     display: none !important;

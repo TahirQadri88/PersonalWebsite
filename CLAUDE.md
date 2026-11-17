@@ -2020,6 +2020,151 @@ re-derived: anonymous `POST /publish` →
 → `405`, and nothing written. `verifyJwt` pins `alg` to RS256, matches
 on `kid`, and checks `exp`, `nbf`, `aud` and `iss`.
 
+**The site runs on WebKit, and that had never been checked.** Every
+measurement in this repository has been Chromium-only, and the author
+reads on an iPhone — where Safari's engine is the only engine, Brave
+included. WebKit 26.0 was installed beside the pinned Chromium (the
+browser binaries, not another Playwright) and the two were compared.
+
+**Nothing is broken there, which is the result worth recording.** 796
+element boxes across five pages: **`dx = 0` and `dw = 0` on every one**.
+No horizontal displacement, no size change, no overflow, no clipping.
+Jameel sets at the same 21px on the same 40.95px leading. The only
+differences are heights, from line-breaking, at most +4.1% on the long
+Urdu post — which is what two engines are *supposed* to do. One
+oddity worth knowing: `p.app-cta` is 30px narrower in WebKit, which is
+`width: fit-content` honestly reporting a different longest line.
+
+Four feature differences, **none user-facing**. `navigator.connection`
+and `saveData` are absent — and `thrifty()` in `common.js` already says
+so in a comment and fails to "no" deliberately. `text-size-adjust` is
+unsupported and the site never uses it. `overflow-anchor` is absent,
+which is harness-only here, and since Safari does no scroll anchoring
+at all the search behaves *better* there than the guard's control
+assumes.
+
+**A pixel diff was tried first and is the wrong instrument.** It
+reported 7-14% of pixels differing from y=12 down, which is Skia against
+WebKit's rasteriser and not layout at all. This file's own rule caught
+it: when a fresh probe reports a fault rate that large, suspect the
+probe. Compare boxes, not pixels.
+
+**The reading-face control was stranded on every work with no date.**
+It was placed `afterend` of `.post-date, .work-date`, with
+`postHero.appendChild` behind it — and that fallback was not a rare
+path. The twenty-two works carry no date, which is on this file's own
+outstanding list, so it was the path all of them took, and it put a
+reading SETTING below the file buttons, below Share, below the tags.
+
+Measured: **50% down `qata-taalluq`, 64% down `saa-ki-tahqeeq`, 85% down
+`halloween`**, against 3-10% wherever a date happened to exist. That is
+the fault written up a few sections above as fixed — *"it sat 2259px
+down a 2970px article, 76% of the way, offered after the reader had read
+the whole piece in whatever face they got"*. The fix was real. It simply
+never reached the pages that had no date to hang it on. **A fix anchored
+on an optional field is a fix only where that field is present**, and
+nothing said which pages those were.
+
+The anchor is no longer the date. It is whichever of the things the
+control must precede comes first — `#work-page-files` chief among them,
+which this file already records arranging so that exactly one element
+carries it whichever of the three shapes a work page takes. Halloween
+goes **85% → 12%**; the dated pages do not move.
+
+**The guard asserts the structure, not the percentage**, and that is
+deliberate. A short work page is 1300px, so "33% down" there is a
+smaller distance than "10%" on a long post and the number says little.
+What has to be true is the ordering, and that is what is measured, with
+`compareDocumentPosition`.
+
+**The focus ring collapsed the two golds.** `:focus-visible` used
+`--gold-rule` (#b8863a) — a third gold sitting between the other two,
+and a colour between them is marginal on both grounds rather than right
+on either:
+
+```
+                      #b8863a   --gold-on-light   --gold-on-dark
+  --paper                3.04         5.33             1.52
+  card (#fffdf8)         3.17         5.57             1.59
+  --paper-warm      2.72 FAIL         4.77             1.36
+  moss panel             4.18         2.38             8.35
+  footer                 4.84         2.76             9.67
+```
+
+WCAG 2.2 SC 1.4.11 asks 3:1 of a focus indicator against what is behind
+it. On `--paper-warm` the ring was **2.72 and failed** — three real
+stops: the bio's own summary, *The full profile →*, and the contact
+Email button. Everywhere else it passed by four hundredths, which this
+file already calls a failure of the guard rather than a pass.
+
+This is the two-golds rule — *they exist because each fails where the
+other works, and must never be collapsed* — broken in the one place
+nobody had looked, and the fix needed **no new colour**. Worst case
+2.72 → 4.77, usual case 3.04 → 5.33. `.recent-card:focus-visible` kept
+its own copy of the old gold and had to be moved too: the second place
+is always the one left behind.
+
+**Found by tabbing the page, which nothing here had done.** The recorded
+contrast walk measured 858 elements of **text**. A focus ring is not
+text, and no probe had ever asked what colour it was against what.
+
+**The search box showed focus by swapping one gold for another.** Its
+input carries `outline: 0` deliberately, with the wrapper showing focus
+instead — but what the wrapper showed was the border going #b8863a →
+#86601f, two golds six points apart, plus a slightly deeper shadow.
+Screenshotted focused and unfocused side by side, that is **barely
+visible**, on the one control the whole library is reached through. It
+takes the same ring as everything else now; the border and shadow change
+stays, because that is what a pointer user sees and an outline only
+appears for `:focus-visible`.
+
+The guard had to learn that the ring may sit on an **ancestor** — the
+first version read `document.activeElement` and reported the fixed
+search box as ringless, which is the probe measuring the wrong element,
+not the page being wrong.
+
+**Paper got the furniture, and this file had said twice that no printed
+page was ever looked at.** Rendered in print media and read: the **Aa
+control printed** — a drawn, gold-bordered button in the middle of a
+sheet of paper, which is this file's own argument for withholding Print
+from an app page, *"a button that does nothing on paper"*. With it, the
+Share/Print row, the four *More in* links, and the cross-language line
+that names a page without naming where it is.
+
+Header, nav, back-link and footer were already correctly hidden, so the
+print block was **half-written rather than missing** — and `.page-tools`
+hid its two children while the empty flex row kept its own margin. The
+article drops 4256px → 3741px, about half a sheet of navigation.
+
+The guard asserts both halves: that no furniture reaches the paper
+**and** that the writing and its credit line still do. A rule that hides
+too much would pass the first assertion alone.
+
+**With each fault put back, one at a time:** the appended control **3**,
+naming the three dateless works; the middle gold **1**, across 63
+measured focus stops; the printing furniture **1**, listing exactly
+`.reading-face, .page-tools, .more-like, .post-alt`. Suite **470**.
+
+**Two things were looked at and left for the author**, because both are
+judgements about how the site should read rather than faults:
+
+- **The kind label is Nastaliq at 13px** — `مضمون`, `فتویٰ`, `رسالہ` — in
+  the library row, the recent card and the work hero. This file's own
+  floor for Urdu is 19px, and its own reason for setting `.record-meta`
+  in Latin whatever the piece is, and for taking the kind **out** of the
+  suggestion row, is that Nastaliq at that size cannot be read. That
+  reasoning was never carried back to the kind label itself.
+- **There is no `prefers-color-scheme` anywhere** — zero occurrences. A
+  reading site that is full-bleed cream at every hour, including for a
+  reader on a phone at night.
+
+**And one claim of mine was withdrawn before it reached him.** Looking
+at the library row I read the kind and the meta line as misaligned, with
+spacing that varied row to row. Measured: the gap is **8px on every
+row** and the baselines sit within **2px**. The eye was comparing a 2px
+offset across two scripts and called it a fault. The size is the real
+finding; the alignment is not.
+
 **The toolbar's order is a claim about what is reached for while
 writing.** On a phone it is one rail that swipes sideways — deliberate,
 because stacked it stood 380px tall on an 820px screen — and the rail

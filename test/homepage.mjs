@@ -4941,6 +4941,137 @@ try {
       hadith.slice(0, 3).join('\n      '));
   }
 
+  /* ---- a reading setting is offered before the reading ----
+
+     The control was placed `afterend` of `.post-date, .work-date`, with
+     `postHero.appendChild` behind it when there is no date. That reads
+     like a tidy fallback and is not one: the twenty-two works carry no
+     date — it is on this file's own outstanding list — so the fallback
+     was the path every one of them took, and it put a reading SETTING
+     below the file buttons, below Share, below the tags.
+
+     Measured before the fix: 50% down qata-taalluq, 64% down
+     saa-ki-tahqeeq, **85% down halloween**, against 3-10% wherever a
+     date happened to exist. That is the fault this repository already
+     records fixing once, at 76% — the fix was real and simply never
+     reached the pages that had nothing to hang it on.
+
+     What is asserted is the STRUCTURE, not the percentage. A short work
+     page is 1300px, so "33% down" there is a smaller distance than "10%"
+     on a long post and the number says little; what has to be true is
+     that the control comes before the things it must precede. */
+  group('a reading setting comes before the reading');
+  for (const path of ['/works/qata-taalluq.html', '/works/saa-ki-tahqeeq.html',
+                      '/works/halloween.html', '/works/vegetarianism-and-veganism-urdu.html',
+                      '/posts/reservations-shariah-screening-stocks.html']) {
+    const { context, page } = await open(390, path);
+    const r = await page.evaluate(() => {
+      const box = document.querySelector('.reading-face');
+      if (!box) return { none: true };
+      const after = ['#work-page-files', '#post-body', '.work-page-gallery',
+                     '.availability-note', '.page-tools', '.tag-row'];
+      const mine = box.compareDocumentPosition.bind(box);
+      const late = after.filter((sel) => {
+        const el = document.querySelector(sel);
+        /* DOCUMENT_POSITION_PRECEDING = 2: el comes before the control. */
+        return el && (mine(el) & 2);
+      });
+      return { late, hasDate: !!document.querySelector('.post-date, .work-date') };
+    });
+    if (r.none) { t(path.split('/').pop() + ' — offers no control, nothing to place', true); }
+    else t(path.split('/').pop() + ' — nothing it must precede comes before it',
+      r.late.length === 0, 'these came first: ' + r.late.join(', '));
+    await context.close();
+  }
+
+  /* ---- the focus ring keeps the two golds apart ----
+
+     `:focus-visible` used `--gold-rule`, a third gold between the other
+     two — and a colour between them is marginal on both grounds rather
+     than right on either. Found by tabbing the page and measuring the
+     ring against the ground behind it, which nothing here had done: the
+     recorded contrast walk measured TEXT.
+
+     On `--paper-warm` the old ring was 2.72 against the 3:1 that WCAG
+     2.2 SC 1.4.11 asks of a focus indicator — three real stops. Else-
+     where it passed by four hundredths, which this file calls a failure
+     of the guard rather than a pass. */
+  group('the focus ring is visible on the ground it lands on');
+  for (const [name, path] of [['homepage', '/'], ['fatāwā', '/fatawa/index.html']]) {
+    const { context, page } = await open(390, path);
+    await page.evaluate(() => {
+      window.__lum = (c) => { const f = c.map((v) => { v /= 255;
+        return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+        return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2]; };
+      window.__rgb = (s) => { const m = s.match(/rgba?\(([^)]+)\)/); if (!m) return null;
+        const a = m[1].split(',').map(Number); return a.length > 3 && a[3] === 0 ? null : a.slice(0, 3); };
+      window.__under = (el) => { for (let e = el; e; e = e.parentElement) {
+        const c = window.__rgb(getComputedStyle(e).backgroundColor); if (c) return c; } return [255, 255, 255]; };
+    });
+    const seen = new Set();
+    let worst = 99, worstWhat = '', measured = 0;
+    for (let i = 0; i < 80; i += 1) {
+      await page.keyboard.press('Tab');
+      const r = await page.evaluate(() => {
+        const el = document.activeElement;
+        if (!el || el === document.body) return null;
+        /* The ring may sit on an ancestor: the search box carries
+           `outline: 0` on the input and shows focus on the wrapper. */
+        let ring = null, host = el;
+        for (let e = el; e && !ring; e = e.parentElement) {
+          const cs = getComputedStyle(e);
+          if (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0) { ring = window.__rgb(cs.outlineColor); host = e; }
+        }
+        const key = el.tagName + '|' + (el.className || '') + '|' + (el.textContent || '').trim().slice(0, 18);
+        if (!ring) return { key, bare: true };
+        const a = window.__lum(ring) + 0.05, b = window.__lum(window.__under(host.parentElement || host)) + 0.05;
+        return { key, ratio: +(Math.max(a, b) / Math.min(a, b)).toFixed(2) };
+      });
+      if (!r) break;
+      if (seen.has(r.key)) continue;
+      seen.add(r.key);
+      if (r.bare) { worst = 0; worstWhat = r.key + ' has no ring at all'; continue; }
+      measured += 1;
+      if (r.ratio < worst) { worst = r.ratio; worstWhat = r.key.slice(0, 40) + ' at ' + r.ratio; }
+    }
+    t(name + ': every one of ' + measured + ' focus stops clears 3:1', worst >= 3, worstWhat);
+    await context.close();
+  }
+
+  /* ---- paper gets the piece, not the furniture ----
+
+     CLAUDE.md said twice that no printed page had ever been looked at.
+     Rendered in print media and read: the Aa control printed — a drawn,
+     gold-bordered button in the middle of a sheet of paper, which is
+     this file's own argument for withholding Print from an app page —
+     along with the Share/Print row, the four "More in" links, and the
+     cross-language line. Header, nav, back-link and footer were already
+     correctly gone, so the stylesheet was half-written rather than
+     missing. */
+  group('paper gets the piece, not the furniture');
+  {
+    const { context, page } = await open(390, '/posts/qawi-aur-ameen.html');
+    await page.emulateMedia({ media: 'print' });
+    await page.waitForTimeout(300);
+    const shown = await page.evaluate(() => {
+      const gone = (sel) => { const e = document.querySelector(sel);
+        return !e || getComputedStyle(e).display === 'none'; };
+      return {
+        furniture: ['.reading-face', '.page-tools', '.more-like', '.post-alt',
+                    '.site-header', '.header-nav', 'footer'].filter((s) => !gone(s)),
+        body: !gone('#post-body'),
+        credit: !gone('.print-credit')
+      };
+    });
+    t('no screen furniture reaches the paper', shown.furniture.length === 0,
+      'still printing: ' + shown.furniture.join(', '));
+    /* The other half, and the half a careless rule would break: hiding
+       things must not hide the piece. */
+    t('  …and the writing itself still prints', shown.body === true);
+    t('  …with the credit line that says where it came from', shown.credit === true);
+    await context.close();
+  }
+
   group('nothing pushes the page sideways');
   for (const width of [1920, 1440, 1280, 1024, 900, 768, 620, 420, 380]) {
     const { context, page } = await open(width);
