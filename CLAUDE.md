@@ -4104,13 +4104,34 @@ sits in is a warm dark green (`#17211C`) under warm cream text
 (`#E2DED5`), all of it around hue 42; `#8FB3A2` is hue 155, and beside
 that ground it reads aqua rather than quiet.
 
-Settled the way every colour here is settled, by **rendering five
-candidates at matched OKLCH lightness (L=0.72) so only hue varied, and
-looking at the six together**. The two warmest — `#ABA495`, `#A9A49B` —
-are neutral stone and give up the green the site is built on. `#A1A890`
-is the middle: still green, hue 120, chroma down from 0.040 to 0.035, no
-pastel in it. Worst ground is `--paper-warm` at **5.03**, against the
-mint's 5.40, so nothing is spent on contrast that was not there to spare.
+Settled the way every colour here is settled, by **rendering candidates
+and looking at them**. The first round varied hue alone at matched OKLCH
+lightness, and picked `#A1A890` at hue 120 with the chroma *down* — which
+came back as **dull**, and was. That is the finding: **warming it was
+half the answer and taking the chroma out was the wrong half.** The fault
+was never the hue on its own, it was a pale colour with nothing in it, and
+a second round at raised chroma and lightness is what reads warm *and*
+alive. `#B0C794` — hue 128, chroma 0.040 → **0.075** — is what shipped.
+
+**The two gold-leaning candidates were the ones to refuse, and that is a
+rule rather than a preference.** `#C5C184` and `#C5CB82` look lively
+beside the rest and sit a few points off `--gold-on-dark`, so they would
+make a **second gold** out of a palette that keeps exactly one: gold is
+the site's own voice and lapis marks a crossing, each with its own job.
+A third colour that reads as gold without being gold takes a job away
+from both.
+
+**The first comparison could not be judged and that cost a round.** The
+candidates were rendered on the author page and the only thing varying in
+frame was the **seal**, which is a thin-stroke line drawing — at that
+weight six greens look like one green, and the grid was sent anyway. What
+settled it was a flat **swatch** beside a link and a line of prose on the
+real night ground: side by side there, the dull one is obvious in a
+second. Match the sample to the question — *is this colour dull* is
+answered by area, not by a hairline.
+
+Worst ground is `--paper-warm` at **6.76**, against the mint's 5.40 and
+the dull sage's 5.03, so the livelier colour is also the more legible one.
 
 The seal's `filter:` chain had to be re-solved with it — the chain **is**
 the colour on that element, which is the third kind of colour literal
