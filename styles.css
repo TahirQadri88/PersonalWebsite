@@ -2279,7 +2279,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
     --gold-wash-strong: rgba(232, 200, 130, 0.20);
     --gold-rule-soft: rgba(232, 200, 130, 0.30);
     --mark-brand: invert(76%) sepia(20%) saturate(650%) hue-rotate(0deg);
-    --mark-intro: invert(58%) sepia(70%) saturate(100%) hue-rotate(105deg);
+    --mark-intro: invert(60%) sepia(35%) saturate(125%) hue-rotate(35deg);
     --paper: #17211C;
     --card: #222D27;
     --paper-warm: #2B3731;
@@ -2298,7 +2298,13 @@ details[open] > summary .toggle { transform: rotate(45deg); }
     --muted-dot: #ABB4AF;
     --muted-faint: #99A29D;
     --ink-subtitle: #B4BDB8;
-    --moss: #8FB3A2;            /* ink only: 4 colour uses, never a ground */
+    /* Sage, not the mint this started as. The first value was arrived at by
+       arithmetic; rendered beside five candidates at matched OKLCH lightness
+       it was the one cool note in a page that is warm dark green under warm
+       cream text, and read as aqua against it. Warmed to hue 120 and the
+       chroma dropped, which keeps the green identity and loses the pastel.
+       Worst ground 5.03 on --paper-warm. */
+    --moss: #A1A890;            /* ink only: 4 colour uses, never a ground */
     --ink-title: #DCE4DF;
     --on-button-dark: #E8E4DB;  /* the dark button STAYS dark at night, so its
                                    text stays light — the trap here was assuming
@@ -2348,7 +2354,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
     --gold-wash-strong: rgba(232, 200, 130, 0.20);
     --gold-rule-soft: rgba(232, 200, 130, 0.30);
     --mark-brand: invert(76%) sepia(20%) saturate(650%) hue-rotate(0deg);
-    --mark-intro: invert(58%) sepia(70%) saturate(100%) hue-rotate(105deg);
+    --mark-intro: invert(60%) sepia(35%) saturate(125%) hue-rotate(35deg);
     --paper: #17211C;
     --card: #222D27;
     --paper-warm: #2B3731;
@@ -2367,7 +2373,13 @@ details[open] > summary .toggle { transform: rotate(45deg); }
     --muted-dot: #ABB4AF;
     --muted-faint: #99A29D;
     --ink-subtitle: #B4BDB8;
-    --moss: #8FB3A2;            /* ink only: 4 colour uses, never a ground */
+    /* Sage, not the mint this started as. The first value was arrived at by
+       arithmetic; rendered beside five candidates at matched OKLCH lightness
+       it was the one cool note in a page that is warm dark green under warm
+       cream text, and read as aqua against it. Warmed to hue 120 and the
+       chroma dropped, which keeps the green identity and loses the pastel.
+       Worst ground 5.03 on --paper-warm. */
+    --moss: #A1A890;            /* ink only: 4 colour uses, never a ground */
     --ink-title: #DCE4DF;
     --on-button-dark: #E8E4DB;  /* the dark button STAYS dark at night, so its
                                    text stays light — the trap here was assuming

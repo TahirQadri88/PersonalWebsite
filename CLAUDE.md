@@ -4095,6 +4095,29 @@ page. The night sweep is also the reason it needed checking at all — it
 SKIPS the 49 elements on gradients, so the whole hero had never been
 measured at night until it was done by pixel.
 
+**The pale green at night was arithmetic, and arithmetic picked the one
+cool note in a warm page.** `--moss` is the night theme's accent ink — the
+document links, the back link, a link inside prose — and through
+`--mark-intro` it is also what tints the big seal on the author page. It
+was solved to a lightness and left there, never looked at. The page it
+sits in is a warm dark green (`#17211C`) under warm cream text
+(`#E2DED5`), all of it around hue 42; `#8FB3A2` is hue 155, and beside
+that ground it reads aqua rather than quiet.
+
+Settled the way every colour here is settled, by **rendering five
+candidates at matched OKLCH lightness (L=0.72) so only hue varied, and
+looking at the six together**. The two warmest — `#ABA495`, `#A9A49B` —
+are neutral stone and give up the green the site is built on. `#A1A890`
+is the middle: still green, hue 120, chroma down from 0.040 to 0.035, no
+pastel in it. Worst ground is `--paper-warm` at **5.03**, against the
+mint's 5.40, so nothing is spent on contrast that was not there to spare.
+
+The seal's `filter:` chain had to be re-solved with it — the chain **is**
+the colour on that element, which is the third kind of colour literal
+this file records, and a value changed without its chain leaves the seal
+at the old hue with nothing saying so. Solved by rendering a black pixel
+through each candidate chain and reading the result back: error 0 of 255.
+
 **Weight is a design decision, and the test measures it.** The homepage was
 961KB: a decorative 518KB PNG inside the collapsed bio, and two fonts
 shipped as TTF. It is ~320KB now — the fonts are woff2 (58% smaller,
