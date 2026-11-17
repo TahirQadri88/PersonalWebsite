@@ -3990,6 +3990,84 @@ concluding anything from it, the same rule the Save-Data seed follows.
 And it asserts the editor still works without storage at all — the
 writing box may not depend on a backup it could not take.
 
+**The day/night control is a pill in the FOOTER, and the footer was
+forced by measurement.** It went in the header first, which is where a
+theme control usually lives — and the header cannot take it. Measured:
+at **320 and 360px no nav link showed at all**, and at 390 only Author
+where Author and Contact both had. This file's own rule is that no width
+loses a link it had, and a reading setting is not worth a way out of the
+page. The footer is where the site already says how it is set — *Urdu
+set in Mehr Nastaliq Web* — so a control for how it is set belongs
+beside that sentence.
+
+**What that costs, said rather than hidden:** a reader who wants to
+switch has to reach the foot of the page. That is affordable only
+because `prefers-color-scheme` already serves everybody who has not
+overridden — unlike the reading face, which had to be offered before the
+writing because it spends 6.5MB of somebody's data.
+
+**Three states, not two.** A toggle cannot say *follow the device*,
+which is the state most readers should be in. Auto **clears** the key
+rather than storing a third value: a stored 'auto' is a claim about the
+device that stops being true the moment the device changes — and this
+file already records the mirror of that, where clearing the key handed
+the reader back to the default and a tap meant to turn something off
+lasted one page load.
+
+**`theme.js` exists for one reason and is in `<head>` for one reason.**
+The stylesheet already answers everybody who has not chosen; this only
+writes an override. It has to run before the first paint, because
+`common.js` is one parser-blocking script at the END of `<body>` — a
+reader who asked for night and gets a flash of cream has been given
+exactly the thing they asked not to have. It is a FILE rather than two
+inline lines because the pages carry `script-src 'self'` with no
+`'unsafe-inline'`: the policy doing its job, at the cost of one small
+same-origin request. **404.html is deliberately excluded** — its own
+policy is `script-src 'none'` and the browser would refuse the tag
+outright; it follows the device only, which is the right cost on a page
+nobody should reach.
+
+**Lapis has a job, and "a third colour" without one is decoration.**
+Gold stays the site's own voice — its labels, its rules, its own
+actions. Lapis marks a **crossing**: this piece exists somewhere else,
+here is where to go. Three call sites, which is the whole of that
+register: the cross-language link, *See also*, and the mark under the
+category pill you are standing on. Deliberately **not** `.more-like li
+a` — that is a record's own title quoted as a reference, and this file
+already records why it sets no font-family either. The words are the
+author's, not the site's, and tinting them is the same mistake in
+colour.
+
+**The pill changed the ground under itself, and the guards caught all
+three consequences before any of it shipped.** A light pill on the dark
+footer takes the ring meant for the footer, and gold-on-dark measures
+**1.36** on cream — the two-golds rule arriving exactly where this file
+says it does. A **translucent** `rgba()` ground then made 18 elements
+uncompositable, so the contrast walk silently skipped them and the
+count assertion went from 31 to **49**: a guard that counts what it
+matched is what turns that into a failure rather than a gap. And the
+first fix for the ring was **wrong in a way worth keeping**: the
+reasoning was "the ring is drawn on the gold fill, so it must contrast
+with gold", and `outline-offset` puts the ring OUTSIDE the button, on
+the pill's own ground — forcing it dark measured **1.16**. Ask what a
+ring is drawn *on*, and the offset is part of the answer.
+
+**The tap target was 24px by the box and 49px by the finger.** Measuring
+the box called a healthy control broken, which this file already records
+costing a withdrawn claim once. `elementFromPoint` walked out from the
+centre says 49x49, and neighbouring pads meet rather than overlap, which
+is why widening the pad does nothing for the width and widening the
+button does.
+
+**Changing a builder means regenerating what it writes.** Four builders
+now emit `../theme.js`, so all 37 generated pages were out of step the
+moment that landed — *the fatawa page is the fatawa page in the branch*
+failed, which is the guard for exactly this. They were rebuilt through
+the editor's own `Files…` rather than by a pattern, because when a
+hand-edit touches a generated region the generator decides. The diff is
+**37 pages, one added line each, zero removals**, which is better
+evidence than any assertion that nothing else moved.
+
 **Weight is a design decision, and the test measures it.** The homepage was
 961KB: a decorative 518KB PNG inside the collapsed bio, and two fonts
 shipped as TTF. It is ~320KB now — the fonts are woff2 (58% smaller,

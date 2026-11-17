@@ -1322,12 +1322,15 @@ details[open] > summary .toggle { transform: rotate(45deg); }
    state made permanent, with the gold rule under it: the strip already
    had this vocabulary, so being in a section looks like being about to
    choose it rather than like a new kind of thing. */
+/* The mark under the pill you are standing on is a statement about
+   WHERE you are, not an action — so it is the crossing colour rather
+   than the gold every button already uses. */
 .category-nav a[aria-current] {
   background: var(--paper-warm);
   border-color: var(--gold-dim);
   color: var(--ink-title);
   font-weight: 700;
-  box-shadow: inset 0 -2px 0 var(--gold-rule);
+  box-shadow: inset 0 -2px 0 var(--lapis);
 }
 
 /* 5 ── Hero ───────────────────────────────────────────────── */
@@ -3078,6 +3081,19 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
    quieter than either. `fit-content` so the underline ends with the
    words rather than running the column's width, and it is one line by
    construction: two fixed strings. */
+/* Lapis marks a CROSSING: this piece exists somewhere else, here is
+   where to go. Gold stays the site's own voice — its labels, its rules,
+   its own actions — so the two registers can be told apart at a glance
+   rather than everything clickable being one colour.
+
+   Deliberately NOT on `.more-like li a`: that is a record's own title
+   quoted as a reference, and this file already records why it sets no
+   font-family either — the words are the author's, not the site's.
+   Tinting them would be the same mistake in colour. The heading above
+   them is the site speaking, and it may take the accent. */
+.post-alt a,
+.work-alt a { color: var(--lapis); }
+
 .post-alt {
   width: fit-content;
   margin: -0.4em 0 1.6em;
@@ -3125,7 +3141,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
    family at all for exactly that reason, and these two are the only
    places a title is quoted as a reference. They must not disagree. */
 .work-seealso a {
-  color: var(--moss);
+  color: var(--lapis);
   text-decoration: none;
   border-bottom: 2px solid currentColor;
   padding-bottom: 2px;
@@ -4322,4 +4338,109 @@ footer {
     font-size: 8.5pt;
     overflow-wrap: break-word;
   }
+}
+
+
+/* 14 ── The day/night control ───────────────────────────────────────────
+
+   A segmented pill rather than a sun-and-moon toggle: three states, and
+   a two-state switch cannot say "follow the device", which is the state
+   most readers should be in and the one a toggle silently takes away.
+   The words are plain — Auto, Day, Night — because an icon pair here
+   would need translating on a page whose reader may want neither English
+   chrome nor a guess at what a crescent means.
+
+   It is gold, not lapis: this is the site's own control, and lapis is
+   reserved for a crossing. */
+.theme-pill {
+  display: inline-flex;
+  flex: none;
+  align-items: stretch;
+  gap: 1px;
+  margin-inline-start: auto;
+  padding: 2px;
+  border: 1px solid var(--gold-dim);
+  border-radius: 999px;
+  background: var(--paper-warm);
+  /* The site's own words about the page, in the site's own direction —
+     the same decision `.record-meta` and `.more-like` already make. */
+  direction: ltr;
+}
+.theme-choice {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  cursor: pointer;
+  white-space: nowrap;
+}
+/* 24px of drawn button is not a tap target. The pad is invisible and
+   vertical, the same `::after` three other controls here already use, so
+   the finger gets 44px while the pill stays the height the header can
+   afford. `.site-header` does not clip — the warning in this file is
+   about `.header-nav`, which takes `overflow-x: auto` under 420px and
+   computes `overflow-y` to auto with it. This control is deliberately
+   NOT inside that scroller. */
+.theme-choice { position: relative; }
+.theme-choice::after {
+  content: "";
+  position: absolute;
+  inset: -11px 0;
+}
+.theme-choice:hover { color: var(--ink-title); }
+/* The chosen one is filled, because this file already records that a
+   drawn control is told from a word by being PADDED and filled, not by
+   being bigger — the lesson the library row's action had to learn. */
+.theme-choice[aria-pressed="true"] {
+  background: var(--card);
+  color: var(--ink-title);
+  box-shadow: 0 1px 2px var(--shadow-soft, rgba(24, 40, 34, 0.12));
+}
+
+/* The pill sits in the DARK footer, so it cannot keep the cream ground it
+   would have on the page — a light island on a dark band takes the ring
+   meant for the band, and `footer :focus-visible` is gold-on-dark, which
+   measures 1.36 on cream. That is the two-golds rule arriving exactly
+   where this file says it does: each gold fails where the other works,
+   and an element that changes the ground under itself changes which one
+   is right. The guard caught this before it shipped. */
+footer .theme-pill {
+  /* Opaque, not a translucent white. A semi-transparent ground cannot be
+     composited honestly, so the contrast walk has to skip whatever sits
+     on it — 18 elements went from measured to unmeasurable, which the
+     count assertion caught. A guard that counts what it matched is what
+     turns that into a failure instead of a silent gap. */
+  background: var(--moss-deep);
+  border-color: var(--gold-on-dark);
+}
+footer .theme-choice { color: var(--on-dark-footer); }
+footer .theme-choice:hover { color: var(--on-dark-bright); }
+footer .theme-choice[aria-pressed="true"] {
+  background: var(--gold-on-dark);
+  color: var(--footer-ground);
+  box-shadow: none;
+}
+/* No override here, deliberately, and the first attempt at one was
+   wrong in a way worth keeping. The reasoning was "the ring is drawn on
+   the gold fill, so it must contrast with gold" — and the ring carries
+   `outline-offset`, so it sits OUTSIDE the button, on the pill's own
+   ground. Forcing it dark measured 1.16 against that ground. The
+   footer's own gold-on-dark is 8.31 there and is simply right.
+   Ask what a ring is drawn ON, and the offset is part of the answer. */
+
+/* Under 480px the header has about 133px of room beside the wordmark and
+   the nav, measured — not enough for three words. The labels go to their
+   first letter there and the full word stays in `title` and in the
+   control's own accessible name. */
+@media (max-width: 560px) {
+  .theme-pill { margin-inline-start: 0; }
+  .theme-choice { padding: 7px 11px; font-size: 11px; }
 }

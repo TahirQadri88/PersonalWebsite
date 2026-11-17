@@ -2143,6 +2143,97 @@
     }
   }
 
+  /* Day or night, as a control rather than only a guess about the device.
+
+     The stylesheet already answers everybody who has not chosen: that is
+     `prefers-color-scheme`, and it needs no script at all. This writes an
+     OVERRIDE, and only when a reader asks for one — which is why "Auto"
+     clears the key rather than storing a third value. A stored 'auto'
+     would be a claim about the device that stops being true the moment
+     the device changes, and this file already records paying for exactly
+     that with the reading face, where clearing the key handed the reader
+     back to the default and a tap meant to turn it off lasted one page.
+
+     The applying is done in theme.js, in <head>, before the first paint.
+     This only moves the attribute once the page is up, so a press is
+     instant and no reader ever sees the wrong theme first. */
+  var THEME_KEY = 'site-theme';
+  function storedTheme() {
+    try { return window.localStorage.getItem(THEME_KEY); } catch (error) { return null; }
+  }
+  function rememberTheme(value) {
+    try {
+      if (value) window.localStorage.setItem(THEME_KEY, value);
+      else window.localStorage.removeItem(THEME_KEY);
+    } catch (error) { /* the choice lasts this page only, which is honest */ }
+  }
+
+  function themeControl() {
+    /* The footer, not the header, and that was forced by measurement
+       rather than chosen. In the header the pill ate the nav: at 320 and
+       360px NO link showed at all, and at 390 only Author where Author
+       and Contact both had. This file's own rule is that no width loses
+       a link it had, and a reading setting is not worth a way out of the
+       page.
+
+       The footer is where the site already says how it is set — "Urdu set
+       in Mehr Nastaliq Web" — so a control for how it is set belongs
+       beside that sentence rather than in the navigation.
+
+       What this costs, said plainly: a reader who wants to switch has to
+       reach the foot of the page. That is affordable only because
+       `prefers-color-scheme` already serves everybody who has not
+       overridden, so this control is for the minority who want something
+       other than their device — unlike the reading face, which had to be
+       offered before the writing because it spends 6.5MB. */
+    var foot = document.querySelector('footer');
+    if (!foot) return;
+
+    var box = document.createElement('div');
+    box.className = 'theme-pill';
+    /* A group rather than a radiogroup: these are buttons that act at
+       once, not a field being filled in. `aria-pressed` says which one is
+       on, which is what a reader of the page is actually asking. */
+    box.setAttribute('role', 'group');
+    box.setAttribute('aria-label', 'Colour theme');
+
+    var CHOICES = [
+      { key: '', label: 'Auto', title: 'Follow this device' },
+      { key: 'light', label: 'Day', title: 'Always the light theme' },
+      { key: 'dark', label: 'Night', title: 'Always the dark theme' }
+    ];
+    var buttons = [];
+
+    function show(chosen) {
+      buttons.forEach(function (b) {
+        var on = b.getAttribute('data-theme-key') === (chosen || '');
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
+
+    CHOICES.forEach(function (choice) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'theme-choice';
+      b.setAttribute('data-theme-key', choice.key);
+      b.title = choice.title;
+      b.textContent = choice.label;
+      b.addEventListener('click', function () {
+        rememberTheme(choice.key);
+        if (choice.key) document.documentElement.setAttribute('data-theme', choice.key);
+        else document.documentElement.removeAttribute('data-theme');
+        show(choice.key);
+      });
+      buttons.push(b);
+      box.appendChild(b);
+    });
+
+    show(storedTheme());
+    foot.appendChild(box);
+  }
+
+  themeControl();
+
   mountCardSearch();
 
   /* The icon sprite, before anything that might reference it. */

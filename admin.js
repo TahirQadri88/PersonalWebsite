@@ -2913,6 +2913,7 @@
       '    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />',
       '    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" rel="stylesheet" />',
       '    <link rel="stylesheet" href="../styles.css" />',
+      '    <script src="../theme.js"></script>',
       '    <script type="application/ld+json">' + jsonLd + '</scr' + 'ipt>',
       '  </head>',
       '',
@@ -3152,6 +3153,7 @@
       '    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />',
       '    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" rel="stylesheet" />',
       '    <link rel="stylesheet" href="../styles.css" />',
+      '    <script src="../theme.js"></script>',
       '    <script type="application/ld+json">' + jsonLd + '</scr' + 'ipt>',
       '  </head>',
       '',
@@ -3909,6 +3911,7 @@
       '    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />',
       '    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" rel="stylesheet" />',
       '    <link rel="stylesheet" href="../styles.css" />',
+      '    <script src="../theme.js"></script>',
       '    <script type="application/ld+json">' + jsonLd + '</scr' + 'ipt>',
       '  </head>',
       '',
@@ -4120,6 +4123,7 @@
       '    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />',
       '    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" rel="stylesheet" />',
       '    <link rel="stylesheet" href="../styles.css" />',
+      '    <script src="../theme.js"></script>',
       '    <script type="application/ld+json">' + settings.jsonLd + '</scr' + 'ipt>',
       '  </head>'
     ].join('\n');
