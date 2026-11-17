@@ -24,6 +24,59 @@
   --gold-on-dark: #e8c882;
   --gold-rule: #b8863a;
 
+  /* Every colour the screen uses is a token now, because a one-off literal
+     cannot follow a theme. 38 of the 49 were literals — 87 literal uses
+     against 242 token uses — which is why there was no dark mode to turn
+     on. The print block is deliberately NOT tokenised: paper is black ink
+     on white at every hour, and `#000`, `#333` and `#999` are used there
+     and nowhere else.
+
+     Light values here are EXACTLY what shipped, so this costs no pixel.
+     The four exceptions are same-role pairs collapsed at a measured dE
+     below 2.0 — imperceptible: #2f3d38→#2b3a34 (1.70), #38443f→#36443f
+     (0.84), #4c5651→#4b5852 (1.50), #f6f1e6→#f6f1e4 (1.02). The cream
+     chain looks collapsible pairwise and is not: #fffdf8 to #f6f3ea
+     accumulates to dE 5.2, and `--card` against `--paper` is a role
+     difference anyway — a card has to read as raised. Role beats dE. */
+  --ink-strong: #2b3a34;
+  --ink-prose: #36443f;
+  --ink-list: #3d4b45;
+  --ink-body: #45534d;
+  --ink-quiet: #4b5852;
+  --ink-subtitle: #55635c;
+  --muted-dot: #636d63;
+  --muted-faint: #7b857d;
+
+  --paper-hover: #faf6ed;
+  --button-face: #f6f1e4;
+  --button-face-warm: #f4eddc;
+  --chip: #e5e2d9;
+
+  /* Text that sits on a dark ground. In the light theme these are creams;
+     at night the ground under them is what changes, not always these. */
+  --on-dark-bright: #fff;
+  --on-dark: #f7f4ec;
+  --on-dark-panel: #f6f3ea;
+  --on-dark-urdu: #dce6e0;
+  --on-dark-copy: #d3ddd7;
+  --on-dark-count: #c3d0c9;
+  --on-dark-footer: #b6c2ba;
+  --on-dark-meta: #a8b0a8;
+
+  --line-panel: #cfd3c6;
+  --line-dot: #c8cfc6;
+  --line-search: #b8beb5;
+
+  --gold-pale: #ecd9b0;
+  --gold-dim: #d5c29e;
+  --gold-mark: #ab7a17;
+  --gold-deep: #5d4a25;
+
+  --footer-ground: #10281f;
+  --hero-a: #102f27;
+  --hero-b: #17483c;
+  --hero-c: #1c5346;
+
   /* Gentium Book Plus sets the English and, which is the point of it,
      the Arabic transliteration this library is full of. Newsreader was
      here and had no glyph for eight of the characters that transliteration
@@ -256,14 +309,14 @@ img { max-width: 100%; }
 /* The focus ring collapsed the two golds, which is the one thing this
    file says must never be done to them.
 
-   It used `--gold-rule` (#b8863a), a third gold sitting between the
+   It used `--gold-rule` (var(--gold-rule)), a third gold sitting between the
    other two — and a colour that is between them is marginal on both
    grounds rather than right on either. Measured against every ground a
    focus ring actually lands on here:
 
-                            #b8863a   --gold-on-light   --gold-on-dark
+                            var(--gold-rule)   --gold-on-light   --gold-on-dark
      --paper                   3.04         5.33             1.52
-     card (#fffdf8)            3.17         5.57             1.59
+     card (var(--card))            3.17         5.57             1.59
      --paper-warm              2.72 FAIL    4.77             1.36
      moss panel                4.18         2.38             8.35
      footer                    4.84         2.76             9.67
@@ -299,7 +352,7 @@ footer :focus-visible {
   z-index: 50;
   padding: 12px 18px;
   background: var(--moss-deep);
-  color: #fff;
+  color: var(--on-dark-bright);
   font-weight: 700;
   text-decoration: none;
 }
@@ -676,7 +729,7 @@ h1, h2, h3 {
    labels, which reads as a caption; it is the one name on the page and
    should be legible at a glance. */
 .eyebrow {
-  color: #f7f4ec;
+  color: var(--on-dark);
   text-transform: none;
   letter-spacing: 0.04em;
   font-size: clamp(15px, 1.5vw, 18px);
@@ -868,7 +921,7 @@ h1, h2, h3 {
   align-items: center;
   gap: 12px;
   padding: 14px 22px;
-  background: #f4eddc;
+  background: var(--button-face-warm);
   color: var(--moss-deep);
   font-weight: 700;
   font-size: 14px;
@@ -877,7 +930,7 @@ h1, h2, h3 {
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 .button:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(0, 0, 0, 0.16); }
-.button-dark { background: var(--moss-deep); color: #f6f1e4; }
+.button-dark { background: var(--moss-deep); color: var(--button-face); }
 
 /* 2px, not 1. The search box was reported as *mixed with the website*
    when it sat behind a 1px border, and the answer there was a 2px rule —
@@ -1089,7 +1142,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   margin-right: 10px;
   vertical-align: -7px;
   /* Black ink to exactly --gold-on-light. The chain was guessed before and
-     landed on #ab7a17 when it meant #b8863a; these numbers were solved for,
+     landed on var(--gold-mark) when it meant var(--gold-rule); these numbers were solved for,
      and the rendered pixels were checked against the value afterwards. */
   filter: invert(53%) sepia(49%) saturate(486%) hue-rotate(-1deg) brightness(68%) contrast(112%);
 }
@@ -1207,19 +1260,19 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   padding: 12px 14px;
   border: 1px solid transparent;
   border-radius: 999px;
-  color: #45534d;
+  color: var(--ink-body);
   font-size: 13px;
   text-decoration: none;
   transition: background 0.18s ease, border-color 0.18s ease;
 }
-.category-nav a:hover { background: var(--paper-warm); border-color: #d5c29e; color: var(--moss-deep); }
+.category-nav a:hover { background: var(--paper-warm); border-color: var(--gold-dim); color: var(--moss-deep); }
 /* The section you are in, marked as you scroll. Deliberately the hover
    state made permanent, with the gold rule under it: the strip already
    had this vocabulary, so being in a section looks like being about to
    choose it rather than like a new kind of thing. */
 .category-nav a[aria-current] {
   background: var(--paper-warm);
-  border-color: #d5c29e;
+  border-color: var(--gold-dim);
   color: var(--moss-deep);
   font-weight: 700;
   box-shadow: inset 0 -2px 0 var(--gold-rule);
@@ -1238,8 +1291,8 @@ details[open] > summary .toggle { transform: rotate(45deg); }
      warmth, and every line of hero text now clears 5:1. */
   background:
     radial-gradient(circle at 94% 92%, rgba(237, 218, 170, 0.6) 0, rgba(237, 218, 170, 0.24) 12%, transparent 26%),
-    linear-gradient(118deg, #102f27 0%, #17483c 68%, #1c5346 100%);
-  color: #f7f4ec;
+    linear-gradient(118deg, var(--hero-a) 0%, var(--hero-b) 68%, var(--hero-c) 100%);
+  color: var(--on-dark);
 }
 .hero::after {
   content: "";
@@ -1258,12 +1311,12 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   font-size: clamp(42px, 6.6vw, 84px);
   letter-spacing: -0.035em;
 }
-.hero h1 em { color: #ecd9b0; font-style: italic; }
+.hero h1 em { color: var(--gold-pale); font-style: italic; }
 
 .hero-copy {
   max-width: 36em;
   margin: 26px 0 14px;
-  color: #d3ddd7;
+  color: var(--on-dark-copy);
   font-size: 17px;
 }
 /* This was the smallest and faintest text on the page, and it is
@@ -1273,7 +1326,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .hero-urdu {
   max-width: 40ch;
   margin: 0 0 30px;
-  color: #dce6e0;
+  color: var(--on-dark-urdu);
   font-family: var(--font-urdu);
   font-size: clamp(19px, 1.9vw, 23px);
   line-height: 2.1;
@@ -1314,9 +1367,9 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   height: auto;
   margin: 0 0 6px auto;
 }
-.intro-body > p { margin: 0 0 24px; color: #4c5651; }
+.intro-body > p { margin: 0 0 24px; color: var(--ink-quiet); }
 
-.bio { border-top: 1px solid #cfd3c6; }
+.bio { border-top: 1px solid var(--line-panel); }
 .bio > summary {
   display: flex;
   align-items: center;
@@ -1339,7 +1392,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .bio-heading h2,
 .bio-heading h3 { color: var(--moss-deep); font-size: inherit; }
 .bio-byline { color: var(--muted); font-size: clamp(15px, 1.4vw, 19px); margin: 10px 0 0; }
-.bio-prose p { margin: 0 0 26px; color: #36443f; }
+.bio-prose p { margin: 0 0 26px; color: var(--ink-prose); }
 
 .bio-facts {
   display: grid;
@@ -1363,10 +1416,10 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   direction: rtl;
   text-align: right;
 }
-.bio-facts dd { margin: 8px 0 0; color: #2f3d38; }
+.bio-facts dd { margin: 8px 0 0; color: var(--ink-strong); }
 
-.bio-panels { border-top: 1px solid #cfd3c6; }
-.bio-panels details { border-bottom: 1px solid #cfd3c6; }
+.bio-panels { border-top: 1px solid var(--line-panel); }
+.bio-panels details { border-bottom: 1px solid var(--line-panel); }
 .bio-panels summary {
   display: flex;
   align-items: center;
@@ -1380,7 +1433,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .bio-panels summary::-webkit-details-marker { display: none; }
 .bio-panels ol,
 .bio-panels ul,
-.bio-panels details > div { margin: 0; padding: 0 22px 20px 0; color: #3d4b45; }
+.bio-panels details > div { margin: 0; padding: 0 22px 20px 0; color: var(--ink-list); }
 .bio-panels li { margin: 0 0 10px; }
 .bio-source { margin: 26px 0 0; }
 /* Where to go from the author's page. Two links, wrapping to one each on
@@ -1538,7 +1591,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: #c8cfc6;
+  background: var(--line-dot);
   transition: background 0.18s ease, transform 0.18s ease;
 }
 .rail-dot:hover::before { background: var(--muted); }
@@ -1582,13 +1635,13 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 .recent-card:hover {
-  border-color: #d5c29e;
+  border-color: var(--gold-dim);
   box-shadow: 0 6px 20px rgba(26, 46, 39, 0.07);
   transform: translateY(-2px);
 }
 /* Its own copy of the global ring, and it carried the old gold after the
    rule above had moved on — the second place is always the one that gets
-   left behind. It sits on `--paper`, where #b8863a measured 3.04. */
+   left behind. It sits on `--paper`, where var(--gold-rule) measured 3.04. */
 .recent-card:focus-visible { outline: 2px solid var(--gold-on-light); outline-offset: 3px; }
 /* Deliberately not .category-icon. The drawings on the category headings
    draw themselves on as you reach them; a card's mark is not a heading,
@@ -1655,10 +1708,10 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 .rulings h2,
 .contact h2 { font-size: clamp(30px, 3.6vw, 48px); }
 .section-note { max-width: 18em; margin: 0; color: var(--muted); font-size: 14px; }
-.section-note-light { max-width: 31em; margin: 14px 0 34px; color: #c3d0c9; font-size: 15px; }
+.section-note-light { max-width: 31em; margin: 14px 0 34px; color: var(--on-dark-count); font-size: 15px; }
 
 .search-row { margin-bottom: 30px; }
-/* It was white on cream behind a 1px #b8beb5 border — three tones inside
+/* It was white on cream behind a 1px var(--line-search) border — three tones inside
    six points of each other, so the one control on the page read as a
    faint rectangle and was reported as "mixed with the website". A search
    box has to say that it is one before anybody will type in it.
@@ -1673,7 +1726,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   align-items: center;
   gap: 12px;
   padding: 12px 18px;
-  background: #fff;
+  background: var(--on-dark-bright);
   border: 2px solid var(--gold-rule);
   border-radius: 6px;
   box-shadow: 0 3px 0 rgba(134, 96, 31, 0.10), 0 10px 24px rgba(24, 40, 34, 0.07);
@@ -1728,7 +1781,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   padding-block: 12px;
   margin-block: -12px;
 }
-.search-box input::placeholder { color: #7b857d; }
+.search-box input::placeholder { color: var(--muted-faint); }
 .search-count { margin: 10px 2px 0; min-height: 20px; color: var(--muted); font-size: 13px; }
 
 /* The list the box opens under itself. It is laid *over* the page rather
@@ -1748,7 +1801,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   right: 0;
   margin-top: 6px;
   padding: 4px;
-  background: #fff;
+  background: var(--on-dark-bright);
   border: 2px solid var(--gold-rule);
   border-radius: 6px;
   /* The same shadow the box above it carries, so the two read as one
@@ -1812,7 +1865,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   padding: 22px 24px 6px;
   margin-bottom: 30px;
   background: var(--card);
-  border: 1px solid #e5e2d9;
+  border: 1px solid var(--chip);
   box-shadow: 0 6px 20px rgba(24, 62, 51, 0.035);
 }
 /* Two children: the names, and how many works are under them. Baseline so
@@ -1835,14 +1888,14 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.work-category-head h3 { font-size: clamp(21px, 2.3vw, 29px); color: #2b3a34; }
+.work-category-head h3 { font-size: clamp(21px, 2.3vw, 29px); color: var(--ink-strong); }
 .category-urdu { margin: 2px 0 0; color: var(--gold-on-light); font-size: clamp(16px, 1.6vw, 21px); }
 .category-blurb { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
 
 .work { border-bottom: 1px solid var(--line); transition: background 0.18s ease; }
 .work:last-child { border-bottom: 0; }
-.work:hover { background: #faf6ed; }
-.work[open] { background: #f6f1e6; }
+.work:hover { background: var(--paper-hover); }
+.work[open] { background: var(--button-face); }
 
 /* Two columns, not three. The kind label used to hold a column of its own
    at the left edge while the title was set flush right in the column
@@ -1910,7 +1963,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   text-transform: uppercase;
   line-height: 1.7;
 }
-/* The separators used to be #a8b0a8, two tones lighter than the line
+/* The separators used to be var(--on-dark-meta), two tones lighter than the line
    they divide, and that measured **1.97:1** against the cream behind
    them — a separator nobody can see, in `4 FILES · ENGLISH · 28
    SEPTEMBER`, which then reads as one run of words.
@@ -1918,7 +1971,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
    The obvious repair is a darker grey that is still quieter than the
    text, and it does not survive the arithmetic. Keeping this hue and
    saturation, the first lightness clearing 4.5:1 on every cream the
-   line lands on is `#636D63` — and `--muted` itself measures 4.88 to
+   line lands on is `var(--muted-dot)` — and `--muted` itself measures 4.88 to
    5.70 on those same four. There is no colour at 12px that is both
    legible and visibly quieter, so the rule is gone and the dots take
    the colour of their own line. One fewer one-off literal with it. */
@@ -1998,7 +2051,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   padding: 3px 11px 5px;
   background: var(--paper-warm);
   border-radius: 999px;
-  color: #5d4a25;
+  color: var(--gold-deep);
   font-family: var(--font-urdu);
   font-size: 14px;
   line-height: 1.9;
@@ -2161,7 +2214,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
      stamp sitting in the margin. */
   background-position: right -72px top -72px;
   background-size: 300px;
-  color: #f6f3ea;
+  color: var(--on-dark-panel);
 }
 
 /* Searching turns the page into a list of results. The space that
@@ -2197,9 +2250,9 @@ body.is-searching .rulings h2 { margin-bottom: 26px; }
    which is what makes it read as somewhere to type. */
 .rulings .search-box { border-color: var(--gold-on-dark); }
 .rulings .search-box:hover,
-.rulings .search-box:focus-within { border-color: #fff; }
-.rulings .search-hint { color: #c3d0c9; }
-.rulings .search-count { color: #c3d0c9; }
+.rulings .search-box:focus-within { border-color: var(--on-dark-bright); }
+.rulings .search-hint { color: var(--on-dark-count); }
+.rulings .search-count { color: var(--on-dark-count); }
 .rulings .search-row { margin-bottom: 26px; }
 /* A generated page's header carries four links and no category strip
    under it. Measured against a 141px wordmark they need 207px and fit
@@ -2303,7 +2356,7 @@ body.is-searching .rulings h2 { margin-bottom: 26px; }
   background: var(--paper-warm);
 }
 .contact h2 { margin-bottom: 14px; }
-.contact p { max-width: 36em; margin: 0; color: #4c5651; }
+.contact p { max-width: 36em; margin: 0; color: var(--ink-quiet); }
 
 /* 10 ── Footer ────────────────────────────────────────────── */
 
@@ -2317,15 +2370,15 @@ footer {
      page answers the fatawa panel instead of repeating it. The footer is
      short, so most of the figure is cropped away and what is left is an
      arc — which is the intent, not an accident of the box. */
-  background-color: #10281f;
+  background-color: var(--footer-ground);
   background-image: var(--rosette);
   background-repeat: no-repeat;
   background-position: left -58px center;
   background-size: 190px;
-  color: #b6c2ba;
+  color: var(--on-dark-footer);
   font-size: 13px;
 }
-footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255, 255, 255, 0.4); }
+footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1px solid rgba(255, 255, 255, 0.4); }
 
 /* 11 ── Work detail page ──────────────────────────────────── */
 
@@ -2365,7 +2418,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
    leaving a single trailing word alone on its own line. */
 .work-hero h1.urdu { max-width: 18em; font-size: clamp(24px, 3.3vw, 44px); line-height: 1.95; }
 .work-hero h1.arabic { font-size: clamp(30px, 4vw, 54px); line-height: 1.6; }
-.work-page-description { max-width: 43em; margin: 24px 0 18px; color: #4b5852; font-size: 17px; }
+.work-page-description { max-width: 43em; margin: 24px 0 18px; color: var(--ink-quiet); font-size: 17px; }
 /* A paragraph in the other language, on either kind of page.
 
    Two things have to be true at once. The words must read the way their
@@ -2451,7 +2504,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   text-align: right;
 }
 .work-page-files { display: flex; flex-wrap: wrap; gap: 14px 22px; margin-top: 22px; }
-.work-page-files .button { background: var(--moss-deep); color: #f6f1e4; }
+.work-page-files .button { background: var(--moss-deep); color: var(--button-face); }
 /* Here the pair stacks: the button reads it, the line under it saves it.
    Side by side, six charts would have made twelve things in a row. */
 /* Read-online and Download stack here, and each carries a pad 13px
@@ -2629,7 +2682,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .record-subtitle {
   max-width: 24em;
   margin: 12px 0 0;
-  color: #55635c;
+  color: var(--ink-subtitle);
   font-size: 17px;
   line-height: 1.55;
 }
@@ -2658,7 +2711,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .post-body {
   max-width: 43em;
   margin: 34px 0 0;
-  color: #38443f;
+  color: var(--ink-prose);
   font-size: 17px;
   line-height: 1.75;
   /* A source line ends in a bare address, and some of them are longer than
@@ -3344,7 +3397,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   padding: 13px 14px;
   cursor: pointer;
 }
-.reading-face-open[aria-expanded="true"] { background: #fff; }
+.reading-face-open[aria-expanded="true"] { background: var(--on-dark-bright); }
 /* In an Urdu piece the hero is `dir="rtl"` and everything in it — the
    title, the standfirst, the date — sits on the right. A full-width
    `ltr` block put the control alone on the far left, which reads as
@@ -3368,7 +3421,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   /* Never wider than the screen on a phone, and never so wide on a
      desktop that two short samples sprawl. */
   width: min(320px, calc(100vw - 32px));
-  background: #fff;
+  background: var(--on-dark-bright);
   border: 2px solid var(--gold-rule);
   border-radius: 10px;
   box-shadow: 0 6px 20px rgba(21, 52, 43, 0.14);
@@ -3473,7 +3526,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .app-tagline {
   max-width: 32em;
   margin: 12px 0 0;
-  color: #4c5651;
+  color: var(--ink-quiet);
   font-size: 19px;
   line-height: 1.5;
 }
@@ -3484,7 +3537,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
 .app-tagline.arabic {
   max-width: 40ch;
   margin-top: 2px;
-  color: #45534d;
+  color: var(--ink-body);
   font-size: clamp(20px, 2vw, 24px);
   line-height: 1.95;
 }
@@ -3552,7 +3605,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   font-size: 15px;
   font-weight: 500;
   line-height: 1.45;
-  color: #2b3a34;
+  color: var(--ink-strong);
 }
 
 /* Both headings below the lead are subordinate to the app's name, so
@@ -3574,7 +3627,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   position: relative;
   margin: 0;
   padding: 11px 0 11px 22px;
-  color: #3d4b45;
+  color: var(--ink-list);
   font-size: 16px;
   line-height: 1.55;
   border-bottom: 1px solid var(--line);
@@ -3636,7 +3689,7 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   word-spacing: var(--space-urdu-heading);
   font-size: 18px;
   line-height: 1.8;
-  color: #2b3a34;
+  color: var(--ink-strong);
 }
 .app-attest-name {
   margin: 0;
@@ -3658,12 +3711,12 @@ footer a { color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255
   word-spacing: normal;
   font-size: clamp(15px, 1.4vw, 19px);
   line-height: 2;
-  color: #4c5651;
+  color: var(--ink-quiet);
 }
 .app-attest-title + .app-attest-name { margin-top: 16px; }
 
 .app-about { margin: 40px 0 0; }
-.app-about p { margin: 0 0 14px; color: #45534d; max-width: 43em; }
+.app-about p { margin: 0 0 14px; color: var(--ink-body); max-width: 43em; }
 /* 62ch of Nastaliq at 20-27px is most of a desktop; the measure a reader
    can follow is far shorter in this script than in Latin, and the line
    was running the full column. */
@@ -3919,13 +3972,13 @@ footer {
 .ruling:active,
 .recent-card:active { transform: scale(0.985); }
 .work > summary:active { background: var(--paper-warm); }
-.category-nav a:active { background: var(--paper-warm); border-color: #d5c29e; }
+.category-nav a:active { background: var(--paper-warm); border-color: var(--gold-dim); }
 .text-link:active,
 .document-link:active,
 .file-download:active,
 .back-link:active { color: var(--gold-on-light); }
 .rulings .text-link:active,
-.rulings .back-link:active { color: #fff; }
+.rulings .back-link:active { color: var(--on-dark-bright); }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
