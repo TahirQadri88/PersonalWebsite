@@ -128,8 +128,9 @@ const threw = [];
    resolved to — neither of which the typeface decides. Waiting on a real
    round trip to another origin would only make the run slow and its
    result dependent on someone else's uptime. */
-async function open(width, path) {
-  const context = await browser.newContext({ viewport: { width, height: 1000 } });
+async function open(width, path, scheme) {
+  const context = await browser.newContext({ viewport: { width, height: 1000 },
+    ...(scheme ? { colorScheme: scheme } : {}) });
   await context.route('https://fonts.g**', (r) => r.abort());
   const page = await context.newPage();
   page.on('pageerror', (e) => threw.push(width + 'px: ' + e.message));
@@ -5125,6 +5126,86 @@ try {
       client: document.documentElement.clientWidth
     }));
     t('at ' + width + 'px', over.scroll <= over.client, JSON.stringify(over));
+    await context.close();
+  }
+
+  /* Until this group existed the whole night theme was unguarded here: every
+     other assertion in this file opens a default context, which is light.
+
+     What it measures is the thing that went wrong rather than the values that
+     fixed it. The site's design is light cards floating on a deep slab, and
+     in daylight a ruling card stands 13.26:1 off the panel under it. At night
+     that was 1.06 — the fill carried none of it, the card has no border of
+     its own, and `.ruling`'s lift was black at 16% over a near-black panel,
+     which is nothing at all. Three ways of standing a card up and all three
+     silent, on a page that measured perfectly for contrast throughout: every
+     word on it was legible and the design was gone.
+
+     The floors are well under what shipped (1.72 and 1.43) and well over the
+     fault (1.06 and 1.16), rather than pinned to today's numbers, because a
+     floor with no room either side is the scroll-anchoring lesson again. */
+  group('a card stands off its ground at night too');
+  {
+    const { context, page } = await open(390, '/fatawa/index.html', 'dark');
+    const seen = await page.evaluate(() => {
+      const bg = (sel) => {
+        const el = document.querySelector(sel);
+        return el ? getComputedStyle(el).backgroundColor : null;
+      };
+      const lift = () => {
+        const el = document.querySelector('.ruling');
+        return el ? getComputedStyle(el).boxShadow : '';
+      };
+      return { panel: bg('.rulings'), card: bg('.ruling'), page: bg('body'), lift: lift() };
+    });
+    const Y = (css) => {
+      const m = (css || '').match(/[\d.]+/g);
+      if (!m) return null;
+      const f = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+      return 0.2126 * f(+m[0]) + 0.7152 * f(+m[1]) + 0.0722 * f(+m[2]);
+    };
+    const ratio = (a, b) => {
+      const A = Y(a), B = Y(b);
+      if (A === null || B === null) return 0;
+      return (Math.max(A, B) + 0.05) / (Math.min(A, B) + 0.05);
+    };
+    /* The context really is dark before anything is concluded from it — the
+       same rule the Save-Data seed follows. A light page would pass every
+       assertion below and prove nothing. */
+    t('the dark context really took', Y(seen.page) < 0.1,
+      'body ' + seen.page);
+    const cardOffPanel = ratio(seen.card, seen.panel);
+    t('a ruling card stands off the slab it floats on', cardOffPanel >= 1.35,
+      'card ' + seen.card + ' on panel ' + seen.panel + ' = ' + cardOffPanel.toFixed(3));
+    /* The lift is the third way a card stands up and the one that fails
+       silently: a black shadow over a near-black panel draws nothing. What
+       has to be true is that something is painted which is NOT black. */
+    t('the card is lifted by something that shows on a dark ground',
+      /#|rgb/.test(seen.lift) && !/^rgba\(0, 0, 0/.test(seen.lift.trim()),
+      seen.lift);
+    await context.close();
+  }
+  {
+    const { context, page } = await open(390, '/index.html', 'dark');
+    const seen = await page.evaluate(() => ({
+      card: getComputedStyle(document.querySelector('.recent-card')).backgroundColor,
+      page: getComputedStyle(document.body).backgroundColor,
+      field: getComputedStyle(document.querySelector('.search-box')).backgroundColor
+    }));
+    const Y = (css) => {
+      const m = (css || '').match(/[\d.]+/g);
+      if (!m) return null;
+      const f = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+      return 0.2126 * f(+m[0]) + 0.7152 * f(+m[1]) + 0.0722 * f(+m[2]);
+    };
+    const ratio = (a, b) => (Math.max(Y(a), Y(b)) + 0.05) / (Math.min(Y(a), Y(b)) + 0.05);
+    t('a recent card stands off the page', ratio(seen.card, seen.page) >= 1.25,
+      'card ' + seen.card + ' on page ' + seen.page + ' = ' + ratio(seen.card, seen.page).toFixed(3));
+    /* `--on-dark-bright` was ink AND the fill of four controls, so the one
+       control the whole library is reached through was a cream rectangle on
+       a dark page. A filled control follows the theme or it is a lamp. */
+    t('the search box is not a cream rectangle at night', Y(seen.field) < 0.25,
+      'search box ' + seen.field);
     await context.close();
   }
 

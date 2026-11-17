@@ -55,6 +55,27 @@
   /* Text that sits on a dark ground. In the light theme these are creams;
      at night the ground under them is what changes, not always these. */
   --on-dark-bright: #fff;
+  /* `--on-dark-bright` is INK on a dark ground, and it was also the FILL of
+     four controls — the search box, the list it opens, and the reading-face
+     button and its panel. Those two jobs want opposite things at night: the
+     ink must stay bright and the fill must go dark, so a single value left
+     the one control the whole library is reached through as a cream
+     rectangle on a dark page. The dual-role split, in the place the earlier
+     pass missed it. */
+  --field: #fff;
+  /* The deep slab `.rulings` is painted with, split from `--moss-deep` for
+     the same reason: the other four uses of that token are raised CONTROLS
+     (the dark button, the skip link, the theme pill), and at night a panel
+     has to recede where a button has to stand up. Identical by day. */
+  --panel-deep: var(--moss-deep);
+  /* A box-shadow is the FOURTH kind of colour literal in this file, after
+     the hex, the rgba() and the filter chain — and the only one that can
+     vanish entirely rather than come out wrong: black at 16% over a
+     near-black panel is nothing at all. In daylight this shadow is what
+     lifts a ruling card off the slab. At night the fill cannot do that job
+     either (see the night block), so the lift becomes a hairline ring. */
+  --lift: 0 8px 22px rgba(0, 0, 0, 0.16);
+  --lift-raised: 0 14px 30px rgba(0, 0, 0, 0.22);
   --on-dark: #f7f4ec;
   --on-dark-panel: #f6f3ea;
   --on-dark-urdu: #dce6e0;
@@ -1794,7 +1815,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   align-items: center;
   gap: 12px;
   padding: 12px 18px;
-  background: var(--on-dark-bright);
+  background: var(--field);
   border: 2px solid var(--gold-rule);
   border-radius: 6px;
   box-shadow: 0 3px 0 var(--gold-wash), 0 10px 24px rgba(24, 40, 34, 0.07);
@@ -1869,7 +1890,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   right: 0;
   margin-top: 6px;
   padding: 4px;
-  background: var(--on-dark-bright);
+  background: var(--field);
   border: 2px solid var(--gold-rule);
   border-radius: 6px;
   /* The same shadow the box above it carries, so the two read as one
@@ -2281,7 +2302,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
     --mark-brand: invert(76%) sepia(20%) saturate(650%) hue-rotate(0deg);
     --mark-intro: invert(65%) sepia(70%) saturate(125%) hue-rotate(45deg);
     --paper: #17211C;
-    --card: #222D27;
+    --card: #2E3C35;
     --paper-warm: #2B3731;
     --paper-hover: #1E2922;
     --line: #3E4B44;
@@ -2311,6 +2332,29 @@ details[open] > summary .toggle { transform: rotate(45deg); }
        one register this palette keeps for crossings and the site's own
        voice. Worst ground 6.76 on --paper-warm, where the mint was 5.40. */
     --moss: #B0C794;            /* ink only: 4 colour uses, never a ground */
+    /* Measured on the rendered page: in daylight a ruling card stands
+       13.26:1 off the slab it floats on and the slab stands 12.69:1 off the
+       page. At night those were 1.06 and 1.23 — the site's one dramatic
+       surface was two near-identical darks, which is why it read flat.
+
+       It cannot be answered with fill alone, and that is arithmetic rather
+       than taste: from a panel dark enough to be a panel up to a card still
+       light enough to carry body text is about 1.8:1 in all. So the slab
+       goes DOWN to a well and the card comes UP, which buys what fill can
+       buy, and the rest is the edge below.
+
+       #0C1711 was the first value and it was WORSE than what it replaced on
+       one of the two counts: the panel crossed UNDER the page and landed
+       nearer to it than it had been above (1.23 -> 1.11). The page sits at
+       Y=0.0135, so even pure black is only 1.27 off it — a night panel can
+       never stand far off a night page, and the honest move is to go to the
+       floor. This keeps a trace of green rather than going literally black,
+       because the green is the site's identity and black is the absence of
+       a decision. */
+    --panel-deep: #050B08;
+    --field: #2E3C35;
+    --lift: 0 0 0 1px #46564D, 0 10px 26px rgba(0, 0, 0, 0.5);
+    --lift-raised: 0 0 0 1px #5A6C61, 0 16px 34px rgba(0, 0, 0, 0.6);
     --ink-title: #DCE4DF;
     --on-button-dark: #E8E4DB;  /* the dark button STAYS dark at night, so its
                                    text stays light — the trap here was assuming
@@ -2362,7 +2406,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
     --mark-brand: invert(76%) sepia(20%) saturate(650%) hue-rotate(0deg);
     --mark-intro: invert(65%) sepia(70%) saturate(125%) hue-rotate(45deg);
     --paper: #17211C;
-    --card: #222D27;
+    --card: #2E3C35;
     --paper-warm: #2B3731;
     --paper-hover: #1E2922;
     --line: #3E4B44;
@@ -2392,6 +2436,29 @@ details[open] > summary .toggle { transform: rotate(45deg); }
        one register this palette keeps for crossings and the site's own
        voice. Worst ground 6.76 on --paper-warm, where the mint was 5.40. */
     --moss: #B0C794;            /* ink only: 4 colour uses, never a ground */
+    /* Measured on the rendered page: in daylight a ruling card stands
+       13.26:1 off the slab it floats on and the slab stands 12.69:1 off the
+       page. At night those were 1.06 and 1.23 — the site's one dramatic
+       surface was two near-identical darks, which is why it read flat.
+
+       It cannot be answered with fill alone, and that is arithmetic rather
+       than taste: from a panel dark enough to be a panel up to a card still
+       light enough to carry body text is about 1.8:1 in all. So the slab
+       goes DOWN to a well and the card comes UP, which buys what fill can
+       buy, and the rest is the edge below.
+
+       #0C1711 was the first value and it was WORSE than what it replaced on
+       one of the two counts: the panel crossed UNDER the page and landed
+       nearer to it than it had been above (1.23 -> 1.11). The page sits at
+       Y=0.0135, so even pure black is only 1.27 off it — a night panel can
+       never stand far off a night page, and the honest move is to go to the
+       floor. This keeps a trace of green rather than going literally black,
+       because the green is the site's identity and black is the absence of
+       a decision. */
+    --panel-deep: #050B08;
+    --field: #2E3C35;
+    --lift: 0 0 0 1px #46564D, 0 10px 26px rgba(0, 0, 0, 0.5);
+    --lift-raised: 0 0 0 1px #5A6C61, 0 16px 34px rgba(0, 0, 0, 0.6);
     --ink-title: #DCE4DF;
     --on-button-dark: #E8E4DB;  /* the dark button STAYS dark at night, so its
                                    text stays light — the trap here was assuming
@@ -2450,7 +2517,7 @@ details[open] > summary .toggle { transform: rotate(45deg); }
 
 .rulings {
   padding: var(--block) var(--gutter);
-  background-color: var(--moss-deep);
+  background-color: var(--panel-deep);
   background-image: var(--rosette);
   background-repeat: no-repeat;
   /* Off the corner, so what shows is an arc of the figure rather than a
@@ -2546,10 +2613,10 @@ body.is-searching .rulings h2 { margin-bottom: 26px; }
   border-top: 3px solid var(--gold-rule);
   color: var(--ink);
   text-decoration: none;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.16);
+  box-shadow: var(--lift);
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
-.ruling:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22); }
+.ruling:hover { transform: translateY(-3px); box-shadow: var(--lift-raised); }
 /* The card is title-and-description at the top, then what it opens and the
    way in at the foot — so Read → lands on the same line on every card in a
    row rather than wherever the description happened to stop. */
@@ -3653,7 +3720,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
   padding: 13px 14px;
   cursor: pointer;
 }
-.reading-face-open[aria-expanded="true"] { background: var(--on-dark-bright); }
+.reading-face-open[aria-expanded="true"] { background: var(--field); }
 /* In an Urdu piece the hero is `dir="rtl"` and everything in it — the
    title, the standfirst, the date — sits on the right. A full-width
    `ltr` block put the control alone on the far left, which reads as
@@ -3677,7 +3744,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
   /* Never wider than the screen on a phone, and never so wide on a
      desktop that two short samples sprawl. */
   width: min(320px, calc(100vw - 32px));
-  background: var(--on-dark-bright);
+  background: var(--field);
   border: 2px solid var(--gold-rule);
   border-radius: 10px;
   box-shadow: 0 6px 20px rgba(21, 52, 43, 0.14);

@@ -4139,6 +4139,82 @@ this file records, and a value changed without its chain leaves the seal
 at the old hue with nothing saying so. Solved by rendering a black pixel
 through each candidate chain and reading the result back: error 0 of 255.
 
+**The night theme was legible everywhere and the design was gone, which
+no contrast sweep can see.** 780 text elements measured, none below AA —
+and the site still read flat, reported as *make it stand out*. Contrast
+asks whether a word can be read. It says nothing about whether a card
+looks like a card.
+
+Measured on the rendered page, both themes, the same selectors:
+
+```
+                              day      night (was)   night (now)
+  ruling card off its slab   13.26        1.06          1.72
+  the slab off the page      12.69        1.23          1.20
+  recent card off the page    1.05        1.16          1.43
+```
+
+The site's design is light cards floating on a deep green slab. At night
+those were two near-identical darks, and **all three ways a card can
+stand up were silent at once**: the fill carried 1.06, `.ruling` has no
+border of its own (it never needed one — in daylight the bright fill is
+the edge), and its lift is `rgba(0, 0, 0, 0.16)` over a near-black
+panel, which draws nothing whatever.
+
+**A box-shadow is the FOURTH kind of colour literal**, after the hex,
+the `rgba()` and the `filter:` chain — and it is the only one that
+fails by *disappearing* rather than by coming out wrong. Three sweeps
+had each looked for the kind the previous fault had been; none of them
+was looking for a shadow. `--lift` and `--lift-raised` are tokens now,
+and at night the lift is a hairline ring rather than a shadow, because
+a shadow is a thing a dark ground cannot show.
+
+**It cannot be answered with fill, and that is arithmetic.** The night
+page sits at Y=0.0135, so even a **pure black** panel is only 1.27 off
+it, and from a panel dark enough to be a panel up to a card still light
+enough to carry body text is about 1.8:1 in all. 13:1 is not available
+at night and chasing it would cost the text. So the slab goes to the
+floor and the card comes up — and the edge does the rest.
+
+**The first value for the slab was worse than what it replaced, on one
+of the two counts.** `#0C1711` crossed *under* the page and landed
+nearer to it than it had been above: 1.23 → **1.11**. Going darker is
+not the same as going further, and a token moved past the mid-point
+needs the number read again rather than assumed. `#050B08` is at the
+floor, keeping a trace of green deliberately: black is the absence of a
+decision and the green is the site's identity.
+
+**Two more dual-role tokens, which is the third and fourth time.**
+`--on-dark-bright` was **ink** on a dark ground (the footer links, the
+skip link) *and* the **fill** of four controls — the search box, the
+list it opens, the reading-face button and its panel. Those want
+opposite things at night, so the one control the whole library is
+reached through was a **cream rectangle on a dark page**, identical to
+its daylight self, on the homepage and the fatāwā page both. `--field`
+is the fill now. And `--moss-deep` was the deep slab *and* the fill of
+four raised controls (the dark button, the skip link, the theme pill),
+which at night want the opposite again — a panel recedes where a button
+stands up. `--panel-deep` is the slab. **Ask of every token whether it
+is ink, a ground, or a control's face; a token doing two of those
+cannot have one night value.**
+
+**Daylight is byte-identical through all of it, and that was proved
+rather than asserted**: every element on five pages walked for
+background, colour, shadow and border against the previous stylesheet
+served from an overlay — **1895 elements, 0 differing**. That is what
+says the new tokens are a split and not a change.
+
+**The whole night theme was unguarded in `test/homepage.mjs`**, because
+every other assertion in that file opens a default context, which is
+light. The new group opens a dark one, asserts **that the dark context
+really took** before concluding anything from it — the Save-Data seed's
+rule — and measures the three separations plus the lift. Its floors sit
+between the fault and the setting rather than on today's numbers.
+
+With each fault put back, one at a time: the flat surfaces **2**, the
+black shadow **1** (naming the shadow it read), the cream search box
+**1**. Suite **476 → 481**.
+
 **Weight is a design decision, and the test measures it.** The homepage was
 961KB: a decorative 518KB PNG inside the collapsed bio, and two fonts
 shipped as TTF. It is ~320KB now — the fonts are woff2 (58% smaller,
