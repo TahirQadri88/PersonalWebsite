@@ -3254,6 +3254,91 @@ t('  …and nothing was sent — it did not report a publish',
 
 t('nothing threw along the way', jsErrors.length === 0, jsErrors.join(' | '));
 
+console.log('\na publish sends what changed, not the whole library');
+
+/* A publish rebuilds every page and redraws every card, because a page is
+   purely derived from content.js. That is right and is unchanged. What it
+   then SENT was the whole lot: measured on this library, one corrected
+   typo uploaded 75 files and 2.6MB from the author's phone, 2.4MB of it
+   base64 share cards redrawn one canvas at a time — and the Worker throws
+   nearly all of it away, because it commits only what differs.
+
+   This measures the thing that matters, which is what leaves the browser.
+   Its own context, because the pages above have edited a great deal and
+   what is under test here is precisely the difference between edited and
+   not. */
+{
+  const sendContext = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
+  await sendContext.route('https://fonts.g**', (r) => r.abort());
+  await plantSession(sendContext);
+  overlay.set('admin.js', await patchedAdminJs());
+  let posted = null;
+  await sendContext.route('**/publish', (route) => {
+    const body = route.request().postDataJSON() || {};
+    posted = body.files || [];
+    return route.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ sha: 'testsha', files: posted.map((f) => f.path) }) });
+  });
+  const sendPage = await sendContext.newPage();
+  await openEditor(sendPage);
+  await sendPage.waitForFunction(
+    () => !/Loading the current text/.test(document.body.textContent), null, { timeout: 20000 });
+
+  const sendAndRead = async () => {
+    posted = null;
+    await sendPage.click('#publish');
+    await sendPage.waitForFunction(() => {
+      const box = document.getElementById('publish-status');
+      return box && /did not go out|Nothing had changed|Published |Nothing was published|Fix these first/.test(box.textContent);
+    }, null, { timeout: 90000 });
+    return posted || [];
+  };
+
+  const pages = (files) => files.filter((f) => /^(works|posts|apps)\//.test(f.path));
+  const cards = (files) => files.filter((f) => f.path.startsWith('files/cards/'));
+
+  const quiet = await sendAndRead();
+  /* Count what you matched: an empty list would pass both assertions below
+     and prove nothing, so the always-files are asserted first. */
+  t('a publish always sends the files built from the whole library',
+    quiet.length >= 3 && quiet.some((f) => f.path === 'content.js'),
+    quiet.map((f) => f.path).join(', '));
+  t('with nothing edited it sends no record page and no card',
+    pages(quiet).length === 0 && cards(quiet).length === 0,
+    `${pages(quiet).length} pages, ${cards(quiet).length} cards`);
+
+  /* Edit exactly one record, through the form, the way a person would. */
+  const edited = await sendPage.evaluate(() => {
+    const row = document.querySelector('.admin-row[open]') ||
+                document.querySelectorAll('.admin-row')[2];
+    row.open = true;
+    const input = row.querySelector('input[type=text]');
+    input.value = input.value + ' ';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    const id = row.querySelector('code');
+    return id ? id.textContent.trim() : '';
+  });
+  await sendPage.waitForTimeout(400);
+  const one = await sendAndRead();
+  t('after one edit it sends that record and no other',
+    pages(one).length + cards(one).length > 0 &&
+    pages(one).length <= 1 && cards(one).length <= 1,
+    `edited ${edited}: ${pages(one).concat(cards(one)).map((f) => f.path).join(', ') || 'nothing'}`);
+
+  /* The case the whole design turns on: a change to a BUILDER reaches no
+     page at all unless it is asked for, so the asking has to work. */
+  await sendPage.evaluate(() => { document.getElementById('rebuild-all').checked = true; });
+  const all = await sendAndRead();
+  t('ticking Rebuild every page sends the whole library again',
+    pages(all).length > 20 && cards(all).length > 20,
+    `${pages(all).length} pages, ${cards(all).length} cards`);
+  t('and that is more than an ordinary publish sends',
+    all.length > one.length * 3, `${all.length} against ${one.length}`);
+
+  await sendContext.close();
+}
+
 await browser.close();
 server.close();
 
