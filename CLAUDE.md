@@ -66,6 +66,8 @@ Each line is the rule; the reasoning is in `docs/LESSONS.md` under the same name
 - A new field must be added to `writeRecord` in `admin.js` or a publish drops it.
 - A field the form offers and the page ignores is a button that does not do what it says.
 - A kind, a description and a date are each shown in the language the record reads in.
+- A publish sends only the records whose signature moved, plus the files built from
+  the whole library. No baseline means send everything; **Rebuild every page** forces it.
 
 **Typography**
 
@@ -103,6 +105,8 @@ Each line is the rule; the reasoning is in `docs/LESSONS.md` under the same name
 - When a fresh probe reports a large fault rate, suspect the probe.
 - A ratio near 1.00 on text means the probe is wrong, not the page.
 - Measure a tap target by tapping it (`elementFromPoint`), not by its box.
+- The measurement outranks the inference: arithmetic saying a control is too small
+  is not a fault until a finger fails to land on it.
 - When a change makes a string longer, measure the box it has to fit in.
 - When a measurement needs a tolerance, find out what is filling it.
 - When a report says something is wrong and the measurement says it is right,
@@ -114,6 +118,8 @@ Each line is the rule; the reasoning is in `docs/LESSONS.md` under the same name
   worse than no test: it says the fault is guarded.
 - Count what you matched, in every group that matches a set.
 - A guard that inspects only what is marked cannot see what is not.
+- A guard whose subject the fixture cannot produce asserts nothing. Label it a
+  companion, or verify that half outside the suite, and say which.
 - Do not reach for `networkidle` in these suites.
 
 ## Testing — what to run and when

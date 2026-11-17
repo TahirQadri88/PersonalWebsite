@@ -1550,7 +1550,7 @@
      A post has no PDF — the writing IS the page, so printing the page
      prints the piece. `record.page` is exactly that distinction; it is
      the same field the rest of the codebase already reads to tell a post
-     from a download (see CLAUDE.md, "A post is a page, not a download"). */
+     from a download (see docs/LESSONS.md, "A post is a page, not a download"). */
   function pageTools(record, url) {
     var box = document.createElement('div');
     box.className = 'page-tools';

@@ -2327,7 +2327,7 @@ try {
   /* ---- the dashes ----
 
      This one is about weight on the wire rather than about shape, and
-     CLAUDE.md records deciding NOT to patch it on exactly that
+     docs/LESSONS.md records deciding NOT to patch it on exactly that
      confusion: a dash is a horizontal bar in every serif and nothing
      visible changed, which was true and is still true. What was never
      weighed is that Mehr holds neither dash, so both fell to Noto
@@ -4591,7 +4591,7 @@ try {
      and skipped — the hero is the only such region, and it was measured
      separately by sampling pixels under each line. That measurement is
      not repeated here because it needs a screenshot; it is written up
-     in CLAUDE.md with its numbers.
+     in docs/LESSONS.md with its numbers.
 
      The threshold is WCAG 2.1 AA: 4.5, or 3.0 for large text, which is
      24px and over or 18.66px and over at weight 700. */
@@ -5041,7 +5041,7 @@ try {
 
   /* ---- paper gets the piece, not the furniture ----
 
-     CLAUDE.md said twice that no printed page had ever been looked at.
+     docs/LESSONS.md said twice that no printed page had ever been looked at.
      Rendered in print media and read: the Aa control printed — a drawn,
      gold-bordered button in the middle of a sheet of paper, which is
      this file's own argument for withholding Print from an app page —

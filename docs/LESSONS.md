@@ -4929,6 +4929,101 @@ one-off literal rather than in the system, which is also why nothing had
 ever questioned it.
 
 
+### A publish sent the whole library every time, and the Worker threw most of it away
+
+**A publish sent 75 files and 2.6MB to correct one sentence.** Every
+publish built every page, every card and the whole of `content.js`,
+handed the lot to the Worker, and the Worker committed only what
+differed — which is correct and is why nothing was ever wrong, but it
+means the 2.4MB of JPEG in that payload was drawn, encoded and uploaded
+from a phone on a Karachi connection to change nothing. The cards are
+the bulk of it: `buildCardFiles` ran 33 canvases on every publish, each
+one re-encoded, and this file already records that an encode from WebKit
+comes back at roughly q97 — so a publish from the author's device also
+*churned* the binaries it did not need to send.
+
+**What is compared is a signature, not a timestamp.** `recordSignature`
+is the record's own JSON, its category title and its body text joined by
+a NUL; `siteSignature` is everything in the model that is **not** a
+record — the hero, the introduction, the nav, the categories' own fields
+— with the record arrays emptied. A baseline of both is taken when the
+editor opens, retaken after a publish that really committed, and one
+record is re-signed when its body is read back from its page. A record
+whose signature has not moved is skipped; any change to the site
+signature rebuilds everything, because a category title or a nav word
+reaches all thirty-seven pages.
+
+**`content.js`, `sitemap.xml` and the three landing pages always go.**
+They are built from the whole library by construction, so "did this
+record change" is not a question that can be asked of them. 7 files and
+190KB for a one-sentence edit, measured; the whole library is still one
+tick of **Rebuild every page** away, and that box is on the page with
+its reason written beside it rather than in a `title`, which this file
+records as invisible on a phone.
+
+**No baseline means send everything.** `recordChanged` and
+`mustRebuildAll` both answer "everything" when `baseline` is null —
+which is the state before the first render, and the state after any
+failure that left the editor unsure. A publish that sends too much is
+slow; a publish that sends too little has lost the author's words.
+
+**The guard captures the POST rather than reading the code.** There are
+three ways to skip a file wrongly — the signature, the baseline, the
+card loop — and an assertion aimed at one misses the others. Its own
+context routes `**/publish`, keeps the files that were really sent, and
+asserts the four states: nothing edited sends no record page and no
+card; one edit sends that record and no other; the tick sends the
+library again; and that is more than an ordinary publish sends. The last
+one is there because the first three would all pass on an editor that
+sent nothing at all.
+
+### Measure a tap target by tapping it, and that claim was withdrawn twice
+
+**The editor's text links were reported as 24px and they are 44.**
+`.text-link::after` is `inset: -13px -8px`, an invisible pad, so the box
+`getBoundingClientRect` reports is nothing like the area that answers a
+finger — which is the claim this file already records making and
+withdrawing once, about `.file-download`, and it was made again here.
+The census that said 181 of 269 controls were too small was measuring
+the wrong quantity.
+
+**Walking `elementFromPoint` out from the centre, two were short.**
+`↑ Move up` at **42px** and `Remove` at **34px**, and the cause is the
+same for both: a stacked pair of these links needs **26px** of clear
+space or each pad reaches into its neighbour and the tap goes to
+whichever one the browser hands back. `.admin-row-tools` had 14px and
+`.admin-file` 8px. The **gap** is raised, never the pad — widening a pad
+that is already overlapping makes the stealing worse.
+
+**A third change was made on arithmetic and taken out again, which is
+the finding.** The four Add buttons wrap onto two lines 18px apart,
+inside the 26px two pads want, so the arithmetic predicts a fault.
+`+ Add a fatwa` measured 44px or better before the change and after it,
+and restoring the 18px gap left the guard green. **A gap smaller than
+two pads is not the same as a tap being stolen**, and the measurement
+outranks the inference — the same move this file records for a
+`text-align: right` added "for safety".
+
+**The probe lied twice before it was right, both times in a way that
+reads as a fault in the page.** A shut `<details>` row still lays its
+children out with real boxes nothing can tap, so matching a control by
+its text picked an unreachable one — the census that skipped this
+reported 94% of the editor "covered" and meant nothing by it, which is
+the `(none)` from `getPlatformFontsForNode` lesson in a new place. And
+the page scrolls smoothly, so two frames after `scrollTo` measures a
+stale rectangle; it tries several offsets and asserts it could **place**
+the control before concluding anything about its size.
+
+**What the guard honestly covers, stated rather than implied.**
+`↑ Move up` is the real guard and goes red when its gap is restored.
+`+ Add a fatwa` is labelled a **companion**, because it has never been
+red. `Remove` is deliberately **not** asserted and the comment says why:
+it exists only where a record has a file, and the suite's fixture has
+none by that point, so a guard there would find no subject and assert
+nothing. That half is verified by the standalone census instead, and
+saying so beats leaving it looking guarded.
+
+
 ## Working on this
 
 - Preview: open `index.html` directly, or `python -m http.server 4173`.

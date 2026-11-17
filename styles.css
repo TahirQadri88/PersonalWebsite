@@ -595,7 +595,7 @@ footer :focus-visible {
    below rather than sitting in this range.
 
    No em-dash here either, deliberately: 73 of them sit in Urdu text
-   across the site, and the note in CLAUDE.md about not patching them
+   across the site, and the note in docs/LESSONS.md about not patching them
    still holds — a dash is a horizontal bar in every serif, and at 78%
    it would be a *shorter* bar than the Urdu around it wants. */
 @font-face {
@@ -643,7 +643,7 @@ footer :focus-visible {
    author page, the fatāwā page and choice-of-words. 223 em-dashes
    across the repository, 64 in content.js.
 
-   CLAUDE.md records deciding NOT to patch this, on the grounds that a
+   docs/LESSONS.md records deciding NOT to patch this, on the grounds that a
    dash is a horizontal bar in every serif and nothing visible changed.
    That was right about the shape and is still right. It weighed the
    appearance and never weighed the 20KB, because the probe asked which
@@ -656,7 +656,7 @@ footer :focus-visible {
    sharing would have traded Noto's 20KB for a 53KB Aslam fetch on the
    page carrying the most dashes.
 
-   Cut from Noto Sans and not from Aslam, which is the face CLAUDE.md
+   Cut from Noto Sans and not from Aslam, which is the face docs/LESSONS.md
    had costed for it: Aslam's dash has a side bearing of exactly zero,
    so its bar touches the glyphs on both sides and reads tighter than
    the Noto Nastaliq it replaces. Drawn in a real bio line at 19px and
