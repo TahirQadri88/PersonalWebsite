@@ -3675,6 +3675,79 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
   animation-range: entry 15% cover 22%;
 }
 [dir="rtl"] .post-body h2::after { transform-origin: right; }
+/* ---- Arriving as you reach them ----
+
+   The library's panels and the ruling cards rise a little as the reader
+   comes to them. On a phone this is the whole journey down the site:
+   measured before it was written, the homepage had NOTHING animated in
+   it on arrival — the icons and the recent cards each wait for a class
+   a script adds, and the seven category panels and twenty-seven rows
+   that are the point of the page had no arrival at all.
+
+   `animation-timeline: view()` and therefore NO script: nothing is
+   mounted, nothing is observed, and `common.js` need not know. That is
+   what makes it safe to put on content rather than on decoration, which
+   is the line this file otherwise draws:
+
+   - No JavaScript: this is CSS, so the panels rise exactly the same.
+   - An engine with no scroll timelines: the declaration is dropped and
+     a zero-duration `both` animation fills to its END state, so every
+     panel is simply there. Verified by deleting the line and reading
+     the computed values back.
+   - `prefers-reduced-motion`: the block at the foot of this file sets
+     `animation-timeline: auto`, which hands it to the clock, where the
+     duration line finishes it at once. Measured — and `none` rather
+     than `auto` there would pin it at opacity 0 for ever, which is
+     written up beside that rule.
+
+   None of the three can leave a card invisible, which is the whole
+   reason this is allowed to touch content at all.
+
+   `entry 0% cover 18%` is short on purpose, and it is the setting that
+   measured BOTH safest and most visible — which took three attempts to
+   find out, because the probe was wrong twice:
+
+```
+   range                 worst in the upper third   faintest seen
+   entry 0% cover 18%            1.00                   0.21
+   entry 0% cover 30%            0.63                   0.12
+   entry 0% entry 100%           0.86                   0.11
+```
+
+   Nothing whose top is in the upper third of the screen is ever below
+   full opacity at `cover 18%`, across phone, small phone, a phone
+   turned sideways and a desktop — so a card is never still fading
+   where anybody is reading, which is the fidget this file already
+   refuses on the search results. And 0.21 is plainly a fade, not a
+   change nobody would notice.
+
+   The two wrong readings are worth keeping. A sweep that jumped the
+   scroll and read `getComputedStyle` in the same tick reported content
+   at **opacity 0 in the middle of the screen** — a scroll-driven
+   animation is recomputed on the next frame, so every sample was the
+   value from before the jump. The same stale reading made `cover 18%`
+   look invisible at 0.84 and sent this rule to `entry 100%` for a
+   while. Two frames of `requestAnimationFrame` after a scroll is the
+   whole fix, and without it a view-timeline cannot be measured at all.
+
+   `entry 100%` is also wrong for a second reason worth writing down:
+   it ends when the element has FULLY entered, and a panel taller than
+   the viewport never does — so on a phone held sideways, where every
+   panel is taller than the screen, the arrival would never finish.
+
+   12px, not 30: the distance is a hint that something arrived, not a
+   slide. */
+.work-category,
+.ruling {
+  animation: card-arrive linear both;
+  animation-timeline: view();
+  animation-range: entry 0% cover 18%;
+}
+@keyframes card-arrive {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+
 @keyframes rule-draw {
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }

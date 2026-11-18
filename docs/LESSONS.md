@@ -5477,6 +5477,108 @@ one time in eight. And when a test change makes things worse, it goes
 back out: the bar for a guard is not "it passed this time".
 
 
+### The library arrives as you come to it, which is the first motion here allowed on content
+
+**The homepage had nothing animated on arrival, and that is what the
+request was about.** Asked for as *I want scroll animations in mobile*,
+and measured before anything was written: the icons and the recent cards
+each wait for a class a script adds as you reach them, and the **seven
+category panels and twenty-seven rows that are the point of the page**
+had no arrival at all. The fatāwā page's eight cards had none either.
+
+So the panels and the ruling cards rise 12px and fade up as the reader
+comes to them, through `animation-timeline: view()` — **no script,
+nothing mounted, nothing observed, `common.js` not involved.** That is
+what makes it safe to put on CONTENT rather than on decoration, which is
+the line this file otherwise draws: none of the three cases can leave a
+card invisible, because the no-JS case is CSS, the no-support case fills
+to the END state, and `prefers-reduced-motion` hands it to the clock.
+
+**A fourth property had to be asserted, and it is the one this rule
+lives or dies by**: nothing is ever still fading where a reader is
+reading. Measured as the worst opacity of any card whose top is in the
+upper third of the screen, swept across the whole page at four sizes.
+
+### `entry 0% cover 18%` measured both safest and most visible, after two wrong readings
+
+```
+  range                 worst in the upper third   faintest seen
+  entry 0% cover 18%            1.00                   0.21
+  entry 0% cover 30%            0.63                   0.12
+  entry 0% entry 100%           0.86                   0.11
+```
+
+The shipped range is the one that never lets a card be faded where
+anybody is reading **and** has the most visible arrival. Both halves
+matter: the author asked for motion he could see, and a safe animation
+nobody notices is not an answer to that.
+
+**A view-timeline cannot be measured without waiting two frames, and
+this cost two false accounts.** A scroll-driven animation is recomputed
+by the compositor on the NEXT frame, so a probe that jumps the scroll
+and reads `getComputedStyle` in the same tick gets the value from
+*before* the jump. That probe reported:
+
+- **content at opacity 0 in the middle of the screen** — a fault that
+  would have been serious and was not real; and
+- **`cover 18%` as invisible, bottoming out at 0.84** — which sent the
+  rule to `entry 100%` for an hour on a number that was never true.
+
+Two `requestAnimationFrame`s after each scroll is the whole fix. A
+number that cannot be true — content at zero opacity in the reading
+area, on a page that looks right in a screenshot — is the signal.
+
+**`entry 100%` is wrong for a second reason worth keeping.** It ends
+when the element has FULLY entered the viewport, and a panel taller than
+the viewport never does — so on a phone held sideways, where every panel
+is taller than the screen, the arrival would never finish. That is a
+real fault the guard now catches, asserted separately from the
+upper-third one because it is a different failure and not a second
+sample of the same one.
+
+### An assertion that passes in every state, labelled rather than kept
+
+*a reader who asked for less motion is given the cards* was written to
+catch the reduced-motion handling going wrong. **It cannot.** Measured
+in three states — the lever at `auto`, the lever at `none`, and the
+whole reduced-motion block reverted — every card reads **1.00** and the
+assertion passes in all three.
+
+The cards differ from the ruled lines because their animation carries no
+duration of its own, so the block's `animation-duration` finishes them
+whichever way the timeline lever is set. The property IS guarded, in
+*a section is ruled*, where `none` pins the rules at `scaleX(0)` and
+that group goes red.
+
+So it is renamed to say *companion — passes either way* and kept only
+because an always-clear line is still worth printing. **A test that
+cannot fail is worse than no test**, and the only honest alternatives
+are to label it or to delete it.
+
+### A second flake, found by running the suite rather than by reading it
+
+*…and the reader scrolls past it* went red once and passed on the next
+three runs. It scrolled to the foot of the document and waited **200ms**
+before asking whether the strip had gone off screen — usually enough,
+which is the definition of the problem. It waits for `scrollY` to stop
+changing now.
+
+That makes two flakes in one session, both of the same shape and both
+found only by **running the suite repeatedly**, not by reading it. A
+green run proves nothing about a fault that appears one time in eight;
+the fix for one has to be run several times before it is believed, and
+the first fix attempted for the other was worse than the flake and went
+straight back out.
+
+### Two commands must not edit the same file at once
+
+A fault was restored by one backgrounded command while another was
+restoring the fix, and the suite ran against a file both were writing.
+The run came back empty and read as a crash in the editor. **Apply a
+fault, run, and restore in ONE command** — the restoration is part of
+the experiment, not a separate chore.
+
+
 ## Working on this
 
 - Preview: open `index.html` directly, or `python -m http.server 4173`.

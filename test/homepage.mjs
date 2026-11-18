@@ -4300,15 +4300,23 @@ try {
        footer are below the strip, so this is certainly behind the reader,
        and an arithmetic target can clamp against the document's end and
        quietly leave the strip on screen — which it did. */
-    const parked = await page.evaluate(() => {
+    const parked = await page.evaluate(async () => {
       const strip = document.getElementById('recent');
       window.scrollTo(0, document.documentElement.scrollHeight);
-      return new Promise((done) => setTimeout(() => {
-        const track = document.getElementById('recent-track');
-        const r = strip.getBoundingClientRect();
-        done({ offscreen: r.bottom < 0 || r.top > window.innerHeight,
-          left: Math.round(track.scrollLeft) });
-      }, 200));
+      /* Wait for the scroll to have actually landed rather than for
+         200ms, which was usually enough — and was seen, once, not to
+         be, reporting the strip still on screen on a page that had
+         simply not finished scrolling. A sleep that is usually long
+         enough is a flake with a timer on it. */
+      let last = -1;
+      for (let i = 0; i < 60 && Math.round(window.scrollY) !== last; i += 1) {
+        last = Math.round(window.scrollY);
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      }
+      const track = document.getElementById('recent-track');
+      const r = strip.getBoundingClientRect();
+      return { offscreen: r.bottom < 0 || r.top > window.innerHeight,
+        left: Math.round(track.scrollLeft), y: Math.round(window.scrollY) };
     });
     t('…and the reader scrolls past it', parked.offscreen, JSON.stringify(parked));
     const after = await page.evaluate((was) => new Promise((done) => {
@@ -5778,6 +5786,117 @@ try {
     t('and nothing pushes the header sideways at any of those widths',
       narrow.every(([, , r]) => r.overflow <= 0),
       narrow.filter(([, , r]) => r.overflow > 0).map(([p, w, r]) => p + '@' + w + ' +' + r.overflow).join(' | '));
+  }
+
+  /* ---- Arriving as you reach them ----
+
+     The library's panels and the ruling cards rise as the reader comes
+     to them. Measured before it was built, the homepage had NOTHING
+     animated on arrival: the icons and the recent cards each wait for a
+     class a script adds, and the seven category panels and twenty-seven
+     rows that are the point of the page had no arrival at all.
+
+     This is the first animation here allowed to touch CONTENT rather
+     than decoration, and what makes that safe is that none of the three
+     cases can leave a card invisible — plus a fourth property asserted
+     below, that nothing is ever still fading where a reader is reading. */
+  group('the library arrives as you come to it, and is never caught half-drawn');
+  {
+    /* Two frames after every scroll. A scroll-driven animation is
+       recomputed by the compositor on the NEXT frame, so reading
+       `getComputedStyle` in the same tick returns the value from before
+       the jump. Without this the probe reported content at opacity 0 in
+       the middle of the screen, and separately made the shipped range
+       look invisible — both wrong, both only found by disbelieving a
+       number that could not be true. */
+    const settle = `await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));`;
+    const walk = async (width, height, path, motion) => {
+      const context = await browser.newContext({ viewport: { width, height },
+        ...(motion ? { reducedMotion: motion } : {}) });
+      await context.route('https://fonts.g**', (r) => r.abort());
+      const page = await context.newPage();
+      await page.goto(`http://127.0.0.1:${PORT}${path}`, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => document.fonts.ready);
+      await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto'; });
+      await page.waitForTimeout(250);
+      const asked = await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
+      const tall = await page.evaluate(() => document.body.scrollHeight);
+      let upperWorst = 1, faintest = 1, counted = 0;
+      for (let y = 0; y < tall; y += 90) {
+        const seen = await page.evaluate(new Function('to', `return (async () => {
+          scrollTo(0, to);
+          ${settle}
+          const cards = [...document.querySelectorAll('.work-category, .ruling')]
+            .filter((e) => { const r = e.getBoundingClientRect();
+              return r.top < innerHeight && r.bottom > 0; });
+          const op = (list) => list.map((e) => parseFloat(getComputedStyle(e).opacity));
+          /* The upper third is where somebody is actually reading. */
+          const upper = op(cards.filter((e) => { const r = e.getBoundingClientRect();
+            return r.top >= 0 && r.top < innerHeight / 3; }));
+          const all = op(cards);
+          return { upper: upper.length ? Math.min(...upper) : 1,
+            faintest: all.length ? Math.min(...all) : 1,
+            /* The whole set on the page, not the handful on screen:
+               the first version counted what was visible at once and
+               went red on a phone for fitting only four. */
+            total: document.querySelectorAll('.work-category, .ruling').length };
+        })();`), y);
+        upperWorst = Math.min(upperWorst, seen.upper);
+        faintest = Math.min(faintest, seen.faintest);
+        counted = Math.max(counted, seen.total);
+      }
+      await context.close();
+      return { upperWorst, faintest, counted, asked };
+    };
+
+    const phone = await walk(390, 844, '/index.html');
+    const sideways = await walk(844, 390, '/index.html');
+    const rulings = await walk(390, 844, '/fatawa/index.html');
+    const quiet = await walk(390, 844, '/index.html', 'reduce');
+
+    /* Count what you matched: every number below is a minimum over a set,
+       and a minimum over nothing is 1. */
+    t('there are cards to watch arrive',
+      phone.counted >= 7 && rulings.counted >= 6,
+      'homepage ' + phone.counted + ', fatawa ' + rulings.counted);
+    /* That it happens at all — the faintest a card ever gets while on
+       screen. 0.9 would be a rule nobody could see, which is the state
+       this started in by accident. */
+    t('a card really does fade up rather than merely declaring it does',
+      phone.faintest < 0.6 && rulings.faintest < 0.6,
+      'faintest on the homepage ' + phone.faintest.toFixed(2) + ', on fatawa ' + rulings.faintest.toFixed(2));
+    /* And the safety property this rule lives or dies by. */
+    t('and nothing is ever still fading in the upper third of the screen',
+      phone.upperWorst > 0.98 && rulings.upperWorst > 0.98,
+      'worst on the homepage ' + phone.upperWorst.toFixed(2) + ', on fatawa ' + rulings.upperWorst.toFixed(2));
+    /* A phone held sideways is the case that broke the first attempt:
+       `entry 100%` ends when an element has FULLY entered, and a panel
+       taller than the viewport never does, so the arrival never
+       finished. Asserted separately because it is a different fault
+       from the one above, not a second sample of it. */
+    t('including on a screen too short to hold a whole panel',
+      sideways.upperWorst > 0.98,
+      'worst at 844x390: ' + sideways.upperWorst.toFixed(2));
+
+    t('the reduced-motion seed really took before anything is read from it', quiet.asked);
+    /* A COMPANION, not a guard, and the comment is the point.
+
+       It was written to catch the reduced-motion handling going wrong,
+       and it cannot: measured in three states — the lever at `auto`,
+       the lever at `none`, and the whole reduced-motion block reverted
+       — every card reads opacity 1.00 and this assertion passes in all
+       three. A test that cannot fail is worse than no test, so it is
+       named for what it really is and kept only because an always-clear
+       line is still worth printing.
+
+       The property itself IS guarded, in `a section is ruled` above:
+       there the same lever at `none` pins the rules at scaleX(0) and
+       that group goes red. The cards differ because their animation
+       carries no duration of its own, so the block's own
+       `animation-duration` finishes them either way. */
+    t('a reader who asked for less motion is given the cards (companion — passes either way)',
+      quiet.faintest > 0.98 && quiet.upperWorst > 0.98,
+      'faintest ' + quiet.faintest.toFixed(2) + ', upper third ' + quiet.upperWorst.toFixed(2));
   }
 
   t('nothing threw along the way', threw.length === 0, threw.join(' | '));
