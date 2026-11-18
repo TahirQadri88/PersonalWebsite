@@ -77,10 +77,12 @@ Each line is the rule; the reasoning is in `docs/LESSONS.md` under the same name
 - A font stack is a claim about coverage, and a claim is worth measuring — read the
   cmap, not the reputation. This has been paid for five times.
 - Never put `.urdu` on something that has a size or an alignment of its own: it brings both.
+- The same goes for any class borrowed so a selector can find it. Take a selector instead.
 - Urdu in a left-reading column needs `align-left`; a *paragraph* needs `own-edge` beside it.
 - Do not add `text-align: right` to an Urdu selector "for safety". It outranks `align-left`.
 - A typographic judgement needs looking at, not only measuring. Render it and read it.
 - A number tuned for one face does not survive the face changing.
+- A mark beside a label is larger than the words; beside a heading it is smaller.
 
 **Colour and theme**
 
@@ -101,6 +103,10 @@ Each line is the rule; the reasoning is in `docs/LESSONS.md` under the same name
   `prefers-reduced-motion` must each leave the thing exactly as it should look.
 - Nothing may start invisible waiting for a script to reveal it.
 - A scroll written in JavaScript is motion too.
+- A scroll-driven animation (`animation-timeline`) ignores the reduced-motion block's
+  duration rule. `auto` hands it back to the clock; `none` pins it invisible for ever.
+- A rule that fails to animate is still a rule. A progress bar that fails to animate
+  is a false statement — put that one behind `@supports`.
 - A stagger says "these arrived together". Count it per arrival, never for the
   life of the page, or a thing that arrives alone is held back for a group of one.
 - A control that fails must say so. A silent control is indistinguishable from a broken one.

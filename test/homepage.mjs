@@ -5426,6 +5426,243 @@ try {
       rows.map(([p, r]) => p + ' foot ' + r.startsAt + ' vs onward ' + r.onwardStartsAt).join(' | '));
   }
 
+  /* ---- The mark beside the kind ----
+
+     The drawings for a booklet, a manuscript, a pen and the seal have
+     been in the sprite since the icons were added, and were drawn on
+     the homepage's category heads only — so a reader arriving straight
+     at a piece from a forwarded link never met one. Mounted from
+     common.js, the decision `pageTools` and `moreLike` already make, so
+     all thirty-seven pages gained it without one being rewritten. */
+  group('a record page shows what kind of thing it is, not only says it');
+  {
+    const pages = [
+      ['/works/saa-ki-tahqeeq.html', 'booklet'],
+      ['/works/qata-taalluq.html', 'seal'],
+      ['/posts/choice-of-words.html', 'pen'],
+      ['/posts/books-that-arent-coming-back.html', 'pen'],
+      ['/apps/zakat-calculator.html', 'app']
+    ];
+    const rows = [];
+    for (const [path, want] of pages) {
+      const { context, page } = await open(390, path);
+      rows.push([path, want, await page.evaluate(() => {
+        const label = document.querySelector('.work-hero .section-label, .post-hero .section-label');
+        const svg = label && label.querySelector('svg.category-icon');
+        const use = svg && svg.querySelector('use');
+        const box = svg && svg.getBoundingClientRect();
+        const words = label && label.textContent.trim();
+        return {
+          icon: use ? (use.getAttribute('href') || '').replace('#i-', '') : null,
+          px: box ? Math.round(box.width) : 0,
+          hidden: !!(svg && svg.closest('[aria-hidden="true"]')),
+          /* It must not have pushed the title down: the slot is
+             inline-flex precisely so an empty span cannot collapse and
+             then shove the heading sideways when the drawing lands. */
+          sameLine: !!(label && box && Math.abs(box.top - label.getBoundingClientRect().top) < box.height),
+          words
+        };
+      })]);
+      await context.close();
+    }
+    t('every record page has a kind to mark', rows.every(([, , r]) => r.words),
+      rows.map(([p, , r]) => p + ' "' + r.words + '"').join(' | '));
+    /* Named per page rather than "some icon is present": the whole
+       point is that a fatwa shows the seal and an essay the pen, and an
+       assertion that only counted marks would pass on all five being
+       the same drawing. */
+    t('and each shows its own category\'s drawing',
+      rows.every(([, want, r]) => r.icon === want),
+      rows.map(([p, want, r]) => p.split('/').pop() + ' wanted ' + want + ', got ' + r.icon).join(' | '));
+    t('the mark is readable rather than a smudge beside the words',
+      rows.every(([, , r]) => r.px >= 16),
+      rows.map(([p, , r]) => p.split('/').pop() + ' ' + r.px + 'px').join(' | '));
+    t('it is decorative, so it is hidden from a reader who is listening',
+      rows.every(([, , r]) => r.hidden), rows.filter(([, , r]) => !r.hidden).length + ' not hidden');
+    t('and it sits on the label\'s own line', rows.every(([, , r]) => r.sameLine));
+  }
+
+  /* ---- The ruled lines ----
+
+     A manuscript marks a section with a rule. The one under an in-prose
+     heading is drawn as the reader arrives, by `animation-timeline:
+     view()` — no script, no observer, nothing added to any page. The
+     one under a record's own title is above the fold, where there is
+     nothing to scroll to, so it is simply timed.
+
+     What is asserted is that the scroll-driven one is really driven by
+     the scroll — before and after — and, far more importantly, what
+     happens to a reader who asked for less motion. */
+  group('a section is ruled, and the ruling is drawn as it is reached');
+  {
+    const piece = '/posts/reservations-shariah-screening-stocks.html';
+    const scaleOf = (t) => (t && t !== 'none' ? parseFloat(t.slice(7).split(',')[0]) : 1);
+
+    const walk = async (motion) => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 },
+        ...(motion ? { reducedMotion: motion } : {}) });
+      await context.route('https://fonts.g**', (r) => r.abort());
+      const page = await context.newPage();
+      await page.goto(`http://127.0.0.1:${PORT}${piece}`, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => document.fonts.ready);
+      await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto'; });
+      await page.waitForTimeout(400);
+      const seen = { asked: await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches) };
+      seen.title = await page.evaluate(() => getComputedStyle(document.querySelector('.work-hero h1, .post-hero h1'), '::after').transform);
+      seen.far = await page.evaluate(() => getComputedStyle(document.querySelectorAll('.post-body h2')[4], '::after').transform);
+      await page.evaluate(() => { const h = document.querySelectorAll('.post-body h2')[4]; scrollTo(0, h.getBoundingClientRect().top + scrollY - 200); });
+      await page.waitForTimeout(300);
+      seen.near = await page.evaluate(() => getComputedStyle(document.querySelectorAll('.post-body h2')[4], '::after').transform);
+      seen.origin = await page.evaluate(() => getComputedStyle(document.querySelectorAll('.post-body h2')[4], '::after').transformOrigin);
+      seen.width = await page.evaluate(() => Math.round(document.querySelectorAll('.post-body h2')[4].getBoundingClientRect().width));
+      await context.close();
+      return seen;
+    };
+    const normal = await walk(null), quiet = await walk('reduce');
+
+    t('a heading still out of reach has not drawn its rule yet',
+      scaleOf(normal.far) < 0.05, 'scaleX ' + scaleOf(normal.far));
+    t('and the same rule is drawn once the reader arrives at it',
+      scaleOf(normal.near) > 0.95, 'scaleX ' + scaleOf(normal.near));
+    /* It grows from the edge the script begins on. An Urdu piece reads
+       rightwards, so a rule growing from the left would be drawn away
+       from the words rather than under them. */
+    t('the ruling grows from the edge the script reads from',
+      Math.abs(parseFloat(normal.origin) - normal.width) < 3,
+      'origin ' + normal.origin + ' against a ' + normal.width + 'px heading');
+
+    /* The assertion this whole group exists for, and the one that found
+       a real fault while it was being written.
+
+       `prefers-reduced-motion` was handled by turning animation
+       DURATION down, which does nothing to a scroll-driven animation —
+       its progress is the scrollbar, not a clock. The first fix was
+       `animation-timeline: none`, which detaches it from every timeline
+       so it never runs at all and `both` fill pins it to its FIRST
+       frame: `scaleX(0)`, an invisible rule, for ever. Measured at
+       exactly that. `auto` hands it back to the document clock, where
+       the duration rule finishes it at once. */
+    t('the reduced-motion seed really took before anything is read from it', quiet.asked);
+    t('and a reader who asked for less motion is given the rules already drawn, not withheld',
+      scaleOf(quiet.far) > 0.95 && scaleOf(quiet.near) > 0.95 && scaleOf(quiet.title) > 0.95,
+      'out of reach ' + scaleOf(quiet.far) + ', reached ' + scaleOf(quiet.near) + ', title ' + scaleOf(quiet.title));
+  }
+
+  /* ---- Where a piece ends ----
+
+     The `nib` drawing shipped on every page of the site and was
+     referenced nowhere at all. It is the mark at the end of a piece
+     now — and only of a piece: a work is a download and an app is a
+     thing to open, and neither ends in the middle of anything. */
+  group('a piece says where it ends, and only a piece does');
+  {
+    const look = async (path) => {
+      const { context, page } = await open(390, path);
+      const seen = await page.evaluate(() => {
+        const mark = document.querySelector('.end-rule .end-mark');
+        const body = document.getElementById('post-body');
+        if (!mark) return { mark: false, hasBody: !!body };
+        const r = mark.getBoundingClientRect();
+        const row = mark.closest('.end-rule').getBoundingClientRect();
+        return {
+          mark: true, hasBody: true,
+          last: body.lastElementChild.classList.contains('end-rule'),
+          hidden: !!mark.closest('[aria-hidden="true"]'),
+          /* Centred, which is not what it got the first time: written
+             as a `p` it fell under `.post-body.urdu > p:not(.latin)` at
+             (0,3,1), was justified, and a lone inline mark went hard
+             against the start edge. */
+          offCentre: Math.abs((r.left + r.right) / 2 - (row.left + row.right) / 2)
+        };
+      });
+      await context.close();
+      return seen;
+    };
+    const urdu = await look('/posts/choice-of-words.html');
+    const english = await look('/posts/books-that-arent-coming-back.html');
+    const work = await look('/works/saa-ki-tahqeeq.html');
+    const app = await look('/apps/zakat-calculator.html');
+
+    t('a piece to read ends with the mark', urdu.mark && english.mark,
+      'urdu ' + urdu.mark + ', english ' + english.mark);
+    t('and it is the last thing in the writing', urdu.last && english.last);
+    t('it is centred whichever way the piece reads',
+      urdu.offCentre < 2 && english.offCentre < 2,
+      'urdu off by ' + Math.round(urdu.offCentre) + 'px, english ' + Math.round(english.offCentre));
+    t('it is decorative, so it is hidden from a reader who is listening',
+      urdu.hidden && english.hidden);
+    /* A work and an app have no `#post-body`, so this is not merely
+       "they happen not to have one" — it says the condition is the
+       right one. */
+    t('a work and an app have no writing to end, and get no mark',
+      !work.mark && !work.hasBody && !app.mark && !app.hasBody,
+      'work ' + work.mark + '/' + work.hasBody + ', app ' + app.mark + '/' + app.hasBody);
+  }
+
+  /* ---- The reading line ----
+
+     No script and no element in any page: `body::before`, matched by
+     `:has(#post-body)` and driven by `scroll()`. The three things that
+     can go wrong are the page it appears on, the edge it fills from,
+     and what a reader who asked for less motion is shown. */
+  group('a long piece says how far through it you are');
+  {
+    const scaleOf = (t) => (t && t !== 'none' ? parseFloat(t.slice(7).split(',')[0]) : null);
+    const read = async (path, motion) => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 },
+        ...(motion ? { reducedMotion: motion } : {}) });
+      await context.route('https://fonts.g**', (r) => r.abort());
+      const page = await context.newPage();
+      await page.goto(`http://127.0.0.1:${PORT}${path}`, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => document.fonts.ready);
+      await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto'; });
+      await page.waitForTimeout(300);
+      const at = async (fraction) => {
+        await page.evaluate((f) => scrollTo(0, (document.body.scrollHeight - innerHeight) * f), fraction);
+        await page.waitForTimeout(160);
+        return page.evaluate(() => {
+          const s = getComputedStyle(document.body, '::before');
+          return { transform: s.transform, display: s.display, origin: s.transformOrigin, content: s.content };
+        });
+      };
+      const seen = { asked: await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches),
+        top: await at(0), half: await at(0.5), end: await at(1) };
+      await context.close();
+      return seen;
+    };
+    const urdu = await read('/posts/reservations-shariah-screening-stocks.html', null);
+    const english = await read('/posts/books-that-arent-coming-back.html', null);
+    const work = await read('/works/saa-ki-tahqeeq.html', null);
+    const quiet = await read('/posts/reservations-shariah-screening-stocks.html', 'reduce');
+
+    t('the line is empty at the top of a piece and full at the foot',
+      scaleOf(urdu.top.transform) < 0.02 && scaleOf(urdu.end.transform) > 0.98,
+      'top ' + scaleOf(urdu.top.transform) + ', foot ' + scaleOf(urdu.end.transform));
+    t('and it really follows the scroll rather than jumping at the end',
+      Math.abs(scaleOf(urdu.half.transform) - 0.5) < 0.08,
+      'half way: ' + scaleOf(urdu.half.transform));
+    /* Filled from the reading edge. An Urdu piece reads rightwards, so
+       a bar growing from the left would run backwards against the
+       words — the same mistake as an arrow mirrored to the front of its
+       phrase, which this suite already guards in another place. */
+    t('it fills from the edge the piece reads from',
+      parseFloat(urdu.top.origin) > 380 && parseFloat(english.top.origin) < 2,
+      'urdu origin ' + urdu.top.origin + ', english ' + english.top.origin);
+    /* A work page is a download. It has no position to be part way
+       through, and must not claim one. */
+    t('a work page, which is a download, gets no reading line',
+      work.half.content === 'none' || work.half.display === 'none',
+      'content ' + work.half.content + ', display ' + work.half.display);
+    t('the reduced-motion seed really took before anything is read from it', quiet.asked);
+    /* Hidden outright rather than handed to the clock like the ruled
+       lines: `animation-timeline: auto` would finish it instantly and
+       leave a permanently FULL bar, which tells a reader they have
+       finished something they have not started. */
+    t('and a reader who asked for less motion is shown no bar rather than a full one',
+      quiet.half.display === 'none',
+      'display ' + quiet.half.display + ', transform ' + quiet.half.transform);
+  }
+
   t('nothing threw along the way', threw.length === 0, threw.join(' | '));
 } finally {
   await browser.close();

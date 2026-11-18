@@ -5163,6 +5163,144 @@ putting the fault back and watching the test stay green would have shown
 it; the assertion read perfectly well.
 
 
+### Scroll-driven animation arrived, and the reduced-motion block does not reach it
+
+**The whole premium-motion question changed, and it changed in the
+browser rather than here.** Motion on this site has always meant an
+`IntersectionObserver` adding a class, because that was the only way to
+start something when a reader reached it. Both engines now support
+`animation-timeline: view()` and `scroll()` — checked in the container,
+Safari's WebKit included, along with `:has()` and `scroll(root block)` —
+so a thing can be driven by the scroll position **in CSS, with no script
+at all, nothing added to any page and `common.js` not involved**.
+
+That is strictly better by this file's own standards: no observer to
+guard, nothing mounted, and a page that works with JavaScript off.
+
+**But the reduced-motion block at the foot of `styles.css` does not stop
+one, and that had to be measured to be believed.** It sets
+`animation-duration: 0.01ms`, and a scroll-driven animation **has no
+duration** — its progress is the scrollbar. Measured with `reduce` set:
+a `view()` rule drew itself exactly as it did without, and sat at
+`scaleX(0)` — invisible — while it waited. The reader who asked for less
+motion got the motion *and* the hidden state.
+
+**`auto` is the lever and `none` is the trap sitting next to it.** The
+first fix was `animation-timeline: none !important`, which reads
+correctly and is wrong: `none` detaches the animation from **every**
+timeline, so it never runs at all, and `both` fill then pins it to its
+**first** frame for ever. Measured at `matrix(0, 0, 0, 1, 0, 0)` — an
+invisible rule, permanently, for exactly the reader who should be given
+the plain page. `animation-timeline: auto` hands it back to the document
+clock, where the duration line above finishes it at once.
+
+```
+                              out of reach    once reached    title
+  reduce, with `none`           scaleX 0        scaleX 0      scaleX 0
+  reduce, with `auto`           scaleX 1        scaleX 1      scaleX 1
+```
+
+**A progress bar is the exception and needs hiding, not finishing.**
+`auto` completes a scroll-driven animation instantly, which is right for
+a rule and a lie for a reading line: it would sit permanently **full**,
+telling a reader they had finished something they had not started. That
+one is `display: none` under `reduce` instead, and the comment says why
+rather than leaving the inconsistency to be found.
+
+**The same argument settles the unsupported engine, in the other
+direction.** Where `animation-timeline` is not understood the
+declaration is simply dropped, leaving a time-based animation of zero
+duration filling `both` — so the element computes to its **end** state.
+Checked by deleting the line and reading the transform back: `scaleX(1)`,
+fully drawn. That is right for a rule, which is why the rules need no
+`@supports`; and wrong for the reading line, which is why the reading
+line is inside one. **A rule that fails to animate is a rule. A progress
+bar that fails to animate is a false statement.**
+
+### The site already owned the books, the pen and the manuscript
+
+**The request was for book, pen and manuscript animations, and seven of
+those drawings were already in the sprite.** `booklet`, `manuscript`,
+`books`, `pen`, `nib`, `document` and `seal`, about 4KB for all fifteen
+icons, no extra request — and they were drawn in exactly **one** place,
+the homepage's category heads. A reader arriving straight at a piece from
+a forwarded link never met one.
+
+**`nib` and `document` were referenced nowhere at all**, shipped on every
+page of the site and used by nothing. That is the same waste as a font
+subset carrying glyphs no page holds, and the answer was the same: use it
+or drop it. The nib is the mark at the end of a piece now.
+
+**So nothing was drawn, imported or added.** No animation library — every
+one of them costs more than this site's entire icon set — and no new
+file. What was missing was not assets; it was the drawings being used
+anywhere but the front page.
+
+### A mark beside the kind is larger than the words, not smaller
+
+`.category-icon` is `0.82em` and held under the cap height **on purpose**,
+so that beside a heading it reads as a mark rather than a second heading.
+Beside `.section-label` on a record page the same rule is wrong: the label
+is 15 to 16px, so 0.82em is a **13px line drawing at 1.4 stroke**, and
+rendered at the real size the booklet closes into a smudge — this file's
+standing complaint about Nastaliq at 13px, arriving in a drawing instead.
+
+0.82, 1.25 and 1.5em were drawn and **read together**. 1.5em is where a
+booklet is plainly a booklet and the seal a seal. Same drawing, opposite
+rule, because the thing beside it is a label and not a heading.
+
+### A class borrowed to be found by a selector brings everything else with it
+
+The end-mark was given `.category-icon` for one reason: `drawIconsOnEntry`
+queried that class, and the mark had to be found. It arrived carrying a
+size, a colour and a `margin-inline-end` of **8.82px** — which in a
+right-reading article resolved to `margin-left` and put a mark meant to be
+centred **4px off centre**, in both scripts, which is what said it was a
+margin and not a direction fault.
+
+This is the `.urdu` rule — *never put a class on something that has a size
+or an alignment of its own; it brings both* — in a drawing rather than a
+word. The fix is not to zero the margin: the dash belongs to `.icon-draw`
+and never belonged to `.category-icon`, so the helper takes a **selector**
+now and the mark keeps only its own class.
+
+### An end-mark written as a paragraph is justified, and a lone glyph goes to the edge
+
+Written first as `<p class="end-rule">`, which put it inside
+`.post-body.urdu > p:not(.latin)` — **(0,3,1)** against the class's
+(0,1,0) — so `text-align: justify` won and a single inline mark was driven
+hard against the start edge of its line. It came out tight against the
+right margin instead of centred, and it was **looked at** rather than
+inferred.
+
+It is a `div`. The end-mark is not a paragraph, the selector stops
+matching, and nothing has to outrank anything. Same shape as the
+alignment-class faults this file already records, with the cheaper fix
+available because the element was ours to choose.
+
+### A ruled line belongs under a section, and not under every heading
+
+A rule under each **in-prose** heading is the manuscript's own way of
+marking a section, and on the stocks article — 56 paragraphs, nine
+headings — it gives a slab of Nastaliq some architecture. Rendered with
+and without and read side by side before it was kept.
+
+**The homepage's section headings were tried and refused.** Rendered, the
+gold rule under *Scholarly works and research* sits a few centimetres
+above the search box's own **2px gold edge**, which this file records
+adding deliberately as the one drawn gold control on that page. Two gold
+rules competing, in a page already separated into full-bleed colour
+blocks. The idea was right and the placement was not, and only rendering
+it said so.
+
+**The title's rule is timed, not scrolled, and that is the one place two
+mechanisms are right.** A record's title is above the fold, so `view()`
+resolves to *already arrived* and would draw nothing. It gets a 0.9s
+animation on load instead — where the reduced-motion block's duration
+line does reach it correctly, which is exactly the difference from the
+one below it.
+
+
 ## Working on this
 
 - Preview: open `index.html` directly, or `python -m http.server 4173`.
