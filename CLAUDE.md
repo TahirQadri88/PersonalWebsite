@@ -149,8 +149,17 @@ Each line is the rule; the reasoning is in `docs/LESSONS.md` under the same name
 
 ## Testing — what to run and when
 
-**While editing, do not run the suites after every small change.** Run only the
-suite for the files you touched, once, at the end, before you push.
+**While editing, do not run the suites at all.** Make the change, then run the
+one suite for the files you touched, ONCE, at the end, before you push. A run
+is three to five minutes. Fifteen runs is an afternoon, and that has happened.
+
+**Proving a guard by restoring its fault is OPTIONAL and costs a full run
+each.** Do it where the guard protects something subtle, or when asked — not
+for every assertion by reflex. When it is skipped, say so: an unproved guard
+may be a guard that cannot fail.
+
+**A flake is not the task.** If an unrelated assertion goes red once and passes
+on a re-run, write it down and carry on. Do not stop to fix it unless asked.
 
 | If you changed | Run |
 | --- | --- |
