@@ -3902,26 +3902,40 @@ try {
        390. What must never happen at any width is the header clipping —
        a link half off the edge of the screen is not a link. */
     for (const width of [320, 360, 375, 390, 414, 1280]) {
-      const { context, page } = await open(width, '/fatawa/index.html');
-      const nav = await page.evaluate(() => {
-        const n = document.querySelector('.header-nav');
-        const shown = [...n.querySelectorAll('a')]
-          .filter((a) => a.getBoundingClientRect().width > 0)
-          .map((a) => a.textContent.trim());
-        return { over: Math.round(n.scrollWidth - n.clientWidth), shown };
-      });
-      t('the header does not clip at ' + width + 'px', nav.over <= 0,
-        'overflows by ' + nav.over + 'px, showing ' + nav.shown.join(', '));
-      /* Whatever else is dropped, the two that are pages of their own
-         stay: nothing else on the site links to them. */
-      /* Named from content.js now, not from a second copy in pageNav —
-         which is how this link read "Fatāwā" on the homepage and
-         "Fatawa" here for as long as both existed. Matched on the stem
-         so the guard is about the link being present, not its spelling. */
-      t('  …and still offers Author and Fatāwā at ' + width + 'px',
-        nav.shown.includes('Author') && nav.shown.some((s) => /^Fat[aā]w/.test(s)),
-        nav.shown.join(', '));
-      await context.close();
+      for (const path of ['/fatawa/index.html', '/posts/choice-of-words.html']) {
+        const { context, page } = await open(width, path);
+        const nav = await page.evaluate(() => {
+          const n = document.querySelector('.header-nav');
+          const all = [...n.querySelectorAll('a')];
+          const shown = all.filter((a) => a.getBoundingClientRect().width > 0)
+            .map((a) => a.textContent.trim());
+          return { over: Math.round(n.scrollWidth - n.clientWidth), shown,
+            here: (all.find((a) => a.getAttribute('aria-current')) || {}).textContent };
+        });
+        const where = path.split('/')[1];
+        t('the header does not clip at ' + width + 'px on /' + where + '/', nav.over <= 0,
+          'overflows by ' + nav.over + 'px, showing ' + nav.shown.join(', '));
+        /* Whatever else is dropped, the two that are pages of their own
+           stay REACHABLE: nothing else on the site links to them.
+
+           Reachable, not shown, and the difference is the whole of what
+           this assertion learned. It used to read "still offers Author
+           and Fatāwā", which is the same thing on every page except the
+           two where one of them IS the page — and there the link went
+           nowhere while a useful one stood down for it. Standing in a
+           room is not the same as having no way into it.
+
+           Named from content.js, not from a second copy in pageNav —
+           which is how this link read "Fatāwā" on the homepage and
+           "Fatawa" here for as long as both existed. Matched on the
+           stem, so the guard is about the link, not its spelling. */
+        const reaches = (name, test) =>
+          nav.shown.some(test) || (nav.here && test(nav.here.trim()));
+        t('  …and Author and Fatāwā are each reachable or underfoot at ' + width + 'px on /' + where + '/',
+          reaches('Author', (x) => x === 'Author') && reaches('Fatawa', (x) => /^Fat[aā]w/.test(x)),
+          'showing ' + nav.shown.join(', ') + (nav.here ? '; standing on ' + nav.here.trim() : ''));
+        await context.close();
+      }
     }
 
     /* A page in the sitemap that nothing links to is an orphan, and both
@@ -5661,6 +5675,166 @@ try {
     t('and a reader who asked for less motion is shown no bar rather than a full one',
       quiet.half.display === 'none',
       'display ' + quiet.half.display + ', transform ' + quiet.half.transform);
+  }
+
+  /* ---- A phone turned sideways ----
+
+     Every other measurement in this suite is about WIDTH. Sideways a
+     phone is 360 to 430px TALL and the two sticky bars were 142px of
+     it — 36% of the screen given to chrome that exists to be glanced
+     at. The strip stands down on a short screen and the header stays,
+     because the header is the only way out of the page. */
+  group('a screen too short for two sticky bars keeps only one');
+  {
+    const chrome = async (width, height) => {
+      const context = await browser.newContext({ viewport: { width, height } });
+      await context.route('https://fonts.g**', (r) => r.abort());
+      const page = await context.newPage();
+      await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => document.fonts.ready);
+      await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto'; });
+      await page.evaluate(() => scrollTo(0, 2600));
+      await page.waitForTimeout(200);
+      const seen = await page.evaluate(() => {
+        let covered = 0;
+        for (const sel of ['.site-header', '.category-bar']) {
+          const el = document.querySelector(sel);
+          if (!el) continue;
+          const style = getComputedStyle(el);
+          /* What is COVERED while scrolled, not what the layout is at
+             rest: a bar that has stopped following the reader still has
+             a height, and reading that height would report no change. */
+          if (style.position === 'sticky' || style.position === 'fixed') {
+            covered = Math.max(covered, el.getBoundingClientRect().bottom);
+          }
+        }
+        return { covered: Math.round(Math.max(covered, 0)), vh: innerHeight,
+          strip: getComputedStyle(document.querySelector('.category-bar')).position,
+          header: getComputedStyle(document.querySelector('.site-header')).position,
+          pad: parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop),
+          stripExists: !!document.querySelector('.category-nav a') };
+      });
+      await context.close();
+      return seen;
+    };
+    const flat = await chrome(844, 390), tall = await chrome(390, 844);
+    const deskShort = await chrome(1280, 480), tabletFlat = await chrome(1024, 768);
+
+    t('sideways, the strip has stopped following the reader', flat.strip === 'static',
+      'position: ' + flat.strip);
+    /* The header must NOT go with it. Letting both go gives the whole
+       screen and takes away the only way out of the page. */
+    t('and the header has not, because it is the way out', flat.header === 'sticky',
+      'position: ' + flat.header);
+    t('the strip is still on the page, just not following',
+      flat.stripExists, 'category links present: ' + flat.stripExists);
+    t('which gives a landscape phone most of its screen back',
+      flat.vh - flat.covered >= 300,
+      (flat.vh - flat.covered) + 'px readable of ' + flat.vh + ', chrome covers ' + flat.covered);
+    /* `scroll-padding-top` has to follow or a jump still reserves room
+       for a bar that is no longer there. */
+    t('and a jump reserves room for one bar rather than two',
+      flat.pad < 120 && flat.pad > 72,
+      'scroll-padding-top ' + flat.pad + 'px against a ' + flat.covered + 'px header');
+
+    /* The other half, and the half a careless rule breaks: a tall
+       screen must be exactly as it was. A tablet in landscape is 768px
+       tall and is NOT a phone turned sideways. */
+    t('a phone held upright is untouched', tall.strip === 'sticky' && tall.pad > 150,
+      'strip ' + tall.strip + ', scroll-padding ' + tall.pad);
+    t('and a tablet in landscape is not a phone in landscape',
+      tabletFlat.strip === 'sticky', 'strip ' + tabletFlat.strip + ' at 1024x768');
+    /* A short desktop window gets it too, and should — the argument is
+       about the screen, not about the device. */
+    t('a short window on a desktop is treated as the short screen it is',
+      deskShort.strip === 'static', 'strip ' + deskShort.strip + ' at 1280x480');
+  }
+
+  /* ---- Which page you are on ----
+
+     `pageNav` writes `aria-current="page"` on the link answering to the
+     page being written, and the stylesheet had nothing for it — so a
+     screen reader was told and a reader looking at the screen was not,
+     while the category pills carried the full vocabulary for the very
+     same attribute. */
+  group('the header says which page you are on, to the eye as well');
+  {
+    const look = async (path, width) => {
+      const { context, page } = await open(width || 620, path);
+      const seen = await page.evaluate(() => {
+        const links = [...document.querySelectorAll('.header-nav a')];
+        const here = links.find((a) => a.getAttribute('aria-current'));
+        const other = links.find((a) => !a.getAttribute('aria-current')
+          && a.getBoundingClientRect().width > 0);
+        const read = (el) => el && { weight: getComputedStyle(el).fontWeight,
+          rule: getComputedStyle(el).boxShadow, text: el.textContent.trim() };
+        return { here: read(here), other: read(other), count: links.filter((a) => a.getAttribute('aria-current')).length };
+      });
+      await context.close();
+      return seen;
+    };
+    const fatawa = await look('/fatawa/index.html');
+    const author = await look('/author/index.html');
+    const post = await look('/posts/choice-of-words.html');
+
+    t('a landing page marks exactly one link as the page you are on',
+      fatawa.count === 1 && author.count === 1,
+      'fatawa ' + fatawa.count + ', author ' + author.count);
+    /* A record page is not one of the four, so none of them is current
+       — which says the attribute means something rather than being
+       sprayed everywhere. */
+    t('and a record page marks none of them', post.count === 0, 'marked: ' + post.count);
+    t('the marked link is heavier than its neighbours',
+      Number(fatawa.here.weight) > Number(fatawa.other.weight)
+        && Number(author.here.weight) > Number(author.other.weight),
+      fatawa.here.text + ' ' + fatawa.here.weight + ' against ' + fatawa.other.text + ' ' + fatawa.other.weight);
+    /* The rule under it, which is what makes it read as a place rather
+       than as emphasis. Measured as "it has one and its neighbour does
+       not" rather than by naming a colour, so the value can move. */
+    t('and carries a rule its neighbours do not',
+      fatawa.here.rule !== 'none' && fatawa.other.rule === 'none'
+        && author.here.rule !== 'none',
+      'here: ' + fatawa.here.rule + ' | neighbour: ' + fatawa.other.rule);
+  }
+
+  /* ---- A link to here is not a way anywhere ----
+
+     Below 390px a generated page shows two links, and on a landing page
+     one of the two was the page the reader was already standing on. */
+  group('no width offers a link to the page you are already on');
+  {
+    const narrow = [];
+    for (const path of ['/fatawa/index.html', '/author/index.html',
+                        '/posts/choice-of-words.html', '/index.html']) {
+      for (const width of [320, 360, 389]) {
+        const { context, page } = await open(width, path);
+        narrow.push([path, width, await page.evaluate(() => {
+          const shown = [...document.querySelectorAll('.header-nav a')]
+            .filter((a) => a.getBoundingClientRect().width > 0);
+          return { names: shown.map((a) => a.textContent.trim()),
+            self: shown.filter((a) => a.getAttribute('aria-current')).length,
+            overflow: Math.round(document.documentElement.scrollWidth) - window.innerWidth };
+        })]);
+        await context.close();
+      }
+    }
+    t('every narrow page still offers somewhere to go',
+      narrow.every(([, , r]) => r.names.length >= 2),
+      narrow.map(([p, w, r]) => p.split('/')[1] + '@' + w + ': ' + r.names.length).join(' | '));
+    t('and none of what it offers is the page you are on',
+      narrow.every(([, , r]) => r.self === 0),
+      narrow.filter(([, , r]) => r.self).map(([p, w, r]) => p + '@' + w + ' shows ' + r.names.join('/')).join(' | '));
+    /* The point of the swap: the Library is what comes back in the
+       self-link's place, and it is the destination the wordmark beside
+       it does not already reach. */
+    t('a landing page offers the library in its place',
+      narrow.filter(([p]) => p === '/fatawa/index.html' || p === '/author/index.html')
+        .every(([, , r]) => r.names.includes('Library')),
+      narrow.filter(([p]) => p.includes('index.html') && !p.startsWith('/index'))
+        .map(([p, w, r]) => p.split('/')[1] + '@' + w + ': ' + r.names.join(', ')).join(' | '));
+    t('and nothing pushes the header sideways at any of those widths',
+      narrow.every(([, , r]) => r.overflow <= 0),
+      narrow.filter(([, , r]) => r.overflow > 0).map(([p, w, r]) => p + '@' + w + ' +' + r.overflow).join(' | '));
   }
 
   t('nothing threw along the way', threw.length === 0, threw.join(' | '));

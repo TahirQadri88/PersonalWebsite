@@ -5301,6 +5301,139 @@ line does reach it correctly, which is exactly the difference from the
 one below it.
 
 
+### Every measurement in this file was about width, and a phone turns sideways
+
+**The two sticky bars were 36% of a landscape phone's screen.** Measured
+at 844×390: a 72px header and a 70px strip, so the reader had **248px of
+390** to read in. At 740×360 it is 39%. Nothing in this repository had
+ever measured a short VIEWPORT — the header, the strip, the nav links,
+the wordmark and `scroll-padding-top` have all been swept exhaustively
+across widths from 320 to 1920, and the question "how tall is the
+screen" had never been asked.
+
+**The strip stands down and the header stays.** Measured at the same
+size, with what is COVERED while scrolled rather than the layout at rest:
+
+```
+  as it is          bars cover 142px   →  248px readable of 390  (64%)
+  strip static      bars cover  72px   →  318px readable         (82%)
+  header too        bars cover   0px   →  390px readable        (100%)
+```
+
+The third row is not available: the header is the only way out of the
+page once the strip has gone, and this site does not trade a way out for
+reading room. **Nothing is lost by the second**: the strip is still in
+the page, at the top, still scrolling sideways. What it stops doing is
+following a reader down a screen with no room for it.
+
+**`max-height: 500px`, not a round 600.** A phone in landscape is at
+most about 430px tall and a tablet in landscape is 768 or more, so this
+catches every phone and no tablet — asserted both ways, because a rule
+that also caught an iPad would be taking the strip from a device with
+plenty of room. A short desktop window gets it too, and should: the
+argument is about the screen, not the device.
+
+**`scroll-padding-top` had to follow**, or a jump still reserves room
+for a bar that is no longer there — 152px of a 390px screen. 92px is the
+72px header and the same 20px of air the other two values keep. The
+block sits after the width queries deliberately: media queries carry no
+specificity of their own, so the later rule is the one that wins.
+
+### A link to the page you are on is not a way anywhere
+
+**At 320px, half the navigation did nothing.** Below 390 a generated
+page drops the two links marked `nav-anchor`, leaving two — and on a
+landing page one of those two was the page the reader was standing on:
+
+```
+  /fatawa/  at 320px      Author, Fatāwā      ← Fatāwā is this page
+  /author/  at 320px      Author, Fatāwā      ← Author is this page
+```
+
+The self-link stands down now and the **Library** comes back in its
+place, which is the one destination the wordmark beside it does not
+already reach. CSS alone, through `:has()` — no builder changed, no page
+regenerated. Every page type at 320px now shows two working links and no
+self-link, with no overflow.
+
+**No width loses a link it had**, which is this file's own rule: what
+goes is a link to here.
+
+### A guard can encode the symptom instead of the rule
+
+*the two landing pages* asserted **"still offers Author and Fatāwā"** at
+every narrow width, with a comment giving the real reason beside it —
+*"the two that are pages of their own stay: nothing else on the site
+links to them."*
+
+Those two sentences are not the same, and the difference is invisible
+until the day one of those pages is the page you are on. The rule is
+**reachable**; the assertion said **shown**. So the change above turned
+it red on three widths, which reads exactly like a regression and is
+not one: standing in a room is not the same as having no way into it.
+
+It asserts *reachable or underfoot* now, and it was **widened rather
+than relaxed** — it runs over a post page as well as the fatāwā page,
+so the original rule is still exercised with teeth where neither link is
+current. **When an existing guard goes red, read its comment before its
+assertion**: the comment here had the rule right all along.
+
+### The current page was marked for a screen reader and not for the eye
+
+`pageNav` writes `aria-current="page"` on the link answering to the page
+being written. The stylesheet had **nothing** for it — while
+`.category-nav a[aria-current]` directly above carried the full
+vocabulary for the very same attribute: a warm ground, a gold-dim
+border, 700 weight and an inset lapis rule.
+
+Quieter than a pill, deliberately: the weight and the lapis rule, no
+ground. A pill is a control you are about to press; these are the site's
+own chrome. Lapis because it is a statement about **where you are**,
+which is the one job that colour has here, and which the pill's own
+comment already says.
+
+### Five probes were wrong before one was right
+
+Every suspicion raised in this sweep except three was the measurement,
+not the page. Written down together because the rate is the point:
+
+- **The strip marks the section above the one you are in.** `markPlace`
+  counts a section as reached at `LINE = 150`, and the probe had parked
+  the heading at 160 — **ten pixels short**. From a fair position all
+  eight sections mark correctly, and the pill scrolls into view every
+  time.
+- **`.category-arrow` is 42px, under the 44 minimum.** The box is 44.
+  The prober steps one pixel inside each edge, so it can only ever
+  report 42 for a 44px control.
+- **The recent strip's arrow cannot be tapped at all.** It was below the
+  fold when `elementFromPoint` was asked.
+- **`min-height: calc(100vh - 190px)` is the classic mobile trap.** It
+  resolves to 654px and the shortest work page is 1,167px, so it never
+  binds. A real trap in general; not one here.
+- **The carousel's peek is 432px in landscape and 905px on a desktop**,
+  against a documented constant 88. The formula measured the gap after
+  the *second* card instead of the sliver of the first one that does not
+  fit. Measured properly it is **88px at 320, 390, 620, 844, 1280 and
+  1920** — the design holds exactly as written.
+
+Three were real: the sticky bars in landscape, the self-link, and the
+unmarked current page.
+
+### The animations needed nothing, and that was measured rather than assumed
+
+Asked of the whole set at four sizes and in both engines, after the
+sticky change: the carousel advances on its own at 320, 390, 844×390 and
+1280; the cards rise; **all eight category icons draw at every size**;
+the section rulings go 0 → 1 as they are reached in portrait and in
+landscape alike; the reading line fills; the end-mark and the kind mark
+are present. Under `prefers-reduced-motion` the rulings are already
+drawn and the reading line is hidden, in Chromium and in WebKit.
+
+Worth recording as plainly as a fault: the answer to "what about the
+animations on mobile" is **nothing**, and it is only worth saying
+because it was measured.
+
+
 ## Working on this
 
 - Preview: open `index.html` directly, or `python -m http.server 4173`.

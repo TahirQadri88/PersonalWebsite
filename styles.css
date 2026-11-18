@@ -1386,6 +1386,23 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   box-shadow: inset 0 -2px 0 var(--lapis);
 }
 
+/* And the same statement in the header, which had the attribute and no
+   treatment at all. `pageNav` writes `aria-current="page"` on the link
+   that answers to the page you are on — so a screen reader was told
+   which page that is and a reader looking at the screen was not, while
+   the pills above had the full vocabulary for the very same attribute.
+
+   Quieter than a pill, deliberately: a pill is a control you are about
+   to press and these are the site's own chrome, so this takes the
+   weight and the lapis rule and none of the ground. Lapis because it is
+   a statement about WHERE you are, which is the one job that colour
+   has here. */
+.header-nav a[aria-current] {
+  color: var(--ink-title);
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--lapis);
+}
+
 /* 5 ── Hero ───────────────────────────────────────────────── */
 
 .hero {
@@ -2625,6 +2642,18 @@ body.is-searching .rulings h2 { margin-bottom: 26px; }
    Fatawa are pages that exist nowhere else. */
 @media (max-width: 389px) {
   .header-nav .nav-anchor { display: none; }
+  /* Below this width only two links fit, and on a generated page one of
+     the two was the page the reader is already standing on: at 320px
+     `/fatawa/` showed Author and Fatawa, and `/author/` showed Author
+     and Fatawa, with the current one of the pair going nowhere. Half
+     the navigation doing nothing is worse than a narrower header.
+
+     So the self-link stands down and the Library comes back in its
+     place — the one destination a reader on a record page most wants
+     and the only one the wordmark beside it does not already reach by
+     itself. No width loses a link it had: what goes is a link to here. */
+  .header-nav a[aria-current] { display: none; }
+  .header-nav:has(a[aria-current]) a[href$="#library"] { display: inline; }
 }
 
 /* The back link and the link on to the fatawa page are both --moss,
@@ -4311,6 +4340,38 @@ footer {
   .section-heading { display: block; }
   .section-note { margin-top: 12px; max-width: none; }
   .bio-facts { grid-template-columns: 1fr; }
+}
+
+/* ---- A short screen, which is a phone turned sideways ----
+
+   Every measurement in this file is about WIDTH. Turned sideways a
+   phone is 360 to 430px TALL, and the two sticky bars are 142px of
+   that — measured at 844x390, the reader had 248px of 390 to read in,
+   36% of the screen given over to chrome that is there to be glanced
+   at.
+
+   The strip stands down and the header stays. Measured at the same
+   size: 248px becomes 318, which is 82% of the screen rather than 64.
+   Letting the HEADER go too gives the whole 390 and takes away the
+   only way out of the page, which is not a trade this site makes.
+
+   Nothing is lost by it. The strip is still there, in the page, at the
+   top where it always was, and still scrolls sideways; what it stops
+   doing is following the reader down a screen that has no room for it.
+
+   500px rather than a round 600: a phone in landscape is at most about
+   430px tall and a tablet in landscape is 768 or more, so this catches
+   every phone and no tablet. A short desktop window gets it too, and
+   should — the argument is about the screen, not the device.
+
+   `scroll-padding-top` follows, or a jump would still reserve room for
+   a bar that is no longer there: 92px is the 72px header and the same
+   20px of air the other two values keep. This block sits after the
+   width queries above deliberately, since media queries carry no
+   specificity of their own and the later rule is the one that wins. */
+@media (max-height: 500px) {
+  .category-bar { position: static; }
+  html { scroll-padding-top: 92px; }
 }
 
 @media (max-width: 620px) {

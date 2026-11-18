@@ -68,6 +68,8 @@ Each line is the rule; the reasoning is in `docs/LESSONS.md` under the same name
 - A kind, a description and a date are each shown in the language the record reads in.
 - The site's own words about the library — the way back, More in, the meta line —
   are set in the site's own direction, whatever the piece is.
+- A link to the page you are on is not a way anywhere. Where only two links fit,
+  the self-link stands down.
 - A publish sends only the records whose signature moved, plus the files built from
   the whole library. No baseline means send everything; **Rebuild every page** forces it.
 
@@ -120,6 +122,8 @@ Each line is the rule; the reasoning is in `docs/LESSONS.md` under the same name
 - The measurement outranks the inference: arithmetic saying a control is too small
   is not a fault until a finger fails to land on it.
 - When a change makes a string longer, measure the box it has to fit in.
+- Measure the screen's height too. Every sweep here was about width, and a phone
+  turns sideways: two sticky bars were 36% of a landscape screen.
 - When a measurement needs a tolerance, find out what is filling it.
 - When a report says something is wrong and the measurement says it is right,
   ask *when* the measurement was taken.
@@ -132,6 +136,8 @@ Each line is the rule; the reasoning is in `docs/LESSONS.md` under the same name
 - A guard that inspects only what is marked cannot see what is not.
 - A guard whose subject the fixture cannot produce asserts nothing. Label it a
   companion, or verify that half outside the suite, and say which.
+- When an existing guard goes red, read its comment before its assertion. It may
+  have encoded the symptom where the comment had the rule right.
 - Measure the ink, not the element's box. A box is wider than its words.
 - Do not reach for `networkidle` in these suites.
 
