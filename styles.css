@@ -3703,8 +3703,41 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
    None of the three can leave a card invisible, which is the whole
    reason this is allowed to touch content at all.
 
-   `entry 0% cover 18%` is short on purpose, and it is the setting that
-   measured BOTH safest and most visible — which took three attempts to
+   `entry 0% cover 30%`, and the number was wrong once in the direction
+   that matters least to a measurement and most to a reader.
+
+   `cover 18%` shipped first. It measured impeccably — nothing in the
+   upper third of the screen ever below full opacity — and the author
+   reported seeing no animation at all. He was right. Followed up the
+   screen on a 440x956 phone, a panel is visibly faded only while its
+   top sits between **105% and 77% down the screen**: it reaches 0.95
+   before it has cleared the bottom quarter. The whole arrival happened
+   behind the reader's thumb, below where anybody looks.
+
+   So the safety number was being optimised and the visibility was not
+   measured at all. The two together:
+
+```
+   range        fade finishes   faintest where you read
+   cover 18%      59% down            1.00      (invisible)
+   cover 30%      23% down            0.84
+   cover 40%       above top          0.63      (reading a faded card)
+   cover 50%       above top          0.50
+```
+
+   30% carries the fade a quarter of the way down the screen, where it
+   is plainly seen, and still leaves a card at 0.84 by the time it is
+   somewhere anyone reads — soft for an instant mid-scroll, never while
+   the page is still. 40 and 50 put genuinely faded text under the
+   reader's eye.
+
+   The lesson is not the number. **A measurement that only ever asks
+   "is this safe" will answer yes to doing nothing**, and this one did
+   for a day: 1.00 in the upper third was a perfect score for an
+   animation nobody could see. Ask what it costs AND what it buys.
+
+   The paragraph this replaces claimed 18% was BOTH safest and most
+   visible — which took three attempts to
    find out, because the probe was wrong twice:
 
 ```
@@ -3741,7 +3774,7 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
 .ruling {
   animation: card-arrive linear both;
   animation-timeline: view();
-  animation-range: entry 0% cover 18%;
+  animation-range: entry 0% cover 30%;
 }
 @keyframes card-arrive {
   from { opacity: 0; transform: translateY(12px); }

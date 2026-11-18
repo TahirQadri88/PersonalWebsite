@@ -5866,8 +5866,12 @@ try {
       phone.faintest < 0.6 && rulings.faintest < 0.6,
       'faintest on the homepage ' + phone.faintest.toFixed(2) + ', on fatawa ' + rulings.faintest.toFixed(2));
     /* And the safety property this rule lives or dies by. */
-    t('and nothing is ever still fading in the upper third of the screen',
-      phone.upperWorst > 0.98 && rulings.upperWorst > 0.98,
+    /* 0.75, not 0.98. The floor sits between the setting (0.84) and the
+       ranges that put genuinely faded text where somebody reads (0.63
+       at `cover 40%`, 0.50 at 50%). At 0.98 this assertion was scoring
+       an animation nobody could see as perfect — see the stylesheet. */
+    t('and nothing is badly faded in the upper third of the screen',
+      phone.upperWorst > 0.75 && rulings.upperWorst > 0.75,
       'worst on the homepage ' + phone.upperWorst.toFixed(2) + ', on fatawa ' + rulings.upperWorst.toFixed(2));
     /* A phone held sideways is the case that broke the first attempt:
        `entry 100%` ends when an element has FULLY entered, and a panel
@@ -5875,7 +5879,7 @@ try {
        finished. Asserted separately because it is a different fault
        from the one above, not a second sample of it. */
     t('including on a screen too short to hold a whole panel',
-      sideways.upperWorst > 0.98,
+      sideways.upperWorst > 0.75,
       'worst at 844x390: ' + sideways.upperWorst.toFixed(2));
 
     t('the reduced-motion seed really took before anything is read from it', quiet.asked);
