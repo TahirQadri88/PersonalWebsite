@@ -5301,6 +5301,182 @@ line does reach it correctly, which is exactly the difference from the
 one below it.
 
 
+### A phone turns sideways, and the fix for it was built and then thrown away
+
+**The measurement was real and the change was wrong**, and the gap
+between those two is the whole of this entry.
+
+Every sweep in this file is about WIDTH. Turned sideways a phone is 360
+to 430px TALL, and on the homepage the header and the category strip
+were **142px of a 390px screen — 36% of it**, leaving 248px to read in.
+Nobody had ever asked how tall the screen was. So the strip was made to
+stand down below `max-height: 500px`, the header kept as the only way
+out, `scroll-padding-top` followed from 152 to 92, and it was guarded
+eight ways: 248px became **318**, tablets in landscape untouched,
+portrait untouched.
+
+**Then it was looked at, and two things were obvious in the picture that
+no number had said.**
+
+What you gain is **one row of the library**. What you lose is the pill
+saying which of eight categories you are standing in — and on a screen
+this short, where a reader sees very little at once, that cue is worth
+*more* than it is on a desktop, not less. The strip is "still in the
+page, at the top", which is true and useless: reaching it means
+scrolling the whole library back.
+
+**And then the premise fell over.** Measured across every page type at
+844×390:
+
+```
+  index.html                    has a strip     72px of chrome
+  fatawa/  author/              no strip        72px
+  works/…  posts/…  apps/…      no strip        72px
+```
+
+**Only the homepage has a second bar at all.** So the 36% applies to
+exactly one page — a catalogue, which is the page a reader is *least*
+likely to turn sideways. The pages where landscape genuinely happens, a
+chart, a PDF, a long article, have never had more than the 72px header.
+
+So the change optimised the one page the problem is least real on, and
+paid for it in the one place the cue exists. It is out.
+
+**The lesson is not "don't measure the height".** The height measurement
+was correct and is worth keeping: 142px on a 390px screen is a real
+number and would be a real fault on a page a reader actually holds
+sideways. The lesson is that **a percentage is not a finding until you
+know which page it is on and who is standing there** — and that this
+file's own rule, *a judgement needs looking at and not only measuring*,
+applies to layout exactly as it applies to type. The eye and the
+arithmetic disagreed; the eye won; the same ending as `pretty` beating
+`balance`, and as the toolbar row-gap built on correct arithmetic and
+taken out again.
+
+Written down rather than quietly dropped, so the next person who
+measures 36% does not build it a second time.
+
+### A link to the page you are on is not a way anywhere
+
+**At 320px, half the navigation did nothing.** Below 390 a generated
+page drops the two links marked `nav-anchor`, leaving two — and on a
+landing page one of those two was the page the reader was standing on:
+
+```
+  /fatawa/  at 320px      Author, Fatāwā      ← Fatāwā is this page
+  /author/  at 320px      Author, Fatāwā      ← Author is this page
+```
+
+The self-link stands down now and the **Library** comes back in its
+place, which is the one destination the wordmark beside it does not
+already reach. CSS alone, through `:has()` — no builder changed, no page
+regenerated. Every page type at 320px now shows two working links and no
+self-link, with no overflow.
+
+**No width loses a link it had**, which is this file's own rule: what
+goes is a link to here.
+
+### A guard can encode the symptom instead of the rule
+
+*the two landing pages* asserted **"still offers Author and Fatāwā"** at
+every narrow width, with a comment giving the real reason beside it —
+*"the two that are pages of their own stay: nothing else on the site
+links to them."*
+
+Those two sentences are not the same, and the difference is invisible
+until the day one of those pages is the page you are on. The rule is
+**reachable**; the assertion said **shown**. So the change above turned
+it red on three widths, which reads exactly like a regression and is
+not one: standing in a room is not the same as having no way into it.
+
+It asserts *reachable or underfoot* now, and it was **widened rather
+than relaxed** — it runs over a post page as well as the fatāwā page,
+so the original rule is still exercised with teeth where neither link is
+current. **When an existing guard goes red, read its comment before its
+assertion**: the comment here had the rule right all along.
+
+### The current page was marked for a screen reader and not for the eye
+
+`pageNav` writes `aria-current="page"` on the link answering to the page
+being written. The stylesheet had **nothing** for it — while
+`.category-nav a[aria-current]` directly above carried the full
+vocabulary for the very same attribute: a warm ground, a gold-dim
+border, 700 weight and an inset lapis rule.
+
+Quieter than a pill, deliberately: the weight and the lapis rule, no
+ground. A pill is a control you are about to press; these are the site's
+own chrome. Lapis because it is a statement about **where you are**,
+which is the one job that colour has here, and which the pill's own
+comment already says.
+
+### Five probes were wrong before one was right
+
+Every suspicion raised in this sweep except three was the measurement,
+not the page. Written down together because the rate is the point:
+
+- **The strip marks the section above the one you are in.** `markPlace`
+  counts a section as reached at `LINE = 150`, and the probe had parked
+  the heading at 160 — **ten pixels short**. From a fair position all
+  eight sections mark correctly, and the pill scrolls into view every
+  time.
+- **`.category-arrow` is 42px, under the 44 minimum.** The box is 44.
+  The prober steps one pixel inside each edge, so it can only ever
+  report 42 for a 44px control.
+- **The recent strip's arrow cannot be tapped at all.** It was below the
+  fold when `elementFromPoint` was asked.
+- **`min-height: calc(100vh - 190px)` is the classic mobile trap.** It
+  resolves to 654px and the shortest work page is 1,167px, so it never
+  binds. A real trap in general; not one here.
+- **The carousel's peek is 432px in landscape and 905px on a desktop**,
+  against a documented constant 88. The formula measured the gap after
+  the *second* card instead of the sliver of the first one that does not
+  fit. Measured properly it is **88px at 320, 390, 620, 844, 1280 and
+  1920** — the design holds exactly as written.
+
+Three were real: the sticky bars in landscape, the self-link, and the
+unmarked current page.
+
+### The animations needed nothing, and that was measured rather than assumed
+
+Asked of the whole set at four sizes and in both engines, after the
+sticky change: the carousel advances on its own at 320, 390, 844×390 and
+1280; the cards rise; **all eight category icons draw at every size**;
+the section rulings go 0 → 1 as they are reached in portrait and in
+landscape alike; the reading line fills; the end-mark and the kind mark
+are present. Under `prefers-reduced-motion` the rulings are already
+drawn and the reading line is hidden, in Chromium and in WebKit.
+
+Worth recording as plainly as a fault: the answer to "what about the
+animations on mobile" is **nothing**, and it is only worth saying
+because it was measured.
+
+
+### A sleep that is usually long enough, seen failing, and the fix that was worse
+
+The icon-stagger guard scrolled the page in steps with a 160ms wait on
+each, and was seen going red **once in eight runs** — in the group
+*below* the one whose fault was being restored, which is the worst way
+for a flake to show: it reads as the change under test having broken
+something unrelated.
+
+**The first fix made it fail every time.** It waited, at each step, for
+every icon currently in the viewport to have drawn — and an icon only
+half in view never qualifies, because `drawIconsOnEntry` observes at
+`threshold: 0.5` with a `-12%` margin. So the condition was unreachable
+at most steps, every one of them waited out its timeout, and the run
+came back red three times out of three. Worse than the flake it
+replaced, and shipped nowhere.
+
+What works is one wait at the **foot** of the scroll, for a condition
+that is actually reachable: every icon drawn. Three clean runs after,
+against one failure in eight before.
+
+Two things worth keeping. **A fix for a flake has to be run more than
+once** — a single green run proves nothing about a fault that appears
+one time in eight. And when a test change makes things worse, it goes
+back out: the bar for a guard is not "it passed this time".
+
+
 ## Working on this
 
 - Preview: open `index.html` directly, or `python -m http.server 4173`.

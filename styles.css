@@ -1386,6 +1386,23 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   box-shadow: inset 0 -2px 0 var(--lapis);
 }
 
+/* And the same statement in the header, which had the attribute and no
+   treatment at all. `pageNav` writes `aria-current="page"` on the link
+   that answers to the page you are on — so a screen reader was told
+   which page that is and a reader looking at the screen was not, while
+   the pills above had the full vocabulary for the very same attribute.
+
+   Quieter than a pill, deliberately: a pill is a control you are about
+   to press and these are the site's own chrome, so this takes the
+   weight and the lapis rule and none of the ground. Lapis because it is
+   a statement about WHERE you are, which is the one job that colour
+   has here. */
+.header-nav a[aria-current] {
+  color: var(--ink-title);
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--lapis);
+}
+
 /* 5 ── Hero ───────────────────────────────────────────────── */
 
 .hero {
@@ -2625,6 +2642,18 @@ body.is-searching .rulings h2 { margin-bottom: 26px; }
    Fatawa are pages that exist nowhere else. */
 @media (max-width: 389px) {
   .header-nav .nav-anchor { display: none; }
+  /* Below this width only two links fit, and on a generated page one of
+     the two was the page the reader is already standing on: at 320px
+     `/fatawa/` showed Author and Fatawa, and `/author/` showed Author
+     and Fatawa, with the current one of the pair going nowhere. Half
+     the navigation doing nothing is worse than a narrower header.
+
+     So the self-link stands down and the Library comes back in its
+     place — the one destination a reader on a record page most wants
+     and the only one the wordmark beside it does not already reach by
+     itself. No width loses a link it had: what goes is a link to here. */
+  .header-nav a[aria-current] { display: none; }
+  .header-nav:has(a[aria-current]) a[href$="#library"] { display: inline; }
 }
 
 /* The back link and the link on to the fatawa page are both --moss,

@@ -3902,26 +3902,40 @@ try {
        390. What must never happen at any width is the header clipping —
        a link half off the edge of the screen is not a link. */
     for (const width of [320, 360, 375, 390, 414, 1280]) {
-      const { context, page } = await open(width, '/fatawa/index.html');
-      const nav = await page.evaluate(() => {
-        const n = document.querySelector('.header-nav');
-        const shown = [...n.querySelectorAll('a')]
-          .filter((a) => a.getBoundingClientRect().width > 0)
-          .map((a) => a.textContent.trim());
-        return { over: Math.round(n.scrollWidth - n.clientWidth), shown };
-      });
-      t('the header does not clip at ' + width + 'px', nav.over <= 0,
-        'overflows by ' + nav.over + 'px, showing ' + nav.shown.join(', '));
-      /* Whatever else is dropped, the two that are pages of their own
-         stay: nothing else on the site links to them. */
-      /* Named from content.js now, not from a second copy in pageNav —
-         which is how this link read "Fatāwā" on the homepage and
-         "Fatawa" here for as long as both existed. Matched on the stem
-         so the guard is about the link being present, not its spelling. */
-      t('  …and still offers Author and Fatāwā at ' + width + 'px',
-        nav.shown.includes('Author') && nav.shown.some((s) => /^Fat[aā]w/.test(s)),
-        nav.shown.join(', '));
-      await context.close();
+      for (const path of ['/fatawa/index.html', '/posts/choice-of-words.html']) {
+        const { context, page } = await open(width, path);
+        const nav = await page.evaluate(() => {
+          const n = document.querySelector('.header-nav');
+          const all = [...n.querySelectorAll('a')];
+          const shown = all.filter((a) => a.getBoundingClientRect().width > 0)
+            .map((a) => a.textContent.trim());
+          return { over: Math.round(n.scrollWidth - n.clientWidth), shown,
+            here: (all.find((a) => a.getAttribute('aria-current')) || {}).textContent };
+        });
+        const where = path.split('/')[1];
+        t('the header does not clip at ' + width + 'px on /' + where + '/', nav.over <= 0,
+          'overflows by ' + nav.over + 'px, showing ' + nav.shown.join(', '));
+        /* Whatever else is dropped, the two that are pages of their own
+           stay REACHABLE: nothing else on the site links to them.
+
+           Reachable, not shown, and the difference is the whole of what
+           this assertion learned. It used to read "still offers Author
+           and Fatāwā", which is the same thing on every page except the
+           two where one of them IS the page — and there the link went
+           nowhere while a useful one stood down for it. Standing in a
+           room is not the same as having no way into it.
+
+           Named from content.js, not from a second copy in pageNav —
+           which is how this link read "Fatāwā" on the homepage and
+           "Fatawa" here for as long as both existed. Matched on the
+           stem, so the guard is about the link, not its spelling. */
+        const reaches = (name, test) =>
+          nav.shown.some(test) || (nav.here && test(nav.here.trim()));
+        t('  …and Author and Fatāwā are each reachable or underfoot at ' + width + 'px on /' + where + '/',
+          reaches('Author', (x) => x === 'Author') && reaches('Fatawa', (x) => /^Fat[aā]w/.test(x)),
+          'showing ' + nav.shown.join(', ') + (nav.here ? '; standing on ' + nav.here.trim() : ''));
+        await context.close();
+      }
     }
 
     /* A page in the sitemap that nothing links to is an orphan, and both
@@ -5331,6 +5345,22 @@ try {
         await page.evaluate((to) => scrollTo(0, to), y);
         await page.waitForTimeout(160);
       }
+      /* One wait for the thing itself at the foot, rather than trusting
+         that 160ms was enough on the last step. Seen failing once in
+         eight runs without it — and a sleep that is usually long enough
+         is a flake with a timer on it.
+
+         A per-step version of this was tried first and was WORSE: it
+         waited for every icon currently in the viewport to have drawn,
+         and an icon only half in view never qualifies under the
+         observer's own threshold, so it waited out its timeout at every
+         step and the run came back red every time. The whole-page
+         condition is the one that is actually reachable. */
+      await page.waitForFunction(
+        () => [...document.querySelectorAll('.category-icon')]
+          .every((e) => e.classList.contains('icon-draw')),
+        undefined, { timeout: 5000 }
+      ).catch(() => {});
       const read = await page.evaluate(() => ({
         icons: [...document.querySelectorAll('.category-icon')]
           .map((e) => parseFloat(e.style.getPropertyValue('--draw-delay')) || 0),
@@ -5661,6 +5691,93 @@ try {
     t('and a reader who asked for less motion is shown no bar rather than a full one',
       quiet.half.display === 'none',
       'display ' + quiet.half.display + ', transform ' + quiet.half.transform);
+  }
+
+  /* ---- Which page you are on ----
+
+     `pageNav` writes `aria-current="page"` on the link answering to the
+     page being written, and the stylesheet had nothing for it — so a
+     screen reader was told and a reader looking at the screen was not,
+     while the category pills carried the full vocabulary for the very
+     same attribute. */
+  group('the header says which page you are on, to the eye as well');
+  {
+    const look = async (path, width) => {
+      const { context, page } = await open(width || 620, path);
+      const seen = await page.evaluate(() => {
+        const links = [...document.querySelectorAll('.header-nav a')];
+        const here = links.find((a) => a.getAttribute('aria-current'));
+        const other = links.find((a) => !a.getAttribute('aria-current')
+          && a.getBoundingClientRect().width > 0);
+        const read = (el) => el && { weight: getComputedStyle(el).fontWeight,
+          rule: getComputedStyle(el).boxShadow, text: el.textContent.trim() };
+        return { here: read(here), other: read(other), count: links.filter((a) => a.getAttribute('aria-current')).length };
+      });
+      await context.close();
+      return seen;
+    };
+    const fatawa = await look('/fatawa/index.html');
+    const author = await look('/author/index.html');
+    const post = await look('/posts/choice-of-words.html');
+
+    t('a landing page marks exactly one link as the page you are on',
+      fatawa.count === 1 && author.count === 1,
+      'fatawa ' + fatawa.count + ', author ' + author.count);
+    /* A record page is not one of the four, so none of them is current
+       — which says the attribute means something rather than being
+       sprayed everywhere. */
+    t('and a record page marks none of them', post.count === 0, 'marked: ' + post.count);
+    t('the marked link is heavier than its neighbours',
+      Number(fatawa.here.weight) > Number(fatawa.other.weight)
+        && Number(author.here.weight) > Number(author.other.weight),
+      fatawa.here.text + ' ' + fatawa.here.weight + ' against ' + fatawa.other.text + ' ' + fatawa.other.weight);
+    /* The rule under it, which is what makes it read as a place rather
+       than as emphasis. Measured as "it has one and its neighbour does
+       not" rather than by naming a colour, so the value can move. */
+    t('and carries a rule its neighbours do not',
+      fatawa.here.rule !== 'none' && fatawa.other.rule === 'none'
+        && author.here.rule !== 'none',
+      'here: ' + fatawa.here.rule + ' | neighbour: ' + fatawa.other.rule);
+  }
+
+  /* ---- A link to here is not a way anywhere ----
+
+     Below 390px a generated page shows two links, and on a landing page
+     one of the two was the page the reader was already standing on. */
+  group('no width offers a link to the page you are already on');
+  {
+    const narrow = [];
+    for (const path of ['/fatawa/index.html', '/author/index.html',
+                        '/posts/choice-of-words.html', '/index.html']) {
+      for (const width of [320, 360, 389]) {
+        const { context, page } = await open(width, path);
+        narrow.push([path, width, await page.evaluate(() => {
+          const shown = [...document.querySelectorAll('.header-nav a')]
+            .filter((a) => a.getBoundingClientRect().width > 0);
+          return { names: shown.map((a) => a.textContent.trim()),
+            self: shown.filter((a) => a.getAttribute('aria-current')).length,
+            overflow: Math.round(document.documentElement.scrollWidth) - window.innerWidth };
+        })]);
+        await context.close();
+      }
+    }
+    t('every narrow page still offers somewhere to go',
+      narrow.every(([, , r]) => r.names.length >= 2),
+      narrow.map(([p, w, r]) => p.split('/')[1] + '@' + w + ': ' + r.names.length).join(' | '));
+    t('and none of what it offers is the page you are on',
+      narrow.every(([, , r]) => r.self === 0),
+      narrow.filter(([, , r]) => r.self).map(([p, w, r]) => p + '@' + w + ' shows ' + r.names.join('/')).join(' | '));
+    /* The point of the swap: the Library is what comes back in the
+       self-link's place, and it is the destination the wordmark beside
+       it does not already reach. */
+    t('a landing page offers the library in its place',
+      narrow.filter(([p]) => p === '/fatawa/index.html' || p === '/author/index.html')
+        .every(([, , r]) => r.names.includes('Library')),
+      narrow.filter(([p]) => p.includes('index.html') && !p.startsWith('/index'))
+        .map(([p, w, r]) => p.split('/')[1] + '@' + w + ': ' + r.names.join(', ')).join(' | '));
+    t('and nothing pushes the header sideways at any of those widths',
+      narrow.every(([, , r]) => r.overflow <= 0),
+      narrow.filter(([, , r]) => r.overflow > 0).map(([p, w, r]) => p + '@' + w + ' +' + r.overflow).join(' | '));
   }
 
   t('nothing threw along the way', threw.length === 0, threw.join(' | '));
