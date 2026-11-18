@@ -1393,6 +1393,40 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 50%;
 }
+/* Above this width the hero's right-hand half carries no words at all —
+   44% of it empty at 1280px and 49% at 1920 — and the only thing in it
+   was the plain circle above. The ten-fold rosette is the Zakat
+   calculator's own geometry, already in this file for the fatawa panel
+   and the footer, so the hero stops being the one dark surface on the
+   site that does not carry the site's own figure. It costs no request:
+   --rosette is an inline data: URI.
+
+   1280px and not 1240, and the gate is a measurement rather than a
+   round number. The figure's left edge sits at `width - 520px`, and the
+   widest hero ink ends at 710px at 1240 and 713px at 1280 — so 1240
+   clears by ten pixels and 1280 by forty-seven, growing from there.
+   This file has already recorded what a ten-pixel margin is worth: it
+   passes on one container and fails on the next.
+
+   It must NOT reach a phone, and that is measured rather than taken on
+   the rule alone. At 390px the figure runs under the body copy and
+   takes the Urdu line from 5.09 to 4.47 — under the 4.5 floor, on the
+   smallest and most fragile text in the hero. Below this width nothing
+   changes and the circle stays exactly as it was. */
+@media (min-width: 1280px) {
+  .hero::after {
+    right: -200px;
+    bottom: -180px;
+    width: 720px;
+    height: 720px;
+    border: 0;
+    border-radius: 0;
+    background-image: var(--rosette);
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+  }
+}
+
 .hero > * { position: relative; z-index: 1; }
 /* The hero is dark in both themes, so the primary call to action on it
    must not follow the theme — and it did. Measured against the hero's own
@@ -3649,7 +3683,26 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
   line-height: 1.65;
 }
 
+/* Set left-to-right whatever the piece is, the same decision
+   `.more-like` below it already makes and for the same reason: this is
+   the site's own way back to its own index, in the site's own English,
+   not the author's words in the piece.
+
+   `.more-like` got that treatment when it was written and this, its
+   sibling directly above it, did not — so on eight Urdu posts the foot
+   read `All posts` with the arrow on its RIGHT, pointing INTO the words
+   instead of away from them, while the block beneath it sat correctly
+   on the left. The arrow is the tell, exactly as it was for
+   `.more-like`: `<-` is first in the source, and a right-reading line
+   paints the first character rightmost.
+
+   `direction` alone, with no `text-align` beside it. The pair was
+   rendered both ways and the two screenshots are byte-identical: the
+   alignment here is inherited `start`, and `start` follows the
+   direction. A declaration that changes nothing would only read as
+   though it were load-bearing. */
 .post-foot {
+  direction: ltr;
   display: flex;
   flex-wrap: wrap;
   gap: 18px;

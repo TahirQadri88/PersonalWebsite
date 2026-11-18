@@ -5241,6 +5241,191 @@ try {
       moved.length + ' changed, e.g. day ' + (moved[0] || '-') + ' / night ' + (night[day.indexOf(moved[0])] || '-'));
   }
 
+  /* ---- The hero's own figure ----
+
+     The hero's right-hand half carries no words above about 1200px —
+     44% of it empty at 1280 and 49% at 1920 — and what sat in it was a
+     plain circle, on the one dark surface of the site that did not
+     carry the site's own geometry. The ten-fold rosette was already in
+     the stylesheet for the fatawa panel and the footer.
+
+     What is asserted is the SWAP and the GATE, not a pixel count. The
+     gate is the whole safety argument: at 390px the figure runs under
+     the body copy and takes the Urdu line from 5.09 to 4.47, under the
+     4.5 floor, which is why a phone must keep the circle. */
+  group('the hero carries the site\'s own figure, and only where there is room for it');
+  {
+    const ornament = async (width) => {
+      const { context, page } = await open(width);
+      const seen = await page.evaluate(() => {
+        const s = getComputedStyle(document.querySelector('.hero'), '::after');
+        return { image: s.backgroundImage, border: parseFloat(s.borderTopWidth) || 0, width: parseFloat(s.width) || 0 };
+      });
+      await context.close();
+      return seen;
+    };
+    const phone = await ornament(390), narrow = await ornament(1279), wide = await ornament(1280);
+
+    t('a phone keeps the plain ring and is handed no pattern',
+      phone.image === 'none' && phone.border > 0,
+      'image ' + phone.image.slice(0, 40) + ', border ' + phone.border);
+    /* 1279 and 1280 rather than 390 and 1440, because what can break is
+       the gate itself: a guard that only looks at the two ends passes a
+       breakpoint moved anywhere between them. */
+    t('the figure is still withheld one pixel below the gate',
+      narrow.image === 'none' && narrow.border > 0, 'at 1279px: ' + narrow.image.slice(0, 40));
+    t('and the gate opens at 1280',
+      wide.image !== 'none' && wide.border === 0 && wide.width > 600,
+      'at 1280px: border ' + wide.border + ', ' + wide.width + 'px, image ' + wide.image.slice(0, 30));
+    /* The same figure the rest of the site draws, not a second one
+       copied in. A hand-written near-copy is how two ornaments come to
+       be one hand apart, which this repository has paid for with a
+       standfirst patched in one builder and not the other. */
+    const { context, page } = await open(1280);
+    const same = await page.evaluate(() => {
+      const url = (v) => (v.match(/url\(("|')?(.*?)\1?\)/) || [])[2] || '';
+      const hero = url(getComputedStyle(document.querySelector('.hero'), '::after').backgroundImage);
+      const rulings = url(getComputedStyle(document.querySelector('.rulings')).backgroundImage);
+      return { hero, rulings, shared: hero !== '' && hero === rulings };
+    });
+    await context.close();
+    /* The two URLs compared whole, and that is not fussiness. The first
+       version of this asked whether the panel's image CONTAINED the
+       hero's, which with the figure taken out asks whether a data: URI
+       contains the string `none` — and the rosette's own path carries
+       `fill='none'`, so it does. The assertion passed with the hero
+       bare: a test that cannot fail, caught the only way these ever
+       are, by putting the fault back and watching it stay green. */
+    t('and it is the same figure the fatawa panel draws, not a copy of it', same.shared,
+      'hero ' + (same.hero.slice(0, 50) || '(none)') + ' / panel ' + same.rulings.slice(0, 50));
+  }
+
+  /* ---- A stagger needs something to stagger ----
+
+     The category icons draw themselves on with a delay taken from how
+     many had gone before. The comment that justified it said seven of
+     them should read as one movement rather than seven — and measured
+     on the page there are never seven: eight icons, at most two on a
+     phone screen and three on a desktop, 270 to 1752px apart. Each
+     arrives alone, so the last three were sitting at the 450ms cap, and
+     `both` fill holds the from-state through a delay: a fully dashed-off
+     stroke. The seventh icon was blank for 450ms after its heading
+     appeared and unfinished until 1,150ms.
+
+     This is the group that would have caught it, and the one that would
+     catch a running counter being put back. */
+  group('an icon that arrives alone is not made to wait for a stagger');
+  {
+    const delays = async (width, height) => {
+      const context = await browser.newContext({ viewport: { width, height } });
+      await context.route('https://fonts.g**', (r) => r.abort());
+      const page = await context.newPage();
+      await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => document.fonts.ready);
+      /* The page scrolls smoothly, which is asynchronous, so a probe
+         that scrolls and measures two frames later reads a stale
+         position. The same trap the category rail's own guard records. */
+      await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto'; });
+      const tall = await page.evaluate(() => document.body.scrollHeight);
+      for (let y = 0; y < tall; y += Math.round(height * 0.6)) {
+        await page.evaluate((to) => scrollTo(0, to), y);
+        await page.waitForTimeout(160);
+      }
+      const read = await page.evaluate(() => ({
+        icons: [...document.querySelectorAll('.category-icon')]
+          .map((e) => parseFloat(e.style.getPropertyValue('--draw-delay')) || 0),
+        drawn: [...document.querySelectorAll('.category-icon')]
+          .filter((e) => e.classList.contains('icon-draw')).length,
+        together: (() => {
+          const tops = [...document.querySelectorAll('.category-icon')]
+            .map((e) => e.getBoundingClientRect().top + scrollY);
+          let best = 0;
+          for (const a of tops) best = Math.max(best, tops.filter((b) => b >= a && b < a + innerHeight).length);
+          return best;
+        })(),
+        cards: [...document.querySelectorAll('.recent-card')]
+          .map((e) => parseFloat(e.style.getPropertyValue('--rise-delay')) || 0)
+      }));
+      await context.close();
+      return read;
+    };
+    const phone = await delays(390, 844), desk = await delays(1280, 900);
+
+    /* Count what you matched: an assertion over delays says nothing if
+       nothing was ever drawn. */
+    t('every category icon was reached and drawn', phone.drawn === phone.icons.length && phone.drawn >= 7,
+      phone.drawn + ' of ' + phone.icons.length + ' drawn');
+    /* The premise the old stagger rested on, asserted so that it fails
+       if the page ever does put a row of icons on one screen — at which
+       point a stagger would be right again and this group should be
+       re-argued rather than deleted. */
+    t('the icons are spread down the page rather than sharing a screen',
+      phone.together <= 3 && desk.together <= 3,
+      'most on one screen: ' + phone.together + ' at 390px, ' + desk.together + ' at 1280');
+    t('so none of them is held back before it draws',
+      Math.max(...phone.icons, ...desk.icons) === 0,
+      '390px ' + phone.icons.join(', ') + ' | 1280px ' + desk.icons.join(', '));
+    /* The companion half, and the reason the fix went on one function
+       and not both: the recent strip's cards really do arrive together,
+       so their stagger is a stagger. A change that flattened these too
+       would be taking away something that works. */
+    t('while the recent strip, whose cards do arrive together, keeps its stagger',
+      desk.cards.length >= 5 && desk.cards[0] === 0 && desk.cards[4] === 280,
+      '1280px cards: ' + desk.cards.join(', '));
+  }
+
+  /* ---- The way back is the site's own words ----
+
+     `.more-like` is set left-to-right whatever the piece is, and the
+     note on it names the tell: an arrow mirrored to the front of the
+     phrase it was meant to lead away from. `.post-foot` is its sibling
+     directly above and never got the same treatment, so on eight Urdu
+     posts the foot read `All posts` with the arrow on its RIGHT,
+     pointing into the words, above a block correctly sitting left. */
+  group('the way back out of a piece reads the way the site reads');
+  {
+    const urdu = ['/posts/choice-of-words.html', '/posts/hunar-nahin-amanat.html'];
+    const latin = ['/posts/books-that-arent-coming-back.html'];
+    const look = async (path) => {
+      const { context, page } = await open(390, path);
+      const seen = await page.evaluate(() => {
+        const a = document.querySelector('.post-foot .text-link');
+        if (!a) return null;
+        const link = a.getBoundingClientRect();
+        /* Where the arrow LANDS, never where it sits in the source:
+           textContent is source order and direction changes only what
+           is painted, which this suite has already recorded as an
+           assertion that could not fail. */
+        const r = document.createRange();
+        r.setStart(a.firstChild, 0);
+        r.setEnd(a.firstChild, 1);
+        const mark = r.getBoundingClientRect();
+        const onward = document.querySelector('.more-like');
+        return {
+          dir: getComputedStyle(a).direction,
+          arrowLeads: (mark.left + mark.right) / 2 < (link.left + link.right) / 2,
+          startsAt: Math.round(link.left),
+          onwardStartsAt: onward ? Math.round(onward.getBoundingClientRect().left) : null
+        };
+      });
+      await context.close();
+      return seen;
+    };
+    const rows = [];
+    for (const p of urdu.concat(latin)) rows.push([p, await look(p)]);
+
+    t('every piece has a way back to measure', rows.every(([, r]) => r), rows.length + ' pages');
+    t('the arrow leads away from the words, not into them',
+      rows.every(([, r]) => r && r.arrowLeads),
+      rows.map(([p, r]) => p + ' ' + (r && r.arrowLeads ? 'leads' : 'points back')).join(' | '));
+    /* And it agrees with the block beneath it. Direction alone settles
+       both — the alignment here is inherited `start` — so this is the
+       assertion that would notice the two parting again. */
+    t('and it begins on the same edge as the More-in block under it',
+      rows.every(([, r]) => r && r.onwardStartsAt !== null && Math.abs(r.startsAt - r.onwardStartsAt) <= 2),
+      rows.map(([p, r]) => p + ' foot ' + r.startsAt + ' vs onward ' + r.onwardStartsAt).join(' | '));
+  }
+
   t('nothing threw along the way', threw.length === 0, threw.join(' | '));
 } finally {
   await browser.close();

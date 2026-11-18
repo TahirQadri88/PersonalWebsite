@@ -601,13 +601,34 @@
     var targets = (root || document).querySelectorAll('.category-icon');
     if (!targets.length) return;
 
-    var seen = 0;
     var watcher = new IntersectionObserver(function (entries) {
+      /* Counted per arrival, not for the life of the page, and that is
+         the whole fix. A stagger says "these came together"; it has
+         nothing to say about an icon that came alone.
+
+         The count used to run from the first icon to the last, on the
+         reasoning written here — that a stagger would make seven of
+         them read as one movement rather than seven. Measured on the
+         rendered page, there are never seven: eight icons, at most two
+         on a phone screen and three on a desktop, sitting 270 to
+         1752px apart. Each arrives by itself and was taking a delay
+         from how many had gone before, so the last three sat at the
+         450ms cap. `both` fill holds the from-state through a delay,
+         and the from-state is a fully dashed-off stroke — so the
+         seventh category's icon was measured BLANK for 450ms after its
+         heading appeared, and not finished drawing until 1,150ms. A
+         heading with a missing icon beside it reads as a page still
+         loading, not as an arrival.
+
+         `.recent-card` keeps its running count deliberately: those are
+         a row, and they were measured arriving in one batch of five on
+         a desktop and two on a phone, which is a stagger with
+         something to stagger. */
+      var seen = 0;
       entries.forEach(function (entry) {
         if (!entry.isIntersecting) return;
-        /* A short stagger so seven of them read as one movement rather
-           than seven. Capped: past a handful the last would be waiting
-           long enough to look broken. */
+        /* Capped all the same: a batch larger than a handful would
+           leave its last icon waiting long enough to look broken. */
         entry.target.style.setProperty('--draw-delay', Math.min(seen, 5) * 90 + 'ms');
         entry.target.classList.add('icon-draw');
         seen += 1;

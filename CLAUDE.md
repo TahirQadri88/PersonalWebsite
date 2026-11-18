@@ -66,6 +66,8 @@ Each line is the rule; the reasoning is in `docs/LESSONS.md` under the same name
 - A new field must be added to `writeRecord` in `admin.js` or a publish drops it.
 - A field the form offers and the page ignores is a button that does not do what it says.
 - A kind, a description and a date are each shown in the language the record reads in.
+- The site's own words about the library — the way back, More in, the meta line —
+  are set in the site's own direction, whatever the piece is.
 - A publish sends only the records whose signature moved, plus the files built from
   the whole library. No baseline means send everything; **Rebuild every page** forces it.
 
@@ -90,6 +92,8 @@ Each line is the rule; the reasoning is in `docs/LESSONS.md` under the same name
   `box-shadow`. A sweep that looks for one will not see the others.
 - Contrast says whether a word can be read. It says nothing about whether a card
   looks like a card.
+- An ornament goes where the words are not, and the width it is safe at is a
+  measurement. The site has one figure of its own; do not draw a second.
 
 **Motion and behaviour**
 
@@ -97,6 +101,8 @@ Each line is the rule; the reasoning is in `docs/LESSONS.md` under the same name
   `prefers-reduced-motion` must each leave the thing exactly as it should look.
 - Nothing may start invisible waiting for a script to reveal it.
 - A scroll written in JavaScript is motion too.
+- A stagger says "these arrived together". Count it per arrival, never for the
+  life of the page, or a thing that arrives alone is held back for a group of one.
 - A control that fails must say so. A silent control is indistinguishable from a broken one.
 - An error should name its own remedy.
 
@@ -120,6 +126,7 @@ Each line is the rule; the reasoning is in `docs/LESSONS.md` under the same name
 - A guard that inspects only what is marked cannot see what is not.
 - A guard whose subject the fixture cannot produce asserts nothing. Label it a
   companion, or verify that half outside the suite, and say which.
+- Measure the ink, not the element's box. A box is wider than its words.
 - Do not reach for `networkidle` in these suites.
 
 ## Testing — what to run and when
