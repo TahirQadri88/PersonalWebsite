@@ -107,6 +107,10 @@ Each line is the rule; the reasoning is in `docs/LESSONS.md` under the same name
 - A scroll written in JavaScript is motion too.
 - A scroll-driven animation (`animation-timeline`) ignores the reduced-motion block's
   duration rule. `auto` hands it back to the clock; `none` pins it invisible for ever.
+- A view-timeline cannot be measured without waiting two frames after the scroll.
+  Read it in the same tick and you get the value from before the jump.
+- Motion may touch content only where no case can leave it invisible, and only if
+  nothing is still fading in the upper third of the screen.
 - A rule that fails to animate is still a rule. A progress bar that fails to animate
   is a false statement — put that one behind `@supports`.
 - A stagger says "these arrived together". Count it per arrival, never for the
@@ -140,6 +144,8 @@ Each line is the rule; the reasoning is in `docs/LESSONS.md` under the same name
   have encoded the symptom where the comment had the rule right.
 - Measure the ink, not the element's box. A box is wider than its words.
 - Do not reach for `networkidle` in these suites.
+- Run a suite several times before believing a flake is fixed, and apply a fault,
+  run, and restore in one command so nothing else is editing the file.
 
 ## Testing — what to run and when
 
