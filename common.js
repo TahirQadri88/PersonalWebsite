@@ -2241,6 +2241,30 @@
     }
   }
 
+  /* ---- The arrival, for a browser that cannot drive one ----
+
+     `.work-category` and `.ruling` rise on a view timeline, which is CSS
+     and needs no script — on a browser that HAS one. Scroll-driven
+     animations reached Safari only in version 26, so an iPhone a year
+     behind drops the declaration, fills to the end state, and shows no
+     arrival at all. That is safe, and it is not what was asked for: the
+     reader who wanted the motion is the likeliest to be on the older
+     Safari.
+
+     So where the timeline is missing, the observer the recent strip has
+     always used does the same job. The browser is ASKED rather than
+     sniffed by name, and this is a fallback only — where `view()` works
+     the CSS is in charge and nothing is mounted at all.
+
+     It sits outside the `if (mine)` block above on purpose: those cards
+     are on the homepage and the fatawa page, where no record claims the
+     address, and the first version of this was written inside it and
+     would have run nowhere. */
+  if (!(window.CSS && CSS.supports && CSS.supports('animation-timeline: view()'))) {
+    revealOnEntry('.work-category, .ruling');
+  }
+
+
   /* Day or night, as a control rather than only a guess about the device.
 
      The stylesheet already answers everybody who has not chosen: that is

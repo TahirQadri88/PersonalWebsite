@@ -543,6 +543,7 @@
   dots(recentRail, recentTrack, recentRails && recentRails.ends, stopMoving);
   site.revealOnEntry('.recent-card');
 
+
   /* The ticker that used to live here is gone, and with it the clone of
      the whole set, the seam arithmetic that made the loop join, and the
      hover-to-pause that a touchscreen could never reach. What replaced
@@ -806,4 +807,23 @@
 
   var bio = document.getElementById('bio');
   if (bio && (window.location.hash === '#bio' || window.location.hash === '#about')) bio.open = true;
+
+  /* ---- The arrival, where the browser cannot drive one ----
+
+     The library's panels and the ruling cards rise on a view timeline,
+     which is CSS and needs nothing from here — on a browser that has
+     one. Safari got scroll-driven animations only in version 26, so an
+     iPhone a year behind shows no arrival at all; there `common.js`
+     falls back to the observer the recent strip has always used.
+
+     It has to be asked again from HERE, and from the very end, and both
+     of those were measured rather than reasoned. common.js runs before
+     this file, so on the homepage it found none of these cards — 0 of
+     15, against 8 of 8 on the fatawa page, which is generated. Moved up
+     beside the recent strip it found 7 of 15: the library's panels, but
+     not the rulings, which are rendered further down this file. After
+     everything, it finds all of them. */
+  if (!(window.CSS && CSS.supports && CSS.supports('animation-timeline: view()'))) {
+    site.revealOnEntry('.work-category, .ruling');
+  }
 })();
