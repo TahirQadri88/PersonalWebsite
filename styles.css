@@ -1182,6 +1182,25 @@ details[open] > summary .toggle { transform: rotate(45deg); }
    arrives and the heading shifts sideways when it lands. */
 .category-icon-slot { display: inline-flex; }
 
+/* Beside the kind on a record page, where the mark is LARGER than the
+   words rather than smaller — which is the opposite of the rule above
+   and is the same argument underneath it.
+
+   On a category head the drawing sits beside a heading and is held
+   under the cap height so as not to read as a second heading. Here it
+   sits beside `.section-label`, which is 15 to 16px, so 0.82em of that
+   is a 13px line drawing at 1.4 stroke: rendered and looked at, the
+   book closes up into a smudge, which is this file's own standing
+   complaint about Nastaliq at 13px arriving in a drawing instead.
+   0.82, 1.25 and 1.5em were drawn at the real size and read together;
+   1.5 is where a booklet is plainly a booklet and a seal a seal. */
+.work-hero .section-label .category-icon,
+.post-hero .section-label .category-icon {
+  width: 1.5em;
+  height: 1.5em;
+  vertical-align: -0.34em;
+}
+
 /* On the fatawa panel the gold has to be the on-dark one. This is the
    reason --gold-on-light and --gold-on-dark are two tokens, and an icon
    is no more exempt from it than a word is. */
@@ -1393,6 +1412,40 @@ details[open] > summary .toggle { transform: rotate(45deg); }
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 50%;
 }
+/* Above this width the hero's right-hand half carries no words at all —
+   44% of it empty at 1280px and 49% at 1920 — and the only thing in it
+   was the plain circle above. The ten-fold rosette is the Zakat
+   calculator's own geometry, already in this file for the fatawa panel
+   and the footer, so the hero stops being the one dark surface on the
+   site that does not carry the site's own figure. It costs no request:
+   --rosette is an inline data: URI.
+
+   1280px and not 1240, and the gate is a measurement rather than a
+   round number. The figure's left edge sits at `width - 520px`, and the
+   widest hero ink ends at 710px at 1240 and 713px at 1280 — so 1240
+   clears by ten pixels and 1280 by forty-seven, growing from there.
+   This file has already recorded what a ten-pixel margin is worth: it
+   passes on one container and fails on the next.
+
+   It must NOT reach a phone, and that is measured rather than taken on
+   the rule alone. At 390px the figure runs under the body copy and
+   takes the Urdu line from 5.09 to 4.47 — under the 4.5 floor, on the
+   smallest and most fragile text in the hero. Below this width nothing
+   changes and the circle stays exactly as it was. */
+@media (min-width: 1280px) {
+  .hero::after {
+    right: -200px;
+    bottom: -180px;
+    width: 720px;
+    height: 720px;
+    border: 0;
+    border-radius: 0;
+    background-image: var(--rosette);
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+  }
+}
+
 .hero > * { position: relative; z-index: 1; }
 /* The hero is dark in both themes, so the primary call to action on it
    must not follow the theme — and it did. Measured against the hero's own
@@ -2728,6 +2781,26 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
    leaving a single trailing word alone on its own line. */
 .work-hero h1.urdu { max-width: 18em; font-size: clamp(24px, 3.3vw, 44px); line-height: 1.95; }
 .work-hero h1.arabic { font-size: clamp(30px, 4vw, 54px); line-height: 1.6; }
+/* And one under the title itself, which is a piece's own first section
+   break. It sits above the fold, so there is nothing to scroll to and
+   `view()` would resolve to "already arrived" and draw nothing: this
+   one is simply timed, and draws once as the page opens.
+
+   The reduced-motion block reaches a timed animation correctly — it
+   takes the duration to nothing, so the rule is there at once — which
+   is exactly the difference from the scroll-driven one below. */
+.work-hero > h1::after,
+.post-hero > h1::after {
+  content: "";
+  display: block;
+  height: 2px;
+  margin-top: 0.42em;
+  background: var(--gold-rule);
+  transform-origin: left;
+  animation: rule-draw 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+[dir="rtl"] .work-hero > h1::after,
+[dir="rtl"] .post-hero > h1::after { transform-origin: right; }
 .work-page-description { max-width: 43em; margin: 24px 0 18px; color: var(--ink-quiet); font-size: 17px; }
 /* A paragraph in the other language, on either kind of page.
 
@@ -3454,6 +3527,129 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
   line-height: 1.35;
   color: var(--ink-title);
 }
+/* ---- The reading line ----
+
+   A hairline at the very top that fills as the reader moves through a
+   piece. The stocks article is 56 paragraphs; on a phone there is
+   otherwise no way to tell a third of the way in from four fifths.
+
+   There is NO SCRIPT behind this and no element in any page: the bar is
+   `body::before`, matched by `:has(#post-body)` so it appears only on a
+   page that holds a piece to read, and driven by `scroll()`. Both
+   engines in the container were checked for `:has()` and for
+   `scroll(root block)`, Safari's included. A work page is a download
+   and an app page is a thing to open — neither has a position to be a
+   third of the way through, and neither carries `#post-body`, so
+   neither gets a bar without being told.
+
+   It fills from the edge the piece reads from, which on an Urdu or
+   Arabic page is the right. `lang` on `<html>` is what each generated
+   page already states, so there is nothing new to write into one.
+
+   Behind `@supports`, and that is the difference from the ruled lines
+   above. A rule that fails to animate is simply a rule, which is fine;
+   a progress bar that fails to animate sits permanently FULL, which
+   tells the reader they have finished something they have not started.
+   Where the browser cannot drive it, there is no bar at all. */
+@supports (animation-timeline: scroll(root block)) {
+  body:has(#post-body)::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto;
+    height: 3px;
+    z-index: 60;
+    background: var(--gold-on-light);
+    transform-origin: left;
+    animation: rule-draw linear both;
+    animation-timeline: scroll(root block);
+  }
+  html[lang="ur"] body:has(#post-body)::before,
+  html[lang="ar"] body:has(#post-body)::before { transform-origin: right; }
+
+  /* Hidden outright for a reader who asked for less motion, rather than
+     handed back to the clock like the ruled lines. The block at the
+     foot of this file sets `animation-timeline: auto`, which finishes a
+     scroll-driven animation at once — right for a rule, and for a
+     progress bar it would mean a permanently full one, the same lie as
+     the unsupported case above. An indicator of unasked-for movement is
+     the one thing that reader loses nothing by not having. */
+  @media (prefers-reduced-motion: reduce) {
+    body:has(#post-body)::before { display: none; }
+  }
+}
+
+/* The mark at the end of a piece. Centred rather than set on the
+   reading edge, because it belongs to the article as a whole and not to
+   its last line — and because a library with pieces in three scripts
+   should not have its end-mark land somewhere different in each.
+
+   2.6em above it is the same step `.space-below` uses for a deliberate
+   break, which is twice an ordinary paragraph gap: it has to say "this
+   is the end", not "here is another paragraph". */
+.end-rule {
+  margin: 2.6em 0 0;
+  text-align: center;
+}
+.end-rule .end-mark {
+  width: 22px;
+  height: 22px;
+  color: var(--gold-rule);
+  opacity: 0.85;
+}
+
+/* A ruled line under each section of a piece, drawn as the reader
+   reaches it — the manuscript's own way of marking a section, and the
+   one place on this site where scroll-driven motion earns its keep.
+
+   On a long article it is doing real work rather than decorating: the
+   stocks piece is 56 paragraphs with nine of these headings, and
+   without them it reads as one slab of Nastaliq. Rendered with and
+   without, and read side by side, before being kept.
+
+   `animation-timeline: view()` and NOT an IntersectionObserver, which
+   is the whole reason this is possible now: no script, nothing added
+   to any page, and `common.js` need not be involved at all. Both
+   engines were checked in the container, Safari's included.
+
+   The three cases, each measured rather than assumed:
+
+   - No JavaScript: this is CSS. The rule is there and draws itself.
+   - An engine without scroll timelines — an iPhone a version or two
+     behind: the `animation-timeline` declaration is dropped, which
+     leaves a time-based animation of zero duration filling `both`, so
+     the rule computes to `scaleX(1)` and is simply drawn. Checked by
+     deleting the line and reading the computed transform.
+   - `prefers-reduced-motion`: the block at the foot of this file turns
+     animation DURATION down to nothing, and a scroll-driven animation
+     has no duration — its progress is the scrollbar. Measured: with
+     `reduce` set, this rule still drew itself exactly as before, and
+     at the top of the page it sat at `scaleX(0)`, invisible. So that
+     block names `animation-timeline: none` now, which is what actually
+     switches one off. */
+.post-body h2::after {
+  content: "";
+  display: block;
+  height: 2px;
+  margin-top: 10px;
+  background: var(--gold-rule);
+  opacity: 0.75;
+  /* The ruling grows from the edge the script begins on, so under Urdu
+     it is drawn right to left like the words above it. Physical, and
+     keyed off `dir`, for the reason `.own-edge-latin` gives: a logical
+     property here would be read two ways and this one must not be. */
+  transform-origin: left;
+  animation: rule-draw linear both;
+  animation-timeline: view();
+  /* Drawn over the stretch where the heading is arriving, finishing
+     well before it reaches the middle of the screen — a rule still
+     growing under a heading you have started reading is a fidget. */
+  animation-range: entry 15% cover 22%;
+}
+[dir="rtl"] .post-body h2::after { transform-origin: right; }
+@keyframes rule-draw {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
 /* Same heading face as a record's own title, one size down — an
    in-prose subheading is still a heading, just not the piece's own.
    An explicit size rather than the 1.32em above: that's relative to
@@ -3649,7 +3845,26 @@ footer a { color: var(--on-dark-bright); text-decoration: none; border-bottom: 1
   line-height: 1.65;
 }
 
+/* Set left-to-right whatever the piece is, the same decision
+   `.more-like` below it already makes and for the same reason: this is
+   the site's own way back to its own index, in the site's own English,
+   not the author's words in the piece.
+
+   `.more-like` got that treatment when it was written and this, its
+   sibling directly above it, did not — so on eight Urdu posts the foot
+   read `All posts` with the arrow on its RIGHT, pointing INTO the words
+   instead of away from them, while the block beneath it sat correctly
+   on the left. The arrow is the tell, exactly as it was for
+   `.more-like`: `<-` is first in the source, and a right-reading line
+   paints the first character rightmost.
+
+   `direction` alone, with no `text-align` beside it. The pair was
+   rendered both ways and the two screenshots are byte-identical: the
+   alignment here is inherited `start`, and `start` follows the
+   direction. A declaration that changes nothing would only read as
+   though it were load-bearing. */
 .post-foot {
+  direction: ltr;
   display: flex;
   flex-wrap: wrap;
   gap: 18px;
@@ -4306,6 +4521,20 @@ footer {
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  /* Duration is the wrong lever for a scroll-driven animation and the
+     line above does nothing to one: its progress is the scrollbar, not
+     a clock. Measured before this was written — with `reduce` set, a
+     `view()` rule drew itself exactly as it did without.
+
+     `auto` is the lever, and `none` is the trap next to it. `none`
+     detaches the animation from every timeline, so it never runs at
+     all and `both` fill holds it on its FIRST frame — which here is
+     `scaleX(0)`, an invisible rule, for ever. That was written first
+     and measured at `matrix(0, 0, 0, 1, 0, 0)` on a reader who had
+     asked for less motion: the worst of both, no animation and no
+     rule. `auto` hands it back to the document clock, where the line
+     above finishes it at once. */
+  *, *::before, *::after { animation-timeline: auto !important; }
 }
 
 /* 13 ── Print ─────────────────────────────────────────────── */

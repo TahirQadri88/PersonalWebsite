@@ -5241,6 +5241,428 @@ try {
       moved.length + ' changed, e.g. day ' + (moved[0] || '-') + ' / night ' + (night[day.indexOf(moved[0])] || '-'));
   }
 
+  /* ---- The hero's own figure ----
+
+     The hero's right-hand half carries no words above about 1200px —
+     44% of it empty at 1280 and 49% at 1920 — and what sat in it was a
+     plain circle, on the one dark surface of the site that did not
+     carry the site's own geometry. The ten-fold rosette was already in
+     the stylesheet for the fatawa panel and the footer.
+
+     What is asserted is the SWAP and the GATE, not a pixel count. The
+     gate is the whole safety argument: at 390px the figure runs under
+     the body copy and takes the Urdu line from 5.09 to 4.47, under the
+     4.5 floor, which is why a phone must keep the circle. */
+  group('the hero carries the site\'s own figure, and only where there is room for it');
+  {
+    const ornament = async (width) => {
+      const { context, page } = await open(width);
+      const seen = await page.evaluate(() => {
+        const s = getComputedStyle(document.querySelector('.hero'), '::after');
+        return { image: s.backgroundImage, border: parseFloat(s.borderTopWidth) || 0, width: parseFloat(s.width) || 0 };
+      });
+      await context.close();
+      return seen;
+    };
+    const phone = await ornament(390), narrow = await ornament(1279), wide = await ornament(1280);
+
+    t('a phone keeps the plain ring and is handed no pattern',
+      phone.image === 'none' && phone.border > 0,
+      'image ' + phone.image.slice(0, 40) + ', border ' + phone.border);
+    /* 1279 and 1280 rather than 390 and 1440, because what can break is
+       the gate itself: a guard that only looks at the two ends passes a
+       breakpoint moved anywhere between them. */
+    t('the figure is still withheld one pixel below the gate',
+      narrow.image === 'none' && narrow.border > 0, 'at 1279px: ' + narrow.image.slice(0, 40));
+    t('and the gate opens at 1280',
+      wide.image !== 'none' && wide.border === 0 && wide.width > 600,
+      'at 1280px: border ' + wide.border + ', ' + wide.width + 'px, image ' + wide.image.slice(0, 30));
+    /* The same figure the rest of the site draws, not a second one
+       copied in. A hand-written near-copy is how two ornaments come to
+       be one hand apart, which this repository has paid for with a
+       standfirst patched in one builder and not the other. */
+    const { context, page } = await open(1280);
+    const same = await page.evaluate(() => {
+      const url = (v) => (v.match(/url\(("|')?(.*?)\1?\)/) || [])[2] || '';
+      const hero = url(getComputedStyle(document.querySelector('.hero'), '::after').backgroundImage);
+      const rulings = url(getComputedStyle(document.querySelector('.rulings')).backgroundImage);
+      return { hero, rulings, shared: hero !== '' && hero === rulings };
+    });
+    await context.close();
+    /* The two URLs compared whole, and that is not fussiness. The first
+       version of this asked whether the panel's image CONTAINED the
+       hero's, which with the figure taken out asks whether a data: URI
+       contains the string `none` — and the rosette's own path carries
+       `fill='none'`, so it does. The assertion passed with the hero
+       bare: a test that cannot fail, caught the only way these ever
+       are, by putting the fault back and watching it stay green. */
+    t('and it is the same figure the fatawa panel draws, not a copy of it', same.shared,
+      'hero ' + (same.hero.slice(0, 50) || '(none)') + ' / panel ' + same.rulings.slice(0, 50));
+  }
+
+  /* ---- A stagger needs something to stagger ----
+
+     The category icons draw themselves on with a delay taken from how
+     many had gone before. The comment that justified it said seven of
+     them should read as one movement rather than seven — and measured
+     on the page there are never seven: eight icons, at most two on a
+     phone screen and three on a desktop, 270 to 1752px apart. Each
+     arrives alone, so the last three were sitting at the 450ms cap, and
+     `both` fill holds the from-state through a delay: a fully dashed-off
+     stroke. The seventh icon was blank for 450ms after its heading
+     appeared and unfinished until 1,150ms.
+
+     This is the group that would have caught it, and the one that would
+     catch a running counter being put back. */
+  group('an icon that arrives alone is not made to wait for a stagger');
+  {
+    const delays = async (width, height) => {
+      const context = await browser.newContext({ viewport: { width, height } });
+      await context.route('https://fonts.g**', (r) => r.abort());
+      const page = await context.newPage();
+      await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => document.fonts.ready);
+      /* The page scrolls smoothly, which is asynchronous, so a probe
+         that scrolls and measures two frames later reads a stale
+         position. The same trap the category rail's own guard records. */
+      await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto'; });
+      const tall = await page.evaluate(() => document.body.scrollHeight);
+      for (let y = 0; y < tall; y += Math.round(height * 0.6)) {
+        await page.evaluate((to) => scrollTo(0, to), y);
+        await page.waitForTimeout(160);
+      }
+      const read = await page.evaluate(() => ({
+        icons: [...document.querySelectorAll('.category-icon')]
+          .map((e) => parseFloat(e.style.getPropertyValue('--draw-delay')) || 0),
+        drawn: [...document.querySelectorAll('.category-icon')]
+          .filter((e) => e.classList.contains('icon-draw')).length,
+        together: (() => {
+          const tops = [...document.querySelectorAll('.category-icon')]
+            .map((e) => e.getBoundingClientRect().top + scrollY);
+          let best = 0;
+          for (const a of tops) best = Math.max(best, tops.filter((b) => b >= a && b < a + innerHeight).length);
+          return best;
+        })(),
+        cards: [...document.querySelectorAll('.recent-card')]
+          .map((e) => parseFloat(e.style.getPropertyValue('--rise-delay')) || 0)
+      }));
+      await context.close();
+      return read;
+    };
+    const phone = await delays(390, 844), desk = await delays(1280, 900);
+
+    /* Count what you matched: an assertion over delays says nothing if
+       nothing was ever drawn. */
+    t('every category icon was reached and drawn', phone.drawn === phone.icons.length && phone.drawn >= 7,
+      phone.drawn + ' of ' + phone.icons.length + ' drawn');
+    /* The premise the old stagger rested on, asserted so that it fails
+       if the page ever does put a row of icons on one screen — at which
+       point a stagger would be right again and this group should be
+       re-argued rather than deleted. */
+    t('the icons are spread down the page rather than sharing a screen',
+      phone.together <= 3 && desk.together <= 3,
+      'most on one screen: ' + phone.together + ' at 390px, ' + desk.together + ' at 1280');
+    t('so none of them is held back before it draws',
+      Math.max(...phone.icons, ...desk.icons) === 0,
+      '390px ' + phone.icons.join(', ') + ' | 1280px ' + desk.icons.join(', '));
+    /* The companion half, and the reason the fix went on one function
+       and not both: the recent strip's cards really do arrive together,
+       so their stagger is a stagger. A change that flattened these too
+       would be taking away something that works. */
+    t('while the recent strip, whose cards do arrive together, keeps its stagger',
+      desk.cards.length >= 5 && desk.cards[0] === 0 && desk.cards[4] === 280,
+      '1280px cards: ' + desk.cards.join(', '));
+  }
+
+  /* ---- The way back is the site's own words ----
+
+     `.more-like` is set left-to-right whatever the piece is, and the
+     note on it names the tell: an arrow mirrored to the front of the
+     phrase it was meant to lead away from. `.post-foot` is its sibling
+     directly above and never got the same treatment, so on eight Urdu
+     posts the foot read `All posts` with the arrow on its RIGHT,
+     pointing into the words, above a block correctly sitting left. */
+  group('the way back out of a piece reads the way the site reads');
+  {
+    const urdu = ['/posts/choice-of-words.html', '/posts/hunar-nahin-amanat.html'];
+    const latin = ['/posts/books-that-arent-coming-back.html'];
+    const look = async (path) => {
+      const { context, page } = await open(390, path);
+      const seen = await page.evaluate(() => {
+        const a = document.querySelector('.post-foot .text-link');
+        if (!a) return null;
+        const link = a.getBoundingClientRect();
+        /* Where the arrow LANDS, never where it sits in the source:
+           textContent is source order and direction changes only what
+           is painted, which this suite has already recorded as an
+           assertion that could not fail. */
+        const r = document.createRange();
+        r.setStart(a.firstChild, 0);
+        r.setEnd(a.firstChild, 1);
+        const mark = r.getBoundingClientRect();
+        const onward = document.querySelector('.more-like');
+        return {
+          dir: getComputedStyle(a).direction,
+          arrowLeads: (mark.left + mark.right) / 2 < (link.left + link.right) / 2,
+          startsAt: Math.round(link.left),
+          onwardStartsAt: onward ? Math.round(onward.getBoundingClientRect().left) : null
+        };
+      });
+      await context.close();
+      return seen;
+    };
+    const rows = [];
+    for (const p of urdu.concat(latin)) rows.push([p, await look(p)]);
+
+    t('every piece has a way back to measure', rows.every(([, r]) => r), rows.length + ' pages');
+    t('the arrow leads away from the words, not into them',
+      rows.every(([, r]) => r && r.arrowLeads),
+      rows.map(([p, r]) => p + ' ' + (r && r.arrowLeads ? 'leads' : 'points back')).join(' | '));
+    /* And it agrees with the block beneath it. Direction alone settles
+       both — the alignment here is inherited `start` — so this is the
+       assertion that would notice the two parting again. */
+    t('and it begins on the same edge as the More-in block under it',
+      rows.every(([, r]) => r && r.onwardStartsAt !== null && Math.abs(r.startsAt - r.onwardStartsAt) <= 2),
+      rows.map(([p, r]) => p + ' foot ' + r.startsAt + ' vs onward ' + r.onwardStartsAt).join(' | '));
+  }
+
+  /* ---- The mark beside the kind ----
+
+     The drawings for a booklet, a manuscript, a pen and the seal have
+     been in the sprite since the icons were added, and were drawn on
+     the homepage's category heads only — so a reader arriving straight
+     at a piece from a forwarded link never met one. Mounted from
+     common.js, the decision `pageTools` and `moreLike` already make, so
+     all thirty-seven pages gained it without one being rewritten. */
+  group('a record page shows what kind of thing it is, not only says it');
+  {
+    const pages = [
+      ['/works/saa-ki-tahqeeq.html', 'booklet'],
+      ['/works/qata-taalluq.html', 'seal'],
+      ['/posts/choice-of-words.html', 'pen'],
+      ['/posts/books-that-arent-coming-back.html', 'pen'],
+      ['/apps/zakat-calculator.html', 'app']
+    ];
+    const rows = [];
+    for (const [path, want] of pages) {
+      const { context, page } = await open(390, path);
+      rows.push([path, want, await page.evaluate(() => {
+        const label = document.querySelector('.work-hero .section-label, .post-hero .section-label');
+        const svg = label && label.querySelector('svg.category-icon');
+        const use = svg && svg.querySelector('use');
+        const box = svg && svg.getBoundingClientRect();
+        const words = label && label.textContent.trim();
+        return {
+          icon: use ? (use.getAttribute('href') || '').replace('#i-', '') : null,
+          px: box ? Math.round(box.width) : 0,
+          hidden: !!(svg && svg.closest('[aria-hidden="true"]')),
+          /* It must not have pushed the title down: the slot is
+             inline-flex precisely so an empty span cannot collapse and
+             then shove the heading sideways when the drawing lands. */
+          sameLine: !!(label && box && Math.abs(box.top - label.getBoundingClientRect().top) < box.height),
+          words
+        };
+      })]);
+      await context.close();
+    }
+    t('every record page has a kind to mark', rows.every(([, , r]) => r.words),
+      rows.map(([p, , r]) => p + ' "' + r.words + '"').join(' | '));
+    /* Named per page rather than "some icon is present": the whole
+       point is that a fatwa shows the seal and an essay the pen, and an
+       assertion that only counted marks would pass on all five being
+       the same drawing. */
+    t('and each shows its own category\'s drawing',
+      rows.every(([, want, r]) => r.icon === want),
+      rows.map(([p, want, r]) => p.split('/').pop() + ' wanted ' + want + ', got ' + r.icon).join(' | '));
+    t('the mark is readable rather than a smudge beside the words',
+      rows.every(([, , r]) => r.px >= 16),
+      rows.map(([p, , r]) => p.split('/').pop() + ' ' + r.px + 'px').join(' | '));
+    t('it is decorative, so it is hidden from a reader who is listening',
+      rows.every(([, , r]) => r.hidden), rows.filter(([, , r]) => !r.hidden).length + ' not hidden');
+    t('and it sits on the label\'s own line', rows.every(([, , r]) => r.sameLine));
+  }
+
+  /* ---- The ruled lines ----
+
+     A manuscript marks a section with a rule. The one under an in-prose
+     heading is drawn as the reader arrives, by `animation-timeline:
+     view()` — no script, no observer, nothing added to any page. The
+     one under a record's own title is above the fold, where there is
+     nothing to scroll to, so it is simply timed.
+
+     What is asserted is that the scroll-driven one is really driven by
+     the scroll — before and after — and, far more importantly, what
+     happens to a reader who asked for less motion. */
+  group('a section is ruled, and the ruling is drawn as it is reached');
+  {
+    const piece = '/posts/reservations-shariah-screening-stocks.html';
+    const scaleOf = (t) => (t && t !== 'none' ? parseFloat(t.slice(7).split(',')[0]) : 1);
+
+    const walk = async (motion) => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 },
+        ...(motion ? { reducedMotion: motion } : {}) });
+      await context.route('https://fonts.g**', (r) => r.abort());
+      const page = await context.newPage();
+      await page.goto(`http://127.0.0.1:${PORT}${piece}`, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => document.fonts.ready);
+      await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto'; });
+      await page.waitForTimeout(400);
+      const seen = { asked: await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches) };
+      seen.title = await page.evaluate(() => getComputedStyle(document.querySelector('.work-hero h1, .post-hero h1'), '::after').transform);
+      seen.far = await page.evaluate(() => getComputedStyle(document.querySelectorAll('.post-body h2')[4], '::after').transform);
+      await page.evaluate(() => { const h = document.querySelectorAll('.post-body h2')[4]; scrollTo(0, h.getBoundingClientRect().top + scrollY - 200); });
+      await page.waitForTimeout(300);
+      seen.near = await page.evaluate(() => getComputedStyle(document.querySelectorAll('.post-body h2')[4], '::after').transform);
+      seen.origin = await page.evaluate(() => getComputedStyle(document.querySelectorAll('.post-body h2')[4], '::after').transformOrigin);
+      seen.width = await page.evaluate(() => Math.round(document.querySelectorAll('.post-body h2')[4].getBoundingClientRect().width));
+      await context.close();
+      return seen;
+    };
+    const normal = await walk(null), quiet = await walk('reduce');
+
+    t('a heading still out of reach has not drawn its rule yet',
+      scaleOf(normal.far) < 0.05, 'scaleX ' + scaleOf(normal.far));
+    t('and the same rule is drawn once the reader arrives at it',
+      scaleOf(normal.near) > 0.95, 'scaleX ' + scaleOf(normal.near));
+    /* It grows from the edge the script begins on. An Urdu piece reads
+       rightwards, so a rule growing from the left would be drawn away
+       from the words rather than under them. */
+    t('the ruling grows from the edge the script reads from',
+      Math.abs(parseFloat(normal.origin) - normal.width) < 3,
+      'origin ' + normal.origin + ' against a ' + normal.width + 'px heading');
+
+    /* The assertion this whole group exists for, and the one that found
+       a real fault while it was being written.
+
+       `prefers-reduced-motion` was handled by turning animation
+       DURATION down, which does nothing to a scroll-driven animation —
+       its progress is the scrollbar, not a clock. The first fix was
+       `animation-timeline: none`, which detaches it from every timeline
+       so it never runs at all and `both` fill pins it to its FIRST
+       frame: `scaleX(0)`, an invisible rule, for ever. Measured at
+       exactly that. `auto` hands it back to the document clock, where
+       the duration rule finishes it at once. */
+    t('the reduced-motion seed really took before anything is read from it', quiet.asked);
+    t('and a reader who asked for less motion is given the rules already drawn, not withheld',
+      scaleOf(quiet.far) > 0.95 && scaleOf(quiet.near) > 0.95 && scaleOf(quiet.title) > 0.95,
+      'out of reach ' + scaleOf(quiet.far) + ', reached ' + scaleOf(quiet.near) + ', title ' + scaleOf(quiet.title));
+  }
+
+  /* ---- Where a piece ends ----
+
+     The `nib` drawing shipped on every page of the site and was
+     referenced nowhere at all. It is the mark at the end of a piece
+     now — and only of a piece: a work is a download and an app is a
+     thing to open, and neither ends in the middle of anything. */
+  group('a piece says where it ends, and only a piece does');
+  {
+    const look = async (path) => {
+      const { context, page } = await open(390, path);
+      const seen = await page.evaluate(() => {
+        const mark = document.querySelector('.end-rule .end-mark');
+        const body = document.getElementById('post-body');
+        if (!mark) return { mark: false, hasBody: !!body };
+        const r = mark.getBoundingClientRect();
+        const row = mark.closest('.end-rule').getBoundingClientRect();
+        return {
+          mark: true, hasBody: true,
+          last: body.lastElementChild.classList.contains('end-rule'),
+          hidden: !!mark.closest('[aria-hidden="true"]'),
+          /* Centred, which is not what it got the first time: written
+             as a `p` it fell under `.post-body.urdu > p:not(.latin)` at
+             (0,3,1), was justified, and a lone inline mark went hard
+             against the start edge. */
+          offCentre: Math.abs((r.left + r.right) / 2 - (row.left + row.right) / 2)
+        };
+      });
+      await context.close();
+      return seen;
+    };
+    const urdu = await look('/posts/choice-of-words.html');
+    const english = await look('/posts/books-that-arent-coming-back.html');
+    const work = await look('/works/saa-ki-tahqeeq.html');
+    const app = await look('/apps/zakat-calculator.html');
+
+    t('a piece to read ends with the mark', urdu.mark && english.mark,
+      'urdu ' + urdu.mark + ', english ' + english.mark);
+    t('and it is the last thing in the writing', urdu.last && english.last);
+    t('it is centred whichever way the piece reads',
+      urdu.offCentre < 2 && english.offCentre < 2,
+      'urdu off by ' + Math.round(urdu.offCentre) + 'px, english ' + Math.round(english.offCentre));
+    t('it is decorative, so it is hidden from a reader who is listening',
+      urdu.hidden && english.hidden);
+    /* A work and an app have no `#post-body`, so this is not merely
+       "they happen not to have one" — it says the condition is the
+       right one. */
+    t('a work and an app have no writing to end, and get no mark',
+      !work.mark && !work.hasBody && !app.mark && !app.hasBody,
+      'work ' + work.mark + '/' + work.hasBody + ', app ' + app.mark + '/' + app.hasBody);
+  }
+
+  /* ---- The reading line ----
+
+     No script and no element in any page: `body::before`, matched by
+     `:has(#post-body)` and driven by `scroll()`. The three things that
+     can go wrong are the page it appears on, the edge it fills from,
+     and what a reader who asked for less motion is shown. */
+  group('a long piece says how far through it you are');
+  {
+    const scaleOf = (t) => (t && t !== 'none' ? parseFloat(t.slice(7).split(',')[0]) : null);
+    const read = async (path, motion) => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 },
+        ...(motion ? { reducedMotion: motion } : {}) });
+      await context.route('https://fonts.g**', (r) => r.abort());
+      const page = await context.newPage();
+      await page.goto(`http://127.0.0.1:${PORT}${path}`, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => document.fonts.ready);
+      await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto'; });
+      await page.waitForTimeout(300);
+      const at = async (fraction) => {
+        await page.evaluate((f) => scrollTo(0, (document.body.scrollHeight - innerHeight) * f), fraction);
+        await page.waitForTimeout(160);
+        return page.evaluate(() => {
+          const s = getComputedStyle(document.body, '::before');
+          return { transform: s.transform, display: s.display, origin: s.transformOrigin, content: s.content };
+        });
+      };
+      const seen = { asked: await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches),
+        top: await at(0), half: await at(0.5), end: await at(1) };
+      await context.close();
+      return seen;
+    };
+    const urdu = await read('/posts/reservations-shariah-screening-stocks.html', null);
+    const english = await read('/posts/books-that-arent-coming-back.html', null);
+    const work = await read('/works/saa-ki-tahqeeq.html', null);
+    const quiet = await read('/posts/reservations-shariah-screening-stocks.html', 'reduce');
+
+    t('the line is empty at the top of a piece and full at the foot',
+      scaleOf(urdu.top.transform) < 0.02 && scaleOf(urdu.end.transform) > 0.98,
+      'top ' + scaleOf(urdu.top.transform) + ', foot ' + scaleOf(urdu.end.transform));
+    t('and it really follows the scroll rather than jumping at the end',
+      Math.abs(scaleOf(urdu.half.transform) - 0.5) < 0.08,
+      'half way: ' + scaleOf(urdu.half.transform));
+    /* Filled from the reading edge. An Urdu piece reads rightwards, so
+       a bar growing from the left would run backwards against the
+       words — the same mistake as an arrow mirrored to the front of its
+       phrase, which this suite already guards in another place. */
+    t('it fills from the edge the piece reads from',
+      parseFloat(urdu.top.origin) > 380 && parseFloat(english.top.origin) < 2,
+      'urdu origin ' + urdu.top.origin + ', english ' + english.top.origin);
+    /* A work page is a download. It has no position to be part way
+       through, and must not claim one. */
+    t('a work page, which is a download, gets no reading line',
+      work.half.content === 'none' || work.half.display === 'none',
+      'content ' + work.half.content + ', display ' + work.half.display);
+    t('the reduced-motion seed really took before anything is read from it', quiet.asked);
+    /* Hidden outright rather than handed to the clock like the ruled
+       lines: `animation-timeline: auto` would finish it instantly and
+       leave a permanently FULL bar, which tells a reader they have
+       finished something they have not started. */
+    t('and a reader who asked for less motion is shown no bar rather than a full one',
+      quiet.half.display === 'none',
+      'display ' + quiet.half.display + ', transform ' + quiet.half.transform);
+  }
+
   t('nothing threw along the way', threw.length === 0, threw.join(' | '));
 } finally {
   await browser.close();

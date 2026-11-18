@@ -5024,6 +5024,283 @@ nothing. That half is verified by the standalone census instead, and
 saying so beats leaving it looking guarded.
 
 
+### The hero's right-hand half was empty and its ornament was not the site's own
+
+**Half the hero carried nothing, and the one thing in it was a generic
+circle.** Measured: the widest hero ink ends at 713px at 1280 and 981 at
+1920, so **44% of the hero is empty at 1280 and 49% at 1920** — and
+`.hero::after` was a 380px ring at 1px, `rgba(255,255,255,0.14)`, a
+shape with no relation to anything else on the site.
+
+Meanwhile the **ten-fold rosette** — the Zakat calculator's own
+geometry, read off the running app, already in `styles.css` as an 843-byte
+inline `data:` URI — was drawn on `.rulings` and the footer and **not on
+the hero**, which is the third dark surface and the front door. The
+figure costs no request and needed no new colour: it is the site's own
+hand in the one place it was missing, not an ornament invented to fill
+a gap.
+
+**The gate is 1280px and that number is a measurement.** The figure's
+left edge sits at `width - 520px`; the widest hero ink ends at 710px at
+1240 and 713 at 1280, so **1240 clears by ten pixels and 1280 by
+forty-seven**, growing from there. Ten pixels is the margin this file
+already records passing on one container and failing on the next.
+
+**It must not reach a phone, and that is measured rather than taken on
+the rule alone.** `.rulings`' own note says a pattern must not go behind
+reading matter; here the arithmetic agrees with the rule. At 390px the
+720px figure runs under the body copy and the Urdu line, and the worst
+pixel under that line goes **5.09 → 4.47 — under the 4.5 floor**, on the
+smallest and most fragile text in the hero. Below the gate nothing
+changes and the ring stays exactly as it was.
+
+**Above the gate it costs nothing at all**, and that had to be measured
+twice because the first probe was wrong. Sampling each line's **element
+box** reported the h1 falling 9.28 → 7.46 at 1280 — which is the
+`.hero h1 em` lesson again: `.hero h1` is capped at `10.5em`, so its box
+runs to 882px while "A library of" is 713px of ink, and the sampler was
+reading empty box. Sampling the **ink rectangles** off a Range instead:
+
+```
+            eyebrow   headline   English copy   Urdu line
+  1280px     11.09      10.09        7.76          9.28     ring and rosette alike
+  1440px     11.23      10.23        8.08          9.31     identical
+  1920px     10.95      10.23        8.08          9.17     identical
+```
+
+Identical to two decimal places at every width. **A ratio that moves on
+a line the figure cannot reach means the probe is measuring the wrong
+rectangle.**
+
+### A stagger needs something to stagger, and these icons arrived alone
+
+**The category icons were each held back before drawing, for a group
+that does not exist.** `drawIconsOnEntry` set `--draw-delay` from a
+counter running for the life of the page, capped at `5 × 90ms`, on the
+reasoning written in its own comment: *"a short stagger so seven of them
+read as one movement rather than seven."*
+
+Measured on the rendered page, **there are never seven**: eight icons —
+one per category head plus the rulings' — sitting **270 to 1752px
+apart**, with at most **two on a phone screen and three on a desktop**.
+Every one of them arrives by itself, and was taking its delay from how
+many had gone before, so the last three sat at the 450ms cap.
+
+`animation-fill-mode: both` holds the *from* state through a delay, and
+the from state here is `stroke-dashoffset: 1` — a fully dashed-off
+stroke. So the seventh category's icon was measured **blank for 450ms**
+after its heading entered view and not finished drawing until
+**1,150ms**, sampled directly:
+
+```
+  t+0ms    dashoffset 1          t+450ms   dashoffset 0.96
+  t+100ms  dashoffset 1          t+700ms   dashoffset 0.45
+  t+250ms  dashoffset 1          t+1200ms  dashoffset 0
+```
+
+A heading with a missing icon beside it reads as a page still loading,
+which is the opposite of what an arrival animation is for.
+
+**Counted per arrival now** — the entries in one observer callback are
+the ones that really came together — so an icon arriving alone draws at
+once, and a batch still staggers.
+
+**`revealOnEntry` keeps its running counter deliberately.** The recent
+strip's cards are a row and were measured arriving in **one batch of
+five on a desktop and two on a phone**, with delays `0, 70, 140, 210,
+280`. That is a stagger with something to stagger, and changing code
+that measures correct, to match code that did not, would be a change
+with nothing behind it. The guard asserts the cards' delays beside the
+icons' for exactly that reason.
+
+### `.more-like` was set left-to-right and its sibling above it was not
+
+**Eight Urdu posts ended with the way out pointing the wrong way.**
+`.post-foot` holds one thing — `← All posts`, or `← All apps` — written
+by two builders, and it inherited the piece's direction. On an Urdu post
+that is `rtl`, so the `←` that is first in the source painted
+**rightmost**: the foot read `All posts ←` with the arrow on the right,
+pointing into the words rather than away from them, flush to the right
+edge — directly above `.more-like`, correctly `ltr` and sitting left.
+
+This is the fault `.more-like`'s own comment describes being fixed for:
+*"the arrow in 'All of Islamic rulings →' mirrored to the front of the
+phrase, pointing back at the words it was meant to lead away from."* The
+fix went on one block and not on its sibling — the shape this file keeps
+recording, `Ayn and hamza` named in one stack and not the other,
+`.text-link` beside `.document-link`.
+
+**`direction` alone, with no `text-align` beside it.** Both were
+rendered and the screenshots are **byte-identical**: the alignment here
+is inherited `start`, and `start` follows the direction. A second
+declaration that changes nothing would read as load-bearing to whoever
+touches it next.
+
+**Not fixed in the builders.** Writing `→` for an Urdu page is what the
+*back-link at the top* of a work page correctly does, and that mirror is
+right there — "back" really is to the right in a right-reading page. The
+foot is a different thing: it is the site's own way into its own index,
+in the site's own English, which is the argument `.more-like` and
+`.record-meta` already make. One CSS declaration, no page regenerated.
+
+**It was found by checking an outside suggestion rather than by a
+report**, and the probe written to check it was wrong twice over. A
+sweep of 62 arrows across eight pages reported five faults: **four were
+the builder doing it right** (an Urdu page's back-link is written `→`,
+and a right-reading line paints it rightmost, which is correct), and
+**one was the probe comparing an element's centre with its own centre**
+when the arrow is the whole of the link's text. The real count was the
+eight above, and none of them was among the five.
+
+### A guard that could not fail, caught by the rule that exists for it
+
+The rosette group's fourth assertion asked whether the fatāwā panel's
+`background-image` **contained** the hero's. With the figure taken back
+out the hero's reads `none` — and the rosette's own path carries
+`fill='none'`, so the containment held and **the assertion passed on a
+bare hero**. It compares the two `url()` values whole now. Nothing but
+putting the fault back and watching the test stay green would have shown
+it; the assertion read perfectly well.
+
+
+### Scroll-driven animation arrived, and the reduced-motion block does not reach it
+
+**The whole premium-motion question changed, and it changed in the
+browser rather than here.** Motion on this site has always meant an
+`IntersectionObserver` adding a class, because that was the only way to
+start something when a reader reached it. Both engines now support
+`animation-timeline: view()` and `scroll()` — checked in the container,
+Safari's WebKit included, along with `:has()` and `scroll(root block)` —
+so a thing can be driven by the scroll position **in CSS, with no script
+at all, nothing added to any page and `common.js` not involved**.
+
+That is strictly better by this file's own standards: no observer to
+guard, nothing mounted, and a page that works with JavaScript off.
+
+**But the reduced-motion block at the foot of `styles.css` does not stop
+one, and that had to be measured to be believed.** It sets
+`animation-duration: 0.01ms`, and a scroll-driven animation **has no
+duration** — its progress is the scrollbar. Measured with `reduce` set:
+a `view()` rule drew itself exactly as it did without, and sat at
+`scaleX(0)` — invisible — while it waited. The reader who asked for less
+motion got the motion *and* the hidden state.
+
+**`auto` is the lever and `none` is the trap sitting next to it.** The
+first fix was `animation-timeline: none !important`, which reads
+correctly and is wrong: `none` detaches the animation from **every**
+timeline, so it never runs at all, and `both` fill then pins it to its
+**first** frame for ever. Measured at `matrix(0, 0, 0, 1, 0, 0)` — an
+invisible rule, permanently, for exactly the reader who should be given
+the plain page. `animation-timeline: auto` hands it back to the document
+clock, where the duration line above finishes it at once.
+
+```
+                              out of reach    once reached    title
+  reduce, with `none`           scaleX 0        scaleX 0      scaleX 0
+  reduce, with `auto`           scaleX 1        scaleX 1      scaleX 1
+```
+
+**A progress bar is the exception and needs hiding, not finishing.**
+`auto` completes a scroll-driven animation instantly, which is right for
+a rule and a lie for a reading line: it would sit permanently **full**,
+telling a reader they had finished something they had not started. That
+one is `display: none` under `reduce` instead, and the comment says why
+rather than leaving the inconsistency to be found.
+
+**The same argument settles the unsupported engine, in the other
+direction.** Where `animation-timeline` is not understood the
+declaration is simply dropped, leaving a time-based animation of zero
+duration filling `both` — so the element computes to its **end** state.
+Checked by deleting the line and reading the transform back: `scaleX(1)`,
+fully drawn. That is right for a rule, which is why the rules need no
+`@supports`; and wrong for the reading line, which is why the reading
+line is inside one. **A rule that fails to animate is a rule. A progress
+bar that fails to animate is a false statement.**
+
+### The site already owned the books, the pen and the manuscript
+
+**The request was for book, pen and manuscript animations, and seven of
+those drawings were already in the sprite.** `booklet`, `manuscript`,
+`books`, `pen`, `nib`, `document` and `seal`, about 4KB for all fifteen
+icons, no extra request — and they were drawn in exactly **one** place,
+the homepage's category heads. A reader arriving straight at a piece from
+a forwarded link never met one.
+
+**`nib` and `document` were referenced nowhere at all**, shipped on every
+page of the site and used by nothing. That is the same waste as a font
+subset carrying glyphs no page holds, and the answer was the same: use it
+or drop it. The nib is the mark at the end of a piece now.
+
+**So nothing was drawn, imported or added.** No animation library — every
+one of them costs more than this site's entire icon set — and no new
+file. What was missing was not assets; it was the drawings being used
+anywhere but the front page.
+
+### A mark beside the kind is larger than the words, not smaller
+
+`.category-icon` is `0.82em` and held under the cap height **on purpose**,
+so that beside a heading it reads as a mark rather than a second heading.
+Beside `.section-label` on a record page the same rule is wrong: the label
+is 15 to 16px, so 0.82em is a **13px line drawing at 1.4 stroke**, and
+rendered at the real size the booklet closes into a smudge — this file's
+standing complaint about Nastaliq at 13px, arriving in a drawing instead.
+
+0.82, 1.25 and 1.5em were drawn and **read together**. 1.5em is where a
+booklet is plainly a booklet and the seal a seal. Same drawing, opposite
+rule, because the thing beside it is a label and not a heading.
+
+### A class borrowed to be found by a selector brings everything else with it
+
+The end-mark was given `.category-icon` for one reason: `drawIconsOnEntry`
+queried that class, and the mark had to be found. It arrived carrying a
+size, a colour and a `margin-inline-end` of **8.82px** — which in a
+right-reading article resolved to `margin-left` and put a mark meant to be
+centred **4px off centre**, in both scripts, which is what said it was a
+margin and not a direction fault.
+
+This is the `.urdu` rule — *never put a class on something that has a size
+or an alignment of its own; it brings both* — in a drawing rather than a
+word. The fix is not to zero the margin: the dash belongs to `.icon-draw`
+and never belonged to `.category-icon`, so the helper takes a **selector**
+now and the mark keeps only its own class.
+
+### An end-mark written as a paragraph is justified, and a lone glyph goes to the edge
+
+Written first as `<p class="end-rule">`, which put it inside
+`.post-body.urdu > p:not(.latin)` — **(0,3,1)** against the class's
+(0,1,0) — so `text-align: justify` won and a single inline mark was driven
+hard against the start edge of its line. It came out tight against the
+right margin instead of centred, and it was **looked at** rather than
+inferred.
+
+It is a `div`. The end-mark is not a paragraph, the selector stops
+matching, and nothing has to outrank anything. Same shape as the
+alignment-class faults this file already records, with the cheaper fix
+available because the element was ours to choose.
+
+### A ruled line belongs under a section, and not under every heading
+
+A rule under each **in-prose** heading is the manuscript's own way of
+marking a section, and on the stocks article — 56 paragraphs, nine
+headings — it gives a slab of Nastaliq some architecture. Rendered with
+and without and read side by side before it was kept.
+
+**The homepage's section headings were tried and refused.** Rendered, the
+gold rule under *Scholarly works and research* sits a few centimetres
+above the search box's own **2px gold edge**, which this file records
+adding deliberately as the one drawn gold control on that page. Two gold
+rules competing, in a page already separated into full-bleed colour
+blocks. The idea was right and the placement was not, and only rendering
+it said so.
+
+**The title's rule is timed, not scrolled, and that is the one place two
+mechanisms are right.** A record's title is above the fold, so `view()`
+resolves to *already arrived* and would draw nothing. It gets a 0.9s
+animation on load instead — where the reduced-motion block's duration
+line does reach it correctly, which is exactly the difference from the
+one below it.
+
+
 ## Working on this
 
 - Preview: open `index.html` directly, or `python -m http.server 4173`.

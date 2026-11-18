@@ -595,19 +595,47 @@
      which is the only reason this reaches inside <use> at all: the clone
      lives in a shadow tree that outside CSS cannot select, and inheritance
      is the same door `currentColor` already comes through. */
-  function drawIconsOnEntry(root) {
+  function drawIconsOnEntry(root, selector) {
     if (!window.IntersectionObserver) return;
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    var targets = (root || document).querySelectorAll('.category-icon');
+    /* The selector is a parameter because the dash belongs to `.icon-draw`
+       and has never belonged to `.category-icon` — which also carries a
+       size, a colour and a margin. The end-mark was given that class
+       purely to be found by this function, and inherited a
+       `margin-inline-end` with it: measured 8.82px, which put a mark
+       meant to be centred 4px off centre. The same trap this project
+       states for `.urdu`, in a drawing instead of a word. */
+    var targets = (root || document).querySelectorAll(selector || '.category-icon');
     if (!targets.length) return;
 
-    var seen = 0;
     var watcher = new IntersectionObserver(function (entries) {
+      /* Counted per arrival, not for the life of the page, and that is
+         the whole fix. A stagger says "these came together"; it has
+         nothing to say about an icon that came alone.
+
+         The count used to run from the first icon to the last, on the
+         reasoning written here — that a stagger would make seven of
+         them read as one movement rather than seven. Measured on the
+         rendered page, there are never seven: eight icons, at most two
+         on a phone screen and three on a desktop, sitting 270 to
+         1752px apart. Each arrives by itself and was taking a delay
+         from how many had gone before, so the last three sat at the
+         450ms cap. `both` fill holds the from-state through a delay,
+         and the from-state is a fully dashed-off stroke — so the
+         seventh category's icon was measured BLANK for 450ms after its
+         heading appeared, and not finished drawing until 1,150ms. A
+         heading with a missing icon beside it reads as a page still
+         loading, not as an arrival.
+
+         `.recent-card` keeps its running count deliberately: those are
+         a row, and they were measured arriving in one batch of five on
+         a desktop and two on a phone, which is a stagger with
+         something to stagger. */
+      var seen = 0;
       entries.forEach(function (entry) {
         if (!entry.isIntersecting) return;
-        /* A short stagger so seven of them read as one movement rather
-           than seven. Capped: past a handful the last would be waiting
-           long enough to look broken. */
+        /* Capped all the same: a batch larger than a handful would
+           leave its last icon waiting long enough to look broken. */
         entry.target.style.setProperty('--draw-delay', Math.min(seen, 5) * 90 + 'ms');
         entry.target.classList.add('icon-draw');
         seen += 1;
@@ -2070,6 +2098,76 @@
     /* Written once and used at both mount points below, so a post and a
        work cannot end up offering different things. */
     var onward = moreLike(mine);
+
+    /* ---- The mark beside the kind ----
+
+       A record page said what kind of thing it was in a word and showed
+       nothing. The drawings for exactly this — a booklet, a manuscript,
+       a pen, the seal — have been in the sprite since the icons were
+       added and were drawn on the homepage's category heads only, so a
+       reader arriving straight at a piece from a forwarded link never
+       met one.
+
+       Mounted from here rather than written into the builders, which is
+       the decision `pageTools` and `moreLike` above already make: all
+       thirty-seven pages already written gain it, and none has to be
+       rewritten. It is the CATEGORY's drawing, from the one closed table
+       that already answers this question, rather than a second table
+       keyed on kind — two tables saying nearly the same thing is how the
+       nav came to disagree with itself about the word Fatawa.
+
+       Decorative, like every icon here: the word beside it already says
+       what it is, so it is aria-hidden and out of the tab order. */
+    var kindLabel = document.querySelector('.work-hero .section-label, .post-hero .section-label');
+    var kindMark = kindLabel && categoryIcon(mine.category, 'category-icon');
+    if (kindMark) {
+      /* The slot is inline-flex for the reason `.category-icon-slot`
+         already exists: an empty span collapses, and the label would
+         shift sideways when the drawing landed. */
+      kindLabel.insertAdjacentHTML('afterbegin',
+        '<span class="category-icon-slot" aria-hidden="true">' + kindMark + '</span>');
+      /* And it draws itself on, by the same helper and therefore under
+         the same three cases: no JavaScript, no IntersectionObserver or
+         a reader who asked for less motion all leave it simply drawn. */
+      drawIconsOnEntry(kindLabel);
+    }
+
+    /* ---- Where a piece ends ----
+
+       A printed article says where it stops: a mark after the last
+       line, so a reader knows the next thing is not more of this. On a
+       phone, scrolling out of 56 paragraphs of Nastaliq into a list of
+       other titles, that is worth having.
+
+       The `nib` drawing was in the sprite from the day the icons were
+       added and referenced NOWHERE — shipped on every page of the site
+       and used by nothing, which is the same waste as a font subset
+       drawing glyphs no page holds. A pen nib is the right mark for a
+       piece that was written, and the site already owned it.
+
+       Only where there is a piece to read: `#post-body`. A work page is
+       a download and an app page is a thing to open, and neither of
+       them ends in the middle of anything. */
+    var body = document.getElementById('post-body');
+    var endMark = body && icon('nib', 'end-mark');
+    if (endMark) {
+      /* A div and deliberately not a `p`. The end-mark is not a
+         paragraph, and writing it as one put it inside
+         `.post-body.urdu > p:not(.latin)` — which is (0,3,1) and
+         justifies, so a single inline mark was driven to the start edge
+         of the line and came out hard against the right margin rather
+         than centred. Measured and looked at before it was changed;
+         this file records the same specificity trap being paid for by
+         the editor's own alignment classes. */
+      body.insertAdjacentHTML('beforeend',
+        '<div class="end-rule" aria-hidden="true">' + endMark + '</div>');
+      /* Drawn as it is reached, by the same helper and under the same
+         three cases as every other mark here — except that this one is
+         added by the script in the first place, so a reader without
+         JavaScript simply reaches the foot of the piece as they always
+         did. Nothing is hidden from them; there is one fewer flourish. */
+      drawIconsOnEntry(body.lastElementChild, '.end-mark');
+    }
 
     /* The reading face goes at the TOP of the piece, not in the row
        above — a reader decides whether text is comfortable in the first
