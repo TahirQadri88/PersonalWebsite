@@ -122,8 +122,8 @@ Each line is the rule; the reasoning is in `docs/LESSONS.md` under the same name
 - The measurement outranks the inference: arithmetic saying a control is too small
   is not a fault until a finger fails to land on it.
 - When a change makes a string longer, measure the box it has to fit in.
-- Measure the screen's height too. Every sweep here was about width, and a phone
-  turns sideways: two sticky bars were 36% of a landscape screen.
+- A percentage is not a finding until you know which page it is on and who is
+  standing there. Only the homepage ever had two sticky bars.
 - When a measurement needs a tolerance, find out what is filling it.
 - When a report says something is wrong and the measurement says it is right,
   ask *when* the measurement was taken.

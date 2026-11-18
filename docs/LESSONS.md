@@ -5301,43 +5301,60 @@ line does reach it correctly, which is exactly the difference from the
 one below it.
 
 
-### Every measurement in this file was about width, and a phone turns sideways
+### A phone turns sideways, and the fix for it was built and then thrown away
 
-**The two sticky bars were 36% of a landscape phone's screen.** Measured
-at 844×390: a 72px header and a 70px strip, so the reader had **248px of
-390** to read in. At 740×360 it is 39%. Nothing in this repository had
-ever measured a short VIEWPORT — the header, the strip, the nav links,
-the wordmark and `scroll-padding-top` have all been swept exhaustively
-across widths from 320 to 1920, and the question "how tall is the
-screen" had never been asked.
+**The measurement was real and the change was wrong**, and the gap
+between those two is the whole of this entry.
 
-**The strip stands down and the header stays.** Measured at the same
-size, with what is COVERED while scrolled rather than the layout at rest:
+Every sweep in this file is about WIDTH. Turned sideways a phone is 360
+to 430px TALL, and on the homepage the header and the category strip
+were **142px of a 390px screen — 36% of it**, leaving 248px to read in.
+Nobody had ever asked how tall the screen was. So the strip was made to
+stand down below `max-height: 500px`, the header kept as the only way
+out, `scroll-padding-top` followed from 152 to 92, and it was guarded
+eight ways: 248px became **318**, tablets in landscape untouched,
+portrait untouched.
+
+**Then it was looked at, and two things were obvious in the picture that
+no number had said.**
+
+What you gain is **one row of the library**. What you lose is the pill
+saying which of eight categories you are standing in — and on a screen
+this short, where a reader sees very little at once, that cue is worth
+*more* than it is on a desktop, not less. The strip is "still in the
+page, at the top", which is true and useless: reaching it means
+scrolling the whole library back.
+
+**And then the premise fell over.** Measured across every page type at
+844×390:
 
 ```
-  as it is          bars cover 142px   →  248px readable of 390  (64%)
-  strip static      bars cover  72px   →  318px readable         (82%)
-  header too        bars cover   0px   →  390px readable        (100%)
+  index.html                    has a strip     72px of chrome
+  fatawa/  author/              no strip        72px
+  works/…  posts/…  apps/…      no strip        72px
 ```
 
-The third row is not available: the header is the only way out of the
-page once the strip has gone, and this site does not trade a way out for
-reading room. **Nothing is lost by the second**: the strip is still in
-the page, at the top, still scrolling sideways. What it stops doing is
-following a reader down a screen with no room for it.
+**Only the homepage has a second bar at all.** So the 36% applies to
+exactly one page — a catalogue, which is the page a reader is *least*
+likely to turn sideways. The pages where landscape genuinely happens, a
+chart, a PDF, a long article, have never had more than the 72px header.
 
-**`max-height: 500px`, not a round 600.** A phone in landscape is at
-most about 430px tall and a tablet in landscape is 768 or more, so this
-catches every phone and no tablet — asserted both ways, because a rule
-that also caught an iPad would be taking the strip from a device with
-plenty of room. A short desktop window gets it too, and should: the
-argument is about the screen, not the device.
+So the change optimised the one page the problem is least real on, and
+paid for it in the one place the cue exists. It is out.
 
-**`scroll-padding-top` had to follow**, or a jump still reserves room
-for a bar that is no longer there — 152px of a 390px screen. 92px is the
-72px header and the same 20px of air the other two values keep. The
-block sits after the width queries deliberately: media queries carry no
-specificity of their own, so the later rule is the one that wins.
+**The lesson is not "don't measure the height".** The height measurement
+was correct and is worth keeping: 142px on a 390px screen is a real
+number and would be a real fault on a page a reader actually holds
+sideways. The lesson is that **a percentage is not a finding until you
+know which page it is on and who is standing there** — and that this
+file's own rule, *a judgement needs looking at and not only measuring*,
+applies to layout exactly as it applies to type. The eye and the
+arithmetic disagreed; the eye won; the same ending as `pretty` beating
+`balance`, and as the toolbar row-gap built on correct arithmetic and
+taken out again.
+
+Written down rather than quietly dropped, so the next person who
+measures 36% does not build it a second time.
 
 ### A link to the page you are on is not a way anywhere
 
@@ -5432,6 +5449,32 @@ drawn and the reading line is hidden, in Chromium and in WebKit.
 Worth recording as plainly as a fault: the answer to "what about the
 animations on mobile" is **nothing**, and it is only worth saying
 because it was measured.
+
+
+### A sleep that is usually long enough, seen failing, and the fix that was worse
+
+The icon-stagger guard scrolled the page in steps with a 160ms wait on
+each, and was seen going red **once in eight runs** — in the group
+*below* the one whose fault was being restored, which is the worst way
+for a flake to show: it reads as the change under test having broken
+something unrelated.
+
+**The first fix made it fail every time.** It waited, at each step, for
+every icon currently in the viewport to have drawn — and an icon only
+half in view never qualifies, because `drawIconsOnEntry` observes at
+`threshold: 0.5` with a `-12%` margin. So the condition was unreachable
+at most steps, every one of them waited out its timeout, and the run
+came back red three times out of three. Worse than the flake it
+replaced, and shipped nowhere.
+
+What works is one wait at the **foot** of the scroll, for a condition
+that is actually reachable: every icon drawn. Three clean runs after,
+against one failure in eight before.
+
+Two things worth keeping. **A fix for a flake has to be run more than
+once** — a single green run proves nothing about a fault that appears
+one time in eight. And when a test change makes things worse, it goes
+back out: the bar for a guard is not "it passed this time".
 
 
 ## Working on this

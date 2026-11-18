@@ -4342,38 +4342,6 @@ footer {
   .bio-facts { grid-template-columns: 1fr; }
 }
 
-/* ---- A short screen, which is a phone turned sideways ----
-
-   Every measurement in this file is about WIDTH. Turned sideways a
-   phone is 360 to 430px TALL, and the two sticky bars are 142px of
-   that — measured at 844x390, the reader had 248px of 390 to read in,
-   36% of the screen given over to chrome that is there to be glanced
-   at.
-
-   The strip stands down and the header stays. Measured at the same
-   size: 248px becomes 318, which is 82% of the screen rather than 64.
-   Letting the HEADER go too gives the whole 390 and takes away the
-   only way out of the page, which is not a trade this site makes.
-
-   Nothing is lost by it. The strip is still there, in the page, at the
-   top where it always was, and still scrolls sideways; what it stops
-   doing is following the reader down a screen that has no room for it.
-
-   500px rather than a round 600: a phone in landscape is at most about
-   430px tall and a tablet in landscape is 768 or more, so this catches
-   every phone and no tablet. A short desktop window gets it too, and
-   should — the argument is about the screen, not the device.
-
-   `scroll-padding-top` follows, or a jump would still reserve room for
-   a bar that is no longer there: 92px is the 72px header and the same
-   20px of air the other two values keep. This block sits after the
-   width queries above deliberately, since media queries carry no
-   specificity of their own and the later rule is the one that wins. */
-@media (max-height: 500px) {
-  .category-bar { position: static; }
-  html { scroll-padding-top: 92px; }
-}
-
 @media (max-width: 620px) {
   .site-header { height: auto; min-height: 62px; padding-block: 10px; }
   .header-nav { gap: 14px; }

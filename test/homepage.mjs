@@ -5345,6 +5345,22 @@ try {
         await page.evaluate((to) => scrollTo(0, to), y);
         await page.waitForTimeout(160);
       }
+      /* One wait for the thing itself at the foot, rather than trusting
+         that 160ms was enough on the last step. Seen failing once in
+         eight runs without it — and a sleep that is usually long enough
+         is a flake with a timer on it.
+
+         A per-step version of this was tried first and was WORSE: it
+         waited for every icon currently in the viewport to have drawn,
+         and an icon only half in view never qualifies under the
+         observer's own threshold, so it waited out its timeout at every
+         step and the run came back red every time. The whole-page
+         condition is the one that is actually reachable. */
+      await page.waitForFunction(
+        () => [...document.querySelectorAll('.category-icon')]
+          .every((e) => e.classList.contains('icon-draw')),
+        undefined, { timeout: 5000 }
+      ).catch(() => {});
       const read = await page.evaluate(() => ({
         icons: [...document.querySelectorAll('.category-icon')]
           .map((e) => parseFloat(e.style.getPropertyValue('--draw-delay')) || 0),
@@ -5675,79 +5691,6 @@ try {
     t('and a reader who asked for less motion is shown no bar rather than a full one',
       quiet.half.display === 'none',
       'display ' + quiet.half.display + ', transform ' + quiet.half.transform);
-  }
-
-  /* ---- A phone turned sideways ----
-
-     Every other measurement in this suite is about WIDTH. Sideways a
-     phone is 360 to 430px TALL and the two sticky bars were 142px of
-     it — 36% of the screen given to chrome that exists to be glanced
-     at. The strip stands down on a short screen and the header stays,
-     because the header is the only way out of the page. */
-  group('a screen too short for two sticky bars keeps only one');
-  {
-    const chrome = async (width, height) => {
-      const context = await browser.newContext({ viewport: { width, height } });
-      await context.route('https://fonts.g**', (r) => r.abort());
-      const page = await context.newPage();
-      await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'domcontentloaded' });
-      await page.evaluate(() => document.fonts.ready);
-      await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto'; });
-      await page.evaluate(() => scrollTo(0, 2600));
-      await page.waitForTimeout(200);
-      const seen = await page.evaluate(() => {
-        let covered = 0;
-        for (const sel of ['.site-header', '.category-bar']) {
-          const el = document.querySelector(sel);
-          if (!el) continue;
-          const style = getComputedStyle(el);
-          /* What is COVERED while scrolled, not what the layout is at
-             rest: a bar that has stopped following the reader still has
-             a height, and reading that height would report no change. */
-          if (style.position === 'sticky' || style.position === 'fixed') {
-            covered = Math.max(covered, el.getBoundingClientRect().bottom);
-          }
-        }
-        return { covered: Math.round(Math.max(covered, 0)), vh: innerHeight,
-          strip: getComputedStyle(document.querySelector('.category-bar')).position,
-          header: getComputedStyle(document.querySelector('.site-header')).position,
-          pad: parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop),
-          stripExists: !!document.querySelector('.category-nav a') };
-      });
-      await context.close();
-      return seen;
-    };
-    const flat = await chrome(844, 390), tall = await chrome(390, 844);
-    const deskShort = await chrome(1280, 480), tabletFlat = await chrome(1024, 768);
-
-    t('sideways, the strip has stopped following the reader', flat.strip === 'static',
-      'position: ' + flat.strip);
-    /* The header must NOT go with it. Letting both go gives the whole
-       screen and takes away the only way out of the page. */
-    t('and the header has not, because it is the way out', flat.header === 'sticky',
-      'position: ' + flat.header);
-    t('the strip is still on the page, just not following',
-      flat.stripExists, 'category links present: ' + flat.stripExists);
-    t('which gives a landscape phone most of its screen back',
-      flat.vh - flat.covered >= 300,
-      (flat.vh - flat.covered) + 'px readable of ' + flat.vh + ', chrome covers ' + flat.covered);
-    /* `scroll-padding-top` has to follow or a jump still reserves room
-       for a bar that is no longer there. */
-    t('and a jump reserves room for one bar rather than two',
-      flat.pad < 120 && flat.pad > 72,
-      'scroll-padding-top ' + flat.pad + 'px against a ' + flat.covered + 'px header');
-
-    /* The other half, and the half a careless rule breaks: a tall
-       screen must be exactly as it was. A tablet in landscape is 768px
-       tall and is NOT a phone turned sideways. */
-    t('a phone held upright is untouched', tall.strip === 'sticky' && tall.pad > 150,
-      'strip ' + tall.strip + ', scroll-padding ' + tall.pad);
-    t('and a tablet in landscape is not a phone in landscape',
-      tabletFlat.strip === 'sticky', 'strip ' + tabletFlat.strip + ' at 1024x768');
-    /* A short desktop window gets it too, and should — the argument is
-       about the screen, not about the device. */
-    t('a short window on a desktop is treated as the short screen it is',
-      deskShort.strip === 'static', 'strip ' + deskShort.strip + ' at 1280x480');
   }
 
   /* ---- Which page you are on ----
