@@ -306,6 +306,20 @@ window.siteContent = {
             { label: "Urdu, part 2", url: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-2.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-2-preview.png" },
             { label: "Urdu, part 3", url: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-3.png", preview: "files/social-media-posts-and-pamphlets/vegetarianism-urdu-part-3-preview.png" }
           ]
+        },
+        {
+          id: "talab-e-ilm",
+          title: "دنیا بھی علم سے، آخرت بھی علم سے",
+          language: "ur",
+          kind: "معلوماتی پمفلٹ",
+          description: "Three sayings of the early scholars on the pursuit of knowledge, on three sheets.",
+          descriptionUr: "طلبِ علم کے بارے میں اسلافِ کرام کے تین اقوال، تین نقشوں پر۔",
+          tags: ["طلبِ علم", "علم"],
+          files: [
+            { label: "Part 1", url: "files/social-media-posts-and-pamphlets/talab-e-ilm-part-1.jpg", preview: "files/social-media-posts-and-pamphlets/talab-e-ilm-part-1-preview.jpg" },
+            { label: "Part 2", url: "files/social-media-posts-and-pamphlets/talab-e-ilm-part-2.jpg", preview: "files/social-media-posts-and-pamphlets/talab-e-ilm-part-2-preview.jpg" },
+            { label: "Part 3", url: "files/social-media-posts-and-pamphlets/talab-e-ilm-part-3.jpg", preview: "files/social-media-posts-and-pamphlets/talab-e-ilm-part-3-preview.jpg" }
+          ]
         }
       ]
     },
